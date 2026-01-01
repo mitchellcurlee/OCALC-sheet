@@ -19,7 +19,6 @@ import {
   Pencil,
   Trash2,
   Zap,
-  Radio,
   MapPin,
   Calendar,
   Loader2,
@@ -119,6 +118,26 @@ const ViewPole = () => {
     ? [pole.latitude, pole.longitude]
     : [37.7749, -122.4194];
 
+  // Check if any span has data
+  const hasSpanData = [1, 2, 3, 4].some(num => 
+    pole[`span${num}_direction`] || pole[`span${num}_distance`] || pole[`span${num}_owner`]
+  );
+
+  // Check if any down guy has data
+  const hasDownGuyData = [1, 2, 3, 4].some(num => 
+    pole[`down_guy${num}_size`] || pole[`down_guy${num}_direction`] || pole[`down_guy${num}_owner`] || pole[`down_guy${num}_height`] || pole[`down_guy${num}_lead`]
+  );
+
+  // Check if any knuckle has data
+  const hasKnuckleData = [1, 2, 3, 4].some(num => 
+    pole[`knuckle${num}_count`] || pole[`knuckle${num}_condition`] || pole[`knuckle${num}_photo`]
+  );
+
+  // Check if any attachment has data
+  const hasAttachmentData = [1, 2, 3, 4, 5].some(num => 
+    pole[`attachment${num}_height`] || pole[`attachment${num}_owner`] || pole[`attachment${num}_photo`]
+  );
+
   return (
     <div className="min-h-screen bg-industrial-bg" data-testid="view-pole-page">
       {/* Header */}
@@ -132,11 +151,11 @@ const ViewPole = () => {
                 </Button>
               </Link>
               <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 flex items-center justify-center ${pole.pole_owner === "Power" ? "bg-red-600" : "bg-orange-600"}`}>
-                  {pole.pole_owner === "Power" ? <Zap className="w-6 h-6 text-white" /> : <Radio className="w-6 h-6 text-white" />}
+                <div className={`w-10 h-10 flex items-center justify-center ${pole.pole_owner === "Foreign Owned" ? "bg-red-600" : "bg-orange-600"}`}>
+                  <Zap className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h1 className="font-heading text-xl font-bold tracking-tight uppercase text-white">Pole Details</h1>
+                  <h1 className="font-heading text-xl font-bold tracking-tight uppercase text-white">Pole Data Sheet / OCALC</h1>
                   {pole.job_number && <p className="text-xs text-zinc-500 font-mono">JOB: {pole.job_number}</p>}
                 </div>
               </div>
@@ -166,9 +185,9 @@ const ViewPole = () => {
           {/* Status Banner */}
           <div className="industrial-card p-5">
             <div className="flex flex-wrap items-center gap-4">
-              <Badge className={`${pole.pole_owner === "Power" ? "pole-power" : "pole-telecom"} border font-mono text-sm px-4 py-2`}>
-                {pole.pole_owner === "Power" ? <Zap className="w-4 h-4 mr-2" /> : <Radio className="w-4 h-4 mr-2" />}
-                {pole.pole_owner} Pole
+              <Badge className={`${pole.pole_owner === "Foreign Owned" ? "bg-red-500/20 text-red-400 border-red-500/50" : "bg-orange-500/20 text-orange-400 border-orange-500/50"} border font-mono text-sm px-4 py-2`}>
+                <Zap className="w-4 h-4 mr-2" />
+                {pole.pole_owner}
               </Badge>
               <Badge className={`${getConditionColor(pole.condition)} border font-mono text-sm px-4 py-2`}>
                 Condition: {pole.condition}
@@ -188,221 +207,37 @@ const ViewPole = () => {
             <h2 className="font-heading text-lg font-bold text-white mb-4 flex items-center gap-2">
               <div className="w-1 h-5 bg-red-500"></div>Basic Information
             </h2>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <DataRow label="Pole Owner" value={pole.pole_owner} />
               <DataRow label="Pole Size" value={pole.pole_size} />
               <DataRow label="Condition" value={pole.condition} />
-              <DataRow label="Telecom Attachments" value={pole.telecom_attachments} mono />
             </div>
           </div>
 
-          {/* OCALC Photos */}
-          {(pole.ocalc_left_photo || pole.ocalc_middle_photo || pole.ocalc_right_photo) && (
-            <div className="industrial-card p-5">
-              <h2 className="font-heading text-lg font-bold text-white mb-4 flex items-center gap-2">
-                <div className="w-1 h-5 bg-blue-500"></div>OCALC Photos
-              </h2>
-              <div className="grid grid-cols-3 gap-4">
-                <PhotoDisplay label="Left" src={pole.ocalc_left_photo} />
-                <PhotoDisplay label="Middle" src={pole.ocalc_middle_photo} />
-                <PhotoDisplay label="Right" src={pole.ocalc_right_photo} />
-              </div>
-            </div>
-          )}
-
-          {/* Birthmark */}
-          <div className="industrial-card p-5">
-            <h2 className="font-heading text-lg font-bold text-white mb-4 flex items-center gap-2">
-              <div className="w-1 h-5 bg-purple-500"></div>Birthmark
-            </h2>
-            <div className="flex items-center gap-6">
-              <Badge className={pole.has_birthmark ? "bg-green-500/20 text-green-400 border-green-500/50" : "bg-zinc-500/20 text-zinc-400 border-zinc-500/50"}>
-                {pole.has_birthmark ? "Has Birthmark" : "No Birthmark"}
-              </Badge>
-              {pole.has_birthmark && pole.birthmark_photo && (
-                <PhotoDisplay label="Photo" src={pole.birthmark_photo} />
-              )}
-            </div>
-          </div>
-
-          {/* MGNV */}
-          {(pole.mgnv || pole.mgnv_photo) && (
-            <div className="industrial-card p-5">
-              <h2 className="font-heading text-lg font-bold text-white mb-4 flex items-center gap-2">
-                <div className="w-1 h-5 bg-cyan-500"></div>MGNV
-              </h2>
-              <div className="grid grid-cols-2 gap-4">
-                <DataRow label="MGNV Present" value={pole.mgnv} />
-                <PhotoDisplay label="Photo" src={pole.mgnv_photo} />
-              </div>
-            </div>
-          )}
-
-          {/* Height of Attachment */}
-          {(pole.height_of_attachment || pole.height_of_attachment_photo) && (
-            <div className="industrial-card p-5">
-              <h2 className="font-heading text-lg font-bold text-white mb-4 flex items-center gap-2">
-                <div className="w-1 h-5 bg-green-500"></div>Height of Attachment
-              </h2>
-              <div className="grid grid-cols-2 gap-4">
-                <DataRow label="Height" value={pole.height_of_attachment ? `${pole.height_of_attachment} ft` : null} mono />
-                <PhotoDisplay label="Photo" src={pole.height_of_attachment_photo} />
-              </div>
-            </div>
-          )}
-
-          {/* Down Guy - 4 rows */}
-          {(pole.down_guy1_size || pole.down_guy1_direction || pole.down_guy1_owner ||
-            pole.down_guy2_size || pole.down_guy2_direction || pole.down_guy2_owner ||
-            pole.down_guy3_size || pole.down_guy3_direction || pole.down_guy3_owner ||
-            pole.down_guy4_size || pole.down_guy4_direction || pole.down_guy4_owner) && (
-            <div className="industrial-card p-5">
-              <h2 className="font-heading text-lg font-bold text-white mb-4 flex items-center gap-2">
-                <div className="w-1 h-5 bg-yellow-500"></div>Down Guys
-              </h2>
-              <div className="space-y-3">
-                {(pole.down_guy1_size || pole.down_guy1_direction || pole.down_guy1_owner || pole.down_guy1_height || pole.down_guy1_lead) && (
-                  <div className="bg-zinc-800/50 p-3 border border-zinc-700">
-                    <div className="flex items-center gap-4">
-                      <span className="text-sm font-mono text-yellow-400 w-8">1</span>
-                      <div className="grid grid-cols-5 gap-4 flex-1">
-                        <DataRow label="Size" value={pole.down_guy1_size} />
-                        <DataRow label="Direction" value={pole.down_guy1_direction} />
-                        <DataRow label="Owner" value={pole.down_guy1_owner} />
-                        <DataRow label="Height" value={pole.down_guy1_height ? `${pole.down_guy1_height} ft` : null} mono />
-                        <DataRow label="Lead" value={pole.down_guy1_lead} />
-                      </div>
-                    </div>
-                  </div>
-                )}
-                {(pole.down_guy2_size || pole.down_guy2_direction || pole.down_guy2_owner || pole.down_guy2_height || pole.down_guy2_lead) && (
-                  <div className="bg-zinc-800/50 p-3 border border-zinc-700">
-                    <div className="flex items-center gap-4">
-                      <span className="text-sm font-mono text-yellow-400 w-8">2</span>
-                      <div className="grid grid-cols-5 gap-4 flex-1">
-                        <DataRow label="Size" value={pole.down_guy2_size} />
-                        <DataRow label="Direction" value={pole.down_guy2_direction} />
-                        <DataRow label="Owner" value={pole.down_guy2_owner} />
-                        <DataRow label="Height" value={pole.down_guy2_height ? `${pole.down_guy2_height} ft` : null} mono />
-                        <DataRow label="Lead" value={pole.down_guy2_lead} />
-                      </div>
-                    </div>
-                  </div>
-                )}
-                {(pole.down_guy3_size || pole.down_guy3_direction || pole.down_guy3_owner || pole.down_guy3_height || pole.down_guy3_lead) && (
-                  <div className="bg-zinc-800/50 p-3 border border-zinc-700">
-                    <div className="flex items-center gap-4">
-                      <span className="text-sm font-mono text-yellow-400 w-8">3</span>
-                      <div className="grid grid-cols-5 gap-4 flex-1">
-                        <DataRow label="Size" value={pole.down_guy3_size} />
-                        <DataRow label="Direction" value={pole.down_guy3_direction} />
-                        <DataRow label="Owner" value={pole.down_guy3_owner} />
-                        <DataRow label="Height" value={pole.down_guy3_height ? `${pole.down_guy3_height} ft` : null} mono />
-                        <DataRow label="Lead" value={pole.down_guy3_lead} />
-                      </div>
-                    </div>
-                  </div>
-                )}
-                {(pole.down_guy4_size || pole.down_guy4_direction || pole.down_guy4_owner || pole.down_guy4_height || pole.down_guy4_lead) && (
-                  <div className="bg-zinc-800/50 p-3 border border-zinc-700">
-                    <div className="flex items-center gap-4">
-                      <span className="text-sm font-mono text-yellow-400 w-8">4</span>
-                      <div className="grid grid-cols-5 gap-4 flex-1">
-                        <DataRow label="Size" value={pole.down_guy4_size} />
-                        <DataRow label="Direction" value={pole.down_guy4_direction} />
-                        <DataRow label="Owner" value={pole.down_guy4_owner} />
-                        <DataRow label="Height" value={pole.down_guy4_height ? `${pole.down_guy4_height} ft` : null} mono />
-                        <DataRow label="Lead" value={pole.down_guy4_lead} />
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Down Guy Anchor */}
-          {(pole.down_guy_anchor_photo || pole.anchor_knuckles) && (
-            <div className="industrial-card p-5">
-              <h2 className="font-heading text-lg font-bold text-white mb-4 flex items-center gap-2">
-                <div className="w-1 h-5 bg-orange-500"></div>Down Guy Anchor
-              </h2>
-              <div className="grid grid-cols-2 gap-4">
-                <PhotoDisplay label="Anchor Photo" src={pole.down_guy_anchor_photo} />
-                <DataRow label="Knuckles Used" value={pole.anchor_knuckles} />
-              </div>
-            </div>
-          )}
-
-          {/* Span - Rows */}
-          {(pole.span1_direction || pole.span1_distance || pole.span1_owner ||
-            pole.span2_direction || pole.span2_distance || pole.span2_owner ||
-            pole.span3_direction || pole.span3_distance || pole.span3_owner ||
-            pole.span4_direction || pole.span4_distance || pole.span4_owner) && (
+          {/* Spans */}
+          {hasSpanData && (
             <div className="industrial-card p-5">
               <h2 className="font-heading text-lg font-bold text-white mb-4 flex items-center gap-2">
                 <div className="w-1 h-5 bg-indigo-500"></div>Spans
               </h2>
               <div className="space-y-3">
-                {(pole.span1_direction || pole.span1_distance || pole.span1_owner) && (
-                  <div className="bg-zinc-800/50 p-3 border border-zinc-700">
-                    <div className="flex items-center gap-4">
-                      <span className="text-sm font-mono text-indigo-400 w-8">1</span>
-                      <div className="grid grid-cols-3 gap-4 flex-1">
-                        <DataRow label="Direction" value={pole.span1_direction} />
-                        <DataRow label="Distance" value={pole.span1_distance ? `${pole.span1_distance} ft` : null} mono />
-                        <DataRow label="Owner" value={pole.span1_owner} />
+                {[1, 2, 3, 4].map((num) => {
+                  const hasData = pole[`span${num}_direction`] || pole[`span${num}_distance`] || pole[`span${num}_owner`];
+                  if (!hasData) return null;
+                  return (
+                    <div key={num} className="bg-zinc-800/50 p-3 border border-zinc-700">
+                      <div className="flex items-center gap-4">
+                        <span className="text-sm font-mono text-indigo-400 w-8">{num}</span>
+                        <div className="grid grid-cols-3 gap-4 flex-1">
+                          <DataRow label="Direction" value={pole[`span${num}_direction`]} />
+                          <DataRow label="Distance" value={pole[`span${num}_distance`] ? `${pole[`span${num}_distance`]} ft` : null} mono />
+                          <DataRow label="Owner" value={pole[`span${num}_owner`]} />
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
-                {(pole.span2_direction || pole.span2_distance || pole.span2_owner) && (
-                  <div className="bg-zinc-800/50 p-3 border border-zinc-700">
-                    <div className="flex items-center gap-4">
-                      <span className="text-sm font-mono text-indigo-400 w-8">2</span>
-                      <div className="grid grid-cols-3 gap-4 flex-1">
-                        <DataRow label="Direction" value={pole.span2_direction} />
-                        <DataRow label="Distance" value={pole.span2_distance ? `${pole.span2_distance} ft` : null} mono />
-                        <DataRow label="Owner" value={pole.span2_owner} />
-                      </div>
-                    </div>
-                  </div>
-                )}
-                {(pole.span3_direction || pole.span3_distance || pole.span3_owner) && (
-                  <div className="bg-zinc-800/50 p-3 border border-zinc-700">
-                    <div className="flex items-center gap-4">
-                      <span className="text-sm font-mono text-indigo-400 w-8">3</span>
-                      <div className="grid grid-cols-3 gap-4 flex-1">
-                        <DataRow label="Direction" value={pole.span3_direction} />
-                        <DataRow label="Distance" value={pole.span3_distance ? `${pole.span3_distance} ft` : null} mono />
-                        <DataRow label="Owner" value={pole.span3_owner} />
-                      </div>
-                    </div>
-                  </div>
-                )}
-                {(pole.span4_direction || pole.span4_distance || pole.span4_owner) && (
-                  <div className="bg-zinc-800/50 p-3 border border-zinc-700">
-                    <div className="flex items-center gap-4">
-                      <span className="text-sm font-mono text-indigo-400 w-8">4</span>
-                      <div className="grid grid-cols-3 gap-4 flex-1">
-                        <DataRow label="Direction" value={pole.span4_direction} />
-                        <DataRow label="Distance" value={pole.span4_distance ? `${pole.span4_distance} ft` : null} mono />
-                        <DataRow label="Owner" value={pole.span4_owner} />
-                      </div>
-                    </div>
-                  </div>
-                )}
+                  );
+                })}
               </div>
-            </div>
-          )}
-
-          {/* Telecom Attachment */}
-          {pole.telecom_attachment_photo && (
-            <div className="industrial-card p-5">
-              <h2 className="font-heading text-lg font-bold text-white mb-4 flex items-center gap-2">
-                <div className="w-1 h-5 bg-pink-500"></div>Telecom Attachment
-              </h2>
-              <PhotoDisplay label="Photo" src={pole.telecom_attachment_photo} />
             </div>
           )}
 
@@ -435,6 +270,140 @@ const ViewPole = () => {
               <p className="text-zinc-500 font-mono text-sm">No GPS coordinates recorded</p>
             )}
           </div>
+
+          {/* Birthmark & MGNV */}
+          <div className="industrial-card p-5">
+            <h2 className="font-heading text-lg font-bold text-white mb-4 flex items-center gap-2">
+              <div className="w-1 h-5 bg-purple-500"></div>Birthmark & MGNV
+            </h2>
+            <div className="space-y-4">
+              {/* Birthmark */}
+              <div className="flex items-center gap-6">
+                <Badge className={pole.has_birthmark ? "bg-green-500/20 text-green-400 border-green-500/50" : "bg-zinc-500/20 text-zinc-400 border-zinc-500/50"}>
+                  {pole.has_birthmark ? "Has Birthmark" : "No Birthmark"}
+                </Badge>
+                {pole.has_birthmark && pole.birthmark_photo && (
+                  <PhotoDisplay label="Birthmark Photo" src={pole.birthmark_photo} />
+                )}
+              </div>
+              {/* MGNV */}
+              {(pole.mgnv || pole.mgnv_condition || pole.mgnv_photo) && (
+                <div className="pt-4 border-t border-zinc-700">
+                  <h3 className="text-sm font-mono text-cyan-400 mb-3">MGNV</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <DataRow label="MGNV Present" value={pole.mgnv} />
+                    <DataRow label="Condition" value={pole.mgnv_condition} />
+                    <PhotoDisplay label="MGNV Photo" src={pole.mgnv_photo} />
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* OCALC Photos */}
+          {(pole.ocalc_left_photo || pole.ocalc_middle_photo || pole.ocalc_right_photo) && (
+            <div className="industrial-card p-5">
+              <h2 className="font-heading text-lg font-bold text-white mb-4 flex items-center gap-2">
+                <div className="w-1 h-5 bg-blue-500"></div>OCALC Photos
+              </h2>
+              <div className="grid grid-cols-3 gap-4">
+                <PhotoDisplay label="Left" src={pole.ocalc_left_photo} />
+                <PhotoDisplay label="Middle" src={pole.ocalc_middle_photo} />
+                <PhotoDisplay label="Right" src={pole.ocalc_right_photo} />
+              </div>
+            </div>
+          )}
+
+          {/* Down Guys with Knuckles */}
+          {(hasDownGuyData || hasKnuckleData) && (
+            <div className="industrial-card p-5">
+              <h2 className="font-heading text-lg font-bold text-white mb-4 flex items-center gap-2">
+                <div className="w-1 h-5 bg-yellow-500"></div>Down Guys
+              </h2>
+              <div className="space-y-3">
+                {[1, 2, 3, 4].map((num) => {
+                  const hasData = pole[`down_guy${num}_size`] || pole[`down_guy${num}_direction`] || pole[`down_guy${num}_owner`] || pole[`down_guy${num}_height`] || pole[`down_guy${num}_lead`];
+                  if (!hasData) return null;
+                  return (
+                    <div key={num} className="bg-zinc-800/50 p-3 border border-zinc-700">
+                      <div className="flex items-center gap-4">
+                        <span className="text-sm font-mono text-yellow-400 w-8">{num}</span>
+                        <div className="grid grid-cols-5 gap-4 flex-1">
+                          <DataRow label="Size" value={pole[`down_guy${num}_size`]} />
+                          <DataRow label="Direction" value={pole[`down_guy${num}_direction`]} />
+                          <DataRow label="Owner" value={pole[`down_guy${num}_owner`]} />
+                          <DataRow label="Height" value={pole[`down_guy${num}_height`] ? `${pole[`down_guy${num}_height`]} ft` : null} mono />
+                          <DataRow label="Lead" value={pole[`down_guy${num}_lead`]} />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* Knuckles */}
+                {hasKnuckleData && (
+                  <div className="mt-4 pt-4 border-t border-zinc-700">
+                    <h3 className="text-sm font-mono text-orange-400 mb-3">KNUCKLES</h3>
+                    <div className="space-y-3">
+                      {[1, 2, 3, 4].map((num) => {
+                        const hasData = pole[`knuckle${num}_count`] || pole[`knuckle${num}_condition`] || pole[`knuckle${num}_photo`];
+                        if (!hasData) return null;
+                        return (
+                          <div key={num} className="bg-zinc-800/50 p-3 border border-zinc-700">
+                            <div className="flex items-center gap-4">
+                              <span className="text-sm font-mono text-orange-400 w-8">{num}</span>
+                              <div className="grid grid-cols-3 gap-4 flex-1">
+                                <DataRow label="Knuckles Used" value={pole[`knuckle${num}_count`]} />
+                                <DataRow label="Condition" value={pole[`knuckle${num}_condition`]} />
+                                <PhotoDisplay label="Photo" src={pole[`knuckle${num}_photo`]} />
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Height of Attachments */}
+          {(hasAttachmentData || pole.pole_terminal || pole.risers) && (
+            <div className="industrial-card p-5">
+              <h2 className="font-heading text-lg font-bold text-white mb-4 flex items-center gap-2">
+                <div className="w-1 h-5 bg-green-500"></div>Height of Attachments
+              </h2>
+              <div className="space-y-3">
+                {[1, 2, 3, 4, 5].map((num) => {
+                  const hasData = pole[`attachment${num}_height`] || pole[`attachment${num}_owner`] || pole[`attachment${num}_photo`];
+                  if (!hasData) return null;
+                  return (
+                    <div key={num} className="bg-zinc-800/50 p-3 border border-zinc-700">
+                      <div className="flex items-center gap-4">
+                        <span className="text-sm font-mono text-green-400 w-8">{num}</span>
+                        <div className="grid grid-cols-3 gap-4 flex-1">
+                          <DataRow label="Height" value={pole[`attachment${num}_height`] ? `${pole[`attachment${num}_height`]} ft` : null} mono />
+                          <DataRow label="Owner" value={pole[`attachment${num}_owner`]} />
+                          <PhotoDisplay label="Photo" src={pole[`attachment${num}_photo`]} />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* Pole Terminal and Risers */}
+                {(pole.pole_terminal || pole.risers) && (
+                  <div className="mt-4 pt-4 border-t border-zinc-700">
+                    <div className="grid grid-cols-2 gap-4">
+                      <DataRow label="Pole Terminal" value={pole.pole_terminal} />
+                      <DataRow label="Risers" value={pole.risers} />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Notes */}
           {pole.notes && (
