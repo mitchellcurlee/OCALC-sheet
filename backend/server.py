@@ -30,7 +30,7 @@ api_router = APIRouter(prefix="/api")
 
 # Pole Types
 POLE_TYPES = ["Power", "Telecom"]
-POLE_CONDITIONS = ["Excellent", "Good", "Fair", "Poor", "Critical"]
+POLE_CONDITIONS = ["Excellent", "Good", "Bad"]
 POLE_SIZES = [
     "1-25", "1-30", "1-35", "1-40", "1-45", "1-50", "1-55", "1-60",
     "2-25", "2-30", "2-35", "2-40", "2-45", "2-50", "2-55", "2-60",

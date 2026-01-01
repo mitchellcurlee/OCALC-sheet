@@ -117,10 +117,8 @@ const Dashboard = () => {
   const getConditionColor = (condition) => {
     const colors = {
       Excellent: "bg-green-500/20 text-green-400 border-green-500/50",
-      Good: "bg-emerald-500/20 text-emerald-400 border-emerald-500/50",
-      Fair: "bg-yellow-500/20 text-yellow-400 border-yellow-500/50",
-      Poor: "bg-orange-500/20 text-orange-400 border-orange-500/50",
-      Critical: "bg-red-500/20 text-red-400 border-red-500/50",
+      Good: "bg-yellow-500/20 text-yellow-400 border-yellow-500/50",
+      Bad: "bg-red-500/20 text-red-400 border-red-500/50",
     };
     return colors[condition] || "bg-zinc-500/20 text-zinc-400 border-zinc-500/50";
   };
@@ -262,9 +260,7 @@ const Dashboard = () => {
                 <SelectItem value="all">All Conditions</SelectItem>
                 <SelectItem value="Excellent">Excellent</SelectItem>
                 <SelectItem value="Good">Good</SelectItem>
-                <SelectItem value="Fair">Fair</SelectItem>
-                <SelectItem value="Poor">Poor</SelectItem>
-                <SelectItem value="Critical">Critical</SelectItem>
+                <SelectItem value="Bad">Bad</SelectItem>
               </SelectContent>
             </Select>
           </div>
