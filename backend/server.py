@@ -158,46 +158,6 @@ class PoleUpdate(BaseModel):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     notes: Optional[str] = None
-    down_guy2_owner: Optional[str] = None
-    down_guy2_height: Optional[float] = None
-    down_guy2_lead: Optional[str] = None
-    down_guy3_size: Optional[str] = None
-    down_guy3_direction: Optional[str] = None
-    down_guy3_owner: Optional[str] = None
-    down_guy3_height: Optional[float] = None
-    down_guy3_lead: Optional[str] = None
-    down_guy4_size: Optional[str] = None
-    down_guy4_direction: Optional[str] = None
-    down_guy4_owner: Optional[str] = None
-    down_guy4_height: Optional[float] = None
-    down_guy4_lead: Optional[str] = None
-    knuckle1_count: Optional[str] = None
-    knuckle1_condition: Optional[str] = None
-    knuckle1_photo: Optional[str] = None
-    knuckle2_count: Optional[str] = None
-    knuckle2_condition: Optional[str] = None
-    knuckle2_photo: Optional[str] = None
-    knuckle3_count: Optional[str] = None
-    knuckle3_condition: Optional[str] = None
-    knuckle3_photo: Optional[str] = None
-    knuckle4_count: Optional[str] = None
-    knuckle4_condition: Optional[str] = None
-    knuckle4_photo: Optional[str] = None
-    span1_direction: Optional[str] = None
-    span1_distance: Optional[float] = None
-    span1_owner: Optional[str] = None
-    span2_direction: Optional[str] = None
-    span2_distance: Optional[float] = None
-    span2_owner: Optional[str] = None
-    span3_direction: Optional[str] = None
-    span3_distance: Optional[float] = None
-    span3_owner: Optional[str] = None
-    span4_direction: Optional[str] = None
-    span4_distance: Optional[float] = None
-    span4_owner: Optional[str] = None
-    latitude: Optional[float] = None
-    longitude: Optional[float] = None
-    notes: Optional[str] = None
 
 class Pole(PoleBase):
     model_config = ConfigDict(extra="ignore")
