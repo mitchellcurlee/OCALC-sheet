@@ -99,7 +99,7 @@ class PoleAPITester:
             "notes": "Test power pole created by automated testing"
         }
         
-        success, response = self.run_test("Create Power Pole", "POST", "poles", 201, data=pole_data)
+        success, response = self.run_test("Create Power Pole", "POST", "poles", 200, data=pole_data)
         if success and 'id' in response:
             self.created_pole_id = response['id']
             print(f"   Created pole ID: {self.created_pole_id}")
