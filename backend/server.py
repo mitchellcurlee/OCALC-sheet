@@ -74,12 +74,27 @@ class PoleBase(BaseModel):
     height_of_attachment: Optional[float] = None
     height_of_attachment_photo: Optional[str] = None
     
-    # Down Guy
-    down_guy_photo: Optional[str] = None
-    down_guy_size: Optional[str] = None
-    down_guy_direction: Optional[str] = None
-    down_guy_owner: Optional[str] = None
-    down_guy_height: Optional[float] = None
+    # Down Guy (4 rows)
+    down_guy1_size: Optional[str] = None
+    down_guy1_direction: Optional[str] = None
+    down_guy1_owner: Optional[str] = None
+    down_guy1_height: Optional[float] = None
+    down_guy1_lead: Optional[str] = None
+    down_guy2_size: Optional[str] = None
+    down_guy2_direction: Optional[str] = None
+    down_guy2_owner: Optional[str] = None
+    down_guy2_height: Optional[float] = None
+    down_guy2_lead: Optional[str] = None
+    down_guy3_size: Optional[str] = None
+    down_guy3_direction: Optional[str] = None
+    down_guy3_owner: Optional[str] = None
+    down_guy3_height: Optional[float] = None
+    down_guy3_lead: Optional[str] = None
+    down_guy4_size: Optional[str] = None
+    down_guy4_direction: Optional[str] = None
+    down_guy4_owner: Optional[str] = None
+    down_guy4_height: Optional[float] = None
+    down_guy4_lead: Optional[str] = None
     
     # Down Guy Anchor
     down_guy_anchor_photo: Optional[str] = None
@@ -132,11 +147,26 @@ class PoleUpdate(BaseModel):
     mgnv_photo: Optional[str] = None
     height_of_attachment: Optional[float] = None
     height_of_attachment_photo: Optional[str] = None
-    down_guy_photo: Optional[str] = None
-    down_guy_size: Optional[str] = None
-    down_guy_direction: Optional[str] = None
-    down_guy_owner: Optional[str] = None
-    down_guy_height: Optional[float] = None
+    down_guy1_size: Optional[str] = None
+    down_guy1_direction: Optional[str] = None
+    down_guy1_owner: Optional[str] = None
+    down_guy1_height: Optional[float] = None
+    down_guy1_lead: Optional[str] = None
+    down_guy2_size: Optional[str] = None
+    down_guy2_direction: Optional[str] = None
+    down_guy2_owner: Optional[str] = None
+    down_guy2_height: Optional[float] = None
+    down_guy2_lead: Optional[str] = None
+    down_guy3_size: Optional[str] = None
+    down_guy3_direction: Optional[str] = None
+    down_guy3_owner: Optional[str] = None
+    down_guy3_height: Optional[float] = None
+    down_guy3_lead: Optional[str] = None
+    down_guy4_size: Optional[str] = None
+    down_guy4_direction: Optional[str] = None
+    down_guy4_owner: Optional[str] = None
+    down_guy4_height: Optional[float] = None
+    down_guy4_lead: Optional[str] = None
     down_guy_anchor_photo: Optional[str] = None
     anchor_knuckles: Optional[str] = None
     telecom_attachment_photo: Optional[str] = None
@@ -253,7 +283,10 @@ async def export_poles_excel():
     headers = [
         "ID", "Job Number", "Pole Number", "Pole Owner", "Pole Size", "Condition",
         "Telecom Attachments", "Has Birthmark", "MGNV", "Height of Attachment (ft)",
-        "Down Guy Size", "Down Guy Direction", "Down Guy Owner", "Down Guy Height (ft)",
+        "Down Guy 1 Size", "Down Guy 1 Direction", "Down Guy 1 Owner", "Down Guy 1 Height", "Down Guy 1 Lead",
+        "Down Guy 2 Size", "Down Guy 2 Direction", "Down Guy 2 Owner", "Down Guy 2 Height", "Down Guy 2 Lead",
+        "Down Guy 3 Size", "Down Guy 3 Direction", "Down Guy 3 Owner", "Down Guy 3 Height", "Down Guy 3 Lead",
+        "Down Guy 4 Size", "Down Guy 4 Direction", "Down Guy 4 Owner", "Down Guy 4 Height", "Down Guy 4 Lead",
         "Anchor Knuckles",
         "Span 1 Direction", "Span 1 Distance (ft)", "Span 1 Owner",
         "Span 2 Direction", "Span 2 Distance (ft)", "Span 2 Owner",
@@ -277,10 +310,26 @@ async def export_poles_excel():
             "Yes" if pole.get("has_birthmark", True) else "No",
             pole.get("mgnv", ""),
             pole.get("height_of_attachment", ""),
-            pole.get("down_guy_size", ""),
-            pole.get("down_guy_direction", ""),
-            pole.get("down_guy_owner", ""),
-            pole.get("down_guy_height", ""),
+            pole.get("down_guy1_size", ""),
+            pole.get("down_guy1_direction", ""),
+            pole.get("down_guy1_owner", ""),
+            pole.get("down_guy1_height", ""),
+            pole.get("down_guy1_lead", ""),
+            pole.get("down_guy2_size", ""),
+            pole.get("down_guy2_direction", ""),
+            pole.get("down_guy2_owner", ""),
+            pole.get("down_guy2_height", ""),
+            pole.get("down_guy2_lead", ""),
+            pole.get("down_guy3_size", ""),
+            pole.get("down_guy3_direction", ""),
+            pole.get("down_guy3_owner", ""),
+            pole.get("down_guy3_height", ""),
+            pole.get("down_guy3_lead", ""),
+            pole.get("down_guy4_size", ""),
+            pole.get("down_guy4_direction", ""),
+            pole.get("down_guy4_owner", ""),
+            pole.get("down_guy4_height", ""),
+            pole.get("down_guy4_lead", ""),
             pole.get("anchor_knuckles", ""),
             pole.get("span1_direction", ""),
             pole.get("span1_distance", ""),
