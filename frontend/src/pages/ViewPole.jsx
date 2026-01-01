@@ -280,6 +280,20 @@ const ViewPole = () => {
             </div>
           )}
 
+          {/* Span */}
+          {(pole.span_direction || pole.span_distance || pole.span_owner) && (
+            <div className="industrial-card p-5">
+              <h2 className="font-heading text-lg font-bold text-white mb-4 flex items-center gap-2">
+                <div className="w-1 h-5 bg-indigo-500"></div>Span
+              </h2>
+              <div className="grid grid-cols-3 gap-4">
+                <DataRow label="Direction" value={pole.span_direction} />
+                <DataRow label="Distance" value={pole.span_distance ? `${pole.span_distance} ft` : null} mono />
+                <DataRow label="Owner" value={pole.span_owner} />
+              </div>
+            </div>
+          )}
+
           {/* Telecom Attachment */}
           {pole.telecom_attachment_photo && (
             <div className="industrial-card p-5">
