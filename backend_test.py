@@ -36,8 +36,8 @@ class PoleAPITester:
                 print(f"✅ Passed - Status: {response.status_code}")
                 try:
                     response_data = response.json() if response.content else {}
-                    if response_data:
-                        print(f"   Response: {json.dumps(response_data, indent=2)[:200]}...")
+                    if response_data and method != 'GET' or 'export' not in endpoint:
+                        print(f"   Response: {json.dumps(response_data, indent=2)[:300]}...")
                 except:
                     response_data = {}
                 return True, response_data
