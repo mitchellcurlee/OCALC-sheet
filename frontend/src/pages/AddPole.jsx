@@ -656,12 +656,6 @@ const AddPole = () => {
                 </div>
               </div>
 
-              {/* Down Guy Anchor Photo */}
-              <div className="mt-4 pt-4 border-t border-zinc-700">
-                <h3 className="text-sm font-mono text-orange-400 mb-3">DOWN GUY ANCHOR</h3>
-                <PhotoUpload label="Anchor Photo" value={formData.down_guy_anchor_photo} onChange={(v) => handlePhotoChange("down_guy_anchor_photo", v)} testId="down-guy-anchor" />
-              </div>
-
               {/* Knuckles - 4 Rows */}
               <div className="mt-4 pt-4 border-t border-zinc-700">
                 <h3 className="text-sm font-mono text-orange-400 mb-3">KNUCKLES</h3>
