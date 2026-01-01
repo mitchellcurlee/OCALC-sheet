@@ -783,47 +783,46 @@ const AddPole = () => {
             </div>
           </div>
 
-          {/* Birthmark */}
+          {/* Birthmark & MGNV */}
           <div className="industrial-card p-5">
             <h2 className="font-heading text-lg font-bold text-white mb-4 flex items-center gap-2">
               <div className="w-1 h-5 bg-purple-500"></div>
-              Birthmark
+              Birthmark & MGNV
             </h2>
-            <div className="flex flex-col sm:flex-row items-start gap-6">
-              <div className="flex items-center gap-3">
-                <Switch checked={formData.has_birthmark} onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, has_birthmark: checked, birthmark_photo: checked ? prev.birthmark_photo : "" }))} data-testid="has-birthmark-switch" />
-                <Label className="text-sm text-zinc-300">{formData.has_birthmark ? "Has Birthmark" : "No Birthmark"}</Label>
-              </div>
-              {formData.has_birthmark && (
-                <div className="flex-1 w-full sm:w-auto">
-                  <PhotoUpload label="Birthmark Photo" value={formData.birthmark_photo} onChange={(v) => handlePhotoChange("birthmark_photo", v)} testId="birthmark" />
+            <div className="space-y-4">
+              {/* Birthmark */}
+              <div className="flex flex-col sm:flex-row items-start gap-6">
+                <div className="flex items-center gap-3">
+                  <Switch checked={formData.has_birthmark} onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, has_birthmark: checked, birthmark_photo: checked ? prev.birthmark_photo : "" }))} data-testid="has-birthmark-switch" />
+                  <Label className="text-sm text-zinc-300">{formData.has_birthmark ? "Has Birthmark" : "No Birthmark"}</Label>
                 </div>
-              )}
-            </div>
-          </div>
-
-          {/* MGNV */}
-          <div className="industrial-card p-5">
-            <h2 className="font-heading text-lg font-bold text-white mb-4 flex items-center gap-2">
-              <div className="w-1 h-5 bg-cyan-500"></div>
-              MGNV
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">MGNV Present</Label>
-                <Select value={formData.mgnv} onValueChange={(v) => handleSelectChange("mgnv", v)}>
-                  <SelectTrigger className="h-10 bg-black border-zinc-700 text-white" data-testid="mgnv-select"><SelectValue placeholder="Yes / No" /></SelectTrigger>
-                  <SelectContent className="bg-zinc-900 border-zinc-700"><SelectItem value="Yes">Yes</SelectItem><SelectItem value="No">No</SelectItem></SelectContent>
-                </Select>
+                {formData.has_birthmark && (
+                  <div className="flex-1 w-full sm:w-auto">
+                    <PhotoUpload label="Birthmark Photo" value={formData.birthmark_photo} onChange={(v) => handlePhotoChange("birthmark_photo", v)} testId="birthmark" />
+                  </div>
+                )}
               </div>
-              <div className="space-y-2">
-                <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Condition</Label>
-                <Select value={formData.mgnv_condition} onValueChange={(v) => handleSelectChange("mgnv_condition", v)}>
-                  <SelectTrigger className="h-10 bg-black border-zinc-700 text-white" data-testid="mgnv-condition-select"><SelectValue placeholder="Good / Broken" /></SelectTrigger>
-                  <SelectContent className="bg-zinc-900 border-zinc-700"><SelectItem value="Good" className="text-green-400">Good</SelectItem><SelectItem value="Broken" className="text-red-400">Broken</SelectItem></SelectContent>
-                </Select>
+              {/* MGNV */}
+              <div className="pt-4 border-t border-zinc-700">
+                <h3 className="text-sm font-mono text-cyan-400 mb-3">MGNV</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">MGNV Present</Label>
+                    <Select value={formData.mgnv} onValueChange={(v) => handleSelectChange("mgnv", v)}>
+                      <SelectTrigger className="h-10 bg-black border-zinc-700 text-white" data-testid="mgnv-select"><SelectValue placeholder="Yes / No" /></SelectTrigger>
+                      <SelectContent className="bg-zinc-900 border-zinc-700"><SelectItem value="Yes">Yes</SelectItem><SelectItem value="No">No</SelectItem></SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Condition</Label>
+                    <Select value={formData.mgnv_condition} onValueChange={(v) => handleSelectChange("mgnv_condition", v)}>
+                      <SelectTrigger className="h-10 bg-black border-zinc-700 text-white" data-testid="mgnv-condition-select"><SelectValue placeholder="Good / Broken" /></SelectTrigger>
+                      <SelectContent className="bg-zinc-900 border-zinc-700"><SelectItem value="Good" className="text-green-400">Good</SelectItem><SelectItem value="Broken" className="text-red-400">Broken</SelectItem></SelectContent>
+                    </Select>
+                  </div>
+                  <PhotoUpload label="MGNV Photo" value={formData.mgnv_photo} onChange={(v) => handlePhotoChange("mgnv_photo", v)} testId="mgnv" />
+                </div>
               </div>
-              <PhotoUpload label="MGNV Photo" value={formData.mgnv_photo} onChange={(v) => handlePhotoChange("mgnv_photo", v)} testId="mgnv" />
             </div>
           </div>
 
