@@ -436,13 +436,13 @@ const AddPole = () => {
             </div>
           </div>
 
-          {/* Height of Attachment - with measurement tool */}
+          {/* Height of Attachment & Telecom Attachment */}
           <div className="industrial-card p-5">
             <h2 className="font-heading text-lg font-bold text-white mb-4 flex items-center gap-2">
               <div className="w-1 h-5 bg-green-500"></div>
-              Height of Attachment
+              Height of Attachment & Telecom
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Height (ft)</Label>
                 <Input
@@ -457,12 +457,18 @@ const AddPole = () => {
                 <p className="text-xs text-zinc-500">Use the camera tool to measure from photo</p>
               </div>
               <PhotoUpload 
-                label="Photo (with Measurement Tool)" 
+                label="Height Photo" 
                 value={formData.height_of_attachment_photo} 
                 onChange={(v) => handlePhotoChange("height_of_attachment_photo", v)} 
                 testId="height-attachment"
                 showHeightTool={true}
                 onHeightMeasured={(height) => setFormData(prev => ({ ...prev, height_of_attachment: height.toString() }))}
+              />
+              <PhotoUpload 
+                label="Telecom Attachment Photo" 
+                value={formData.telecom_attachment_photo} 
+                onChange={(v) => handlePhotoChange("telecom_attachment_photo", v)} 
+                testId="telecom-attachment"
               />
             </div>
           </div>
