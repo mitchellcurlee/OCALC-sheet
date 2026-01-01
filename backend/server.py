@@ -31,7 +31,13 @@ api_router = APIRouter(prefix="/api")
 # Pole Types
 POLE_TYPES = ["Power", "Telecom"]
 POLE_CONDITIONS = ["Excellent", "Good", "Fair", "Poor", "Critical"]
-POLE_SIZES = ["Small (20-30ft)", "Medium (35-45ft)", "Large (50-60ft)", "Extra Large (65ft+)"]
+POLE_SIZES = [
+    "1-25", "1-30", "1-35", "1-40", "1-45", "1-50", "1-55", "1-60",
+    "2-25", "2-30", "2-35", "2-40", "2-45", "2-50", "2-55", "2-60",
+    "3-25", "3-30", "3-35", "3-40", "3-45", "3-50", "3-55", "3-60",
+    "4-25", "4-30", "4-35", "4-40", "4-45", "4-50", "4-55", "4-60",
+    "5-25", "5-30", "5-35", "5-40", "5-45", "5-50", "5-55", "5-60"
+]
 
 # Models
 class PoleBase(BaseModel):
