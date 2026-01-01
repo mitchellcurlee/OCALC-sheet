@@ -55,10 +55,9 @@ class PoleBase(BaseModel):
     pole_number: Optional[str] = None
     
     # Basic Info
-    pole_owner: str  # Power or Telecom
+    pole_owner: str  # Foreign Owned or ATT
     pole_size: str
     condition: str
-    telecom_attachments: int = 0
     
     # OCALC Photos
     ocalc_left_photo: Optional[str] = None
@@ -71,11 +70,34 @@ class PoleBase(BaseModel):
     
     # MGNV
     mgnv: Optional[str] = None  # Yes/No
+    mgnv_condition: Optional[str] = None  # Good/Broken
     mgnv_photo: Optional[str] = None
     
-    # Height of Attachment
-    height_of_attachment: Optional[float] = None
-    height_of_attachment_photo: Optional[str] = None
+    # Height of Attachment (5 rows)
+    attachment1_height: Optional[float] = None
+    attachment1_owner: Optional[str] = None
+    attachment1_photo: Optional[str] = None
+    attachment2_height: Optional[float] = None
+    attachment2_owner: Optional[str] = None
+    attachment2_photo: Optional[str] = None
+    attachment3_height: Optional[float] = None
+    attachment3_owner: Optional[str] = None
+    attachment3_photo: Optional[str] = None
+    attachment4_height: Optional[float] = None
+    attachment4_owner: Optional[str] = None
+    attachment4_photo: Optional[str] = None
+    attachment5_height: Optional[float] = None
+    attachment5_owner: Optional[str] = None
+    attachment5_photo: Optional[str] = None
+    
+    # Pole Terminal
+    pole_terminal: Optional[str] = None  # Yes/No
+    
+    # Risers
+    risers: Optional[str] = None  # 1-6
+    
+    # Telecom Attachment Photo
+    telecom_attachment_photo: Optional[str] = None
     
     # Down Guy (4 rows)
     down_guy1_size: Optional[str] = None
@@ -99,17 +121,19 @@ class PoleBase(BaseModel):
     down_guy4_height: Optional[float] = None
     down_guy4_lead: Optional[str] = None
     
-    # Down Guy Anchor
-    down_guy_anchor_photo: Optional[str] = None
-    anchor_knuckles: Optional[str] = None
-    
-    # Telecom Attachment
-    telecom_attachment_photo: Optional[str] = None
-    
-    # Other fields
-    lead_anchor_characteristics: Optional[str] = None
-    ground_type: Optional[str] = None
-    riser_number: Optional[int] = None
+    # Knuckles (4 rows)
+    knuckle1_count: Optional[str] = None
+    knuckle1_condition: Optional[str] = None
+    knuckle1_photo: Optional[str] = None
+    knuckle2_count: Optional[str] = None
+    knuckle2_condition: Optional[str] = None
+    knuckle2_photo: Optional[str] = None
+    knuckle3_count: Optional[str] = None
+    knuckle3_condition: Optional[str] = None
+    knuckle3_photo: Optional[str] = None
+    knuckle4_count: Optional[str] = None
+    knuckle4_condition: Optional[str] = None
+    knuckle4_photo: Optional[str] = None
     
     # Span (4 spans)
     span1_direction: Optional[str] = None
