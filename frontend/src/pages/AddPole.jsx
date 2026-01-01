@@ -473,7 +473,7 @@ const AddPole = () => {
             </div>
           </div>
 
-          {/* Down Guy - 4 Rows */}
+          {/* Down Guys with Anchor & Knuckles */}
           <div className="industrial-card p-5">
             <h2 className="font-heading text-lg font-bold text-white mb-4 flex items-center gap-2">
               <div className="w-1 h-5 bg-yellow-500"></div>
@@ -655,40 +655,139 @@ const AddPole = () => {
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
 
-          {/* Down Guy Anchor */}
-          <div className="industrial-card p-5">
-            <h2 className="font-heading text-lg font-bold text-white mb-4 flex items-center gap-2">
-              <div className="w-1 h-5 bg-orange-500"></div>
-              Down Guy Anchor
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <PhotoUpload label="Anchor Photo" value={formData.down_guy_anchor_photo} onChange={(v) => handlePhotoChange("down_guy_anchor_photo", v)} testId="down-guy-anchor" />
-              <div className="space-y-2">
-                <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Knuckles Used</Label>
-                <Select value={formData.anchor_knuckles} onValueChange={(v) => handleSelectChange("anchor_knuckles", v)}>
-                  <SelectTrigger className="h-10 bg-black border-zinc-700 text-white" data-testid="anchor-knuckles-select">
-                    <SelectValue placeholder="# of knuckles" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-zinc-900 border-zinc-700">
-                    {options.knuckle_options.map((k) => (
-                      <SelectItem key={k} value={k}>{k}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              {/* Down Guy Anchor Photo */}
+              <div className="mt-4 pt-4 border-t border-zinc-700">
+                <h3 className="text-sm font-mono text-orange-400 mb-3">DOWN GUY ANCHOR</h3>
+                <PhotoUpload label="Anchor Photo" value={formData.down_guy_anchor_photo} onChange={(v) => handlePhotoChange("down_guy_anchor_photo", v)} testId="down-guy-anchor" />
+              </div>
+
+              {/* Knuckles - 4 Rows */}
+              <div className="mt-4 pt-4 border-t border-zinc-700">
+                <h3 className="text-sm font-mono text-orange-400 mb-3">KNUCKLES</h3>
+                <div className="space-y-3">
+                  {/* Knuckle 1 */}
+                  <div className="bg-zinc-800/50 p-3 border border-zinc-700">
+                    <div className="flex items-center gap-4">
+                      <span className="text-sm font-mono text-orange-400 w-8">1</span>
+                      <div className="grid grid-cols-3 gap-3 flex-1 items-end">
+                        <div className="space-y-1">
+                          <Label className="text-xs font-mono text-zinc-500">Knuckles Used</Label>
+                          <Select value={formData.knuckle1_count} onValueChange={(v) => handleSelectChange("knuckle1_count", v)}>
+                            <SelectTrigger className="h-9 bg-black border-zinc-700 text-white text-sm"><SelectValue placeholder="Count" /></SelectTrigger>
+                            <SelectContent className="bg-zinc-900 border-zinc-700">
+                              {options.knuckle_options.map((k) => (<SelectItem key={k} value={k}>{k}</SelectItem>))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs font-mono text-zinc-500">Condition</Label>
+                          <Select value={formData.knuckle1_condition} onValueChange={(v) => handleSelectChange("knuckle1_condition", v)}>
+                            <SelectTrigger className="h-9 bg-black border-zinc-700 text-white text-sm"><SelectValue placeholder="Condition" /></SelectTrigger>
+                            <SelectContent className="bg-zinc-900 border-zinc-700">
+                              <SelectItem value="Excellent" className="text-green-400">Excellent</SelectItem>
+                              <SelectItem value="Good" className="text-yellow-400">Good</SelectItem>
+                              <SelectItem value="Bad" className="text-red-400">Bad</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <PhotoUpload label="Photo" value={formData.knuckle1_photo} onChange={(v) => handlePhotoChange("knuckle1_photo", v)} testId="knuckle1" compact />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Knuckle 2 */}
+                  <div className="bg-zinc-800/50 p-3 border border-zinc-700">
+                    <div className="flex items-center gap-4">
+                      <span className="text-sm font-mono text-orange-400 w-8">2</span>
+                      <div className="grid grid-cols-3 gap-3 flex-1 items-end">
+                        <div className="space-y-1">
+                          <Label className="text-xs font-mono text-zinc-500">Knuckles Used</Label>
+                          <Select value={formData.knuckle2_count} onValueChange={(v) => handleSelectChange("knuckle2_count", v)}>
+                            <SelectTrigger className="h-9 bg-black border-zinc-700 text-white text-sm"><SelectValue placeholder="Count" /></SelectTrigger>
+                            <SelectContent className="bg-zinc-900 border-zinc-700">
+                              {options.knuckle_options.map((k) => (<SelectItem key={k} value={k}>{k}</SelectItem>))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs font-mono text-zinc-500">Condition</Label>
+                          <Select value={formData.knuckle2_condition} onValueChange={(v) => handleSelectChange("knuckle2_condition", v)}>
+                            <SelectTrigger className="h-9 bg-black border-zinc-700 text-white text-sm"><SelectValue placeholder="Condition" /></SelectTrigger>
+                            <SelectContent className="bg-zinc-900 border-zinc-700">
+                              <SelectItem value="Excellent" className="text-green-400">Excellent</SelectItem>
+                              <SelectItem value="Good" className="text-yellow-400">Good</SelectItem>
+                              <SelectItem value="Bad" className="text-red-400">Bad</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <PhotoUpload label="Photo" value={formData.knuckle2_photo} onChange={(v) => handlePhotoChange("knuckle2_photo", v)} testId="knuckle2" compact />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Knuckle 3 */}
+                  <div className="bg-zinc-800/50 p-3 border border-zinc-700">
+                    <div className="flex items-center gap-4">
+                      <span className="text-sm font-mono text-orange-400 w-8">3</span>
+                      <div className="grid grid-cols-3 gap-3 flex-1 items-end">
+                        <div className="space-y-1">
+                          <Label className="text-xs font-mono text-zinc-500">Knuckles Used</Label>
+                          <Select value={formData.knuckle3_count} onValueChange={(v) => handleSelectChange("knuckle3_count", v)}>
+                            <SelectTrigger className="h-9 bg-black border-zinc-700 text-white text-sm"><SelectValue placeholder="Count" /></SelectTrigger>
+                            <SelectContent className="bg-zinc-900 border-zinc-700">
+                              {options.knuckle_options.map((k) => (<SelectItem key={k} value={k}>{k}</SelectItem>))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs font-mono text-zinc-500">Condition</Label>
+                          <Select value={formData.knuckle3_condition} onValueChange={(v) => handleSelectChange("knuckle3_condition", v)}>
+                            <SelectTrigger className="h-9 bg-black border-zinc-700 text-white text-sm"><SelectValue placeholder="Condition" /></SelectTrigger>
+                            <SelectContent className="bg-zinc-900 border-zinc-700">
+                              <SelectItem value="Excellent" className="text-green-400">Excellent</SelectItem>
+                              <SelectItem value="Good" className="text-yellow-400">Good</SelectItem>
+                              <SelectItem value="Bad" className="text-red-400">Bad</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <PhotoUpload label="Photo" value={formData.knuckle3_photo} onChange={(v) => handlePhotoChange("knuckle3_photo", v)} testId="knuckle3" compact />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Knuckle 4 */}
+                  <div className="bg-zinc-800/50 p-3 border border-zinc-700">
+                    <div className="flex items-center gap-4">
+                      <span className="text-sm font-mono text-orange-400 w-8">4</span>
+                      <div className="grid grid-cols-3 gap-3 flex-1 items-end">
+                        <div className="space-y-1">
+                          <Label className="text-xs font-mono text-zinc-500">Knuckles Used</Label>
+                          <Select value={formData.knuckle4_count} onValueChange={(v) => handleSelectChange("knuckle4_count", v)}>
+                            <SelectTrigger className="h-9 bg-black border-zinc-700 text-white text-sm"><SelectValue placeholder="Count" /></SelectTrigger>
+                            <SelectContent className="bg-zinc-900 border-zinc-700">
+                              {options.knuckle_options.map((k) => (<SelectItem key={k} value={k}>{k}</SelectItem>))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs font-mono text-zinc-500">Condition</Label>
+                          <Select value={formData.knuckle4_condition} onValueChange={(v) => handleSelectChange("knuckle4_condition", v)}>
+                            <SelectTrigger className="h-9 bg-black border-zinc-700 text-white text-sm"><SelectValue placeholder="Condition" /></SelectTrigger>
+                            <SelectContent className="bg-zinc-900 border-zinc-700">
+                              <SelectItem value="Excellent" className="text-green-400">Excellent</SelectItem>
+                              <SelectItem value="Good" className="text-yellow-400">Good</SelectItem>
+                              <SelectItem value="Bad" className="text-red-400">Bad</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <PhotoUpload label="Photo" value={formData.knuckle4_photo} onChange={(v) => handlePhotoChange("knuckle4_photo", v)} testId="knuckle4" compact />
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-
-          {/* Telecom Attachment Photo */}
-          <div className="industrial-card p-5">
-            <h2 className="font-heading text-lg font-bold text-white mb-4 flex items-center gap-2">
-              <div className="w-1 h-5 bg-pink-500"></div>
-              Telecom Attachment
-            </h2>
-            <PhotoUpload label="Telecom Attachment Photo" value={formData.telecom_attachment_photo} onChange={(v) => handlePhotoChange("telecom_attachment_photo", v)} testId="telecom-attachment" />
           </div>
 
           {/* Span - 4 Rows */}
