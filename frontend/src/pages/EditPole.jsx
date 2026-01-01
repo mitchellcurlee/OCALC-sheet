@@ -370,47 +370,47 @@ const EditPole = () => {
     : [37.7749, -122.4194];
 
   return (
-    <div className="min-h-screen bg-industrial-bg" data-testid="edit-pole-page">
+    <div className="min-h-screen bg-industrial-bg pb-4" data-testid="edit-pole-page">
       {/* Header */}
       <header className="border-b border-zinc-800 bg-zinc-900/50 backdrop-blur-sm sticky top-0 z-[1000]">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <div className="flex items-center gap-4">
+        <div className="max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center gap-2 sm:gap-4">
               <Link to="/">
-                <Button variant="ghost" size="icon" className="text-zinc-400 hover:text-white" data-testid="back-btn">
+                <Button variant="ghost" size="icon" className="text-zinc-400 hover:text-white h-10 w-10 sm:h-9 sm:w-9" data-testid="back-btn">
                   <ArrowLeft className="w-5 h-5" />
                 </Button>
               </Link>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-orange-600 flex items-center justify-center">
-                  <Zap className="w-6 h-6 text-white" />
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-orange-600 flex items-center justify-center flex-shrink-0">
+                  <Zap className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                 </div>
-                <h1 className="font-heading text-xl font-bold tracking-tight uppercase text-white">
+                <h1 className="font-heading text-sm sm:text-xl font-bold tracking-tight uppercase text-white">
                   Pole Data Sheet / OCALC
                 </h1>
               </div>
             </div>
             {/* Title Area - Job/EWO and Pole Number */}
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <Label className="text-xs font-mono text-zinc-500">JOB/EWO:</Label>
+            <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto">
+              <div className="flex items-center gap-1 sm:gap-2 flex-1 sm:flex-initial">
+                <Label className="text-xs font-mono text-zinc-500 whitespace-nowrap">JOB:</Label>
                 <Input
                   name="job_number"
                   value={formData.job_number}
                   onChange={handleInputChange}
-                  placeholder="Enter Job #"
-                  className="w-32 h-8 bg-black border-zinc-700 text-white text-sm"
+                  placeholder="Job #"
+                  className="w-full sm:w-28 h-9 sm:h-8 bg-black border-zinc-700 text-white text-sm"
                   data-testid="job-number-input"
                 />
               </div>
-              <div className="flex items-center gap-2">
-                <Label className="text-xs font-mono text-zinc-500">POLE #:</Label>
+              <div className="flex items-center gap-1 sm:gap-2 flex-1 sm:flex-initial">
+                <Label className="text-xs font-mono text-zinc-500 whitespace-nowrap">POLE:</Label>
                 <Input
                   name="pole_number"
                   value={formData.pole_number}
                   onChange={handleInputChange}
-                  placeholder="Enter Pole #"
-                  className="w-32 h-8 bg-black border-zinc-700 text-white text-sm"
+                  placeholder="Pole #"
+                  className="w-full sm:w-28 h-9 sm:h-8 bg-black border-zinc-700 text-white text-sm"
                   data-testid="pole-number-input"
                 />
               </div>
@@ -419,15 +419,15 @@ const EditPole = () => {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <form onSubmit={handleSubmit} className="space-y-6">
+      <main className="max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
+        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
           {/* Basic Info */}
-          <div className="industrial-card p-5">
-            <h2 className="font-heading text-lg font-bold text-white mb-4 flex items-center gap-2">
+          <div className="industrial-card p-4 sm:p-5">
+            <h2 className="font-heading text-base sm:text-lg font-bold text-white mb-3 sm:mb-4 flex items-center gap-2">
               <div className="w-1 h-5 bg-red-500"></div>
               Basic Information
             </h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
               <div className="space-y-2">
                 <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">
                   Pole Owner *
