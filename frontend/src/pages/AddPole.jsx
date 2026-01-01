@@ -545,7 +545,7 @@ const AddPole = () => {
             </div>
           </div>
 
-          {/* Down Guys with Knuckles */}
+          {/* Height of Attachments - 5 Rows */}
           <div className="industrial-card p-5">
             <h2 className="font-heading text-lg font-bold text-white mb-4 flex items-center gap-2">
               <div className="w-1 h-5 bg-green-500"></div>
