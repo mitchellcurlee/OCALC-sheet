@@ -1,34 +1,75 @@
-.App-logo {
-    height: 40vmin;
-    pointer-events: none;
-}
+/* Power Pole Data Collection App Styles */
 
-@media (prefers-reduced-motion: no-preference) {
-    .App-logo {
-        animation: App-logo-spin infinite 20s linear;
-    }
-}
-
-.App-header {
-    background-color: #0f0f10;
+.App {
     min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-size: calc(10px + 2vmin);
-    color: white;
+    background-color: #09090b;
 }
 
-.App-link {
-    color: #61dafb;
+/* Header styling */
+.app-header {
+    background: linear-gradient(to bottom, #18181b, #09090b);
+    border-bottom: 1px solid #27272a;
 }
 
-@keyframes App-logo-spin {
-    from {
-        transform: rotate(0deg);
-    }
-    to {
-        transform: rotate(360deg);
-    }
+/* Card hover effects */
+.pole-card {
+    transition: all 0.2s ease;
+}
+
+.pole-card:hover {
+    border-color: #52525b;
+    transform: translateY(-2px);
+}
+
+/* Power pole specific */
+.pole-card.power:hover {
+    border-color: rgba(239, 68, 68, 0.5);
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.1);
+}
+
+/* Telecom pole specific */
+.pole-card.telecom:hover {
+    border-color: rgba(249, 115, 22, 0.5);
+    box-shadow: 0 0 20px rgba(249, 115, 22, 0.1);
+}
+
+/* Stats card glow */
+.stats-card-power {
+    box-shadow: 0 0 30px rgba(239, 68, 68, 0.15);
+}
+
+.stats-card-telecom {
+    box-shadow: 0 0 30px rgba(249, 115, 22, 0.15);
+}
+
+/* Photo preview */
+.photo-preview {
+    object-fit: cover;
+    border: 2px solid #3f3f46;
+}
+
+/* Form sections */
+.form-section {
+    border-left: 3px solid #ef4444;
+    padding-left: 1rem;
+}
+
+/* Empty state */
+.empty-state {
+    background: repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 10px,
+        rgba(39, 39, 42, 0.3) 10px,
+        rgba(39, 39, 42, 0.3) 20px
+    );
+}
+
+/* Badge animations */
+.condition-badge {
+    transition: all 0.2s ease;
+}
+
+.condition-badge:hover {
+    transform: scale(1.05);
 }
