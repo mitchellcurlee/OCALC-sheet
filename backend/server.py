@@ -93,10 +93,19 @@ class PoleBase(BaseModel):
     ground_type: Optional[str] = None
     riser_number: Optional[int] = None
     
-    # Span
-    span_direction: Optional[str] = None
-    span_distance: Optional[float] = None
-    span_owner: Optional[str] = None
+    # Span (4 spans)
+    span1_direction: Optional[str] = None
+    span1_distance: Optional[float] = None
+    span1_owner: Optional[str] = None
+    span2_direction: Optional[str] = None
+    span2_distance: Optional[float] = None
+    span2_owner: Optional[str] = None
+    span3_direction: Optional[str] = None
+    span3_distance: Optional[float] = None
+    span3_owner: Optional[str] = None
+    span4_direction: Optional[str] = None
+    span4_distance: Optional[float] = None
+    span4_owner: Optional[str] = None
     
     # GPS
     latitude: Optional[float] = None
@@ -134,9 +143,18 @@ class PoleUpdate(BaseModel):
     lead_anchor_characteristics: Optional[str] = None
     ground_type: Optional[str] = None
     riser_number: Optional[int] = None
-    span_direction: Optional[str] = None
-    span_distance: Optional[float] = None
-    span_owner: Optional[str] = None
+    span1_direction: Optional[str] = None
+    span1_distance: Optional[float] = None
+    span1_owner: Optional[str] = None
+    span2_direction: Optional[str] = None
+    span2_distance: Optional[float] = None
+    span2_owner: Optional[str] = None
+    span3_direction: Optional[str] = None
+    span3_distance: Optional[float] = None
+    span3_owner: Optional[str] = None
+    span4_direction: Optional[str] = None
+    span4_distance: Optional[float] = None
+    span4_owner: Optional[str] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     notes: Optional[str] = None
@@ -236,7 +254,11 @@ async def export_poles_excel():
         "ID", "Job Number", "Pole Number", "Pole Owner", "Pole Size", "Condition",
         "Telecom Attachments", "Has Birthmark", "MGNV", "Height of Attachment (ft)",
         "Down Guy Size", "Down Guy Direction", "Down Guy Owner", "Down Guy Height (ft)",
-        "Anchor Knuckles", "Span Direction", "Span Distance (ft)", "Span Owner",
+        "Anchor Knuckles",
+        "Span 1 Direction", "Span 1 Distance (ft)", "Span 1 Owner",
+        "Span 2 Direction", "Span 2 Distance (ft)", "Span 2 Owner",
+        "Span 3 Direction", "Span 3 Distance (ft)", "Span 3 Owner",
+        "Span 4 Direction", "Span 4 Distance (ft)", "Span 4 Owner",
         "Lead/Anchor Characteristics", "Ground Type", "Riser Number",
         "Latitude", "Longitude", "Inspection Date", "Notes"
     ]
@@ -260,9 +282,18 @@ async def export_poles_excel():
             pole.get("down_guy_owner", ""),
             pole.get("down_guy_height", ""),
             pole.get("anchor_knuckles", ""),
-            pole.get("span_direction", ""),
-            pole.get("span_distance", ""),
-            pole.get("span_owner", ""),
+            pole.get("span1_direction", ""),
+            pole.get("span1_distance", ""),
+            pole.get("span1_owner", ""),
+            pole.get("span2_direction", ""),
+            pole.get("span2_distance", ""),
+            pole.get("span2_owner", ""),
+            pole.get("span3_direction", ""),
+            pole.get("span3_distance", ""),
+            pole.get("span3_owner", ""),
+            pole.get("span4_direction", ""),
+            pole.get("span4_distance", ""),
+            pole.get("span4_owner", ""),
             pole.get("lead_anchor_characteristics", ""),
             pole.get("ground_type", ""),
             pole.get("riser_number", ""),
