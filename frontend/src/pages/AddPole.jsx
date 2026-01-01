@@ -846,14 +846,14 @@ const AddPole = () => {
             </div>
           </div>
 
-          {/* Submit */}
-          <div className="flex justify-end gap-4">
-            <Link to="/">
-              <Button type="button" variant="outline" className="bg-zinc-800 border-zinc-700 hover:bg-zinc-700 text-white" data-testid="cancel-btn">
+          {/* Submit - Mobile optimized sticky bottom */}
+          <div className="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4 pt-2">
+            <Link to="/" className="w-full sm:w-auto">
+              <Button type="button" variant="outline" className="w-full sm:w-auto h-12 sm:h-10 bg-zinc-800 border-zinc-700 hover:bg-zinc-700 text-white" data-testid="cancel-btn">
                 Cancel
               </Button>
             </Link>
-            <Button type="submit" disabled={loading} className="bg-red-600 hover:bg-red-700 text-white min-w-32" data-testid="save-pole-btn">
+            <Button type="submit" disabled={loading} className="w-full sm:w-auto h-12 sm:h-10 bg-red-600 hover:bg-red-700 text-white min-w-32" data-testid="save-pole-btn">
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Save className="w-4 h-4 mr-2" />Save Pole</>}
             </Button>
           </div>
