@@ -24,8 +24,18 @@ import {
   Calendar,
   Loader2,
   ExternalLink,
-  Image,
 } from "lucide-react";
+import { MapContainer, TileLayer, Marker } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
+import L from "leaflet";
+
+// Fix Leaflet marker icon
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
+  iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
+  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
+});
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -74,248 +84,269 @@ const ViewPole = () => {
 
   const openInMaps = () => {
     if (pole?.latitude && pole?.longitude) {
-      window.open(
-        `https://www.google.com/maps?q=${pole.latitude},${pole.longitude}`,
-        "_blank"
-      );
+      window.open(`https://www.google.com/maps?q=${pole.latitude},${pole.longitude}`, "_blank");
     }
   };
+
+  const PhotoDisplay = ({ label, src }) => {
+    if (!src) return null;
+    return (
+      <div className="space-y-2">
+        <p className="text-xs font-mono tracking-widest text-zinc-500 uppercase">{label}</p>
+        <img src={src} alt={label} className="max-w-full max-h-48 object-contain border-2 border-zinc-700" />
+      </div>
+    );
+  };
+
+  const DataRow = ({ label, value, mono = false }) => (
+    <div className="space-y-1">
+      <p className="text-xs font-mono tracking-widest text-zinc-500 uppercase">{label}</p>
+      <p className={`text-zinc-200 ${mono ? "font-mono" : ""}`}>{value || "—"}</p>
+    </div>
+  );
 
   if (loading) {
     return (
       <div className="min-h-screen bg-industrial-bg flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 text-red-500 animate-spin mx-auto mb-4" />
-          <p className="text-zinc-500 font-mono">Loading pole data...</p>
-        </div>
+        <Loader2 className="w-12 h-12 text-red-500 animate-spin" />
       </div>
     );
   }
 
-  if (!pole) {
-    return null;
-  }
+  if (!pole) return null;
+
+  const mapCenter = pole.latitude && pole.longitude
+    ? [pole.latitude, pole.longitude]
+    : [37.7749, -122.4194];
 
   return (
     <div className="min-h-screen bg-industrial-bg" data-testid="view-pole-page">
       {/* Header */}
-      <header className="border-b border-zinc-800 bg-zinc-900/50 backdrop-blur-sm sticky top-0 z-40">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      <header className="border-b border-zinc-800 bg-zinc-900/50 backdrop-blur-sm sticky top-0 z-[1000]">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Link to="/">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="text-zinc-400 hover:text-white"
-                  data-testid="back-btn"
-                >
+                <Button variant="ghost" size="icon" className="text-zinc-400 hover:text-white" data-testid="back-btn">
                   <ArrowLeft className="w-5 h-5" />
                 </Button>
               </Link>
               <div className="flex items-center gap-3">
-                <div
-                  className={`w-10 h-10 flex items-center justify-center ${
-                    pole.pole_type === "Power"
-                      ? "bg-red-600"
-                      : "bg-orange-600"
-                  }`}
-                >
-                  {pole.pole_type === "Power" ? (
-                    <Zap className="w-6 h-6 text-white" />
-                  ) : (
-                    <Radio className="w-6 h-6 text-white" />
-                  )}
+                <div className={`w-10 h-10 flex items-center justify-center ${pole.pole_owner === "Power" ? "bg-red-600" : "bg-orange-600"}`}>
+                  {pole.pole_owner === "Power" ? <Zap className="w-6 h-6 text-white" /> : <Radio className="w-6 h-6 text-white" />}
                 </div>
                 <div>
-                  <h1 className="font-heading text-xl font-bold tracking-tight uppercase text-white">
-                    Pole Details
-                  </h1>
-                  <p className="text-xs text-zinc-500 font-mono">
-                    ID: {pole.id.slice(0, 8)}...
-                  </p>
+                  <h1 className="font-heading text-xl font-bold tracking-tight uppercase text-white">Pole Details</h1>
+                  {pole.job_number && <p className="text-xs text-zinc-500 font-mono">JOB: {pole.job_number}</p>}
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-4">
+              {pole.pole_number && (
+                <div className="text-right">
+                  <p className="text-xs text-zinc-500 font-mono">POLE #</p>
+                  <p className="text-lg font-mono text-white">{pole.pole_number}</p>
+                </div>
+              )}
               <Link to={`/edit/${pole.id}`}>
-                <Button
-                  variant="outline"
-                  className="industrial-button bg-zinc-800 border-zinc-700 hover:bg-zinc-700 text-white"
-                  data-testid="edit-btn"
-                >
-                  <Pencil className="w-4 h-4 mr-2" />
-                  Edit
+                <Button variant="outline" className="bg-zinc-800 border-zinc-700 hover:bg-zinc-700 text-white" data-testid="edit-btn">
+                  <Pencil className="w-4 h-4 mr-2" />Edit
                 </Button>
               </Link>
-              <Button
-                variant="destructive"
-                onClick={() => setShowDeleteDialog(true)}
-                className="industrial-button bg-red-600 hover:bg-red-700"
-                data-testid="delete-btn"
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Delete
+              <Button variant="destructive" onClick={() => setShowDeleteDialog(true)} className="bg-red-600 hover:bg-red-700" data-testid="delete-btn">
+                <Trash2 className="w-4 h-4 mr-2" />Delete
               </Button>
             </div>
           </div>
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="space-y-6">
-          {/* Type and Condition Banner */}
-          <div className="industrial-card p-6">
+          {/* Status Banner */}
+          <div className="industrial-card p-5">
             <div className="flex flex-wrap items-center gap-4">
-              <Badge
-                className={`${
-                  pole.pole_type === "Power" ? "pole-power" : "pole-telecom"
-                } border font-mono text-sm px-4 py-2`}
-              >
-                {pole.pole_type === "Power" ? (
-                  <Zap className="w-4 h-4 mr-2" />
-                ) : (
-                  <Radio className="w-4 h-4 mr-2" />
-                )}
-                {pole.pole_type} Pole
+              <Badge className={`${pole.pole_owner === "Power" ? "pole-power" : "pole-telecom"} border font-mono text-sm px-4 py-2`}>
+                {pole.pole_owner === "Power" ? <Zap className="w-4 h-4 mr-2" /> : <Radio className="w-4 h-4 mr-2" />}
+                {pole.pole_owner} Pole
               </Badge>
-              <Badge
-                className={`${getConditionColor(pole.condition)} border font-mono text-sm px-4 py-2`}
-              >
+              <Badge className={`${getConditionColor(pole.condition)} border font-mono text-sm px-4 py-2`}>
                 Condition: {pole.condition}
               </Badge>
-              <div className="flex items-center gap-2 text-zinc-400 font-mono text-sm">
+              <Badge className="bg-zinc-800 text-zinc-300 border-zinc-700 font-mono text-sm px-4 py-2">
+                Size: {pole.pole_size}
+              </Badge>
+              <div className="flex items-center gap-2 text-zinc-400 font-mono text-sm ml-auto">
                 <Calendar className="w-4 h-4" />
-                Inspected: {new Date(pole.inspection_date).toLocaleString()}
+                {new Date(pole.inspection_date).toLocaleString()}
               </div>
             </div>
           </div>
 
-          {/* Photo */}
-          {pole.photo_base64 && (
-            <div className="industrial-card p-6">
+          {/* Basic Info */}
+          <div className="industrial-card p-5">
+            <h2 className="font-heading text-lg font-bold text-white mb-4 flex items-center gap-2">
+              <div className="w-1 h-5 bg-red-500"></div>Basic Information
+            </h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <DataRow label="Pole Owner" value={pole.pole_owner} />
+              <DataRow label="Pole Size" value={pole.pole_size} />
+              <DataRow label="Condition" value={pole.condition} />
+              <DataRow label="Telecom Attachments" value={pole.telecom_attachments} mono />
+            </div>
+          </div>
+
+          {/* OCALC Photos */}
+          {(pole.ocalc_left_photo || pole.ocalc_middle_photo || pole.ocalc_right_photo) && (
+            <div className="industrial-card p-5">
               <h2 className="font-heading text-lg font-bold text-white mb-4 flex items-center gap-2">
-                <div className="w-1 h-6 bg-blue-500"></div>
-                Photo Documentation
+                <div className="w-1 h-5 bg-blue-500"></div>OCALC Photos
               </h2>
-              <img
-                src={pole.photo_base64}
-                alt="Pole"
-                className="max-w-full max-h-96 object-contain border-2 border-zinc-700"
-                data-testid="pole-photo"
-              />
+              <div className="grid grid-cols-3 gap-4">
+                <PhotoDisplay label="Left" src={pole.ocalc_left_photo} />
+                <PhotoDisplay label="Middle" src={pole.ocalc_middle_photo} />
+                <PhotoDisplay label="Right" src={pole.ocalc_right_photo} />
+              </div>
             </div>
           )}
 
-          {/* Basic Info */}
-          <div className="industrial-card p-6">
-            <h2 className="font-heading text-lg font-bold text-white mb-6 flex items-center gap-2">
-              <div className="w-1 h-6 bg-red-500"></div>
-              Basic Information
+          {/* Birthmark */}
+          <div className="industrial-card p-5">
+            <h2 className="font-heading text-lg font-bold text-white mb-4 flex items-center gap-2">
+              <div className="w-1 h-5 bg-purple-500"></div>Birthmark
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <DataRow label="Pole Type" value={pole.pole_type} />
-              <DataRow label="Pole Size" value={pole.pole_size} />
-              <DataRow label="Condition" value={pole.condition} />
-              <DataRow
-                label="Telecom Attachments"
-                value={pole.telecom_attachments}
-              />
+            <div className="flex items-center gap-6">
+              <Badge className={pole.has_birthmark ? "bg-green-500/20 text-green-400 border-green-500/50" : "bg-zinc-500/20 text-zinc-400 border-zinc-500/50"}>
+                {pole.has_birthmark ? "Has Birthmark" : "No Birthmark"}
+              </Badge>
+              {pole.has_birthmark && pole.birthmark_photo && (
+                <PhotoDisplay label="Photo" src={pole.birthmark_photo} />
+              )}
             </div>
           </div>
 
-          {/* Technical Details */}
-          <div className="industrial-card p-6">
-            <h2 className="font-heading text-lg font-bold text-white mb-6 flex items-center gap-2">
-              <div className="w-1 h-6 bg-orange-500"></div>
-              Technical Details
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <DataRow
-                label="Down Guy Height"
-                value={pole.down_guy_height ? `${pole.down_guy_height} ft` : "—"}
-              />
-              <DataRow
-                label="Height of Attachment"
-                value={
-                  pole.height_of_attachment
-                    ? `${pole.height_of_attachment} ft`
-                    : "—"
-                }
-              />
-              <DataRow
-                label="Lead & Anchor"
-                value={pole.lead_anchor_characteristics || "—"}
-              />
-              <DataRow label="Ground Type" value={pole.ground_type || "—"} />
-              <DataRow label="Riser Number" value={pole.riser_number || "—"} />
+          {/* MGNV */}
+          {(pole.mgnv || pole.mgnv_photo) && (
+            <div className="industrial-card p-5">
+              <h2 className="font-heading text-lg font-bold text-white mb-4 flex items-center gap-2">
+                <div className="w-1 h-5 bg-cyan-500"></div>MGNV
+              </h2>
+              <div className="grid grid-cols-2 gap-4">
+                <DataRow label="MGNV Present" value={pole.mgnv} />
+                <PhotoDisplay label="Photo" src={pole.mgnv_photo} />
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* Height of Attachment */}
+          {(pole.height_of_attachment || pole.height_of_attachment_photo) && (
+            <div className="industrial-card p-5">
+              <h2 className="font-heading text-lg font-bold text-white mb-4 flex items-center gap-2">
+                <div className="w-1 h-5 bg-green-500"></div>Height of Attachment
+              </h2>
+              <div className="grid grid-cols-2 gap-4">
+                <DataRow label="Height" value={pole.height_of_attachment ? `${pole.height_of_attachment} ft` : null} mono />
+                <PhotoDisplay label="Photo" src={pole.height_of_attachment_photo} />
+              </div>
+            </div>
+          )}
+
+          {/* Down Guy */}
+          {(pole.down_guy_photo || pole.down_guy_size || pole.down_guy_direction || pole.down_guy_owner) && (
+            <div className="industrial-card p-5">
+              <h2 className="font-heading text-lg font-bold text-white mb-4 flex items-center gap-2">
+                <div className="w-1 h-5 bg-yellow-500"></div>Down Guy
+              </h2>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <PhotoDisplay label="Photo" src={pole.down_guy_photo} />
+                <DataRow label="Size" value={pole.down_guy_size} />
+                <DataRow label="Direction" value={pole.down_guy_direction} />
+                <DataRow label="Owner" value={pole.down_guy_owner} />
+                <DataRow label="Height" value={pole.down_guy_height ? `${pole.down_guy_height} ft` : null} mono />
+              </div>
+            </div>
+          )}
+
+          {/* Down Guy Anchor */}
+          {(pole.down_guy_anchor_photo || pole.anchor_knuckles) && (
+            <div className="industrial-card p-5">
+              <h2 className="font-heading text-lg font-bold text-white mb-4 flex items-center gap-2">
+                <div className="w-1 h-5 bg-orange-500"></div>Down Guy Anchor
+              </h2>
+              <div className="grid grid-cols-2 gap-4">
+                <PhotoDisplay label="Anchor Photo" src={pole.down_guy_anchor_photo} />
+                <DataRow label="Knuckles Used" value={pole.anchor_knuckles} />
+              </div>
+            </div>
+          )}
+
+          {/* Telecom Attachment */}
+          {pole.telecom_attachment_photo && (
+            <div className="industrial-card p-5">
+              <h2 className="font-heading text-lg font-bold text-white mb-4 flex items-center gap-2">
+                <div className="w-1 h-5 bg-pink-500"></div>Telecom Attachment
+              </h2>
+              <PhotoDisplay label="Photo" src={pole.telecom_attachment_photo} />
+            </div>
+          )}
 
           {/* GPS Location */}
-          <div className="industrial-card p-6">
-            <h2 className="font-heading text-lg font-bold text-white mb-6 flex items-center gap-2">
-              <div className="w-1 h-6 bg-green-500"></div>
-              GPS Location
+          <div className="industrial-card p-5">
+            <h2 className="font-heading text-lg font-bold text-white mb-4 flex items-center gap-2">
+              <div className="w-1 h-5 bg-emerald-500"></div>GPS Location
             </h2>
             {pole.latitude && pole.longitude ? (
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <DataRow
-                    label="Latitude"
-                    value={pole.latitude.toFixed(6)}
-                    mono
-                  />
-                  <DataRow
-                    label="Longitude"
-                    value={pole.longitude.toFixed(6)}
-                    mono
-                  />
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <DataRow label="Latitude" value={pole.latitude.toFixed(6)} mono />
+                    <DataRow label="Longitude" value={pole.longitude.toFixed(6)} mono />
+                  </div>
+                  <Button onClick={openInMaps} className="bg-zinc-800 hover:bg-zinc-700 text-white border border-zinc-700" data-testid="open-maps-btn">
+                    <MapPin className="w-4 h-4 mr-2" />Open in Google Maps<ExternalLink className="w-3 h-3 ml-2" />
+                  </Button>
                 </div>
-                <Button
-                  onClick={openInMaps}
-                  className="industrial-button bg-zinc-800 hover:bg-zinc-700 text-white border border-zinc-700"
-                  data-testid="open-maps-btn"
-                >
-                  <MapPin className="w-4 h-4 mr-2" />
-                  Open in Google Maps
-                  <ExternalLink className="w-3 h-3 ml-2" />
-                </Button>
+                <div className="h-64 border border-zinc-700 overflow-hidden">
+                  <MapContainer center={mapCenter} zoom={15} style={{ height: "100%", width: "100%" }} className="z-0">
+                    <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; OpenStreetMap' />
+                    <Marker position={mapCenter} />
+                  </MapContainer>
+                </div>
               </div>
             ) : (
-              <p className="text-zinc-500 font-mono text-sm">
-                No GPS coordinates recorded
-              </p>
+              <p className="text-zinc-500 font-mono text-sm">No GPS coordinates recorded</p>
             )}
           </div>
 
-          {/* Notes */}
-          {pole.notes && (
-            <div className="industrial-card p-6">
-              <h2 className="font-heading text-lg font-bold text-white mb-6 flex items-center gap-2">
-                <div className="w-1 h-6 bg-purple-500"></div>
-                Additional Notes
+          {/* Additional Details */}
+          {(pole.lead_anchor_characteristics || pole.ground_type || pole.riser_number || pole.notes) && (
+            <div className="industrial-card p-5">
+              <h2 className="font-heading text-lg font-bold text-white mb-4 flex items-center gap-2">
+                <div className="w-1 h-5 bg-zinc-500"></div>Additional Details
               </h2>
-              <p className="text-zinc-300 whitespace-pre-wrap">{pole.notes}</p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <DataRow label="Lead & Anchor" value={pole.lead_anchor_characteristics} />
+                <DataRow label="Ground Type" value={pole.ground_type} />
+                <DataRow label="Riser Number" value={pole.riser_number} mono />
+              </div>
+              {pole.notes && (
+                <div className="mt-4">
+                  <p className="text-xs font-mono tracking-widest text-zinc-500 uppercase mb-2">Notes</p>
+                  <p className="text-zinc-300 whitespace-pre-wrap">{pole.notes}</p>
+                </div>
+              )}
             </div>
           )}
 
-          {/* Metadata */}
-          <div className="industrial-card p-6">
-            <h2 className="font-heading text-lg font-bold text-white mb-6 flex items-center gap-2">
-              <div className="w-1 h-6 bg-zinc-500"></div>
-              Record Information
+          {/* Record Info */}
+          <div className="industrial-card p-5">
+            <h2 className="font-heading text-lg font-bold text-white mb-4 flex items-center gap-2">
+              <div className="w-1 h-5 bg-zinc-600"></div>Record Information
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <DataRow label="Record ID" value={pole.id} mono small />
-              <DataRow
-                label="Created"
-                value={new Date(pole.created_at).toLocaleString()}
-              />
-              <DataRow
-                label="Last Updated"
-                value={new Date(pole.updated_at).toLocaleString()}
-              />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <DataRow label="Record ID" value={pole.id} mono />
+              <DataRow label="Created" value={new Date(pole.created_at).toLocaleString()} />
+              <DataRow label="Last Updated" value={new Date(pole.updated_at).toLocaleString()} />
             </div>
           </div>
         </div>
@@ -327,41 +358,17 @@ const ViewPole = () => {
           <AlertDialogHeader>
             <AlertDialogTitle className="text-white">Delete Pole?</AlertDialogTitle>
             <AlertDialogDescription className="text-zinc-400">
-              This action cannot be undone. This will permanently delete the pole
-              data from the database.
+              This action cannot be undone. This will permanently delete the pole data.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="bg-zinc-800 border-zinc-700 text-white hover:bg-zinc-700">
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              className="bg-red-600 hover:bg-red-700 text-white"
-              data-testid="confirm-delete-btn"
-            >
-              Delete
-            </AlertDialogAction>
+            <AlertDialogCancel className="bg-zinc-800 border-zinc-700 text-white hover:bg-zinc-700">Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700 text-white" data-testid="confirm-delete-btn">Delete</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>
   );
 };
-
-const DataRow = ({ label, value, mono = false, small = false }) => (
-  <div className="space-y-1">
-    <p className="text-xs font-mono tracking-widest text-zinc-500 uppercase">
-      {label}
-    </p>
-    <p
-      className={`text-zinc-200 ${mono ? "font-mono" : ""} ${
-        small ? "text-xs break-all" : ""
-      }`}
-    >
-      {value}
-    </p>
-  </div>
-);
 
 export default ViewPole;
