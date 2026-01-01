@@ -28,7 +28,7 @@ app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
 # Options
-POLE_OWNERS = ["Power", "Telecom"]
+POLE_OWNERS = ["Foreign Owned", "ATT"]
 POLE_CONDITIONS = ["Excellent", "Good", "Bad"]
 POLE_SIZES = [
     "1-25", "1-30", "1-35", "1-40", "1-45", "1-50", "1-55", "1-60",
@@ -42,8 +42,11 @@ DOWN_GUY_DIRECTIONS = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
 DOWN_GUY_SIZES = ["1/4", "3/8", "1/2", "5/8", "3/4"]
 KNUCKLE_OPTIONS = ["0", "1", "2", "3", "4", "5", "6"]
 YES_NO = ["Yes", "No"]
+GOOD_BROKEN = ["Good", "Broken"]
 SPAN_OWNERS = ["Power", "ATT", "Comcast", "Lightwave", "Logix", "PS"]
 SPAN_DIRECTIONS = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
+ATTACHMENT_OWNERS = ["Power", "ATT", "Comcast", "Lightwave", "Logix", "PS"]
+RISER_OPTIONS = ["1", "2", "3", "4", "5", "6"]
 
 # Models
 class PoleBase(BaseModel):
