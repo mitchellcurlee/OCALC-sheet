@@ -452,44 +452,160 @@ const AddPole = () => {
             </div>
           </div>
 
-          {/* Height of Attachment & Telecom Attachment */}
+          {/* Height of Attachments - 5 Rows */}
           <div className="industrial-card p-5">
             <h2 className="font-heading text-lg font-bold text-white mb-4 flex items-center gap-2">
               <div className="w-1 h-5 bg-green-500"></div>
-              Height of Attachment & Telecom
+              Height of Attachments
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Height (ft)</Label>
-                <Input
-                  type="number"
-                  name="height_of_attachment"
-                  value={formData.height_of_attachment}
-                  onChange={handleInputChange}
-                  step="0.1"
-                  className="h-10 bg-black border-zinc-700 text-white"
-                  data-testid="height-of-attachment-input"
-                />
-                <p className="text-xs text-zinc-500">Use the camera tool to measure from photo</p>
+            <div className="space-y-3">
+              {/* Attachment 1 */}
+              <div className="bg-zinc-800/50 p-3 border border-zinc-700">
+                <div className="flex items-center gap-4">
+                  <span className="text-sm font-mono text-green-400 w-8">1</span>
+                  <div className="grid grid-cols-3 gap-3 flex-1 items-end">
+                    <div className="space-y-1">
+                      <Label className="text-xs font-mono text-zinc-500">Height (ft)</Label>
+                      <Input type="number" name="attachment1_height" value={formData.attachment1_height} onChange={handleInputChange} step="0.1" className="h-9 bg-black border-zinc-700 text-white text-sm" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-mono text-zinc-500">Owner</Label>
+                      <Select value={formData.attachment1_owner} onValueChange={(v) => handleSelectChange("attachment1_owner", v)}>
+                        <SelectTrigger className="h-9 bg-black border-zinc-700 text-white text-sm"><SelectValue placeholder="Owner" /></SelectTrigger>
+                        <SelectContent className="bg-zinc-900 border-zinc-700">
+                          {options.attachment_owners.map((o) => (<SelectItem key={o} value={o}>{o}</SelectItem>))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <PhotoUpload label="Photo" value={formData.attachment1_photo} onChange={(v) => handlePhotoChange("attachment1_photo", v)} testId="attachment1" compact />
+                  </div>
+                </div>
               </div>
-              <PhotoUpload 
-                label="Height Photo" 
-                value={formData.height_of_attachment_photo} 
-                onChange={(v) => handlePhotoChange("height_of_attachment_photo", v)} 
-                testId="height-attachment"
-                showHeightTool={true}
-                onHeightMeasured={(height) => setFormData(prev => ({ ...prev, height_of_attachment: height.toString() }))}
-              />
-              <PhotoUpload 
-                label="Telecom Attachment Photo" 
-                value={formData.telecom_attachment_photo} 
-                onChange={(v) => handlePhotoChange("telecom_attachment_photo", v)} 
-                testId="telecom-attachment"
-              />
+
+              {/* Attachment 2 */}
+              <div className="bg-zinc-800/50 p-3 border border-zinc-700">
+                <div className="flex items-center gap-4">
+                  <span className="text-sm font-mono text-green-400 w-8">2</span>
+                  <div className="grid grid-cols-3 gap-3 flex-1 items-end">
+                    <div className="space-y-1">
+                      <Label className="text-xs font-mono text-zinc-500">Height (ft)</Label>
+                      <Input type="number" name="attachment2_height" value={formData.attachment2_height} onChange={handleInputChange} step="0.1" className="h-9 bg-black border-zinc-700 text-white text-sm" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-mono text-zinc-500">Owner</Label>
+                      <Select value={formData.attachment2_owner} onValueChange={(v) => handleSelectChange("attachment2_owner", v)}>
+                        <SelectTrigger className="h-9 bg-black border-zinc-700 text-white text-sm"><SelectValue placeholder="Owner" /></SelectTrigger>
+                        <SelectContent className="bg-zinc-900 border-zinc-700">
+                          {options.attachment_owners.map((o) => (<SelectItem key={o} value={o}>{o}</SelectItem>))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <PhotoUpload label="Photo" value={formData.attachment2_photo} onChange={(v) => handlePhotoChange("attachment2_photo", v)} testId="attachment2" compact />
+                  </div>
+                </div>
+              </div>
+
+              {/* Attachment 3 */}
+              <div className="bg-zinc-800/50 p-3 border border-zinc-700">
+                <div className="flex items-center gap-4">
+                  <span className="text-sm font-mono text-green-400 w-8">3</span>
+                  <div className="grid grid-cols-3 gap-3 flex-1 items-end">
+                    <div className="space-y-1">
+                      <Label className="text-xs font-mono text-zinc-500">Height (ft)</Label>
+                      <Input type="number" name="attachment3_height" value={formData.attachment3_height} onChange={handleInputChange} step="0.1" className="h-9 bg-black border-zinc-700 text-white text-sm" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-mono text-zinc-500">Owner</Label>
+                      <Select value={formData.attachment3_owner} onValueChange={(v) => handleSelectChange("attachment3_owner", v)}>
+                        <SelectTrigger className="h-9 bg-black border-zinc-700 text-white text-sm"><SelectValue placeholder="Owner" /></SelectTrigger>
+                        <SelectContent className="bg-zinc-900 border-zinc-700">
+                          {options.attachment_owners.map((o) => (<SelectItem key={o} value={o}>{o}</SelectItem>))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <PhotoUpload label="Photo" value={formData.attachment3_photo} onChange={(v) => handlePhotoChange("attachment3_photo", v)} testId="attachment3" compact />
+                  </div>
+                </div>
+              </div>
+
+              {/* Attachment 4 */}
+              <div className="bg-zinc-800/50 p-3 border border-zinc-700">
+                <div className="flex items-center gap-4">
+                  <span className="text-sm font-mono text-green-400 w-8">4</span>
+                  <div className="grid grid-cols-3 gap-3 flex-1 items-end">
+                    <div className="space-y-1">
+                      <Label className="text-xs font-mono text-zinc-500">Height (ft)</Label>
+                      <Input type="number" name="attachment4_height" value={formData.attachment4_height} onChange={handleInputChange} step="0.1" className="h-9 bg-black border-zinc-700 text-white text-sm" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-mono text-zinc-500">Owner</Label>
+                      <Select value={formData.attachment4_owner} onValueChange={(v) => handleSelectChange("attachment4_owner", v)}>
+                        <SelectTrigger className="h-9 bg-black border-zinc-700 text-white text-sm"><SelectValue placeholder="Owner" /></SelectTrigger>
+                        <SelectContent className="bg-zinc-900 border-zinc-700">
+                          {options.attachment_owners.map((o) => (<SelectItem key={o} value={o}>{o}</SelectItem>))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <PhotoUpload label="Photo" value={formData.attachment4_photo} onChange={(v) => handlePhotoChange("attachment4_photo", v)} testId="attachment4" compact />
+                  </div>
+                </div>
+              </div>
+
+              {/* Attachment 5 */}
+              <div className="bg-zinc-800/50 p-3 border border-zinc-700">
+                <div className="flex items-center gap-4">
+                  <span className="text-sm font-mono text-green-400 w-8">5</span>
+                  <div className="grid grid-cols-3 gap-3 flex-1 items-end">
+                    <div className="space-y-1">
+                      <Label className="text-xs font-mono text-zinc-500">Height (ft)</Label>
+                      <Input type="number" name="attachment5_height" value={formData.attachment5_height} onChange={handleInputChange} step="0.1" className="h-9 bg-black border-zinc-700 text-white text-sm" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-mono text-zinc-500">Owner</Label>
+                      <Select value={formData.attachment5_owner} onValueChange={(v) => handleSelectChange("attachment5_owner", v)}>
+                        <SelectTrigger className="h-9 bg-black border-zinc-700 text-white text-sm"><SelectValue placeholder="Owner" /></SelectTrigger>
+                        <SelectContent className="bg-zinc-900 border-zinc-700">
+                          {options.attachment_owners.map((o) => (<SelectItem key={o} value={o}>{o}</SelectItem>))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <PhotoUpload label="Photo" value={formData.attachment5_photo} onChange={(v) => handlePhotoChange("attachment5_photo", v)} testId="attachment5" compact />
+                  </div>
+                </div>
+              </div>
+
+              {/* Pole Terminal and Risers */}
+              <div className="mt-4 pt-4 border-t border-zinc-700">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Pole Terminal</Label>
+                    <Select value={formData.pole_terminal} onValueChange={(v) => handleSelectChange("pole_terminal", v)}>
+                      <SelectTrigger className="h-10 bg-black border-zinc-700 text-white" data-testid="pole-terminal-select">
+                        <SelectValue placeholder="Yes / No" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-zinc-900 border-zinc-700">
+                        <SelectItem value="Yes">Yes</SelectItem>
+                        <SelectItem value="No">No</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Risers</Label>
+                    <Select value={formData.risers} onValueChange={(v) => handleSelectChange("risers", v)}>
+                      <SelectTrigger className="h-10 bg-black border-zinc-700 text-white" data-testid="risers-select">
+                        <SelectValue placeholder="Select #" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-zinc-900 border-zinc-700">
+                        {options.riser_options.map((r) => (<SelectItem key={r} value={r}>{r}</SelectItem>))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Down Guys with Anchor & Knuckles */}
+          {/* Down Guys with Knuckles */}
           <div className="industrial-card p-5">
             <h2 className="font-heading text-lg font-bold text-white mb-4 flex items-center gap-2">
               <div className="w-1 h-5 bg-yellow-500"></div>
