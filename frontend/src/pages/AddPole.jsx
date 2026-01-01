@@ -378,12 +378,6 @@ const AddPole = () => {
               </div>
             </div>
           </div>
-                  className="h-10 bg-black border-zinc-700 text-white"
-                  data-testid="telecom-attachments-input"
-                />
-              </div>
-            </div>
-          </div>
 
           {/* OCALC Photos */}
           <div className="industrial-card p-5">
