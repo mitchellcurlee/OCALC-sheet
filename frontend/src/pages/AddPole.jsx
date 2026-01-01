@@ -234,10 +234,11 @@ const AddPole = () => {
     try {
       const submitData = {
         ...formData,
-        telecom_attachments: parseInt(formData.telecom_attachments) || 0,
-        height_of_attachment: formData.height_of_attachment
-          ? parseFloat(formData.height_of_attachment)
-          : null,
+        attachment1_height: formData.attachment1_height ? parseFloat(formData.attachment1_height) : null,
+        attachment2_height: formData.attachment2_height ? parseFloat(formData.attachment2_height) : null,
+        attachment3_height: formData.attachment3_height ? parseFloat(formData.attachment3_height) : null,
+        attachment4_height: formData.attachment4_height ? parseFloat(formData.attachment4_height) : null,
+        attachment5_height: formData.attachment5_height ? parseFloat(formData.attachment5_height) : null,
         down_guy1_height: formData.down_guy1_height ? parseFloat(formData.down_guy1_height) : null,
         down_guy2_height: formData.down_guy2_height ? parseFloat(formData.down_guy2_height) : null,
         down_guy3_height: formData.down_guy3_height ? parseFloat(formData.down_guy3_height) : null,
@@ -246,9 +247,6 @@ const AddPole = () => {
         span2_distance: formData.span2_distance ? parseFloat(formData.span2_distance) : null,
         span3_distance: formData.span3_distance ? parseFloat(formData.span3_distance) : null,
         span4_distance: formData.span4_distance ? parseFloat(formData.span4_distance) : null,
-        riser_number: formData.riser_number
-          ? parseInt(formData.riser_number)
-          : null,
         latitude: formData.latitude ? parseFloat(formData.latitude) : null,
         longitude: formData.longitude ? parseFloat(formData.longitude) : null,
       };
