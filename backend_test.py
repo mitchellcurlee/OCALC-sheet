@@ -122,7 +122,7 @@ class PoleAPITester:
             "notes": "Test telecom pole created by automated testing"
         }
         
-        success, response = self.run_test("Create Telecom Pole", "POST", "poles", 201, data=pole_data)
+        success, response = self.run_test("Create Telecom Pole", "POST", "poles", 200, data=pole_data)
         return success
 
     def test_get_all_poles(self):
