@@ -24,7 +24,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   Plus,
-  Download,
   Search,
   Zap,
   Radio,
@@ -44,7 +43,7 @@ const Dashboard = () => {
   const [poles, setPoles] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [filterType, setFilterType] = useState("all");
+  const [filterOwner, setFilterOwner] = useState("all");
   const [filterCondition, setFilterCondition] = useState("all");
   const [deleteId, setDeleteId] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -53,7 +52,7 @@ const Dashboard = () => {
     try {
       let url = `${API}/poles`;
       const params = new URLSearchParams();
-      if (filterType !== "all") params.append("pole_type", filterType);
+      if (filterOwner !== "all") params.append("pole_owner", filterOwner);
       if (filterCondition !== "all") params.append("condition", filterCondition);
       if (params.toString()) url += `?${params.toString()}`;
 
@@ -81,7 +80,7 @@ const Dashboard = () => {
       setLoading(false);
     };
     loadData();
-  }, [filterType, filterCondition]);
+  }, [filterOwner, filterCondition]);
 
   const handleDelete = async () => {
     if (!deleteId) return;
@@ -128,8 +127,10 @@ const Dashboard = () => {
     const query = searchQuery.toLowerCase();
     return (
       pole.id.toLowerCase().includes(query) ||
-      pole.pole_type.toLowerCase().includes(query) ||
-      pole.condition.toLowerCase().includes(query) ||
+      pole.pole_owner?.toLowerCase().includes(query) ||
+      pole.pole_number?.toLowerCase().includes(query) ||
+      pole.job_number?.toLowerCase().includes(query) ||
+      pole.condition?.toLowerCase().includes(query) ||
       (pole.notes && pole.notes.toLowerCase().includes(query))
     );
   });
@@ -229,22 +230,22 @@ const Dashboard = () => {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-zinc-500" />
               <Input
-                placeholder="Search poles..."
+                placeholder="Search by job #, pole #, notes..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10 industrial-input bg-black border-zinc-700 text-white"
                 data-testid="search-input"
               />
             </div>
-            <Select value={filterType} onValueChange={setFilterType}>
+            <Select value={filterOwner} onValueChange={setFilterOwner}>
               <SelectTrigger
                 className="w-full sm:w-48 industrial-input bg-black border-zinc-700 text-white"
-                data-testid="filter-type"
+                data-testid="filter-owner"
               >
-                <SelectValue placeholder="Filter by type" />
+                <SelectValue placeholder="Filter by owner" />
               </SelectTrigger>
               <SelectContent className="bg-zinc-900 border-zinc-700">
-                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="all">All Owners</SelectItem>
                 <SelectItem value="Power">Power</SelectItem>
                 <SelectItem value="Telecom">Telecom</SelectItem>
               </SelectContent>
@@ -297,7 +298,7 @@ const Dashboard = () => {
             {filteredPoles.map((pole, index) => (
               <div
                 key={pole.id}
-                className={`industrial-card pole-card ${pole.pole_type.toLowerCase()} p-5 animate-fade-in`}
+                className={`industrial-card pole-card ${pole.pole_owner?.toLowerCase()} p-5 animate-fade-in`}
                 style={{ animationDelay: `${index * 50}ms` }}
                 data-testid={`pole-card-${pole.id}`}
               >
@@ -305,12 +306,12 @@ const Dashboard = () => {
                   <div className="flex items-center gap-3">
                     <div
                       className={`w-10 h-10 flex items-center justify-center ${
-                        pole.pole_type === "Power"
+                        pole.pole_owner === "Power"
                           ? "bg-red-500/20 text-red-500"
                           : "bg-orange-500/20 text-orange-500"
                       }`}
                     >
-                      {pole.pole_type === "Power" ? (
+                      {pole.pole_owner === "Power" ? (
                         <Zap className="w-5 h-5" />
                       ) : (
                         <Radio className="w-5 h-5" />
@@ -319,16 +320,18 @@ const Dashboard = () => {
                     <div>
                       <Badge
                         className={`${
-                          pole.pole_type === "Power"
+                          pole.pole_owner === "Power"
                             ? "pole-power"
                             : "pole-telecom"
                         } border font-mono text-xs`}
                       >
-                        {pole.pole_type}
+                        {pole.pole_owner}
                       </Badge>
-                      <p className="text-xs text-zinc-500 font-mono mt-1">
-                        {pole.id.slice(0, 8)}...
-                      </p>
+                      {pole.pole_number && (
+                        <p className="text-xs text-zinc-400 font-mono mt-1">
+                          Pole #{pole.pole_number}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <Badge
@@ -339,6 +342,12 @@ const Dashboard = () => {
                 </div>
 
                 <div className="space-y-2 mb-4">
+                  {pole.job_number && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="text-zinc-500 font-mono text-xs">JOB/EWO:</span>
+                      <span className="text-zinc-300 font-mono">{pole.job_number}</span>
+                    </div>
+                  )}
                   <div className="flex items-center gap-2 text-sm">
                     <span className="text-zinc-500 font-mono text-xs">SIZE:</span>
                     <span className="text-zinc-300">{pole.pole_size}</span>
