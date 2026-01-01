@@ -83,9 +83,10 @@ const AddPole = () => {
     // MGNV
     mgnv: "",
     mgnv_photo: "",
-    // Height of Attachment
+    // Height of Attachment & Telecom Attachment
     height_of_attachment: "",
     height_of_attachment_photo: "",
+    telecom_attachment_photo: "",
     // Down Guy (4 rows)
     down_guy1_size: "",
     down_guy1_direction: "",
@@ -107,15 +108,21 @@ const AddPole = () => {
     down_guy4_owner: "",
     down_guy4_height: "",
     down_guy4_lead: "",
-    // Down Guy Anchor
+    // Down Guy Anchor (merged into Down Guys)
     down_guy_anchor_photo: "",
-    anchor_knuckles: "",
-    // Telecom Attachment
-    telecom_attachment_photo: "",
-    // Other
-    lead_anchor_characteristics: "",
-    ground_type: "",
-    riser_number: "",
+    // Knuckles (4 rows)
+    knuckle1_count: "",
+    knuckle1_condition: "",
+    knuckle1_photo: "",
+    knuckle2_count: "",
+    knuckle2_condition: "",
+    knuckle2_photo: "",
+    knuckle3_count: "",
+    knuckle3_condition: "",
+    knuckle3_photo: "",
+    knuckle4_count: "",
+    knuckle4_condition: "",
+    knuckle4_photo: "",
     // Span (4 spans)
     span1_direction: "",
     span1_distance: "",
