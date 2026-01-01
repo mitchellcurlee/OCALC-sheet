@@ -86,12 +86,27 @@ const AddPole = () => {
     // Height of Attachment
     height_of_attachment: "",
     height_of_attachment_photo: "",
-    // Down Guy
-    down_guy_photo: "",
-    down_guy_size: "",
-    down_guy_direction: "",
-    down_guy_owner: "",
-    down_guy_height: "",
+    // Down Guy (4 rows)
+    down_guy1_size: "",
+    down_guy1_direction: "",
+    down_guy1_owner: "",
+    down_guy1_height: "",
+    down_guy1_lead: "",
+    down_guy2_size: "",
+    down_guy2_direction: "",
+    down_guy2_owner: "",
+    down_guy2_height: "",
+    down_guy2_lead: "",
+    down_guy3_size: "",
+    down_guy3_direction: "",
+    down_guy3_owner: "",
+    down_guy3_height: "",
+    down_guy3_lead: "",
+    down_guy4_size: "",
+    down_guy4_direction: "",
+    down_guy4_owner: "",
+    down_guy4_height: "",
+    down_guy4_lead: "",
     // Down Guy Anchor
     down_guy_anchor_photo: "",
     anchor_knuckles: "",
@@ -197,9 +212,10 @@ const AddPole = () => {
         height_of_attachment: formData.height_of_attachment
           ? parseFloat(formData.height_of_attachment)
           : null,
-        down_guy_height: formData.down_guy_height
-          ? parseFloat(formData.down_guy_height)
-          : null,
+        down_guy1_height: formData.down_guy1_height ? parseFloat(formData.down_guy1_height) : null,
+        down_guy2_height: formData.down_guy2_height ? parseFloat(formData.down_guy2_height) : null,
+        down_guy3_height: formData.down_guy3_height ? parseFloat(formData.down_guy3_height) : null,
+        down_guy4_height: formData.down_guy4_height ? parseFloat(formData.down_guy4_height) : null,
         span1_distance: formData.span1_distance ? parseFloat(formData.span1_distance) : null,
         span2_distance: formData.span2_distance ? parseFloat(formData.span2_distance) : null,
         span3_distance: formData.span3_distance ? parseFloat(formData.span3_distance) : null,
@@ -444,68 +460,187 @@ const AddPole = () => {
             </div>
           </div>
 
-          {/* Down Guy */}
+          {/* Down Guy - 4 Rows */}
           <div className="industrial-card p-5">
             <h2 className="font-heading text-lg font-bold text-white mb-4 flex items-center gap-2">
               <div className="w-1 h-5 bg-yellow-500"></div>
-              Down Guy
+              Down Guys
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-              <PhotoUpload label="Down Guy Photo" value={formData.down_guy_photo} onChange={(v) => handlePhotoChange("down_guy_photo", v)} testId="down-guy" />
-              
-              <div className="space-y-2">
-                <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Size</Label>
-                <Select value={formData.down_guy_size} onValueChange={(v) => handleSelectChange("down_guy_size", v)}>
-                  <SelectTrigger className="h-10 bg-black border-zinc-700 text-white" data-testid="down-guy-size-select">
-                    <SelectValue placeholder="Select size" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-zinc-900 border-zinc-700">
-                    {options.down_guy_sizes.map((s) => (
-                      <SelectItem key={s} value={s}>{s}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+            <div className="space-y-3">
+              {/* Down Guy 1 */}
+              <div className="bg-zinc-800/50 p-3 border border-zinc-700">
+                <div className="flex items-center gap-4">
+                  <span className="text-sm font-mono text-yellow-400 w-8">1</span>
+                  <div className="grid grid-cols-5 gap-3 flex-1">
+                    <div className="space-y-1">
+                      <Label className="text-xs font-mono text-zinc-500">Size</Label>
+                      <Select value={formData.down_guy1_size} onValueChange={(v) => handleSelectChange("down_guy1_size", v)}>
+                        <SelectTrigger className="h-9 bg-black border-zinc-700 text-white text-sm"><SelectValue placeholder="Size" /></SelectTrigger>
+                        <SelectContent className="bg-zinc-900 border-zinc-700">
+                          {options.down_guy_sizes.map((s) => (<SelectItem key={s} value={s}>{s}</SelectItem>))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-mono text-zinc-500">Direction</Label>
+                      <Select value={formData.down_guy1_direction} onValueChange={(v) => handleSelectChange("down_guy1_direction", v)}>
+                        <SelectTrigger className="h-9 bg-black border-zinc-700 text-white text-sm"><SelectValue placeholder="Dir" /></SelectTrigger>
+                        <SelectContent className="bg-zinc-900 border-zinc-700">
+                          {options.down_guy_directions.map((d) => (<SelectItem key={d} value={d}>{d}</SelectItem>))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-mono text-zinc-500">Owner</Label>
+                      <Select value={formData.down_guy1_owner} onValueChange={(v) => handleSelectChange("down_guy1_owner", v)}>
+                        <SelectTrigger className="h-9 bg-black border-zinc-700 text-white text-sm"><SelectValue placeholder="Owner" /></SelectTrigger>
+                        <SelectContent className="bg-zinc-900 border-zinc-700">
+                          {options.down_guy_owners.map((o) => (<SelectItem key={o} value={o}>{o}</SelectItem>))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-mono text-zinc-500">Height (ft)</Label>
+                      <Input type="number" name="down_guy1_height" value={formData.down_guy1_height} onChange={handleInputChange} step="0.1" className="h-9 bg-black border-zinc-700 text-white text-sm" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-mono text-zinc-500">Lead</Label>
+                      <Input name="down_guy1_lead" value={formData.down_guy1_lead} onChange={handleInputChange} placeholder="Lead" className="h-9 bg-black border-zinc-700 text-white text-sm" />
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <div className="space-y-2">
-                <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Direction</Label>
-                <Select value={formData.down_guy_direction} onValueChange={(v) => handleSelectChange("down_guy_direction", v)}>
-                  <SelectTrigger className="h-10 bg-black border-zinc-700 text-white" data-testid="down-guy-direction-select">
-                    <SelectValue placeholder="Select direction" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-zinc-900 border-zinc-700">
-                    {options.down_guy_directions.map((d) => (
-                      <SelectItem key={d} value={d}>{d}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              {/* Down Guy 2 */}
+              <div className="bg-zinc-800/50 p-3 border border-zinc-700">
+                <div className="flex items-center gap-4">
+                  <span className="text-sm font-mono text-yellow-400 w-8">2</span>
+                  <div className="grid grid-cols-5 gap-3 flex-1">
+                    <div className="space-y-1">
+                      <Label className="text-xs font-mono text-zinc-500">Size</Label>
+                      <Select value={formData.down_guy2_size} onValueChange={(v) => handleSelectChange("down_guy2_size", v)}>
+                        <SelectTrigger className="h-9 bg-black border-zinc-700 text-white text-sm"><SelectValue placeholder="Size" /></SelectTrigger>
+                        <SelectContent className="bg-zinc-900 border-zinc-700">
+                          {options.down_guy_sizes.map((s) => (<SelectItem key={s} value={s}>{s}</SelectItem>))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-mono text-zinc-500">Direction</Label>
+                      <Select value={formData.down_guy2_direction} onValueChange={(v) => handleSelectChange("down_guy2_direction", v)}>
+                        <SelectTrigger className="h-9 bg-black border-zinc-700 text-white text-sm"><SelectValue placeholder="Dir" /></SelectTrigger>
+                        <SelectContent className="bg-zinc-900 border-zinc-700">
+                          {options.down_guy_directions.map((d) => (<SelectItem key={d} value={d}>{d}</SelectItem>))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-mono text-zinc-500">Owner</Label>
+                      <Select value={formData.down_guy2_owner} onValueChange={(v) => handleSelectChange("down_guy2_owner", v)}>
+                        <SelectTrigger className="h-9 bg-black border-zinc-700 text-white text-sm"><SelectValue placeholder="Owner" /></SelectTrigger>
+                        <SelectContent className="bg-zinc-900 border-zinc-700">
+                          {options.down_guy_owners.map((o) => (<SelectItem key={o} value={o}>{o}</SelectItem>))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-mono text-zinc-500">Height (ft)</Label>
+                      <Input type="number" name="down_guy2_height" value={formData.down_guy2_height} onChange={handleInputChange} step="0.1" className="h-9 bg-black border-zinc-700 text-white text-sm" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-mono text-zinc-500">Lead</Label>
+                      <Input name="down_guy2_lead" value={formData.down_guy2_lead} onChange={handleInputChange} placeholder="Lead" className="h-9 bg-black border-zinc-700 text-white text-sm" />
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <div className="space-y-2">
-                <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Owner</Label>
-                <Select value={formData.down_guy_owner} onValueChange={(v) => handleSelectChange("down_guy_owner", v)}>
-                  <SelectTrigger className="h-10 bg-black border-zinc-700 text-white" data-testid="down-guy-owner-select">
-                    <SelectValue placeholder="Select owner" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-zinc-900 border-zinc-700">
-                    {options.down_guy_owners.map((o) => (
-                      <SelectItem key={o} value={o}>{o}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              {/* Down Guy 3 */}
+              <div className="bg-zinc-800/50 p-3 border border-zinc-700">
+                <div className="flex items-center gap-4">
+                  <span className="text-sm font-mono text-yellow-400 w-8">3</span>
+                  <div className="grid grid-cols-5 gap-3 flex-1">
+                    <div className="space-y-1">
+                      <Label className="text-xs font-mono text-zinc-500">Size</Label>
+                      <Select value={formData.down_guy3_size} onValueChange={(v) => handleSelectChange("down_guy3_size", v)}>
+                        <SelectTrigger className="h-9 bg-black border-zinc-700 text-white text-sm"><SelectValue placeholder="Size" /></SelectTrigger>
+                        <SelectContent className="bg-zinc-900 border-zinc-700">
+                          {options.down_guy_sizes.map((s) => (<SelectItem key={s} value={s}>{s}</SelectItem>))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-mono text-zinc-500">Direction</Label>
+                      <Select value={formData.down_guy3_direction} onValueChange={(v) => handleSelectChange("down_guy3_direction", v)}>
+                        <SelectTrigger className="h-9 bg-black border-zinc-700 text-white text-sm"><SelectValue placeholder="Dir" /></SelectTrigger>
+                        <SelectContent className="bg-zinc-900 border-zinc-700">
+                          {options.down_guy_directions.map((d) => (<SelectItem key={d} value={d}>{d}</SelectItem>))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-mono text-zinc-500">Owner</Label>
+                      <Select value={formData.down_guy3_owner} onValueChange={(v) => handleSelectChange("down_guy3_owner", v)}>
+                        <SelectTrigger className="h-9 bg-black border-zinc-700 text-white text-sm"><SelectValue placeholder="Owner" /></SelectTrigger>
+                        <SelectContent className="bg-zinc-900 border-zinc-700">
+                          {options.down_guy_owners.map((o) => (<SelectItem key={o} value={o}>{o}</SelectItem>))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-mono text-zinc-500">Height (ft)</Label>
+                      <Input type="number" name="down_guy3_height" value={formData.down_guy3_height} onChange={handleInputChange} step="0.1" className="h-9 bg-black border-zinc-700 text-white text-sm" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-mono text-zinc-500">Lead</Label>
+                      <Input name="down_guy3_lead" value={formData.down_guy3_lead} onChange={handleInputChange} placeholder="Lead" className="h-9 bg-black border-zinc-700 text-white text-sm" />
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <div className="space-y-2">
-                <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Height (ft)</Label>
-                <Input
-                  type="number"
-                  name="down_guy_height"
-                  value={formData.down_guy_height}
-                  onChange={handleInputChange}
-                  step="0.1"
-                  className="h-10 bg-black border-zinc-700 text-white"
-                  data-testid="down-guy-height-input"
-                />
+              {/* Down Guy 4 */}
+              <div className="bg-zinc-800/50 p-3 border border-zinc-700">
+                <div className="flex items-center gap-4">
+                  <span className="text-sm font-mono text-yellow-400 w-8">4</span>
+                  <div className="grid grid-cols-5 gap-3 flex-1">
+                    <div className="space-y-1">
+                      <Label className="text-xs font-mono text-zinc-500">Size</Label>
+                      <Select value={formData.down_guy4_size} onValueChange={(v) => handleSelectChange("down_guy4_size", v)}>
+                        <SelectTrigger className="h-9 bg-black border-zinc-700 text-white text-sm"><SelectValue placeholder="Size" /></SelectTrigger>
+                        <SelectContent className="bg-zinc-900 border-zinc-700">
+                          {options.down_guy_sizes.map((s) => (<SelectItem key={s} value={s}>{s}</SelectItem>))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-mono text-zinc-500">Direction</Label>
+                      <Select value={formData.down_guy4_direction} onValueChange={(v) => handleSelectChange("down_guy4_direction", v)}>
+                        <SelectTrigger className="h-9 bg-black border-zinc-700 text-white text-sm"><SelectValue placeholder="Dir" /></SelectTrigger>
+                        <SelectContent className="bg-zinc-900 border-zinc-700">
+                          {options.down_guy_directions.map((d) => (<SelectItem key={d} value={d}>{d}</SelectItem>))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-mono text-zinc-500">Owner</Label>
+                      <Select value={formData.down_guy4_owner} onValueChange={(v) => handleSelectChange("down_guy4_owner", v)}>
+                        <SelectTrigger className="h-9 bg-black border-zinc-700 text-white text-sm"><SelectValue placeholder="Owner" /></SelectTrigger>
+                        <SelectContent className="bg-zinc-900 border-zinc-700">
+                          {options.down_guy_owners.map((o) => (<SelectItem key={o} value={o}>{o}</SelectItem>))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-mono text-zinc-500">Height (ft)</Label>
+                      <Input type="number" name="down_guy4_height" value={formData.down_guy4_height} onChange={handleInputChange} step="0.1" className="h-9 bg-black border-zinc-700 text-white text-sm" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-mono text-zinc-500">Lead</Label>
+                      <Input name="down_guy4_lead" value={formData.down_guy4_lead} onChange={handleInputChange} placeholder="Lead" className="h-9 bg-black border-zinc-700 text-white text-sm" />
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -733,13 +868,13 @@ const AddPole = () => {
               <div className="h-64 border border-zinc-700 overflow-hidden">
                 <MapContainer
                   center={mapCenter}
-                  zoom={13}
+                  zoom={18}
                   style={{ height: "100%", width: "100%" }}
                   className="z-0"
                 >
                   <TileLayer
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    attribution='&copy; OpenStreetMap'
+                    url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                    attribution='&copy; Esri'
                   />
                   <MapClickHandler onLocationSelect={handleMapClick} />
                   {formData.latitude && formData.longitude && (
