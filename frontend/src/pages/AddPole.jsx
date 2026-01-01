@@ -423,7 +423,7 @@ const AddPole = () => {
               <div className="w-1 h-5 bg-cyan-500"></div>
               MGNV
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">MGNV Present</Label>
                 <Select value={formData.mgnv} onValueChange={(v) => handleSelectChange("mgnv", v)}>
@@ -433,6 +433,18 @@ const AddPole = () => {
                   <SelectContent className="bg-zinc-900 border-zinc-700">
                     <SelectItem value="Yes">Yes</SelectItem>
                     <SelectItem value="No">No</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Condition</Label>
+                <Select value={formData.mgnv_condition} onValueChange={(v) => handleSelectChange("mgnv_condition", v)}>
+                  <SelectTrigger className="h-10 bg-black border-zinc-700 text-white" data-testid="mgnv-condition-select">
+                    <SelectValue placeholder="Good / Broken" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-zinc-900 border-zinc-700">
+                    <SelectItem value="Good" className="text-green-400">Good</SelectItem>
+                    <SelectItem value="Broken" className="text-red-400">Broken</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
