@@ -139,37 +139,37 @@ const Dashboard = () => {
     <div className="min-h-screen bg-industrial-bg" data-testid="dashboard">
       {/* Header */}
       <header className="border-b border-zinc-800 bg-zinc-900/50 backdrop-blur-sm sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-red-600 flex items-center justify-center">
-                <Zap className="w-6 h-6 text-white" />
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 bg-red-600 flex items-center justify-center flex-shrink-0">
+                <Zap className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               </div>
               <div>
-                <h1 className="font-heading text-2xl font-black tracking-tight uppercase text-white">
+                <h1 className="font-heading text-lg sm:text-2xl font-black tracking-tight uppercase text-white">
                   Pole Inspector
                 </h1>
-                <p className="text-xs text-zinc-500 font-mono tracking-wider">
+                <p className="text-xs text-zinc-500 font-mono tracking-wider hidden sm:block">
                   POWER POLE DATA COLLECTION SYSTEM
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
               <Button
                 onClick={handleExport}
                 variant="outline"
-                className="industrial-button bg-zinc-800 border-zinc-700 hover:bg-zinc-700 text-white"
+                className="industrial-button flex-1 sm:flex-initial h-11 sm:h-10 bg-zinc-800 border-zinc-700 hover:bg-zinc-700 text-white text-sm"
                 data-testid="export-btn"
               >
-                <FileSpreadsheet className="w-4 h-4 mr-2" />
-                Export Excel
+                <FileSpreadsheet className="w-4 h-4 mr-1 sm:mr-2" />
+                <span className="hidden xs:inline">Export</span> Excel
               </Button>
-              <Link to="/add">
+              <Link to="/add" className="flex-1 sm:flex-initial">
                 <Button
-                  className="industrial-button bg-red-600 hover:bg-red-700 text-white"
+                  className="industrial-button w-full h-11 sm:h-10 bg-red-600 hover:bg-red-700 text-white text-sm"
                   data-testid="add-pole-btn"
                 >
-                  <Plus className="w-4 h-4 mr-2" />
+                  <Plus className="w-4 h-4 mr-1 sm:mr-2" />
                   Add Pole
                 </Button>
               </Link>
@@ -177,6 +177,7 @@ const Dashboard = () => {
           </div>
         </div>
       </header>
+
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats */}
