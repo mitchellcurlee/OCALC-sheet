@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, UploadFile, File, HTTPException
+from fastapi import FastAPI, APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -10,7 +10,6 @@ from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional
 import uuid
 from datetime import datetime, timezone
-import base64
 import io
 from openpyxl import Workbook
 
@@ -28,8 +27,8 @@ app = FastAPI()
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
-# Pole Types
-POLE_TYPES = ["Power", "Telecom"]
+# Options
+POLE_OWNERS = ["Power", "Telecom"]
 POLE_CONDITIONS = ["Excellent", "Good", "Bad"]
 POLE_SIZES = [
     "1-25", "1-30", "1-35", "1-40", "1-45", "1-50", "1-55", "1-60",
@@ -38,39 +37,98 @@ POLE_SIZES = [
     "4-25", "4-30", "4-35", "4-40", "4-45", "4-50", "4-55", "4-60",
     "5-25", "5-30", "5-35", "5-40", "5-45", "5-50", "5-55", "5-60"
 ]
+DOWN_GUY_OWNERS = ["Power", "ATT", "Comcast", "Lightwave", "Logix", "PS"]
+DOWN_GUY_DIRECTIONS = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
+DOWN_GUY_SIZES = ["1/4", "3/8", "1/2", "5/8", "3/4"]
+KNUCKLE_OPTIONS = ["0", "1", "2", "3", "4", "5", "6"]
+YES_NO = ["Yes", "No"]
 
 # Models
 class PoleBase(BaseModel):
-    pole_type: str
+    # Title Info
+    job_number: Optional[str] = None
+    pole_number: Optional[str] = None
+    
+    # Basic Info
+    pole_owner: str  # Power or Telecom
     pole_size: str
-    telecom_attachments: int = 0
     condition: str
+    telecom_attachments: int = 0
+    
+    # OCALC Photos
+    ocalc_left_photo: Optional[str] = None
+    ocalc_middle_photo: Optional[str] = None
+    ocalc_right_photo: Optional[str] = None
+    
+    # Birthmark
+    has_birthmark: bool = True
+    birthmark_photo: Optional[str] = None
+    
+    # MGNV
+    mgnv: Optional[str] = None  # Yes/No
+    mgnv_photo: Optional[str] = None
+    
+    # Height of Attachment
+    height_of_attachment: Optional[float] = None
+    height_of_attachment_photo: Optional[str] = None
+    
+    # Down Guy
+    down_guy_photo: Optional[str] = None
+    down_guy_size: Optional[str] = None
+    down_guy_direction: Optional[str] = None
+    down_guy_owner: Optional[str] = None
     down_guy_height: Optional[float] = None
+    
+    # Down Guy Anchor
+    down_guy_anchor_photo: Optional[str] = None
+    anchor_knuckles: Optional[str] = None
+    
+    # Telecom Attachment
+    telecom_attachment_photo: Optional[str] = None
+    
+    # Other fields
     lead_anchor_characteristics: Optional[str] = None
     ground_type: Optional[str] = None
     riser_number: Optional[int] = None
-    height_of_attachment: Optional[float] = None
+    
+    # GPS
     latitude: Optional[float] = None
     longitude: Optional[float] = None
-    photo_base64: Optional[str] = None
+    
     notes: Optional[str] = None
 
 class PoleCreate(PoleBase):
     pass
 
 class PoleUpdate(BaseModel):
-    pole_type: Optional[str] = None
+    job_number: Optional[str] = None
+    pole_number: Optional[str] = None
+    pole_owner: Optional[str] = None
     pole_size: Optional[str] = None
-    telecom_attachments: Optional[int] = None
     condition: Optional[str] = None
+    telecom_attachments: Optional[int] = None
+    ocalc_left_photo: Optional[str] = None
+    ocalc_middle_photo: Optional[str] = None
+    ocalc_right_photo: Optional[str] = None
+    has_birthmark: Optional[bool] = None
+    birthmark_photo: Optional[str] = None
+    mgnv: Optional[str] = None
+    mgnv_photo: Optional[str] = None
+    height_of_attachment: Optional[float] = None
+    height_of_attachment_photo: Optional[str] = None
+    down_guy_photo: Optional[str] = None
+    down_guy_size: Optional[str] = None
+    down_guy_direction: Optional[str] = None
+    down_guy_owner: Optional[str] = None
     down_guy_height: Optional[float] = None
+    down_guy_anchor_photo: Optional[str] = None
+    anchor_knuckles: Optional[str] = None
+    telecom_attachment_photo: Optional[str] = None
     lead_anchor_characteristics: Optional[str] = None
     ground_type: Optional[str] = None
     riser_number: Optional[int] = None
-    height_of_attachment: Optional[float] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
-    photo_base64: Optional[str] = None
     notes: Optional[str] = None
 
 class Pole(PoleBase):
@@ -89,9 +147,14 @@ async def root():
 async def get_pole_options():
     """Get dropdown options for pole form"""
     return {
-        "pole_types": POLE_TYPES,
+        "pole_owners": POLE_OWNERS,
         "conditions": POLE_CONDITIONS,
-        "sizes": POLE_SIZES
+        "sizes": POLE_SIZES,
+        "down_guy_owners": DOWN_GUY_OWNERS,
+        "down_guy_directions": DOWN_GUY_DIRECTIONS,
+        "down_guy_sizes": DOWN_GUY_SIZES,
+        "knuckle_options": KNUCKLE_OPTIONS,
+        "yes_no": YES_NO
     }
 
 @api_router.post("/poles", response_model=Pole, status_code=201)
@@ -104,14 +167,13 @@ async def create_pole(pole_data: PoleCreate):
 
 @api_router.get("/poles", response_model=List[Pole])
 async def get_poles(
-    pole_type: Optional[str] = None,
-    condition: Optional[str] = None,
-    search: Optional[str] = None
+    pole_owner: Optional[str] = None,
+    condition: Optional[str] = None
 ):
     """Get all poles with optional filtering"""
     query = {}
-    if pole_type:
-        query["pole_type"] = pole_type
+    if pole_owner:
+        query["pole_owner"] = pole_owner
     if condition:
         query["condition"] = condition
     
@@ -151,7 +213,7 @@ async def delete_pole(pole_id: str):
 @api_router.get("/poles/export/excel")
 async def export_poles_excel():
     """Export all poles to Excel"""
-    poles = await db.poles.find({}, {"_id": 0, "photo_base64": 0}).sort("created_at", -1).to_list(10000)
+    poles = await db.poles.find({}, {"_id": 0}).sort("created_at", -1).to_list(10000)
     
     wb = Workbook()
     ws = wb.active
@@ -159,32 +221,39 @@ async def export_poles_excel():
     
     # Headers
     headers = [
-        "ID", "Pole Type", "Pole Size", "Telecom Attachments", "Condition",
-        "Down Guy Height (ft)", "Lead/Anchor Characteristics", "Ground Type",
-        "Riser Number", "Height of Attachment (ft)", "Latitude", "Longitude",
-        "Inspection Date", "Notes", "Created At", "Updated At"
+        "ID", "Job Number", "Pole Number", "Pole Owner", "Pole Size", "Condition",
+        "Telecom Attachments", "Has Birthmark", "MGNV", "Height of Attachment (ft)",
+        "Down Guy Size", "Down Guy Direction", "Down Guy Owner", "Down Guy Height (ft)",
+        "Anchor Knuckles", "Lead/Anchor Characteristics", "Ground Type", "Riser Number",
+        "Latitude", "Longitude", "Inspection Date", "Notes"
     ]
     ws.append(headers)
     
-    # Data rows
+    # Data rows (exclude photo fields)
     for pole in poles:
         ws.append([
             pole.get("id", ""),
-            pole.get("pole_type", ""),
+            pole.get("job_number", ""),
+            pole.get("pole_number", ""),
+            pole.get("pole_owner", ""),
             pole.get("pole_size", ""),
-            pole.get("telecom_attachments", 0),
             pole.get("condition", ""),
+            pole.get("telecom_attachments", 0),
+            "Yes" if pole.get("has_birthmark", True) else "No",
+            pole.get("mgnv", ""),
+            pole.get("height_of_attachment", ""),
+            pole.get("down_guy_size", ""),
+            pole.get("down_guy_direction", ""),
+            pole.get("down_guy_owner", ""),
             pole.get("down_guy_height", ""),
+            pole.get("anchor_knuckles", ""),
             pole.get("lead_anchor_characteristics", ""),
             pole.get("ground_type", ""),
             pole.get("riser_number", ""),
-            pole.get("height_of_attachment", ""),
             pole.get("latitude", ""),
             pole.get("longitude", ""),
             pole.get("inspection_date", ""),
-            pole.get("notes", ""),
-            pole.get("created_at", ""),
-            pole.get("updated_at", "")
+            pole.get("notes", "")
         ])
     
     # Adjust column widths
@@ -217,8 +286,8 @@ async def export_poles_excel():
 async def get_stats():
     """Get pole statistics"""
     total = await db.poles.count_documents({})
-    power_count = await db.poles.count_documents({"pole_type": "Power"})
-    telecom_count = await db.poles.count_documents({"pole_type": "Telecom"})
+    power_count = await db.poles.count_documents({"pole_owner": "Power"})
+    telecom_count = await db.poles.count_documents({"pole_owner": "Telecom"})
     
     condition_stats = {}
     for condition in POLE_CONDITIONS:
