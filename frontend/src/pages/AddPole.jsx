@@ -326,18 +326,18 @@ const AddPole = () => {
               <div className="w-1 h-5 bg-red-500"></div>
               Basic Information
             </h2>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">
                   Pole Owner *
                 </Label>
                 <Select value={formData.pole_owner} onValueChange={(v) => handleSelectChange("pole_owner", v)}>
-                  <SelectTrigger className={`h-10 bg-black border-zinc-700 ${formData.pole_owner === "Power" ? "text-red-500 border-red-500/50" : formData.pole_owner === "Telecom" ? "text-orange-500 border-orange-500/50" : "text-white"}`} data-testid="pole-owner-select">
+                  <SelectTrigger className={`h-10 bg-black border-zinc-700 ${formData.pole_owner === "Foreign Owned" ? "text-red-500 border-red-500/50" : formData.pole_owner === "ATT" ? "text-orange-500 border-orange-500/50" : "text-white"}`} data-testid="pole-owner-select">
                     <SelectValue placeholder="Select owner" />
                   </SelectTrigger>
                   <SelectContent className="bg-zinc-900 border-zinc-700">
                     {options.pole_owners.map((o) => (
-                      <SelectItem key={o} value={o} className={o === "Power" ? "text-red-500" : "text-orange-500"}>
+                      <SelectItem key={o} value={o} className={o === "Foreign Owned" ? "text-red-500" : "text-orange-500"}>
                         {o}
                       </SelectItem>
                     ))}
@@ -376,17 +376,8 @@ const AddPole = () => {
                   </SelectContent>
                 </Select>
               </div>
-
-              <div className="space-y-2">
-                <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">
-                  Telecom Attachments
-                </Label>
-                <Input
-                  type="number"
-                  name="telecom_attachments"
-                  value={formData.telecom_attachments}
-                  onChange={handleInputChange}
-                  min="0"
+            </div>
+          </div>
                   className="h-10 bg-black border-zinc-700 text-white"
                   data-testid="telecom-attachments-input"
                 />
