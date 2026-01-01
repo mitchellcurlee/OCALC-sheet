@@ -62,7 +62,7 @@ class PoleAPITester:
         """Test getting pole form options"""
         success, response = self.run_test("Get Pole Options", "GET", "poles/options", 200)
         if success:
-            required_keys = ['pole_types', 'conditions', 'sizes']
+            required_keys = ['pole_owners', 'conditions', 'sizes', 'down_guy_owners', 'span_owners']
             for key in required_keys:
                 if key not in response:
                     print(f"❌ Missing required key: {key}")
@@ -74,95 +74,212 @@ class PoleAPITester:
         """Test getting pole statistics"""
         success, response = self.run_test("Get Stats", "GET", "stats", 200)
         if success:
-            required_keys = ['total_poles', 'power_poles', 'telecom_poles', 'by_condition']
+            required_keys = ['total_poles', 'by_condition']
             for key in required_keys:
                 if key not in response:
                     print(f"❌ Missing required key: {key}")
                     return False
-            print(f"   Stats: Total={response.get('total_poles')}, Power={response.get('power_poles')}, Telecom={response.get('telecom_poles')}")
+            print(f"   Stats: Total={response.get('total_poles')}, By condition={response.get('by_condition')}")
         return success
 
-    def test_create_power_pole(self):
-        """Create a test power pole"""
+    def test_create_comprehensive_pole(self):
+        """Create a pole with comprehensive data for all sections"""
         pole_data = {
-            "pole_type": "Power",
-            "pole_size": "Medium (35-45ft)",
-            "telecom_attachments": 2,
-            "condition": "Good",
-            "down_guy_height": 15.5,
-            "lead_anchor_characteristics": "Steel anchor, 6ft lead",
-            "ground_type": "Concrete",
-            "riser_number": 3,
-            "height_of_attachment": 25.0,
-            "latitude": 37.7749,
-            "longitude": -122.4194,
-            "notes": "Test power pole created by automated testing"
+            # Basic Info
+            "pole_owner": "Foreign Owned",
+            "pole_size": "3-35",
+            "condition": "Excellent",
+            
+            # Job/Pole numbers
+            "job_number": "JOB-123",
+            "pole_number": "POLE-456",
+            
+            # GPS
+            "latitude": 40.7128,
+            "longitude": -74.0060,
+            
+            # Spans (2 spans)
+            "span1_direction": "N",
+            "span1_distance": 150.5,
+            "span1_owner": "Power",
+            "span2_direction": "S", 
+            "span2_distance": 200.0,
+            "span2_owner": "ATT",
+            
+            # Down Guys (2 down guys)
+            "down_guy1_size": "1/2",
+            "down_guy1_direction": "NE",
+            "down_guy1_owner": "Power",
+            "down_guy1_height": 25.0,
+            "down_guy1_lead": "Steel anchor, 8ft lead",
+            "down_guy2_size": "3/8",
+            "down_guy2_direction": "SW",
+            "down_guy2_owner": "ATT",
+            "down_guy2_height": 20.0,
+            "down_guy2_lead": "Concrete anchor, 6ft lead",
+            
+            # Knuckles (2 knuckles)
+            "knuckle1_count": "3",
+            "knuckle1_condition": "Good",
+            "knuckle2_count": "2", 
+            "knuckle2_condition": "Broken",
+            
+            # Height of Attachments (2 attachments)
+            "attachment1_height": 30.0,
+            "attachment1_owner": "Power",
+            "attachment2_height": 25.0,
+            "attachment2_owner": "Comcast",
+            
+            # Pole Terminal
+            "pole_terminal": "Yes",
+            
+            # Risers
+            "risers": "3",
+            
+            # MGNV
+            "mgnv": "Yes",
+            "mgnv_condition": "Good",
+            
+            # Birthmark
+            "has_birthmark": True,
+            
+            # Notes
+            "notes": "Test pole with comprehensive data for all sections"
         }
         
-        success, response = self.run_test("Create Power Pole", "POST", "poles", 200, data=pole_data)
+        success, response = self.run_test("Create Comprehensive Pole", "POST", "poles", 201, data=pole_data)
         if success and 'id' in response:
             self.created_pole_id = response['id']
             print(f"   Created pole ID: {self.created_pole_id}")
+            
+            # Verify all data was saved correctly
+            if self.verify_pole_data(response, pole_data):
+                print("   ✅ All pole data verified correctly")
+                return True
+            else:
+                print("   ❌ Pole data verification failed")
+                return False
         return success
 
-    def test_create_telecom_pole(self):
-        """Create a test telecom pole"""
-        pole_data = {
-            "pole_type": "Telecom",
-            "pole_size": "Small (20-30ft)",
-            "telecom_attachments": 5,
-            "condition": "Excellent",
-            "down_guy_height": 12.0,
-            "lead_anchor_characteristics": "Aluminum anchor, 4ft lead",
-            "ground_type": "Soil",
-            "riser_number": 1,
-            "height_of_attachment": 20.0,
-            "latitude": 37.7849,
-            "longitude": -122.4094,
-            "notes": "Test telecom pole created by automated testing"
+    def verify_pole_data(self, response_data, expected_data):
+        """Verify that the response contains all expected data"""
+        for key, expected_value in expected_data.items():
+            if key not in response_data:
+                print(f"   ❌ Missing field: {key}")
+                return False
+            if response_data[key] != expected_value:
+                print(f"   ❌ Field mismatch - {key}: expected {expected_value}, got {response_data[key]}")
+                return False
+        return True
+
+    def test_get_single_pole_comprehensive(self):
+        """Test getting the comprehensive pole by ID and verify all data"""
+        if not self.created_pole_id:
+            print("❌ No pole ID available for testing")
+            return False
+        
+        success, response = self.run_test("Get Comprehensive Pole", "GET", f"poles/{self.created_pole_id}", 200)
+        if success:
+            # Verify key fields are present
+            required_fields = [
+                'id', 'pole_owner', 'pole_size', 'condition', 'job_number', 'pole_number',
+                'latitude', 'longitude', 'span1_direction', 'span1_distance', 'span1_owner',
+                'down_guy1_size', 'down_guy1_direction', 'knuckle1_count', 'attachment1_height',
+                'pole_terminal', 'risers', 'mgnv', 'has_birthmark', 'notes'
+            ]
+            
+            missing_fields = []
+            for field in required_fields:
+                if field not in response:
+                    missing_fields.append(field)
+            
+            if missing_fields:
+                print(f"   ❌ Missing fields in response: {missing_fields}")
+                return False
+            else:
+                print("   ✅ All required fields present in response")
+                return True
+        return success
+
+    def test_update_pole_comprehensive(self):
+        """Test updating the pole with new data"""
+        if not self.created_pole_id:
+            print("❌ No pole ID available for testing")
+            return False
+        
+        update_data = {
+            # Change condition
+            "condition": "Bad",
+            # Add a new span
+            "span3_direction": "E",
+            "span3_distance": 175.0,
+            "span3_owner": "Lightwave",
+            # Update a knuckle condition
+            "knuckle1_condition": "Broken",
+            # Update notes
+            "notes": "Updated pole data - condition changed to Bad, added span 3, updated knuckle 1"
         }
         
-        success, response = self.run_test("Create Telecom Pole", "POST", "poles", 200, data=pole_data)
+        success, response = self.run_test("Update Comprehensive Pole", "PUT", f"poles/{self.created_pole_id}", 200, data=update_data)
+        if success:
+            # Verify the updates were applied
+            for key, expected_value in update_data.items():
+                if key not in response:
+                    print(f"   ❌ Updated field missing: {key}")
+                    return False
+                if response[key] != expected_value:
+                    print(f"   ❌ Update failed - {key}: expected {expected_value}, got {response[key]}")
+                    return False
+            print("   ✅ All updates verified correctly")
+            return True
+        return success
+
+    def test_get_updated_pole_data(self):
+        """Verify the updated data is returned correctly on subsequent GET"""
+        if not self.created_pole_id:
+            print("❌ No pole ID available for testing")
+            return False
+        
+        success, response = self.run_test("Get Updated Pole Data", "GET", f"poles/{self.created_pole_id}", 200)
+        if success:
+            # Check that updates are persisted
+            expected_updates = {
+                "condition": "Bad",
+                "span3_direction": "E",
+                "span3_distance": 175.0,
+                "span3_owner": "Lightwave",
+                "knuckle1_condition": "Broken"
+            }
+            
+            for key, expected_value in expected_updates.items():
+                if response.get(key) != expected_value:
+                    print(f"   ❌ Persisted update failed - {key}: expected {expected_value}, got {response.get(key)}")
+                    return False
+            
+            print("   ✅ All updated data persisted correctly")
+            return True
+        return success
+
+    def test_export_excel(self):
+        """Test Excel export functionality"""
+        success, response = self.run_test("Export Excel", "GET", "poles/export/excel", 200)
+        if success:
+            print("   ✅ Excel export endpoint working")
         return success
 
     def test_get_all_poles(self):
         """Test getting all poles"""
         return self.run_test("Get All Poles", "GET", "poles", 200)
 
-    def test_get_poles_filtered_by_type(self):
-        """Test filtering poles by type"""
-        success1, _ = self.run_test("Filter Power Poles", "GET", "poles", 200, params={"pole_type": "Power"})
-        success2, _ = self.run_test("Filter Telecom Poles", "GET", "poles", 200, params={"pole_type": "Telecom"})
+    def test_get_poles_filtered_by_owner(self):
+        """Test filtering poles by owner"""
+        success1, _ = self.run_test("Filter Foreign Owned Poles", "GET", "poles", 200, params={"pole_owner": "Foreign Owned"})
+        success2, _ = self.run_test("Filter ATT Poles", "GET", "poles", 200, params={"pole_owner": "ATT"})
         return success1 and success2
 
     def test_get_poles_filtered_by_condition(self):
         """Test filtering poles by condition"""
-        return self.run_test("Filter by Condition", "GET", "poles", 200, params={"condition": "Good"})
-
-    def test_get_single_pole(self):
-        """Test getting a single pole by ID"""
-        if not self.created_pole_id:
-            print("❌ No pole ID available for testing")
-            return False
-        return self.run_test("Get Single Pole", "GET", f"poles/{self.created_pole_id}", 200)
-
-    def test_update_pole(self):
-        """Test updating a pole"""
-        if not self.created_pole_id:
-            print("❌ No pole ID available for testing")
-            return False
-        
-        update_data = {
-            "condition": "Fair",
-            "notes": "Updated by automated testing - condition changed to Fair"
-        }
-        
-        return self.run_test("Update Pole", "PUT", f"poles/{self.created_pole_id}", 200, data=update_data)
-
-    def test_export_excel(self):
-        """Test Excel export functionality"""
-        success, _ = self.run_test("Export Excel", "GET", "poles/export/excel", 200)
-        return success
+        return self.run_test("Filter by Condition", "GET", "poles", 200, params={"condition": "Bad"})
 
     def test_delete_pole(self):
         """Test deleting a pole"""
