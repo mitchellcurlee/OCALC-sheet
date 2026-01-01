@@ -42,6 +42,8 @@ DOWN_GUY_DIRECTIONS = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
 DOWN_GUY_SIZES = ["1/4", "3/8", "1/2", "5/8", "3/4"]
 KNUCKLE_OPTIONS = ["0", "1", "2", "3", "4", "5", "6"]
 YES_NO = ["Yes", "No"]
+SPAN_OWNERS = ["Power", "ATT", "Comcast", "Lightwave", "Logix", "PS"]
+SPAN_DIRECTIONS = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
 
 # Models
 class PoleBase(BaseModel):
@@ -91,6 +93,11 @@ class PoleBase(BaseModel):
     ground_type: Optional[str] = None
     riser_number: Optional[int] = None
     
+    # Span
+    span_direction: Optional[str] = None
+    span_distance: Optional[float] = None
+    span_owner: Optional[str] = None
+    
     # GPS
     latitude: Optional[float] = None
     longitude: Optional[float] = None
@@ -127,6 +134,9 @@ class PoleUpdate(BaseModel):
     lead_anchor_characteristics: Optional[str] = None
     ground_type: Optional[str] = None
     riser_number: Optional[int] = None
+    span_direction: Optional[str] = None
+    span_distance: Optional[float] = None
+    span_owner: Optional[str] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     notes: Optional[str] = None
@@ -154,7 +164,9 @@ async def get_pole_options():
         "down_guy_directions": DOWN_GUY_DIRECTIONS,
         "down_guy_sizes": DOWN_GUY_SIZES,
         "knuckle_options": KNUCKLE_OPTIONS,
-        "yes_no": YES_NO
+        "yes_no": YES_NO,
+        "span_owners": SPAN_OWNERS,
+        "span_directions": SPAN_DIRECTIONS
     }
 
 @api_router.post("/poles", response_model=Pole, status_code=201)
@@ -224,7 +236,8 @@ async def export_poles_excel():
         "ID", "Job Number", "Pole Number", "Pole Owner", "Pole Size", "Condition",
         "Telecom Attachments", "Has Birthmark", "MGNV", "Height of Attachment (ft)",
         "Down Guy Size", "Down Guy Direction", "Down Guy Owner", "Down Guy Height (ft)",
-        "Anchor Knuckles", "Lead/Anchor Characteristics", "Ground Type", "Riser Number",
+        "Anchor Knuckles", "Span Direction", "Span Distance (ft)", "Span Owner",
+        "Lead/Anchor Characteristics", "Ground Type", "Riser Number",
         "Latitude", "Longitude", "Inspection Date", "Notes"
     ]
     ws.append(headers)
@@ -247,6 +260,9 @@ async def export_poles_excel():
             pole.get("down_guy_owner", ""),
             pole.get("down_guy_height", ""),
             pole.get("anchor_knuckles", ""),
+            pole.get("span_direction", ""),
+            pole.get("span_distance", ""),
+            pole.get("span_owner", ""),
             pole.get("lead_anchor_characteristics", ""),
             pole.get("ground_type", ""),
             pole.get("riser_number", ""),
