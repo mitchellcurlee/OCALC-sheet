@@ -49,16 +49,34 @@ SPAN_DIRECTIONS = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
 ATTACHMENT_OWNERS = ["Power", "ATT", "Comcast", "Lightwave", "Logix", "PS"]
 RISER_OPTIONS = ["1", "2", "3", "4", "5", "6"]
 
+# Models for dynamic arrays
+class DownGuy(BaseModel):
+    size: Optional[str] = None
+    direction: Optional[str] = None
+    owner: Optional[str] = None
+    height: Optional[float] = None
+    lead: Optional[str] = None
+
+class Knuckle(BaseModel):
+    count: Optional[str] = None
+    condition: Optional[str] = None
+    photo: Optional[str] = None
+
+class Attachment(BaseModel):
+    height: Optional[float] = None
+    owner: Optional[str] = None
+    photo: Optional[str] = None
+
 # Models
 class PoleBase(BaseModel):
     # Title Info
     job_number: Optional[str] = None
     pole_number: Optional[str] = None
     
-    # Basic Info
-    pole_owner: str  # Foreign Owned or ATT
+    # Basic Info - Pole Owner moved to Height of Attachments section
     pole_size: str
     condition: str
+    pole_owner: Optional[str] = None  # Now in Height of Attachments section
     
     # OCALC Photos
     ocalc_left_photo: Optional[str] = None
@@ -70,73 +88,20 @@ class PoleBase(BaseModel):
     birthmark_photo: Optional[str] = None
     
     # MGNV
-    mgnv: Optional[str] = None  # Yes/No
-    mgnv_condition: Optional[str] = None  # Good/Broken
+    mgnv: Optional[str] = None
+    mgnv_condition: Optional[str] = None
     mgnv_photo: Optional[str] = None
     
-    # Height of Attachment (5 rows)
-    attachment1_height: Optional[float] = None
-    attachment1_owner: Optional[str] = None
-    attachment1_photo: Optional[str] = None
-    attachment2_height: Optional[float] = None
-    attachment2_owner: Optional[str] = None
-    attachment2_photo: Optional[str] = None
-    attachment3_height: Optional[float] = None
-    attachment3_owner: Optional[str] = None
-    attachment3_photo: Optional[str] = None
-    attachment4_height: Optional[float] = None
-    attachment4_owner: Optional[str] = None
-    attachment4_photo: Optional[str] = None
-    attachment5_height: Optional[float] = None
-    attachment5_owner: Optional[str] = None
-    attachment5_photo: Optional[str] = None
+    # Dynamic arrays
+    down_guys: Optional[List[DownGuy]] = []
+    knuckles: Optional[List[Knuckle]] = []
+    attachments: Optional[List[Attachment]] = []
     
-    # Pole Terminal
-    pole_terminal: Optional[str] = None  # Yes/No
+    # Pole Terminal & Risers (in Height of Attachments section)
+    pole_terminal: Optional[str] = None
+    risers: Optional[str] = None
     
-    # Risers
-    risers: Optional[str] = None  # 1-6
-    
-    # Telecom Attachment Photo
-    telecom_attachment_photo: Optional[str] = None
-    
-    # Down Guy (4 rows)
-    down_guy1_size: Optional[str] = None
-    down_guy1_direction: Optional[str] = None
-    down_guy1_owner: Optional[str] = None
-    down_guy1_height: Optional[float] = None
-    down_guy1_lead: Optional[str] = None
-    down_guy2_size: Optional[str] = None
-    down_guy2_direction: Optional[str] = None
-    down_guy2_owner: Optional[str] = None
-    down_guy2_height: Optional[float] = None
-    down_guy2_lead: Optional[str] = None
-    down_guy3_size: Optional[str] = None
-    down_guy3_direction: Optional[str] = None
-    down_guy3_owner: Optional[str] = None
-    down_guy3_height: Optional[float] = None
-    down_guy3_lead: Optional[str] = None
-    down_guy4_size: Optional[str] = None
-    down_guy4_direction: Optional[str] = None
-    down_guy4_owner: Optional[str] = None
-    down_guy4_height: Optional[float] = None
-    down_guy4_lead: Optional[str] = None
-    
-    # Knuckles (4 rows)
-    knuckle1_count: Optional[str] = None
-    knuckle1_condition: Optional[str] = None
-    knuckle1_photo: Optional[str] = None
-    knuckle2_count: Optional[str] = None
-    knuckle2_condition: Optional[str] = None
-    knuckle2_photo: Optional[str] = None
-    knuckle3_count: Optional[str] = None
-    knuckle3_condition: Optional[str] = None
-    knuckle3_photo: Optional[str] = None
-    knuckle4_count: Optional[str] = None
-    knuckle4_condition: Optional[str] = None
-    knuckle4_photo: Optional[str] = None
-    
-    # Span (4 spans)
+    # Spans (4 fixed)
     span1_direction: Optional[str] = None
     span1_distance: Optional[float] = None
     span1_owner: Optional[str] = None
@@ -173,31 +138,26 @@ class PoleUpdate(BaseModel):
     mgnv: Optional[str] = None
     mgnv_condition: Optional[str] = None
     mgnv_photo: Optional[str] = None
-    attachment1_height: Optional[float] = None
-    attachment1_owner: Optional[str] = None
-    attachment1_photo: Optional[str] = None
-    attachment2_height: Optional[float] = None
-    attachment2_owner: Optional[str] = None
-    attachment2_photo: Optional[str] = None
-    attachment3_height: Optional[float] = None
-    attachment3_owner: Optional[str] = None
-    attachment3_photo: Optional[str] = None
-    attachment4_height: Optional[float] = None
-    attachment4_owner: Optional[str] = None
-    attachment4_photo: Optional[str] = None
-    attachment5_height: Optional[float] = None
-    attachment5_owner: Optional[str] = None
-    attachment5_photo: Optional[str] = None
+    down_guys: Optional[List[DownGuy]] = None
+    knuckles: Optional[List[Knuckle]] = None
+    attachments: Optional[List[Attachment]] = None
     pole_terminal: Optional[str] = None
     risers: Optional[str] = None
-    telecom_attachment_photo: Optional[str] = None
-    down_guy1_size: Optional[str] = None
-    down_guy1_direction: Optional[str] = None
-    down_guy1_owner: Optional[str] = None
-    down_guy1_height: Optional[float] = None
-    down_guy1_lead: Optional[str] = None
-    down_guy2_size: Optional[str] = None
-    down_guy2_direction: Optional[str] = None
+    span1_direction: Optional[str] = None
+    span1_distance: Optional[float] = None
+    span1_owner: Optional[str] = None
+    span2_direction: Optional[str] = None
+    span2_distance: Optional[float] = None
+    span2_owner: Optional[str] = None
+    span3_direction: Optional[str] = None
+    span3_distance: Optional[float] = None
+    span3_owner: Optional[str] = None
+    span4_direction: Optional[str] = None
+    span4_distance: Optional[float] = None
+    span4_owner: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    notes: Optional[str] = None
     down_guy2_owner: Optional[str] = None
     down_guy2_height: Optional[float] = None
     down_guy2_lead: Optional[str] = None
