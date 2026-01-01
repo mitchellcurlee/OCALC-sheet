@@ -1,0 +1,126 @@
+{
+  "design_system": {
+    "name": "Grid-Ops Industrial",
+    "description": "A high-contrast, rugged, field-ready design system optimized for outdoor visibility and rapid data entry. Aesthetic draws from industrial control panels, sci-fi HUDs, and precision tools.",
+    "theme_strategy": "dark_only",
+    "typography": {
+      "font_family": {
+        "heading": "Chivo, sans-serif",
+        "body": "Inter, sans-serif",
+        "mono": "JetBrains Mono, monospace"
+      },
+      "scale": {
+        "h1": "text-4xl font-black tracking-tight uppercase",
+        "h2": "text-2xl font-bold tracking-tight uppercase",
+        "h3": "text-xl font-bold tracking-wide text-zinc-400",
+        "body": "text-base font-normal leading-relaxed",
+        "label": "text-xs font-bold tracking-widest uppercase text-zinc-500",
+        "data": "font-mono text-sm tracking-tight"
+      },
+      "imports": [
+        "@import url('https://fonts.googleapis.com/css2?family=Chivo:wght@400;700;900&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;700&display=swap');"
+      ]
+    },
+    "colors": {
+      "palette": {
+        "background": "#09090b",
+        "surface": "#18181b",
+        "surface_highlight": "#27272a",
+        "border": "#3f3f46",
+        "text_primary": "#fafafa",
+        "text_secondary": "#a1a1aa",
+        "primary": "#ef4444",
+        "secondary": "#f97316",
+        "accent": "#eab308",
+        "success": "#22c55e",
+        "danger": "#ef4444"
+      },
+      "usage": {
+        "power_pole": "text-red-500 border-red-500/50 bg-red-500/10",
+        "telecom_pole": "text-orange-500 border-orange-500/50 bg-orange-500/10",
+        "action_primary": "bg-red-600 hover:bg-red-700 text-white",
+        "action_secondary": "bg-zinc-800 hover:bg-zinc-700 text-white border border-zinc-700"
+      }
+    },
+    "layout": {
+      "container": "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8",
+      "spacing": {
+        "section": "py-12",
+        "component": "p-6"
+      },
+      "grid_strategy": "bento_grid_dense",
+      "border_radius": "rounded-none"
+    },
+    "components": {
+      "buttons": {
+        "style": "sharp_edges",
+        "classes": "rounded-none font-mono uppercase tracking-wider border-2 border-transparent hover:border-white/20 transition-all active:scale-95"
+      },
+      "cards": {
+        "style": "data_plate",
+        "classes": "bg-zinc-900/50 border border-zinc-800 rounded-none backdrop-blur-sm relative overflow-hidden"
+      },
+      "inputs": {
+        "style": "rugged",
+        "classes": "bg-black border-zinc-700 rounded-none focus:ring-2 focus:ring-red-500 focus:border-transparent font-mono"
+      }
+    },
+    "visual_enhancers": {
+      "textures": {
+        "background_overlay": "url('https://images.unsplash.com/photo-1764083292858-1576bce9e678?crop=entropy&cs=srgb&fm=jpg&q=85') opacity-10 mix-blend-overlay fixed inset-0 pointer-events-none z-0",
+        "scanlines": "repeating-linear-gradient(0deg, transparent, transparent 2px, #000 3px) opacity-10 pointer-events-none fixed inset-0 z-50"
+      },
+      "effects": {
+        "glow": "shadow-[0_0_15px_rgba(239,68,68,0.3)]",
+        "glass": "backdrop-blur-md bg-black/70 border-b border-white/10"
+      }
+    },
+    "assets": {
+      "images": {
+        "hero_bg": "https://images.unsplash.com/photo-1682122602211-bbf52f9e010a?crop=entropy&cs=srgb&fm=jpg&q=85",
+        "texture_concrete": "https://images.unsplash.com/photo-1764083292858-1576bce9e678?crop=entropy&cs=srgb&fm=jpg&q=85"
+      },
+      "icons": {
+        "library": "lucide-react",
+        "style": "stroke-width-2"
+      }
+    }
+  },
+  "implementation_guide": {
+    "global_css_rules": [
+      "html { background-color: #09090b; color: #fafafa; }",
+      ".font-heading { font-family: 'Chivo', sans-serif; }",
+      ".font-mono { font-family: 'JetBrains Mono', monospace; }",
+      "/* Custom Scrollbar */ ::-webkit-scrollbar { width: 8px; } ::-webkit-scrollbar-track { bg: #09090b; } ::-webkit-scrollbar-thumb { bg: #3f3f46; }"
+    ],
+    "tailwind_config_updates": {
+      "extend": {
+        "colors": {
+          "industrial-bg": "#09090b",
+          "industrial-surface": "#18181b",
+          "power-red": "#ef4444",
+          "telecom-orange": "#f97316"
+        },
+        "fontFamily": {
+          "heading": ["Chivo", "sans-serif"],
+          "mono": ["JetBrains Mono", "monospace"]
+        }
+      }
+    },
+    "component_overrides": {
+      "Button": "Remove rounded classes. Add 'font-mono uppercase tracking-wider'. Use 'h-12' for touch targets.",
+      "Card": "Remove rounded classes. Add 'border-zinc-800 bg-zinc-900/80'.",
+      "Input": "Remove rounded classes. Darker background 'bg-black'.",
+      "Badge": "Use for Pole Type. Red for Power, Orange for Telecom. Square edges."
+    }
+  },
+  "universal_guidelines": [
+    "DO NOT use gradients for backgrounds. Use solid dark colors + noise texture.",
+    "Ensure all touch targets are at least 44px height (h-11 or h-12) for gloved usage.",
+    "Use 'JetBrains Mono' for all numerical data (coordinates, height, dates).",
+    "Always display Power Poles in RED and Telecom Poles in ORANGE.",
+    "No login screen required - land directly on the Dashboard.",
+    "Use 'sonner' for all notifications (success/error).",
+    "Add 'data-testid' to all interactive elements."
+  ]
+}
