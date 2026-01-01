@@ -693,141 +693,133 @@ const EditPole = () => {
             <PhotoUpload label="Telecom Attachment Photo" value={formData.telecom_attachment_photo} onChange={(v) => handlePhotoChange("telecom_attachment_photo", v)} testId="telecom-attachment" />
           </div>
 
-          {/* Span - 4 Boxes */}
+          {/* Span - 4 Rows */}
           <div className="industrial-card p-5">
             <h2 className="font-heading text-lg font-bold text-white mb-4 flex items-center gap-2">
               <div className="w-1 h-5 bg-indigo-500"></div>
               Spans
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-3">
               {/* Span 1 */}
-              <div className="bg-zinc-800/50 p-4 border border-zinc-700">
-                <h3 className="text-sm font-mono text-indigo-400 mb-3">SPAN 1</h3>
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs font-mono text-zinc-500">Direction</Label>
-                    <Select value={formData.span1_direction} onValueChange={(v) => handleSelectChange("span1_direction", v)}>
-                      <SelectTrigger className="h-9 bg-black border-zinc-700 text-white text-sm">
-                        <SelectValue placeholder="Dir" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-zinc-900 border-zinc-700">
-                        {options.span_directions.map((d) => (<SelectItem key={d} value={d}>{d}</SelectItem>))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs font-mono text-zinc-500">Distance (ft)</Label>
-                    <Input type="number" name="span1_distance" value={formData.span1_distance} onChange={handleInputChange} step="0.1" className="h-9 bg-black border-zinc-700 text-white text-sm" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs font-mono text-zinc-500">Owner</Label>
-                    <Select value={formData.span1_owner} onValueChange={(v) => handleSelectChange("span1_owner", v)}>
-                      <SelectTrigger className="h-9 bg-black border-zinc-700 text-white text-sm">
-                        <SelectValue placeholder="Owner" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-zinc-900 border-zinc-700">
-                        {options.span_owners.map((o) => (<SelectItem key={o} value={o}>{o}</SelectItem>))}
-                      </SelectContent>
-                    </Select>
+              <div className="bg-zinc-800/50 p-3 border border-zinc-700">
+                <div className="flex items-center gap-4">
+                  <span className="text-sm font-mono text-indigo-400 w-8">1</span>
+                  <div className="grid grid-cols-3 gap-3 flex-1">
+                    <div className="space-y-1">
+                      <Label className="text-xs font-mono text-zinc-500">Direction</Label>
+                      <Select value={formData.span1_direction} onValueChange={(v) => handleSelectChange("span1_direction", v)}>
+                        <SelectTrigger className="h-9 bg-black border-zinc-700 text-white text-sm"><SelectValue placeholder="Dir" /></SelectTrigger>
+                        <SelectContent className="bg-zinc-900 border-zinc-700">
+                          {options.span_directions.map((d) => (<SelectItem key={d} value={d}>{d}</SelectItem>))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-mono text-zinc-500">Distance (ft)</Label>
+                      <Input type="number" name="span1_distance" value={formData.span1_distance} onChange={handleInputChange} step="0.1" className="h-9 bg-black border-zinc-700 text-white text-sm" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-mono text-zinc-500">Owner</Label>
+                      <Select value={formData.span1_owner} onValueChange={(v) => handleSelectChange("span1_owner", v)}>
+                        <SelectTrigger className="h-9 bg-black border-zinc-700 text-white text-sm"><SelectValue placeholder="Owner" /></SelectTrigger>
+                        <SelectContent className="bg-zinc-900 border-zinc-700">
+                          {options.span_owners.map((o) => (<SelectItem key={o} value={o}>{o}</SelectItem>))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 </div>
               </div>
 
               {/* Span 2 */}
-              <div className="bg-zinc-800/50 p-4 border border-zinc-700">
-                <h3 className="text-sm font-mono text-indigo-400 mb-3">SPAN 2</h3>
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs font-mono text-zinc-500">Direction</Label>
-                    <Select value={formData.span2_direction} onValueChange={(v) => handleSelectChange("span2_direction", v)}>
-                      <SelectTrigger className="h-9 bg-black border-zinc-700 text-white text-sm">
-                        <SelectValue placeholder="Dir" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-zinc-900 border-zinc-700">
-                        {options.span_directions.map((d) => (<SelectItem key={d} value={d}>{d}</SelectItem>))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs font-mono text-zinc-500">Distance (ft)</Label>
-                    <Input type="number" name="span2_distance" value={formData.span2_distance} onChange={handleInputChange} step="0.1" className="h-9 bg-black border-zinc-700 text-white text-sm" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs font-mono text-zinc-500">Owner</Label>
-                    <Select value={formData.span2_owner} onValueChange={(v) => handleSelectChange("span2_owner", v)}>
-                      <SelectTrigger className="h-9 bg-black border-zinc-700 text-white text-sm">
-                        <SelectValue placeholder="Owner" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-zinc-900 border-zinc-700">
-                        {options.span_owners.map((o) => (<SelectItem key={o} value={o}>{o}</SelectItem>))}
-                      </SelectContent>
-                    </Select>
+              <div className="bg-zinc-800/50 p-3 border border-zinc-700">
+                <div className="flex items-center gap-4">
+                  <span className="text-sm font-mono text-indigo-400 w-8">2</span>
+                  <div className="grid grid-cols-3 gap-3 flex-1">
+                    <div className="space-y-1">
+                      <Label className="text-xs font-mono text-zinc-500">Direction</Label>
+                      <Select value={formData.span2_direction} onValueChange={(v) => handleSelectChange("span2_direction", v)}>
+                        <SelectTrigger className="h-9 bg-black border-zinc-700 text-white text-sm"><SelectValue placeholder="Dir" /></SelectTrigger>
+                        <SelectContent className="bg-zinc-900 border-zinc-700">
+                          {options.span_directions.map((d) => (<SelectItem key={d} value={d}>{d}</SelectItem>))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-mono text-zinc-500">Distance (ft)</Label>
+                      <Input type="number" name="span2_distance" value={formData.span2_distance} onChange={handleInputChange} step="0.1" className="h-9 bg-black border-zinc-700 text-white text-sm" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-mono text-zinc-500">Owner</Label>
+                      <Select value={formData.span2_owner} onValueChange={(v) => handleSelectChange("span2_owner", v)}>
+                        <SelectTrigger className="h-9 bg-black border-zinc-700 text-white text-sm"><SelectValue placeholder="Owner" /></SelectTrigger>
+                        <SelectContent className="bg-zinc-900 border-zinc-700">
+                          {options.span_owners.map((o) => (<SelectItem key={o} value={o}>{o}</SelectItem>))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 </div>
               </div>
 
               {/* Span 3 */}
-              <div className="bg-zinc-800/50 p-4 border border-zinc-700">
-                <h3 className="text-sm font-mono text-indigo-400 mb-3">SPAN 3</h3>
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs font-mono text-zinc-500">Direction</Label>
-                    <Select value={formData.span3_direction} onValueChange={(v) => handleSelectChange("span3_direction", v)}>
-                      <SelectTrigger className="h-9 bg-black border-zinc-700 text-white text-sm">
-                        <SelectValue placeholder="Dir" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-zinc-900 border-zinc-700">
-                        {options.span_directions.map((d) => (<SelectItem key={d} value={d}>{d}</SelectItem>))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs font-mono text-zinc-500">Distance (ft)</Label>
-                    <Input type="number" name="span3_distance" value={formData.span3_distance} onChange={handleInputChange} step="0.1" className="h-9 bg-black border-zinc-700 text-white text-sm" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs font-mono text-zinc-500">Owner</Label>
-                    <Select value={formData.span3_owner} onValueChange={(v) => handleSelectChange("span3_owner", v)}>
-                      <SelectTrigger className="h-9 bg-black border-zinc-700 text-white text-sm">
-                        <SelectValue placeholder="Owner" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-zinc-900 border-zinc-700">
-                        {options.span_owners.map((o) => (<SelectItem key={o} value={o}>{o}</SelectItem>))}
-                      </SelectContent>
-                    </Select>
+              <div className="bg-zinc-800/50 p-3 border border-zinc-700">
+                <div className="flex items-center gap-4">
+                  <span className="text-sm font-mono text-indigo-400 w-8">3</span>
+                  <div className="grid grid-cols-3 gap-3 flex-1">
+                    <div className="space-y-1">
+                      <Label className="text-xs font-mono text-zinc-500">Direction</Label>
+                      <Select value={formData.span3_direction} onValueChange={(v) => handleSelectChange("span3_direction", v)}>
+                        <SelectTrigger className="h-9 bg-black border-zinc-700 text-white text-sm"><SelectValue placeholder="Dir" /></SelectTrigger>
+                        <SelectContent className="bg-zinc-900 border-zinc-700">
+                          {options.span_directions.map((d) => (<SelectItem key={d} value={d}>{d}</SelectItem>))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-mono text-zinc-500">Distance (ft)</Label>
+                      <Input type="number" name="span3_distance" value={formData.span3_distance} onChange={handleInputChange} step="0.1" className="h-9 bg-black border-zinc-700 text-white text-sm" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-mono text-zinc-500">Owner</Label>
+                      <Select value={formData.span3_owner} onValueChange={(v) => handleSelectChange("span3_owner", v)}>
+                        <SelectTrigger className="h-9 bg-black border-zinc-700 text-white text-sm"><SelectValue placeholder="Owner" /></SelectTrigger>
+                        <SelectContent className="bg-zinc-900 border-zinc-700">
+                          {options.span_owners.map((o) => (<SelectItem key={o} value={o}>{o}</SelectItem>))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 </div>
               </div>
 
               {/* Span 4 */}
-              <div className="bg-zinc-800/50 p-4 border border-zinc-700">
-                <h3 className="text-sm font-mono text-indigo-400 mb-3">SPAN 4</h3>
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs font-mono text-zinc-500">Direction</Label>
-                    <Select value={formData.span4_direction} onValueChange={(v) => handleSelectChange("span4_direction", v)}>
-                      <SelectTrigger className="h-9 bg-black border-zinc-700 text-white text-sm">
-                        <SelectValue placeholder="Dir" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-zinc-900 border-zinc-700">
-                        {options.span_directions.map((d) => (<SelectItem key={d} value={d}>{d}</SelectItem>))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs font-mono text-zinc-500">Distance (ft)</Label>
-                    <Input type="number" name="span4_distance" value={formData.span4_distance} onChange={handleInputChange} step="0.1" className="h-9 bg-black border-zinc-700 text-white text-sm" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs font-mono text-zinc-500">Owner</Label>
-                    <Select value={formData.span4_owner} onValueChange={(v) => handleSelectChange("span4_owner", v)}>
-                      <SelectTrigger className="h-9 bg-black border-zinc-700 text-white text-sm">
-                        <SelectValue placeholder="Owner" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-zinc-900 border-zinc-700">
-                        {options.span_owners.map((o) => (<SelectItem key={o} value={o}>{o}</SelectItem>))}
-                      </SelectContent>
-                    </Select>
+              <div className="bg-zinc-800/50 p-3 border border-zinc-700">
+                <div className="flex items-center gap-4">
+                  <span className="text-sm font-mono text-indigo-400 w-8">4</span>
+                  <div className="grid grid-cols-3 gap-3 flex-1">
+                    <div className="space-y-1">
+                      <Label className="text-xs font-mono text-zinc-500">Direction</Label>
+                      <Select value={formData.span4_direction} onValueChange={(v) => handleSelectChange("span4_direction", v)}>
+                        <SelectTrigger className="h-9 bg-black border-zinc-700 text-white text-sm"><SelectValue placeholder="Dir" /></SelectTrigger>
+                        <SelectContent className="bg-zinc-900 border-zinc-700">
+                          {options.span_directions.map((d) => (<SelectItem key={d} value={d}>{d}</SelectItem>))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-mono text-zinc-500">Distance (ft)</Label>
+                      <Input type="number" name="span4_distance" value={formData.span4_distance} onChange={handleInputChange} step="0.1" className="h-9 bg-black border-zinc-700 text-white text-sm" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-mono text-zinc-500">Owner</Label>
+                      <Select value={formData.span4_owner} onValueChange={(v) => handleSelectChange("span4_owner", v)}>
+                        <SelectTrigger className="h-9 bg-black border-zinc-700 text-white text-sm"><SelectValue placeholder="Owner" /></SelectTrigger>
+                        <SelectContent className="bg-zinc-900 border-zinc-700">
+                          {options.span_owners.map((o) => (<SelectItem key={o} value={o}>{o}</SelectItem>))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 </div>
               </div>
