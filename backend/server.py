@@ -251,68 +251,192 @@ async def delete_pole(pole_id: str):
 
 @api_router.get("/poles/export/excel")
 async def export_poles_excel():
-    """Export all poles to Excel - matches app structure with multiple rows per data type"""
+    """Export all poles to Excel - 16 rows per pole format"""
     poles = await db.poles.find({}, {"_id": 0}).sort("created_at", -1).to_list(10000)
     
     wb = Workbook()
     ws = wb.active
     ws.title = "Pole Data"
     
-    # Define headers matching app sections
-    headers = [
-        "Pole #", "Job #", "Pole Size", "Condition",
-        "Latitude", "Longitude",
-        "Span 1 Dir", "Span 1 Dist", "Span 1 Owner",
-        "Span 2 Dir", "Span 2 Dist", "Span 2 Owner",
-        "Span 3 Dir", "Span 3 Dist", "Span 3 Owner",
-        "Span 4 Dir", "Span 4 Dist", "Span 4 Owner",
-        "Has Birthmark", "MGNV", "MGNV Condition",
-        "Pole Owner", "Pole Terminal", "Risers",
-        "Notes", "Inspection Date"
-    ]
-    
-    # Write header row with styling
+    # Styling
     header_fill = PatternFill(start_color="374151", end_color="374151", fill_type="solid")
     header_font = Font(bold=True, color="FFFFFF")
-    for col, header in enumerate(headers, 1):
-        cell = ws.cell(row=1, column=col, value=header)
-        cell.fill = header_fill
-        cell.font = header_font
+    section_fill = PatternFill(start_color="1f2937", end_color="1f2937", fill_type="solid")
+    section_font = Font(bold=True, color="FFFFFF")
     
-    # Write data rows
-    for row_num, pole in enumerate(poles, 2):
-        ws.cell(row=row_num, column=1, value=pole.get("pole_number", ""))
-        ws.cell(row=row_num, column=2, value=pole.get("job_number", ""))
-        ws.cell(row=row_num, column=3, value=pole.get("pole_size", ""))
-        ws.cell(row=row_num, column=4, value=pole.get("condition", ""))
-        ws.cell(row=row_num, column=5, value=pole.get("latitude", ""))
-        ws.cell(row=row_num, column=6, value=pole.get("longitude", ""))
+    current_row = 1
+    
+    for pole_idx, pole in enumerate(poles):
+        start_row = current_row
         
-        # Spans
-        col_idx = 7
-        for i in range(1, 5):
-            ws.cell(row=row_num, column=col_idx, value=pole.get(f"span{i}_direction", ""))
-            ws.cell(row=row_num, column=col_idx+1, value=pole.get(f"span{i}_distance", ""))
-            ws.cell(row=row_num, column=col_idx+2, value=pole.get(f"span{i}_owner", ""))
-            col_idx += 3
-        
-        # Birthmark, MGNV
-        ws.cell(row=row_num, column=col_idx, value="Yes" if pole.get("has_birthmark", True) else "No")
-        ws.cell(row=row_num, column=col_idx+1, value=pole.get("mgnv", ""))
-        ws.cell(row=row_num, column=col_idx+2, value=pole.get("mgnv_condition", ""))
-        col_idx += 3
-        
-        # Pole Owner, Terminal, Risers
-        ws.cell(row=row_num, column=col_idx, value=pole.get("pole_owner", ""))
-        ws.cell(row=row_num, column=col_idx+1, value=pole.get("pole_terminal", ""))
-        ws.cell(row=row_num, column=col_idx+2, value=pole.get("risers", ""))
-        col_idx += 3
-        
-        # Notes, Inspection Date
-        ws.cell(row=row_num, column=col_idx, value=pole.get("notes", ""))
+        # Row 1: Pole Header
+        ws.cell(row=current_row, column=1, value="POLE #").fill = header_fill
+        ws.cell(row=current_row, column=1).font = header_font
+        ws.cell(row=current_row, column=2, value=pole.get("pole_number", ""))
+        ws.cell(row=current_row, column=3, value="JOB #").fill = header_fill
+        ws.cell(row=current_row, column=3).font = header_font
+        ws.cell(row=current_row, column=4, value=pole.get("job_number", ""))
+        ws.cell(row=current_row, column=5, value="DATE").fill = header_fill
+        ws.cell(row=current_row, column=5).font = header_font
         inspection_date = pole.get("inspection_date", "")
-        if inspection_date:
-            ws.cell(row=row_num, column=col_idx+1, value=str(inspection_date)[:19])
+        ws.cell(row=current_row, column=6, value=str(inspection_date)[:10] if inspection_date else "")
+        current_row += 1
+        
+        # Row 2: Basic Info
+        ws.cell(row=current_row, column=1, value="SIZE").fill = section_fill
+        ws.cell(row=current_row, column=1).font = section_font
+        ws.cell(row=current_row, column=2, value=pole.get("pole_size", ""))
+        ws.cell(row=current_row, column=3, value="CONDITION").fill = section_fill
+        ws.cell(row=current_row, column=3).font = section_font
+        ws.cell(row=current_row, column=4, value=pole.get("condition", ""))
+        ws.cell(row=current_row, column=5, value="OWNER").fill = section_fill
+        ws.cell(row=current_row, column=5).font = section_font
+        ws.cell(row=current_row, column=6, value=pole.get("pole_owner", ""))
+        current_row += 1
+        
+        # Row 3: GPS & Terminal/Risers
+        ws.cell(row=current_row, column=1, value="LAT").fill = section_fill
+        ws.cell(row=current_row, column=1).font = section_font
+        ws.cell(row=current_row, column=2, value=pole.get("latitude", ""))
+        ws.cell(row=current_row, column=3, value="LONG").fill = section_fill
+        ws.cell(row=current_row, column=3).font = section_font
+        ws.cell(row=current_row, column=4, value=pole.get("longitude", ""))
+        ws.cell(row=current_row, column=5, value="TERMINAL").fill = section_fill
+        ws.cell(row=current_row, column=5).font = section_font
+        ws.cell(row=current_row, column=6, value=pole.get("pole_terminal", ""))
+        ws.cell(row=current_row, column=7, value="RISERS").fill = section_fill
+        ws.cell(row=current_row, column=7).font = section_font
+        ws.cell(row=current_row, column=8, value=pole.get("risers", ""))
+        current_row += 1
+        
+        # Row 4: Spans Header
+        ws.cell(row=current_row, column=1, value="SPANS").fill = header_fill
+        ws.cell(row=current_row, column=1).font = header_font
+        ws.cell(row=current_row, column=2, value="Direction").fill = section_fill
+        ws.cell(row=current_row, column=2).font = section_font
+        ws.cell(row=current_row, column=3, value="Distance").fill = section_fill
+        ws.cell(row=current_row, column=3).font = section_font
+        ws.cell(row=current_row, column=4, value="Owner").fill = section_fill
+        ws.cell(row=current_row, column=4).font = section_font
+        current_row += 1
+        
+        # Rows 5-8: Spans Data (4 rows)
+        for i in range(1, 5):
+            ws.cell(row=current_row, column=1, value=f"Span {i}")
+            ws.cell(row=current_row, column=2, value=pole.get(f"span{i}_direction", ""))
+            ws.cell(row=current_row, column=3, value=pole.get(f"span{i}_distance", ""))
+            ws.cell(row=current_row, column=4, value=pole.get(f"span{i}_owner", ""))
+            current_row += 1
+        
+        # Row 9: Down Guys Header
+        ws.cell(row=current_row, column=1, value="DOWN GUYS").fill = header_fill
+        ws.cell(row=current_row, column=1).font = header_font
+        ws.cell(row=current_row, column=2, value="Size").fill = section_fill
+        ws.cell(row=current_row, column=2).font = section_font
+        ws.cell(row=current_row, column=3, value="Direction").fill = section_fill
+        ws.cell(row=current_row, column=3).font = section_font
+        ws.cell(row=current_row, column=4, value="Owner").fill = section_fill
+        ws.cell(row=current_row, column=4).font = section_font
+        ws.cell(row=current_row, column=5, value="Height").fill = section_fill
+        ws.cell(row=current_row, column=5).font = section_font
+        ws.cell(row=current_row, column=6, value="Lead").fill = section_fill
+        ws.cell(row=current_row, column=6).font = section_font
+        current_row += 1
+        
+        # Row 10: Down Guys Data (use available data, fill up to show rows)
+        down_guys = pole.get("down_guys", [])
+        for i in range(max(1, len(down_guys))):
+            dg = down_guys[i] if i < len(down_guys) else {}
+            ws.cell(row=current_row, column=1, value=f"Guy {i+1}")
+            ws.cell(row=current_row, column=2, value=dg.get("size", ""))
+            ws.cell(row=current_row, column=3, value=dg.get("direction", ""))
+            ws.cell(row=current_row, column=4, value=dg.get("owner", ""))
+            ws.cell(row=current_row, column=5, value=dg.get("height", ""))
+            ws.cell(row=current_row, column=6, value=dg.get("lead", ""))
+            current_row += 1
+        
+        # Row 11: Knuckles Header
+        ws.cell(row=current_row, column=1, value="KNUCKLES").fill = header_fill
+        ws.cell(row=current_row, column=1).font = header_font
+        ws.cell(row=current_row, column=2, value="Count").fill = section_fill
+        ws.cell(row=current_row, column=2).font = section_font
+        ws.cell(row=current_row, column=3, value="Condition").fill = section_fill
+        ws.cell(row=current_row, column=3).font = section_font
+        current_row += 1
+        
+        # Row 12: Knuckles Data
+        knuckles = pole.get("knuckles", [])
+        for i in range(max(1, len(knuckles))):
+            kn = knuckles[i] if i < len(knuckles) else {}
+            ws.cell(row=current_row, column=1, value=f"Knuckle {i+1}")
+            ws.cell(row=current_row, column=2, value=kn.get("count", ""))
+            ws.cell(row=current_row, column=3, value=kn.get("condition", ""))
+            current_row += 1
+        
+        # Row 13: Attachments Header
+        ws.cell(row=current_row, column=1, value="ATTACHMENTS").fill = header_fill
+        ws.cell(row=current_row, column=1).font = header_font
+        ws.cell(row=current_row, column=2, value="Height (ft)").fill = section_fill
+        ws.cell(row=current_row, column=2).font = section_font
+        ws.cell(row=current_row, column=3, value="Owner").fill = section_fill
+        ws.cell(row=current_row, column=3).font = section_font
+        current_row += 1
+        
+        # Row 14: Attachments Data
+        attachments = pole.get("attachments", [])
+        for i in range(max(1, len(attachments))):
+            att = attachments[i] if i < len(attachments) else {}
+            ws.cell(row=current_row, column=1, value=f"Att {i+1}")
+            ws.cell(row=current_row, column=2, value=att.get("height", ""))
+            ws.cell(row=current_row, column=3, value=att.get("owner", ""))
+            current_row += 1
+        
+        # Row 15: Birthmark & MGNV
+        ws.cell(row=current_row, column=1, value="BIRTHMARK").fill = section_fill
+        ws.cell(row=current_row, column=1).font = section_font
+        ws.cell(row=current_row, column=2, value="Yes" if pole.get("has_birthmark", True) else "No")
+        ws.cell(row=current_row, column=3, value="MGNV").fill = section_fill
+        ws.cell(row=current_row, column=3).font = section_font
+        ws.cell(row=current_row, column=4, value=pole.get("mgnv", ""))
+        ws.cell(row=current_row, column=5, value="MGNV COND").fill = section_fill
+        ws.cell(row=current_row, column=5).font = section_font
+        ws.cell(row=current_row, column=6, value=pole.get("mgnv_condition", ""))
+        current_row += 1
+        
+        # Row 16: Notes
+        ws.cell(row=current_row, column=1, value="NOTES").fill = section_fill
+        ws.cell(row=current_row, column=1).font = section_font
+        ws.cell(row=current_row, column=2, value=pole.get("notes", ""))
+        current_row += 1
+        
+        # Add a blank row between poles
+        current_row += 1
+    
+    # Auto-adjust column widths
+    for col in ws.columns:
+        max_length = 0
+        column = col[0].column_letter
+        for cell in col:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except:
+                pass
+        adjusted_width = min(max_length + 2, 30)
+        ws.column_dimensions[column].width = max(adjusted_width, 12)
+    
+    # Save to buffer
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+    
+    filename = f"pole_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    
+    return StreamingResponse(
+        buffer,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
     
     # Create Down Guys sheet
     dg_ws = wb.create_sheet("Down Guys")
