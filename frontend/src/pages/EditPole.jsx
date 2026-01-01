@@ -664,24 +664,7 @@ const EditPole = () => {
             </div>
           </div>
 
-          {/* Down Guys with Knuckles */} 
-                label="Height Photo" 
-                value={formData.height_of_attachment_photo} 
-                onChange={(v) => handlePhotoChange("height_of_attachment_photo", v)} 
-                testId="height-attachment"
-                showHeightTool={true}
-                onHeightMeasured={(height) => setFormData(prev => ({ ...prev, height_of_attachment: height.toString() }))}
-              />
-              <PhotoUpload 
-                label="Telecom Attachment Photo" 
-                value={formData.telecom_attachment_photo} 
-                onChange={(v) => handlePhotoChange("telecom_attachment_photo", v)} 
-                testId="telecom-attachment"
-              />
-            </div>
-          </div>
-
-          {/* Down Guys with Anchor & Knuckles */}
+          {/* Down Guys with Knuckles */}
           <div className="industrial-card p-5">
             <h2 className="font-heading text-lg font-bold text-white mb-4 flex items-center gap-2">
               <div className="w-1 h-5 bg-yellow-500"></div>
