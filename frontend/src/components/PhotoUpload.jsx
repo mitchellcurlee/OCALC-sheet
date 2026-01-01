@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 
 // Photo upload component with camera capture
-export const PhotoUpload = ({ label, value, onChange, testId, showHeightTool = false, onHeightMeasured }) => {
+export const PhotoUpload = ({ label, value, onChange, testId, showHeightTool = false, onHeightMeasured, compact = false }) => {
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
   const [showHeightDialog, setShowHeightDialog] = useState(false);
@@ -41,6 +41,65 @@ export const PhotoUpload = ({ label, value, onChange, testId, showHeightTool = f
       toast.error("Please capture a photo first");
     }
   };
+
+  // Compact mode for inline photo uploads
+  if (compact) {
+    return (
+      <div className="space-y-1">
+        <Label className="text-xs font-mono text-zinc-500">{label}</Label>
+        <input
+          type="file"
+          ref={fileInputRef}
+          accept="image/*"
+          onChange={handleFileChange}
+          className="hidden"
+          data-testid={`${testId}-file-input`}
+        />
+        <input
+          type="file"
+          ref={cameraInputRef}
+          accept="image/*"
+          capture="environment"
+          onChange={handleFileChange}
+          className="hidden"
+          data-testid={`${testId}-camera-input`}
+        />
+        {value ? (
+          <div className="relative inline-block">
+            <img src={value} alt={label} className="w-16 h-12 object-cover border border-zinc-700" />
+            <Button
+              type="button"
+              variant="destructive"
+              size="icon"
+              className="absolute -top-1 -right-1 h-4 w-4 bg-red-600 hover:bg-red-700"
+              onClick={() => onChange("")}
+            >
+              <X className="w-2 h-2" />
+            </Button>
+          </div>
+        ) : (
+          <div className="flex gap-1">
+            <Button
+              type="button"
+              onClick={() => cameraInputRef.current?.click()}
+              className="h-9 px-2 bg-red-600 hover:bg-red-700 text-white"
+              data-testid={`${testId}-camera`}
+            >
+              <Camera className="w-4 h-4" />
+            </Button>
+            <Button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="h-9 px-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 border border-zinc-700"
+              data-testid={`${testId}-upload`}
+            >
+              <Upload className="w-4 h-4" />
+            </Button>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-2">
