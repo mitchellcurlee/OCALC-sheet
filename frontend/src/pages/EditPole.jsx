@@ -852,6 +852,8 @@ const EditPole = () => {
               <div className="h-64 border border-zinc-700 overflow-hidden">
                 <MapContainer center={mapCenter} zoom={18} style={{ height: "100%", width: "100%" }} className="z-0">
                   <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" attribution='&copy; Esri' />
+                  <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}" attribution='' />
+                  <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}" attribution='' />
                   <MapClickHandler onLocationSelect={handleMapClick} />
                   {formData.latitude && formData.longitude && (
                     <Marker position={[parseFloat(formData.latitude), parseFloat(formData.longitude)]} />
