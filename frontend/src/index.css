@@ -132,3 +132,147 @@ body {
 .animate-fade-in {
     animation: fadeIn 0.3s ease-out forwards;
 }
+
+/* ===== MOBILE OPTIMIZATIONS ===== */
+
+/* Larger touch targets for mobile */
+@media (max-width: 640px) {
+    /* Increase button and input heights for touch */
+    .industrial-input,
+    .industrial-button {
+        @apply h-14 text-base;
+    }
+    
+    /* Better spacing for form elements */
+    .industrial-card {
+        @apply p-4;
+    }
+    
+    /* Larger touch targets for select triggers */
+    [data-radix-select-trigger] {
+        min-height: 48px !important;
+    }
+    
+    /* Hide scrollbar on mobile for cleaner look */
+    ::-webkit-scrollbar {
+        display: none;
+    }
+    
+    /* Improve text readability */
+    .text-xs {
+        font-size: 0.8125rem;
+        line-height: 1.25rem;
+    }
+}
+
+/* Mobile header adjustments */
+@media (max-width: 480px) {
+    .mobile-header-title {
+        font-size: 0.875rem !important;
+        letter-spacing: 0.025em;
+    }
+    
+    .mobile-header-inputs {
+        width: 100% !important;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    
+    .mobile-header-inputs input {
+        width: 100% !important;
+        min-width: 0 !important;
+    }
+}
+
+/* PWA and mobile safe areas */
+@supports (padding: max(0px)) {
+    body {
+        padding-left: max(0px, env(safe-area-inset-left));
+        padding-right: max(0px, env(safe-area-inset-right));
+        padding-bottom: max(0px, env(safe-area-inset-bottom));
+    }
+    
+    header {
+        padding-top: max(1rem, env(safe-area-inset-top));
+    }
+}
+
+/* Prevent zoom on input focus (iOS) */
+@media (max-width: 640px) {
+    input[type="text"],
+    input[type="number"],
+    input[type="email"],
+    input[type="tel"],
+    select,
+    textarea {
+        font-size: 16px !important;
+    }
+}
+
+/* Better grid layouts for mobile */
+@media (max-width: 640px) {
+    .mobile-stack {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 0.75rem !important;
+    }
+    
+    .mobile-full-width {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+}
+
+/* Sticky bottom navigation for mobile */
+.mobile-bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(9, 9, 11, 0.95);
+    backdrop-filter: blur(10px);
+    border-top: 1px solid #27272a;
+    padding: 0.75rem 1rem;
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+    z-index: 50;
+}
+
+/* Add bottom padding when mobile nav is present */
+@media (max-width: 640px) {
+    .has-mobile-nav {
+        padding-bottom: 5rem;
+    }
+}
+
+/* Improve map container on mobile */
+@media (max-width: 640px) {
+    .leaflet-container {
+        min-height: 250px !important;
+    }
+}
+
+/* Photo upload button improvements for mobile */
+@media (max-width: 640px) {
+    .photo-upload-btn {
+        min-height: 80px;
+        padding: 1rem;
+    }
+}
+
+/* Pull-to-refresh indicator area */
+.ptr-element {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 50px;
+    transform: translateY(-100%);
+    transition: transform 0.2s ease;
+}
+
+/* Toast positioning for mobile */
+@media (max-width: 640px) {
+    [data-sonner-toaster] {
+        bottom: 80px !important;
+    }
+}
