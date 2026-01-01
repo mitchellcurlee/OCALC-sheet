@@ -60,8 +60,11 @@ const AddPole = () => {
     down_guy_sizes: [],
     knuckle_options: [],
     yes_no: [],
+    good_broken: [],
     span_owners: [],
     span_directions: [],
+    attachment_owners: [],
+    riser_options: [],
   });
 
   const [formData, setFormData] = useState({
@@ -72,7 +75,6 @@ const AddPole = () => {
     pole_owner: "",
     pole_size: "",
     condition: "",
-    telecom_attachments: 0,
     // OCALC Photos
     ocalc_left_photo: "",
     ocalc_middle_photo: "",
@@ -82,10 +84,29 @@ const AddPole = () => {
     birthmark_photo: "",
     // MGNV
     mgnv: "",
+    mgnv_condition: "",
     mgnv_photo: "",
-    // Height of Attachment & Telecom Attachment
-    height_of_attachment: "",
-    height_of_attachment_photo: "",
+    // Height of Attachment (5 rows)
+    attachment1_height: "",
+    attachment1_owner: "",
+    attachment1_photo: "",
+    attachment2_height: "",
+    attachment2_owner: "",
+    attachment2_photo: "",
+    attachment3_height: "",
+    attachment3_owner: "",
+    attachment3_photo: "",
+    attachment4_height: "",
+    attachment4_owner: "",
+    attachment4_photo: "",
+    attachment5_height: "",
+    attachment5_owner: "",
+    attachment5_photo: "",
+    // Pole Terminal
+    pole_terminal: "",
+    // Risers
+    risers: "",
+    // Telecom Attachment Photo
     telecom_attachment_photo: "",
     // Down Guy (4 rows)
     down_guy1_size: "",
@@ -108,8 +129,6 @@ const AddPole = () => {
     down_guy4_owner: "",
     down_guy4_height: "",
     down_guy4_lead: "",
-    // Down Guy Anchor (merged into Down Guys)
-    down_guy_anchor_photo: "",
     // Knuckles (4 rows)
     knuckle1_count: "",
     knuckle1_condition: "",
