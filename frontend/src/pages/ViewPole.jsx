@@ -436,23 +436,13 @@ const ViewPole = () => {
             )}
           </div>
 
-          {/* Additional Details */}
-          {(pole.lead_anchor_characteristics || pole.ground_type || pole.riser_number || pole.notes) && (
+          {/* Notes */}
+          {pole.notes && (
             <div className="industrial-card p-5">
               <h2 className="font-heading text-lg font-bold text-white mb-4 flex items-center gap-2">
-                <div className="w-1 h-5 bg-zinc-500"></div>Additional Details
+                <div className="w-1 h-5 bg-zinc-500"></div>Notes
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <DataRow label="Lead & Anchor" value={pole.lead_anchor_characteristics} />
-                <DataRow label="Ground Type" value={pole.ground_type} />
-                <DataRow label="Riser Number" value={pole.riser_number} mono />
-              </div>
-              {pole.notes && (
-                <div className="mt-4">
-                  <p className="text-xs font-mono tracking-widest text-zinc-500 uppercase mb-2">Notes</p>
-                  <p className="text-zinc-300 whitespace-pre-wrap">{pole.notes}</p>
-                </div>
-              )}
+              <p className="text-zinc-300 whitespace-pre-wrap">{pole.notes}</p>
             </div>
           )}
 

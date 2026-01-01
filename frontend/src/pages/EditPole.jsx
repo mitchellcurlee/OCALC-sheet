@@ -863,29 +863,14 @@ const EditPole = () => {
             </div>
           </div>
 
-          {/* Additional Details */}
+          {/* Notes */}
           <div className="industrial-card p-5">
             <h2 className="font-heading text-lg font-bold text-white mb-4 flex items-center gap-2">
               <div className="w-1 h-5 bg-zinc-500"></div>
-              Additional Details
+              Notes
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Lead & Anchor</Label>
-                <Input name="lead_anchor_characteristics" value={formData.lead_anchor_characteristics} onChange={handleInputChange} className="h-10 bg-black border-zinc-700 text-white" />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Ground Type</Label>
-                <Input name="ground_type" value={formData.ground_type} onChange={handleInputChange} className="h-10 bg-black border-zinc-700 text-white" />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Riser Number</Label>
-                <Input type="number" name="riser_number" value={formData.riser_number} onChange={handleInputChange} min="0" className="h-10 bg-black border-zinc-700 text-white" />
-              </div>
-            </div>
-            <div className="mt-4 space-y-2">
-              <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Notes</Label>
-              <Textarea name="notes" value={formData.notes} onChange={handleInputChange} rows={3} className="bg-black border-zinc-700 text-white resize-none" />
+            <div className="space-y-2">
+              <Textarea name="notes" value={formData.notes} onChange={handleInputChange} rows={3} className="bg-black border-zinc-700 text-white resize-none" data-testid="notes-input" />
             </div>
           </div>
 
