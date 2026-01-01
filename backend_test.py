@@ -295,25 +295,29 @@ class PoleAPITester:
         return self.run_test("Get Non-existent Pole", "GET", f"poles/{fake_id}", 404)
 
 def main():
-    print("🚀 Starting Power Pole API Testing...")
-    print("=" * 60)
+    print("🚀 Starting Pole Data Sheet / OCALC API Testing...")
+    print("Testing EditPole and ViewPole synchronization with AddPole")
+    print("=" * 70)
     
     tester = PoleAPITester()
     
-    # Test sequence
+    # Test sequence based on review request
     test_functions = [
         tester.test_root_endpoint,
         tester.test_get_pole_options,
         tester.test_get_stats,
         tester.test_get_all_poles,
-        tester.test_create_power_pole,
-        tester.test_create_telecom_pole,
-        tester.test_get_all_poles,
-        tester.test_get_poles_filtered_by_type,
+        
+        # Main test scenarios from review request
+        tester.test_create_comprehensive_pole,  # Scenario 1: Create pole with comprehensive data
+        tester.test_get_single_pole_comprehensive,  # Scenario 2: Verify GET returns all data
+        tester.test_update_pole_comprehensive,  # Scenario 3: Update pole via PUT
+        tester.test_get_updated_pole_data,  # Scenario 4: Verify updated data is returned
+        tester.test_export_excel,  # Scenario 5: Test Excel export
+        
+        # Additional API tests
+        tester.test_get_poles_filtered_by_owner,
         tester.test_get_poles_filtered_by_condition,
-        tester.test_get_single_pole,
-        tester.test_update_pole,
-        tester.test_export_excel,
         tester.test_get_nonexistent_pole,
         tester.test_delete_pole,
     ]
@@ -326,14 +330,16 @@ def main():
             print(f"❌ Test {test_func.__name__} failed with exception: {str(e)}")
     
     # Print results
-    print("\n" + "=" * 60)
+    print("\n" + "=" * 70)
     print(f"📊 Test Results: {tester.tests_passed}/{tester.tests_run} tests passed")
     
     if tester.tests_passed == tester.tests_run:
-        print("🎉 All tests passed!")
+        print("🎉 All backend API tests passed!")
+        print("✅ EditPole and ViewPole synchronization can be verified via API")
         return 0
     else:
         print(f"⚠️  {tester.tests_run - tester.tests_passed} tests failed")
+        print("❌ Backend API issues detected that may affect form synchronization")
         return 1
 
 if __name__ == "__main__":
