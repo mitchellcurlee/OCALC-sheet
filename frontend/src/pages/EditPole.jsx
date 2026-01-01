@@ -369,7 +369,7 @@ const EditPole = () => {
                   <Zap className="w-6 h-6 text-white" />
                 </div>
                 <h1 className="font-heading text-xl font-bold tracking-tight uppercase text-white">
-                  Edit Pole
+                  Pole Data Sheet / OCALC
                 </h1>
               </div>
             </div>
