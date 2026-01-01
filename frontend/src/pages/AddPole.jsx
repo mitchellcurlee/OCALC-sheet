@@ -630,19 +630,6 @@ const AddPole = () => {
             </div>
           </div>
 
-          {/* OCALC Photos */}
-          <div className="industrial-card p-5">
-            <h2 className="font-heading text-lg font-bold text-white mb-4 flex items-center gap-2">
-              <div className="w-1 h-5 bg-blue-500"></div>
-              OCALC Photos
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <PhotoUpload label="Left" value={formData.ocalc_left_photo} onChange={(v) => handlePhotoChange("ocalc_left_photo", v)} testId="ocalc-left" />
-              <PhotoUpload label="Middle" value={formData.ocalc_middle_photo} onChange={(v) => handlePhotoChange("ocalc_middle_photo", v)} testId="ocalc-middle" />
-              <PhotoUpload label="Right" value={formData.ocalc_right_photo} onChange={(v) => handlePhotoChange("ocalc_right_photo", v)} testId="ocalc-right" />
-            </div>
-          </div>
-
           {/* Height of Attachments - 5 Rows */}
           <div className="industrial-card p-5">
             <h2 className="font-heading text-lg font-bold text-white mb-4 flex items-center gap-2">
