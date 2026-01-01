@@ -320,18 +320,18 @@ const AddPole = () => {
       <main className="max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
         <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
           {/* Basic Info */}
-          <div className="industrial-card p-5">
-            <h2 className="font-heading text-lg font-bold text-white mb-4 flex items-center gap-2">
+          <div className="industrial-card p-4 sm:p-5">
+            <h2 className="font-heading text-base sm:text-lg font-bold text-white mb-3 sm:mb-4 flex items-center gap-2">
               <div className="w-1 h-5 bg-red-500"></div>
               Basic Information
             </h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
               <div className="space-y-2">
                 <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">
                   Pole Owner *
                 </Label>
                 <Select value={formData.pole_owner} onValueChange={(v) => handleSelectChange("pole_owner", v)}>
-                  <SelectTrigger className={`h-10 bg-black border-zinc-700 ${formData.pole_owner === "Foreign Owned" ? "text-red-500 border-red-500/50" : formData.pole_owner === "ATT" ? "text-orange-500 border-orange-500/50" : "text-white"}`} data-testid="pole-owner-select">
+                  <SelectTrigger className={`h-12 sm:h-10 bg-black border-zinc-700 ${formData.pole_owner === "Foreign Owned" ? "text-red-500 border-red-500/50" : formData.pole_owner === "ATT" ? "text-orange-500 border-orange-500/50" : "text-white"}`} data-testid="pole-owner-select">
                     <SelectValue placeholder="Select owner" />
                   </SelectTrigger>
                   <SelectContent className="bg-zinc-900 border-zinc-700">
@@ -349,7 +349,7 @@ const AddPole = () => {
                   Pole Size *
                 </Label>
                 <Select value={formData.pole_size} onValueChange={(v) => handleSelectChange("pole_size", v)}>
-                  <SelectTrigger className="h-10 bg-black border-zinc-700 text-white" data-testid="pole-size-select">
+                  <SelectTrigger className="h-12 sm:h-10 bg-black border-zinc-700 text-white" data-testid="pole-size-select">
                     <SelectValue placeholder="Class-Height" />
                   </SelectTrigger>
                   <SelectContent className="bg-zinc-900 border-zinc-700 max-h-60">
@@ -360,12 +360,12 @@ const AddPole = () => {
                 </Select>
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-2 sm:col-span-2 md:col-span-1">
                 <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">
                   Condition *
                 </Label>
                 <Select value={formData.condition} onValueChange={(v) => handleSelectChange("condition", v)}>
-                  <SelectTrigger className="h-10 bg-black border-zinc-700 text-white" data-testid="condition-select">
+                  <SelectTrigger className="h-12 sm:h-10 bg-black border-zinc-700 text-white" data-testid="condition-select">
                     <SelectValue placeholder="Select condition" />
                   </SelectTrigger>
                   <SelectContent className="bg-zinc-900 border-zinc-700">
@@ -379,8 +379,8 @@ const AddPole = () => {
           </div>
 
           {/* Span - 4 Rows */}
-          <div className="industrial-card p-5">
-            <h2 className="font-heading text-lg font-bold text-white mb-4 flex items-center gap-2">
+          <div className="industrial-card p-4 sm:p-5">
+            <h2 className="font-heading text-base sm:text-lg font-bold text-white mb-3 sm:mb-4 flex items-center gap-2">
               <div className="w-1 h-5 bg-indigo-500"></div>
               Spans
             </h2>
