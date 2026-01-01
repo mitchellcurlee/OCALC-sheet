@@ -251,18 +251,72 @@ const ViewPole = () => {
             </div>
           )}
 
-          {/* Down Guy */}
-          {(pole.down_guy_photo || pole.down_guy_size || pole.down_guy_direction || pole.down_guy_owner) && (
+          {/* Down Guy - 4 rows */}
+          {(pole.down_guy1_size || pole.down_guy1_direction || pole.down_guy1_owner ||
+            pole.down_guy2_size || pole.down_guy2_direction || pole.down_guy2_owner ||
+            pole.down_guy3_size || pole.down_guy3_direction || pole.down_guy3_owner ||
+            pole.down_guy4_size || pole.down_guy4_direction || pole.down_guy4_owner) && (
             <div className="industrial-card p-5">
               <h2 className="font-heading text-lg font-bold text-white mb-4 flex items-center gap-2">
-                <div className="w-1 h-5 bg-yellow-500"></div>Down Guy
+                <div className="w-1 h-5 bg-yellow-500"></div>Down Guys
               </h2>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                <PhotoDisplay label="Photo" src={pole.down_guy_photo} />
-                <DataRow label="Size" value={pole.down_guy_size} />
-                <DataRow label="Direction" value={pole.down_guy_direction} />
-                <DataRow label="Owner" value={pole.down_guy_owner} />
-                <DataRow label="Height" value={pole.down_guy_height ? `${pole.down_guy_height} ft` : null} mono />
+              <div className="space-y-3">
+                {(pole.down_guy1_size || pole.down_guy1_direction || pole.down_guy1_owner || pole.down_guy1_height || pole.down_guy1_lead) && (
+                  <div className="bg-zinc-800/50 p-3 border border-zinc-700">
+                    <div className="flex items-center gap-4">
+                      <span className="text-sm font-mono text-yellow-400 w-8">1</span>
+                      <div className="grid grid-cols-5 gap-4 flex-1">
+                        <DataRow label="Size" value={pole.down_guy1_size} />
+                        <DataRow label="Direction" value={pole.down_guy1_direction} />
+                        <DataRow label="Owner" value={pole.down_guy1_owner} />
+                        <DataRow label="Height" value={pole.down_guy1_height ? `${pole.down_guy1_height} ft` : null} mono />
+                        <DataRow label="Lead" value={pole.down_guy1_lead} />
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {(pole.down_guy2_size || pole.down_guy2_direction || pole.down_guy2_owner || pole.down_guy2_height || pole.down_guy2_lead) && (
+                  <div className="bg-zinc-800/50 p-3 border border-zinc-700">
+                    <div className="flex items-center gap-4">
+                      <span className="text-sm font-mono text-yellow-400 w-8">2</span>
+                      <div className="grid grid-cols-5 gap-4 flex-1">
+                        <DataRow label="Size" value={pole.down_guy2_size} />
+                        <DataRow label="Direction" value={pole.down_guy2_direction} />
+                        <DataRow label="Owner" value={pole.down_guy2_owner} />
+                        <DataRow label="Height" value={pole.down_guy2_height ? `${pole.down_guy2_height} ft` : null} mono />
+                        <DataRow label="Lead" value={pole.down_guy2_lead} />
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {(pole.down_guy3_size || pole.down_guy3_direction || pole.down_guy3_owner || pole.down_guy3_height || pole.down_guy3_lead) && (
+                  <div className="bg-zinc-800/50 p-3 border border-zinc-700">
+                    <div className="flex items-center gap-4">
+                      <span className="text-sm font-mono text-yellow-400 w-8">3</span>
+                      <div className="grid grid-cols-5 gap-4 flex-1">
+                        <DataRow label="Size" value={pole.down_guy3_size} />
+                        <DataRow label="Direction" value={pole.down_guy3_direction} />
+                        <DataRow label="Owner" value={pole.down_guy3_owner} />
+                        <DataRow label="Height" value={pole.down_guy3_height ? `${pole.down_guy3_height} ft` : null} mono />
+                        <DataRow label="Lead" value={pole.down_guy3_lead} />
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {(pole.down_guy4_size || pole.down_guy4_direction || pole.down_guy4_owner || pole.down_guy4_height || pole.down_guy4_lead) && (
+                  <div className="bg-zinc-800/50 p-3 border border-zinc-700">
+                    <div className="flex items-center gap-4">
+                      <span className="text-sm font-mono text-yellow-400 w-8">4</span>
+                      <div className="grid grid-cols-5 gap-4 flex-1">
+                        <DataRow label="Size" value={pole.down_guy4_size} />
+                        <DataRow label="Direction" value={pole.down_guy4_direction} />
+                        <DataRow label="Owner" value={pole.down_guy4_owner} />
+                        <DataRow label="Height" value={pole.down_guy4_height ? `${pole.down_guy4_height} ft` : null} mono />
+                        <DataRow label="Lead" value={pole.down_guy4_lead} />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -361,8 +415,8 @@ const ViewPole = () => {
                   </Button>
                 </div>
                 <div className="h-64 border border-zinc-700 overflow-hidden">
-                  <MapContainer center={mapCenter} zoom={15} style={{ height: "100%", width: "100%" }} className="z-0">
-                    <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; OpenStreetMap' />
+                  <MapContainer center={mapCenter} zoom={18} style={{ height: "100%", width: "100%" }} className="z-0">
+                    <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" attribution='&copy; Esri' />
                     <Marker position={mapCenter} />
                   </MapContainer>
                 </div>
