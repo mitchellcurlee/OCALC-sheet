@@ -62,6 +62,8 @@ const EditPole = () => {
     down_guy_sizes: [],
     knuckle_options: [],
     yes_no: [],
+    span_owners: [],
+    span_directions: [],
   });
 
   const [formData, setFormData] = useState({
@@ -91,6 +93,9 @@ const EditPole = () => {
     lead_anchor_characteristics: "",
     ground_type: "",
     riser_number: "",
+    span_direction: "",
+    span_distance: "",
+    span_owner: "",
     latitude: "",
     longitude: "",
     notes: "",
@@ -141,6 +146,9 @@ const EditPole = () => {
         lead_anchor_characteristics: pole.lead_anchor_characteristics || "",
         ground_type: pole.ground_type || "",
         riser_number: pole.riser_number?.toString() || "",
+        span_direction: pole.span_direction || "",
+        span_distance: pole.span_distance?.toString() || "",
+        span_owner: pole.span_owner || "",
         latitude: pole.latitude?.toString() || "",
         longitude: pole.longitude?.toString() || "",
         notes: pole.notes || "",
@@ -213,6 +221,7 @@ const EditPole = () => {
         telecom_attachments: parseInt(formData.telecom_attachments) || 0,
         height_of_attachment: formData.height_of_attachment ? parseFloat(formData.height_of_attachment) : null,
         down_guy_height: formData.down_guy_height ? parseFloat(formData.down_guy_height) : null,
+        span_distance: formData.span_distance ? parseFloat(formData.span_distance) : null,
         riser_number: formData.riser_number ? parseInt(formData.riser_number) : null,
         latitude: formData.latitude ? parseFloat(formData.latitude) : null,
         longitude: formData.longitude ? parseFloat(formData.longitude) : null,
@@ -485,6 +494,55 @@ const EditPole = () => {
               Telecom Attachment
             </h2>
             <PhotoUpload label="Telecom Attachment Photo" value={formData.telecom_attachment_photo} onChange={(v) => handlePhotoChange("telecom_attachment_photo", v)} testId="telecom-attachment" />
+          </div>
+
+          {/* Span */}
+          <div className="industrial-card p-5">
+            <h2 className="font-heading text-lg font-bold text-white mb-4 flex items-center gap-2">
+              <div className="w-1 h-5 bg-indigo-500"></div>
+              Span
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Direction</Label>
+                <Select value={formData.span_direction} onValueChange={(v) => handleSelectChange("span_direction", v)}>
+                  <SelectTrigger className="h-10 bg-black border-zinc-700 text-white" data-testid="span-direction-select">
+                    <SelectValue placeholder="Select direction" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-zinc-900 border-zinc-700">
+                    {options.span_directions.map((d) => (
+                      <SelectItem key={d} value={d}>{d}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Distance (ft)</Label>
+                <Input
+                  type="number"
+                  name="span_distance"
+                  value={formData.span_distance}
+                  onChange={handleInputChange}
+                  step="0.1"
+                  placeholder="e.g., 150"
+                  className="h-10 bg-black border-zinc-700 text-white"
+                  data-testid="span-distance-input"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Owner</Label>
+                <Select value={formData.span_owner} onValueChange={(v) => handleSelectChange("span_owner", v)}>
+                  <SelectTrigger className="h-10 bg-black border-zinc-700 text-white" data-testid="span-owner-select">
+                    <SelectValue placeholder="Select owner" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-zinc-900 border-zinc-700">
+                    {options.span_owners.map((o) => (
+                      <SelectItem key={o} value={o}>{o}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </div>
 
           {/* GPS & Map */}
