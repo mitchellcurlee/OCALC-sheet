@@ -281,15 +281,55 @@ const ViewPole = () => {
           )}
 
           {/* Span */}
-          {(pole.span_direction || pole.span_distance || pole.span_owner) && (
+          {(pole.span1_direction || pole.span1_distance || pole.span1_owner ||
+            pole.span2_direction || pole.span2_distance || pole.span2_owner ||
+            pole.span3_direction || pole.span3_distance || pole.span3_owner ||
+            pole.span4_direction || pole.span4_distance || pole.span4_owner) && (
             <div className="industrial-card p-5">
               <h2 className="font-heading text-lg font-bold text-white mb-4 flex items-center gap-2">
-                <div className="w-1 h-5 bg-indigo-500"></div>Span
+                <div className="w-1 h-5 bg-indigo-500"></div>Spans
               </h2>
-              <div className="grid grid-cols-3 gap-4">
-                <DataRow label="Direction" value={pole.span_direction} />
-                <DataRow label="Distance" value={pole.span_distance ? `${pole.span_distance} ft` : null} mono />
-                <DataRow label="Owner" value={pole.span_owner} />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {(pole.span1_direction || pole.span1_distance || pole.span1_owner) && (
+                  <div className="bg-zinc-800/50 p-4 border border-zinc-700">
+                    <h3 className="text-sm font-mono text-indigo-400 mb-3">SPAN 1</h3>
+                    <div className="grid grid-cols-3 gap-3">
+                      <DataRow label="Direction" value={pole.span1_direction} />
+                      <DataRow label="Distance" value={pole.span1_distance ? `${pole.span1_distance} ft` : null} mono />
+                      <DataRow label="Owner" value={pole.span1_owner} />
+                    </div>
+                  </div>
+                )}
+                {(pole.span2_direction || pole.span2_distance || pole.span2_owner) && (
+                  <div className="bg-zinc-800/50 p-4 border border-zinc-700">
+                    <h3 className="text-sm font-mono text-indigo-400 mb-3">SPAN 2</h3>
+                    <div className="grid grid-cols-3 gap-3">
+                      <DataRow label="Direction" value={pole.span2_direction} />
+                      <DataRow label="Distance" value={pole.span2_distance ? `${pole.span2_distance} ft` : null} mono />
+                      <DataRow label="Owner" value={pole.span2_owner} />
+                    </div>
+                  </div>
+                )}
+                {(pole.span3_direction || pole.span3_distance || pole.span3_owner) && (
+                  <div className="bg-zinc-800/50 p-4 border border-zinc-700">
+                    <h3 className="text-sm font-mono text-indigo-400 mb-3">SPAN 3</h3>
+                    <div className="grid grid-cols-3 gap-3">
+                      <DataRow label="Direction" value={pole.span3_direction} />
+                      <DataRow label="Distance" value={pole.span3_distance ? `${pole.span3_distance} ft` : null} mono />
+                      <DataRow label="Owner" value={pole.span3_owner} />
+                    </div>
+                  </div>
+                )}
+                {(pole.span4_direction || pole.span4_distance || pole.span4_owner) && (
+                  <div className="bg-zinc-800/50 p-4 border border-zinc-700">
+                    <h3 className="text-sm font-mono text-indigo-400 mb-3">SPAN 4</h3>
+                    <div className="grid grid-cols-3 gap-3">
+                      <DataRow label="Direction" value={pole.span4_direction} />
+                      <DataRow label="Distance" value={pole.span4_distance ? `${pole.span4_distance} ft` : null} mono />
+                      <DataRow label="Owner" value={pole.span4_owner} />
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
