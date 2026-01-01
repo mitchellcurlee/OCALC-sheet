@@ -251,101 +251,156 @@ async def delete_pole(pole_id: str):
 
 @api_router.get("/poles/export/excel")
 async def export_poles_excel():
-    """Export all poles to Excel - simple spreadsheet format"""
+    """Export all poles to Excel - matches app structure with multiple rows per data type"""
     poles = await db.poles.find({}, {"_id": 0}).sort("created_at", -1).to_list(10000)
     
     wb = Workbook()
     ws = wb.active
     ws.title = "Pole Data"
     
-    # Define headers
+    # Define headers matching app sections
     headers = [
-        "Pole #", "Job #", "Pole Owner", "Pole Size", "Condition",
+        "Pole #", "Job #", "Pole Size", "Condition",
         "Latitude", "Longitude",
         "Span 1 Dir", "Span 1 Dist", "Span 1 Owner",
         "Span 2 Dir", "Span 2 Dist", "Span 2 Owner",
         "Span 3 Dir", "Span 3 Dist", "Span 3 Owner",
         "Span 4 Dir", "Span 4 Dist", "Span 4 Owner",
-        "Down Guy 1 Size", "Down Guy 1 Dir", "Down Guy 1 Owner", "Down Guy 1 Height", "Down Guy 1 Lead",
-        "Down Guy 2 Size", "Down Guy 2 Dir", "Down Guy 2 Owner", "Down Guy 2 Height", "Down Guy 2 Lead",
-        "Down Guy 3 Size", "Down Guy 3 Dir", "Down Guy 3 Owner", "Down Guy 3 Height", "Down Guy 3 Lead",
-        "Down Guy 4 Size", "Down Guy 4 Dir", "Down Guy 4 Owner", "Down Guy 4 Height", "Down Guy 4 Lead",
-        "Knuckle 1 Count", "Knuckle 1 Condition",
-        "Knuckle 2 Count", "Knuckle 2 Condition",
-        "Knuckle 3 Count", "Knuckle 3 Condition",
-        "Knuckle 4 Count", "Knuckle 4 Condition",
-        "Attachment 1 Height", "Attachment 1 Owner",
-        "Attachment 2 Height", "Attachment 2 Owner",
-        "Attachment 3 Height", "Attachment 3 Owner",
-        "Attachment 4 Height", "Attachment 4 Owner",
-        "Attachment 5 Height", "Attachment 5 Owner",
-        "Pole Terminal", "Risers",
         "Has Birthmark", "MGNV", "MGNV Condition",
+        "Pole Owner", "Pole Terminal", "Risers",
         "Notes", "Inspection Date"
     ]
     
     # Write header row with styling
+    header_fill = PatternFill(start_color="374151", end_color="374151", fill_type="solid")
+    header_font = Font(bold=True, color="FFFFFF")
     for col, header in enumerate(headers, 1):
         cell = ws.cell(row=1, column=col, value=header)
-        cell.font = Font(bold=True)
-        cell.fill = PatternFill(start_color="374151", end_color="374151", fill_type="solid")
-        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = header_fill
+        cell.font = header_font
     
     # Write data rows
     for row_num, pole in enumerate(poles, 2):
         ws.cell(row=row_num, column=1, value=pole.get("pole_number", ""))
         ws.cell(row=row_num, column=2, value=pole.get("job_number", ""))
-        ws.cell(row=row_num, column=3, value=pole.get("pole_owner", ""))
-        ws.cell(row=row_num, column=4, value=pole.get("pole_size", ""))
-        ws.cell(row=row_num, column=5, value=pole.get("condition", ""))
-        ws.cell(row=row_num, column=6, value=pole.get("latitude", ""))
-        ws.cell(row=row_num, column=7, value=pole.get("longitude", ""))
+        ws.cell(row=row_num, column=3, value=pole.get("pole_size", ""))
+        ws.cell(row=row_num, column=4, value=pole.get("condition", ""))
+        ws.cell(row=row_num, column=5, value=pole.get("latitude", ""))
+        ws.cell(row=row_num, column=6, value=pole.get("longitude", ""))
         
         # Spans
-        col = 8
+        col_idx = 7
         for i in range(1, 5):
-            ws.cell(row=row_num, column=col, value=pole.get(f"span{i}_direction", ""))
-            ws.cell(row=row_num, column=col+1, value=pole.get(f"span{i}_distance", ""))
-            ws.cell(row=row_num, column=col+2, value=pole.get(f"span{i}_owner", ""))
-            col += 3
-        
-        # Down Guys
-        for i in range(1, 5):
-            ws.cell(row=row_num, column=col, value=pole.get(f"down_guy{i}_size", ""))
-            ws.cell(row=row_num, column=col+1, value=pole.get(f"down_guy{i}_direction", ""))
-            ws.cell(row=row_num, column=col+2, value=pole.get(f"down_guy{i}_owner", ""))
-            ws.cell(row=row_num, column=col+3, value=pole.get(f"down_guy{i}_height", ""))
-            ws.cell(row=row_num, column=col+4, value=pole.get(f"down_guy{i}_lead", ""))
-            col += 5
-        
-        # Knuckles
-        for i in range(1, 5):
-            ws.cell(row=row_num, column=col, value=pole.get(f"knuckle{i}_count", ""))
-            ws.cell(row=row_num, column=col+1, value=pole.get(f"knuckle{i}_condition", ""))
-            col += 2
-        
-        # Attachments
-        for i in range(1, 6):
-            ws.cell(row=row_num, column=col, value=pole.get(f"attachment{i}_height", ""))
-            ws.cell(row=row_num, column=col+1, value=pole.get(f"attachment{i}_owner", ""))
-            col += 2
-        
-        # Pole Terminal, Risers
-        ws.cell(row=row_num, column=col, value=pole.get("pole_terminal", ""))
-        ws.cell(row=row_num, column=col+1, value=pole.get("risers", ""))
-        col += 2
+            ws.cell(row=row_num, column=col_idx, value=pole.get(f"span{i}_direction", ""))
+            ws.cell(row=row_num, column=col_idx+1, value=pole.get(f"span{i}_distance", ""))
+            ws.cell(row=row_num, column=col_idx+2, value=pole.get(f"span{i}_owner", ""))
+            col_idx += 3
         
         # Birthmark, MGNV
-        ws.cell(row=row_num, column=col, value="Yes" if pole.get("has_birthmark", True) else "No")
-        ws.cell(row=row_num, column=col+1, value=pole.get("mgnv", ""))
-        ws.cell(row=row_num, column=col+2, value=pole.get("mgnv_condition", ""))
-        col += 3
+        ws.cell(row=row_num, column=col_idx, value="Yes" if pole.get("has_birthmark", True) else "No")
+        ws.cell(row=row_num, column=col_idx+1, value=pole.get("mgnv", ""))
+        ws.cell(row=row_num, column=col_idx+2, value=pole.get("mgnv_condition", ""))
+        col_idx += 3
+        
+        # Pole Owner, Terminal, Risers
+        ws.cell(row=row_num, column=col_idx, value=pole.get("pole_owner", ""))
+        ws.cell(row=row_num, column=col_idx+1, value=pole.get("pole_terminal", ""))
+        ws.cell(row=row_num, column=col_idx+2, value=pole.get("risers", ""))
+        col_idx += 3
         
         # Notes, Inspection Date
-        ws.cell(row=row_num, column=col, value=pole.get("notes", ""))
+        ws.cell(row=row_num, column=col_idx, value=pole.get("notes", ""))
         inspection_date = pole.get("inspection_date", "")
         if inspection_date:
-            ws.cell(row=row_num, column=col+1, value=str(inspection_date)[:19])
+            ws.cell(row=row_num, column=col_idx+1, value=str(inspection_date)[:19])
+    
+    # Create Down Guys sheet
+    dg_ws = wb.create_sheet("Down Guys")
+    dg_headers = ["Pole #", "Job #", "Row #", "Size", "Direction", "Owner", "Height (ft)", "Lead"]
+    for col, header in enumerate(dg_headers, 1):
+        cell = dg_ws.cell(row=1, column=col, value=header)
+        cell.fill = header_fill
+        cell.font = header_font
+    
+    dg_row = 2
+    for pole in poles:
+        down_guys = pole.get("down_guys", [])
+        for idx, dg in enumerate(down_guys, 1):
+            dg_ws.cell(row=dg_row, column=1, value=pole.get("pole_number", ""))
+            dg_ws.cell(row=dg_row, column=2, value=pole.get("job_number", ""))
+            dg_ws.cell(row=dg_row, column=3, value=idx)
+            dg_ws.cell(row=dg_row, column=4, value=dg.get("size", ""))
+            dg_ws.cell(row=dg_row, column=5, value=dg.get("direction", ""))
+            dg_ws.cell(row=dg_row, column=6, value=dg.get("owner", ""))
+            dg_ws.cell(row=dg_row, column=7, value=dg.get("height", ""))
+            dg_ws.cell(row=dg_row, column=8, value=dg.get("lead", ""))
+            dg_row += 1
+    
+    # Create Knuckles sheet
+    kn_ws = wb.create_sheet("Knuckles")
+    kn_headers = ["Pole #", "Job #", "Row #", "Knuckles Used", "Condition"]
+    for col, header in enumerate(kn_headers, 1):
+        cell = kn_ws.cell(row=1, column=col, value=header)
+        cell.fill = header_fill
+        cell.font = header_font
+    
+    kn_row = 2
+    for pole in poles:
+        knuckles = pole.get("knuckles", [])
+        for idx, kn in enumerate(knuckles, 1):
+            kn_ws.cell(row=kn_row, column=1, value=pole.get("pole_number", ""))
+            kn_ws.cell(row=kn_row, column=2, value=pole.get("job_number", ""))
+            kn_ws.cell(row=kn_row, column=3, value=idx)
+            kn_ws.cell(row=kn_row, column=4, value=kn.get("count", ""))
+            kn_ws.cell(row=kn_row, column=5, value=kn.get("condition", ""))
+            kn_row += 1
+    
+    # Create Attachments sheet
+    att_ws = wb.create_sheet("Attachments")
+    att_headers = ["Pole #", "Job #", "Row #", "Height (ft)", "Owner"]
+    for col, header in enumerate(att_headers, 1):
+        cell = att_ws.cell(row=1, column=col, value=header)
+        cell.fill = header_fill
+        cell.font = header_font
+    
+    att_row = 2
+    for pole in poles:
+        attachments = pole.get("attachments", [])
+        for idx, att in enumerate(attachments, 1):
+            att_ws.cell(row=att_row, column=1, value=pole.get("pole_number", ""))
+            att_ws.cell(row=att_row, column=2, value=pole.get("job_number", ""))
+            att_ws.cell(row=att_row, column=3, value=idx)
+            att_ws.cell(row=att_row, column=4, value=att.get("height", ""))
+            att_ws.cell(row=att_row, column=5, value=att.get("owner", ""))
+            att_row += 1
+    
+    # Auto-adjust column widths for all sheets
+    for sheet in wb.worksheets:
+        for col in sheet.columns:
+            max_length = 0
+            column = col[0].column_letter
+            for cell in col:
+                try:
+                    if len(str(cell.value)) > max_length:
+                        max_length = len(str(cell.value))
+                except:
+                    pass
+            adjusted_width = min(max_length + 2, 25)
+            sheet.column_dimensions[column].width = max(adjusted_width, 10)
+        sheet.freeze_panes = 'A2'
+    
+    # Save to buffer
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+    
+    filename = f"pole_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    
+    return StreamingResponse(
+        buffer,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
     
     # Auto-adjust column widths
     for col in ws.columns:
