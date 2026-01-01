@@ -240,8 +240,11 @@ async def get_pole_options():
         "down_guy_sizes": DOWN_GUY_SIZES,
         "knuckle_options": KNUCKLE_OPTIONS,
         "yes_no": YES_NO,
+        "good_broken": GOOD_BROKEN,
         "span_owners": SPAN_OWNERS,
-        "span_directions": SPAN_DIRECTIONS
+        "span_directions": SPAN_DIRECTIONS,
+        "attachment_owners": ATTACHMENT_OWNERS,
+        "riser_options": RISER_OPTIONS
     }
 
 @api_router.post("/poles", response_model=Pole, status_code=201)
