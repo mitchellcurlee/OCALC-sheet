@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
@@ -18,14 +18,13 @@ import {
   ArrowLeft,
   Save,
   MapPin,
-  Camera,
-  X,
   Zap,
   Loader2,
 } from "lucide-react";
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
+import { PhotoUpload } from "@/components/PhotoUpload";
 
 // Fix Leaflet marker icon issue
 delete L.Icon.Default.prototype._getIconUrl;
@@ -37,70 +36,6 @@ L.Icon.Default.mergeOptions({
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
-
-// Photo upload component
-const PhotoUpload = ({ label, value, onChange, testId }) => {
-  const fileInputRef = useRef(null);
-
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error("Image size must be less than 5MB");
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => onChange(reader.result);
-      reader.readAsDataURL(file);
-    }
-  };
-
-  return (
-    <div className="space-y-2">
-      <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">
-        {label}
-      </Label>
-      <input
-        type="file"
-        ref={fileInputRef}
-        accept="image/*"
-        onChange={handleFileChange}
-        className="hidden"
-        data-testid={`${testId}-input`}
-      />
-      {value ? (
-        <div className="relative inline-block">
-          <img
-            src={value}
-            alt={label}
-            className="w-full max-w-xs h-32 object-cover border-2 border-zinc-700"
-          />
-          <Button
-            type="button"
-            variant="destructive"
-            size="icon"
-            className="absolute top-1 right-1 h-6 w-6 bg-red-600 hover:bg-red-700"
-            onClick={() => onChange("")}
-          >
-            <X className="w-3 h-3" />
-          </Button>
-        </div>
-      ) : (
-        <Button
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          className="w-full h-24 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 border border-zinc-700 border-dashed"
-          data-testid={testId}
-        >
-          <div className="flex flex-col items-center gap-1">
-            <Camera className="w-5 h-5" />
-            <span className="text-xs">Upload Photo</span>
-          </div>
-        </Button>
-      )}
-    </div>
-  );
-};
 
 // Map click handler component
 const MapClickHandler = ({ onLocationSelect }) => {
@@ -310,7 +245,7 @@ const EditPole = () => {
       {/* Header */}
       <header className="border-b border-zinc-800 bg-zinc-900/50 backdrop-blur-sm sticky top-0 z-[1000]">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-4">
               <Link to="/">
                 <Button variant="ghost" size="icon" className="text-zinc-400 hover:text-white" data-testid="back-btn">
@@ -411,7 +346,7 @@ const EditPole = () => {
               <div className="w-1 h-5 bg-blue-500"></div>
               OCALC Photos
             </h2>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <PhotoUpload label="Left" value={formData.ocalc_left_photo} onChange={(v) => handlePhotoChange("ocalc_left_photo", v)} testId="ocalc-left" />
               <PhotoUpload label="Middle" value={formData.ocalc_middle_photo} onChange={(v) => handlePhotoChange("ocalc_middle_photo", v)} testId="ocalc-middle" />
               <PhotoUpload label="Right" value={formData.ocalc_right_photo} onChange={(v) => handlePhotoChange("ocalc_right_photo", v)} testId="ocalc-right" />
@@ -424,13 +359,13 @@ const EditPole = () => {
               <div className="w-1 h-5 bg-purple-500"></div>
               Birthmark
             </h2>
-            <div className="flex items-center gap-6">
+            <div className="flex flex-col sm:flex-row items-start gap-6">
               <div className="flex items-center gap-3">
                 <Switch checked={formData.has_birthmark} onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, has_birthmark: checked, birthmark_photo: checked ? prev.birthmark_photo : "" }))} />
                 <Label className="text-sm text-zinc-300">{formData.has_birthmark ? "Has Birthmark" : "No Birthmark"}</Label>
               </div>
               {formData.has_birthmark && (
-                <div className="flex-1">
+                <div className="flex-1 w-full sm:w-auto">
                   <PhotoUpload label="Birthmark Photo" value={formData.birthmark_photo} onChange={(v) => handlePhotoChange("birthmark_photo", v)} testId="birthmark" />
                 </div>
               )}
@@ -443,7 +378,7 @@ const EditPole = () => {
               <div className="w-1 h-5 bg-cyan-500"></div>
               MGNV
             </h2>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">MGNV Present</Label>
                 <Select value={formData.mgnv} onValueChange={(v) => handleSelectChange("mgnv", v)}>
@@ -464,12 +399,20 @@ const EditPole = () => {
               <div className="w-1 h-5 bg-green-500"></div>
               Height of Attachment
             </h2>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Height (ft)</Label>
                 <Input type="number" name="height_of_attachment" value={formData.height_of_attachment} onChange={handleInputChange} step="0.1" className="h-10 bg-black border-zinc-700 text-white" />
+                <p className="text-xs text-zinc-500">Use the camera tool to measure from photo</p>
               </div>
-              <PhotoUpload label="Photo" value={formData.height_of_attachment_photo} onChange={(v) => handlePhotoChange("height_of_attachment_photo", v)} testId="height-attachment" />
+              <PhotoUpload 
+                label="Photo (with Measurement Tool)" 
+                value={formData.height_of_attachment_photo} 
+                onChange={(v) => handlePhotoChange("height_of_attachment_photo", v)} 
+                testId="height-attachment"
+                showHeightTool={true}
+                onHeightMeasured={(height) => setFormData(prev => ({ ...prev, height_of_attachment: height.toString() }))}
+              />
             </div>
           </div>
 
@@ -479,7 +422,7 @@ const EditPole = () => {
               <div className="w-1 h-5 bg-yellow-500"></div>
               Down Guy
             </h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
               <PhotoUpload label="Down Guy Photo" value={formData.down_guy_photo} onChange={(v) => handlePhotoChange("down_guy_photo", v)} testId="down-guy" />
               <div className="space-y-2">
                 <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Size</Label>
@@ -521,7 +464,7 @@ const EditPole = () => {
               <div className="w-1 h-5 bg-orange-500"></div>
               Down Guy Anchor
             </h2>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <PhotoUpload label="Anchor Photo" value={formData.down_guy_anchor_photo} onChange={(v) => handlePhotoChange("down_guy_anchor_photo", v)} testId="down-guy-anchor" />
               <div className="space-y-2">
                 <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Knuckles Used</Label>
