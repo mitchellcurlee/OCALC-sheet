@@ -88,7 +88,7 @@ async def get_pole_options():
         "sizes": POLE_SIZES
     }
 
-@api_router.post("/poles", response_model=Pole)
+@api_router.post("/poles", response_model=Pole, status_code=201)
 async def create_pole(pole_data: PoleCreate):
     """Create a new pole entry"""
     pole = Pole(**pole_data.model_dump())
