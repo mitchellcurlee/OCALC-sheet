@@ -21,28 +21,33 @@ const Register = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!formData.email || !formData.password) {
+    const email = formData.email.trim().toLowerCase();
+    const password = formData.password;
+    const name = formData.name.trim();
+    
+    if (!email || !password) {
       toast.error('Please fill in all required fields');
       return;
     }
     
-    if (formData.password !== formData.confirmPassword) {
+    if (password !== formData.confirmPassword) {
       toast.error('Passwords do not match');
       return;
     }
     
-    if (formData.password.length < 6) {
+    if (password.length < 6) {
       toast.error('Password must be at least 6 characters');
       return;
     }
 
     setLoading(true);
     try {
-      await register(formData.email, formData.password, formData.name);
+      await register(email, password, name);
       toast.success('Account created successfully!');
       navigate('/');
     } catch (error) {
-      const message = error.response?.data?.detail || 'Registration failed';
+      console.error('Registration error:', error);
+      const message = error.response?.data?.detail || error.message || 'Registration failed';
       toast.error(message);
     } finally {
       setLoading(false);
@@ -50,7 +55,7 @@ const Register = () => {
   };
 
   return (
-    <div className="min-h-screen bg-industrial-bg flex items-center justify-center px-4">
+    <div className="min-h-screen bg-industrial-bg flex items-center justify-center px-4 safe-area-inset">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
@@ -65,71 +70,91 @@ const Register = () => {
 
         {/* Register Form */}
         <div className="industrial-card p-6">
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4" autoComplete="on">
             <div className="space-y-2">
-              <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">
+              <Label htmlFor="name" className="text-xs font-mono tracking-widest text-zinc-500 uppercase">
                 Name <span className="text-zinc-600">(optional)</span>
               </Label>
               <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none" />
                 <Input
+                  id="name"
+                  name="name"
                   type="text"
+                  autoComplete="name"
+                  autoCapitalize="words"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="Your name"
-                  className="h-12 pl-10 bg-black border-zinc-700 text-white"
+                  className="h-14 pl-10 bg-black border-zinc-700 text-white text-base"
                   data-testid="name-input"
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">
+              <Label htmlFor="email" className="text-xs font-mono tracking-widest text-zinc-500 uppercase">
                 Email *
               </Label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none" />
                 <Input
+                  id="email"
+                  name="email"
                   type="email"
+                  inputMode="email"
+                  autoComplete="email"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck="false"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   placeholder="your@email.com"
-                  className="h-12 pl-10 bg-black border-zinc-700 text-white"
+                  className="h-14 pl-10 bg-black border-zinc-700 text-white text-base"
                   data-testid="email-input"
+                  required
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">
+              <Label htmlFor="password" className="text-xs font-mono tracking-widest text-zinc-500 uppercase">
                 Password *
               </Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none" />
                 <Input
+                  id="password"
+                  name="password"
                   type="password"
+                  autoComplete="new-password"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   placeholder="••••••••"
-                  className="h-12 pl-10 bg-black border-zinc-700 text-white"
+                  className="h-14 pl-10 bg-black border-zinc-700 text-white text-base"
                   data-testid="password-input"
+                  required
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">
+              <Label htmlFor="confirmPassword" className="text-xs font-mono tracking-widest text-zinc-500 uppercase">
                 Confirm Password *
               </Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none" />
                 <Input
+                  id="confirmPassword"
+                  name="confirmPassword"
                   type="password"
+                  autoComplete="new-password"
                   value={formData.confirmPassword}
                   onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                   placeholder="••••••••"
-                  className="h-12 pl-10 bg-black border-zinc-700 text-white"
+                  className="h-14 pl-10 bg-black border-zinc-700 text-white text-base"
                   data-testid="confirm-password-input"
+                  required
                 />
               </div>
             </div>
@@ -137,7 +162,7 @@ const Register = () => {
             <Button
               type="submit"
               disabled={loading}
-              className="w-full h-12 bg-red-600 hover:bg-red-700 text-white font-semibold"
+              className="w-full h-14 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-semibold text-base touch-manipulation"
               data-testid="register-btn"
             >
               {loading ? (
