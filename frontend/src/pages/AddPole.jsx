@@ -24,7 +24,7 @@ import {
   Trash2,
   Search,
 } from "lucide-react";
-import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { PhotoUpload } from "@/components/PhotoUpload";
