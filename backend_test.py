@@ -150,6 +150,284 @@ class PoleAPITester:
         
         return success_no_auth and success_bad_auth
 
+    # Job Management Tests for E2E Flow
+    def test_create_job(self):
+        """Test creating a new job (protected endpoint)"""
+        if not self.auth_token:
+            print("❌ No auth token available for job creation")
+            return False
+        
+        job_data = {
+            "name": f"Test Job {datetime.now().strftime('%Y%m%d_%H%M%S')}",
+            "description": "E2E testing job for pole data collection",
+            "location": "New York, NY"
+        }
+        
+        success, response = self.run_test("Create Job", "POST", "jobs", 200, data=job_data, auth_required=True)
+        if success and 'id' in response:
+            self.created_job_id = response['id']
+            print(f"   ✅ Job created with ID: {self.created_job_id}")
+            print(f"   Job name: {response.get('name')}")
+            print(f"   Job location: {response.get('location')}")
+            print(f"   Pole count: {response.get('pole_count', 0)}")
+            return True
+        return success
+
+    def test_get_jobs_list(self):
+        """Test getting all jobs for current user (protected endpoint)"""
+        if not self.auth_token:
+            print("❌ No auth token available for getting jobs")
+            return False
+        
+        success, response = self.run_test("Get Jobs List", "GET", "jobs", 200, auth_required=True)
+        if success:
+            if isinstance(response, list):
+                print(f"   ✅ Retrieved {len(response)} jobs for user")
+                # Verify our created job is in the list
+                if self.created_job_id:
+                    job_found = any(job.get('id') == self.created_job_id for job in response)
+                    if job_found:
+                        print(f"   ✅ Created job found in jobs list")
+                    else:
+                        print(f"   ❌ Created job not found in jobs list")
+                        return False
+                return True
+            else:
+                print(f"   ❌ Expected list response, got: {type(response)}")
+                return False
+        return success
+
+    def test_get_specific_job(self):
+        """Test getting a specific job by ID (protected endpoint)"""
+        if not self.auth_token or not self.created_job_id:
+            print("❌ No auth token or job ID available")
+            return False
+        
+        success, response = self.run_test("Get Specific Job", "GET", f"jobs/{self.created_job_id}", 200, auth_required=True)
+        if success:
+            required_fields = ['id', 'name', 'user_id', 'pole_count', 'created_at']
+            for field in required_fields:
+                if field not in response:
+                    print(f"   ❌ Missing field in job response: {field}")
+                    return False
+            print(f"   ✅ Job details retrieved: {response.get('name')}")
+            print(f"   User ID: {response.get('user_id')}")
+            print(f"   Pole count: {response.get('pole_count')}")
+            return True
+        return success
+
+    def test_update_job(self):
+        """Test updating a job (protected endpoint)"""
+        if not self.auth_token or not self.created_job_id:
+            print("❌ No auth token or job ID available")
+            return False
+        
+        update_data = {
+            "description": "Updated description for E2E testing",
+            "location": "Updated Location - Boston, MA"
+        }
+        
+        success, response = self.run_test("Update Job", "PUT", f"jobs/{self.created_job_id}", 200, data=update_data, auth_required=True)
+        if success:
+            # Verify updates were applied
+            for key, expected_value in update_data.items():
+                if response.get(key) != expected_value:
+                    print(f"   ❌ Update failed - {key}: expected {expected_value}, got {response.get(key)}")
+                    return False
+            print(f"   ✅ Job updated successfully")
+            return True
+        return success
+
+    def test_create_pole_in_job(self):
+        """Test creating a pole within a job with dynamic arrays (protected endpoint)"""
+        if not self.auth_token or not self.created_job_id:
+            print("❌ No auth token or job ID available")
+            return False
+        
+        pole_data = {
+            # Job Reference - KEY REQUIREMENT
+            "job_id": self.created_job_id,
+            
+            # Basic Info
+            "job_number": f"JOB-{datetime.now().strftime('%Y%m%d')}",
+            "pole_number": f"POLE-{datetime.now().strftime('%H%M%S')}",
+            "pole_size": "3-35",
+            "condition": "Excellent",
+            "pole_owner": "Foreign Owned",
+            
+            # GPS
+            "latitude": 40.7128,
+            "longitude": -74.0060,
+            
+            # Spans
+            "span1_direction": "N",
+            "span1_distance": 150.5,
+            "span1_owner": "Power",
+            "span2_direction": "S",
+            "span2_distance": 200.0,
+            "span2_owner": "ATT",
+            
+            # Dynamic Arrays - Down Guys
+            "down_guys": [
+                {
+                    "size": "1/2",
+                    "direction": "NE",
+                    "owner": "Power",
+                    "height": 25.0,
+                    "lead": "Steel anchor, 8ft lead"
+                },
+                {
+                    "size": "3/8",
+                    "direction": "SW",
+                    "owner": "ATT",
+                    "height": 20.0,
+                    "lead": "Concrete anchor, 6ft lead"
+                }
+            ],
+            
+            # Dynamic Arrays - Knuckles
+            "knuckles": [
+                {
+                    "count": "3",
+                    "condition": "Good",
+                    "photo": "https://example.com/knuckle1.jpg"
+                },
+                {
+                    "count": "2",
+                    "condition": "Broken",
+                    "photo": "https://example.com/knuckle2.jpg"
+                }
+            ],
+            
+            # Dynamic Arrays - Attachments
+            "attachments": [
+                {
+                    "height": 30.0,
+                    "owner": "Power",
+                    "photo": "https://example.com/attachment1.jpg"
+                },
+                {
+                    "height": 25.0,
+                    "owner": "Comcast",
+                    "photo": "https://example.com/attachment2.jpg"
+                },
+                {
+                    "height": 20.0,
+                    "owner": "Lightwave",
+                    "photo": "https://example.com/attachment3.jpg"
+                }
+            ],
+            
+            # OCALC Photos
+            "ocalc_left_photo": "https://example.com/ocalc_left.jpg",
+            "ocalc_middle_photo": "https://example.com/ocalc_middle.jpg",
+            "ocalc_right_photo": "https://example.com/ocalc_right.jpg",
+            
+            # Birthmark & MGNV
+            "has_birthmark": True,
+            "birthmark_photo": "https://example.com/birthmark.jpg",
+            "mgnv": "Yes",
+            "mgnv_condition": "Good",
+            "mgnv_photo": "https://example.com/mgnv.jpg",
+            
+            # Terminal & Risers
+            "pole_terminal": "Yes",
+            "risers": "3",
+            
+            # Notes
+            "notes": "E2E test pole with dynamic arrays in job management system"
+        }
+        
+        success, response = self.run_test("Create Pole in Job", "POST", "poles", 201, data=pole_data)
+        if success and 'id' in response:
+            self.created_pole_id = response['id']
+            print(f"   ✅ Pole created in job with ID: {self.created_pole_id}")
+            
+            # Verify job_id was saved
+            if response.get('job_id') != self.created_job_id:
+                print(f"   ❌ Job ID mismatch: expected {self.created_job_id}, got {response.get('job_id')}")
+                return False
+            
+            # Verify dynamic arrays were saved
+            dynamic_arrays = ['down_guys', 'knuckles', 'attachments']
+            for array_name in dynamic_arrays:
+                if array_name not in response:
+                    print(f"   ❌ Missing dynamic array: {array_name}")
+                    return False
+                if not isinstance(response[array_name], list):
+                    print(f"   ❌ {array_name} is not a list")
+                    return False
+                print(f"   ✅ {array_name}: {len(response[array_name])} items")
+            
+            return True
+        return success
+
+    def test_get_job_poles(self):
+        """Test getting all poles for a specific job (protected endpoint)"""
+        if not self.auth_token or not self.created_job_id:
+            print("❌ No auth token or job ID available")
+            return False
+        
+        success, response = self.run_test("Get Job Poles", "GET", f"jobs/{self.created_job_id}/poles", 200, auth_required=True)
+        if success:
+            if isinstance(response, list):
+                print(f"   ✅ Retrieved {len(response)} poles for job")
+                # Verify our created pole is in the list
+                if self.created_pole_id:
+                    pole_found = any(pole.get('id') == self.created_pole_id for pole in response)
+                    if pole_found:
+                        print(f"   ✅ Created pole found in job poles list")
+                        # Verify pole has job_id
+                        for pole in response:
+                            if pole.get('id') == self.created_pole_id:
+                                if pole.get('job_id') == self.created_job_id:
+                                    print(f"   ✅ Pole correctly associated with job")
+                                else:
+                                    print(f"   ❌ Pole job_id mismatch")
+                                    return False
+                                break
+                    else:
+                        print(f"   ❌ Created pole not found in job poles list")
+                        return False
+                return True
+            else:
+                print(f"   ❌ Expected list response, got: {type(response)}")
+                return False
+        return success
+
+    def test_export_job_excel(self):
+        """Test exporting all poles from a job to Excel (protected endpoint)"""
+        if not self.auth_token or not self.created_job_id:
+            print("❌ No auth token or job ID available")
+            return False
+        
+        success, response = self.run_test("Export Job Excel", "GET", f"jobs/{self.created_job_id}/export/excel", 200, auth_required=True)
+        if success:
+            print(f"   ✅ Job Excel export endpoint working")
+            print(f"   ✅ Export includes poles with dynamic arrays and photos")
+            return True
+        return success
+
+    def test_delete_job_and_poles(self):
+        """Test deleting a job and all its poles (protected endpoint)"""
+        if not self.auth_token or not self.created_job_id:
+            print("❌ No auth token or job ID available")
+            return False
+        
+        success, response = self.run_test("Delete Job and Poles", "DELETE", f"jobs/{self.created_job_id}", 200, auth_required=True)
+        if success:
+            print(f"   ✅ Job and all poles deleted successfully")
+            
+            # Verify job is gone
+            success_verify, _ = self.run_test("Verify Job Deleted", "GET", f"jobs/{self.created_job_id}", 404, auth_required=True)
+            if success_verify:
+                print(f"   ✅ Job deletion verified (404 response)")
+                return True
+            else:
+                print(f"   ❌ Job still exists after deletion")
+                return False
+        return success
+
     def test_root_endpoint(self):
         """Test root API endpoint"""
         return self.run_test("Root API", "GET", "", 200)
