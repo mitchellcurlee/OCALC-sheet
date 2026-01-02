@@ -50,6 +50,17 @@ const MapClickHandler = ({ onLocationSelect }) => {
   return null;
 };
 
+// Component to recenter map when coordinates change
+const MapCenterUpdater = ({ lat, lng }) => {
+  const map = useMap();
+  useEffect(() => {
+    if (lat && lng) {
+      map.flyTo([parseFloat(lat), parseFloat(lng)], 18, { duration: 1.5 });
+    }
+  }, [lat, lng, map]);
+  return null;
+};
+
 const AddPole = () => {
   const navigate = useNavigate();
   const { jobId } = useParams();
