@@ -411,17 +411,12 @@ const HeightMeasurementDialog = ({ open, onOpenChange, imageSrc, onHeightMeasure
     img.src = imageSrc;
   }, [imageSrc, referencePoints, points, referenceHeight, measuredHeight]);
 
-  // Redraw when state changes
-  useState(() => {
+  // Effect to handle initial drawing when dialog opens
+  useEffect(() => {
     if (open) {
       setTimeout(drawCanvas, 100);
     }
-  });
-
-  // Effect to redraw
-  if (open && canvasRef.current) {
-    setTimeout(drawCanvas, 50);
-  }
+  }, [open, drawCanvas]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
