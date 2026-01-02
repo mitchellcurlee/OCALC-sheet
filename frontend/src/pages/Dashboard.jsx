@@ -158,6 +158,11 @@ const Dashboard = () => {
               </div>
             </div>
             <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
+              {user && (
+                <span className="hidden sm:block text-xs text-zinc-400 font-mono">
+                  {user.name || user.email}
+                </span>
+              )}
               <Button
                 onClick={handleExport}
                 variant="outline"
@@ -176,6 +181,16 @@ const Dashboard = () => {
                   Add Pole
                 </Button>
               </Link>
+              <Button
+                onClick={logout}
+                variant="ghost"
+                size="icon"
+                className="h-11 w-11 sm:h-10 sm:w-10 text-zinc-400 hover:text-white hover:bg-zinc-800"
+                data-testid="logout-btn"
+                title="Logout"
+              >
+                <LogOut className="w-4 h-4" />
+              </Button>
             </div>
           </div>
         </div>
