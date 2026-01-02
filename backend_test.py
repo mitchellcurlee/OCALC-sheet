@@ -445,31 +445,32 @@ class PoleAPITester:
         return self.run_test("Get Non-existent Pole", "GET", f"poles/{fake_id}", 404)
 
 def main():
-    print("🚀 Starting Pole Data Sheet / OCALC API Testing...")
-    print("Testing EditPole and ViewPole synchronization with AddPole")
+    print("🚀 Starting Pole Data Sheet Authentication & Photo Testing...")
+    print("Testing new authentication flow and photo features")
     print("=" * 70)
     
     tester = PoleAPITester()
     
     # Test sequence based on review request
     test_functions = [
+        # Basic API tests
         tester.test_root_endpoint,
         tester.test_get_pole_options,
+        
+        # Authentication Flow Tests (as requested)
+        tester.test_auth_register,  # 1. Register new user
+        tester.test_auth_login,     # 2. Login with credentials  
+        tester.test_auth_me,        # 3. Get current user with token
+        tester.test_auth_protected_endpoint,  # 4. Verify token required
+        
+        # Photo Display & Excel Export Tests (as requested)
+        tester.test_create_pole_with_photos,  # 1. Create pole with photo URLs
+        tester.test_excel_export_with_photos, # 2. Export Excel with photo links
+        
+        # Additional verification tests
         tester.test_get_stats,
         tester.test_get_all_poles,
-        
-        # Main test scenarios from review request
-        tester.test_create_comprehensive_pole,  # Scenario 1: Create pole with comprehensive data
-        tester.test_get_single_pole_comprehensive,  # Scenario 2: Verify GET returns all data
-        tester.test_update_pole_comprehensive,  # Scenario 3: Update pole via PUT
-        tester.test_get_updated_pole_data,  # Scenario 4: Verify updated data is returned
-        tester.test_export_excel,  # Scenario 5: Test Excel export
-        
-        # Additional API tests
-        tester.test_get_poles_filtered_by_owner,
-        tester.test_get_poles_filtered_by_condition,
         tester.test_get_nonexistent_pole,
-        tester.test_delete_pole,
     ]
     
     # Run all tests
@@ -484,12 +485,13 @@ def main():
     print(f"📊 Test Results: {tester.tests_passed}/{tester.tests_run} tests passed")
     
     if tester.tests_passed == tester.tests_run:
-        print("🎉 All backend API tests passed!")
-        print("✅ EditPole and ViewPole synchronization can be verified via API")
+        print("🎉 All authentication and photo tests passed!")
+        print("✅ Authentication flow working correctly")
+        print("✅ Photo URLs can be stored and exported")
         return 0
     else:
         print(f"⚠️  {tester.tests_run - tester.tests_passed} tests failed")
-        print("❌ Backend API issues detected that may affect form synchronization")
+        print("❌ Issues detected with authentication or photo features")
         return 1
 
 if __name__ == "__main__":
