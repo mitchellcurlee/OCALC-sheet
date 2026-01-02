@@ -3,12 +3,21 @@ import axios from 'axios';
 
 const AuthContext = createContext(null);
 
-// Use relative URL for API - Kubernetes ingress routes /api/* to backend
-// This avoids CORS issues on mobile browsers
-const API = '/api';
+// Determine API URL based on environment
+const getApiUrl = () => {
+  // For development (localhost), use the full backend URL
+  if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+    return 'http://localhost:8001/api';
+  }
+  // For production/preview, use relative URL (ingress handles routing)
+  return '/api';
+};
+
+const API = getApiUrl();
 
 // Log for debugging
-console.log('Using relative API URL:', API);
+console.log('API URL:', API);
+console.log('Hostname:', typeof window !== 'undefined' ? window.location.hostname : 'server');
 
 // Simple fetch with timeout
 const fetchWithTimeout = async (url, options, timeout = 30000) => {
