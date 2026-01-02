@@ -3,8 +3,36 @@ import axios from 'axios';
 
 const AuthContext = createContext(null);
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+// Get backend URL with fallback for mobile browsers
+const getBackendUrl = () => {
+  // Try environment variable first
+  const envUrl = process.env.REACT_APP_BACKEND_URL;
+  if (envUrl && envUrl.length > 0) {
+    return envUrl;
+  }
+  
+  // Fallback: use current origin for relative API calls or hardcoded URL
+  if (typeof window !== 'undefined') {
+    // If we're on the preview domain, use it directly
+    if (window.location.hostname.includes('preview.emergentagent.com')) {
+      return `https://${window.location.hostname}`;
+    }
+    // For localhost development
+    if (window.location.hostname === 'localhost') {
+      return 'http://localhost:8001';
+    }
+  }
+  
+  // Final fallback - hardcoded production URL
+  return 'https://poledataio.preview.emergentagent.com';
+};
+
+const BACKEND_URL = getBackendUrl();
 const API = `${BACKEND_URL}/api`;
+
+// Log for debugging
+console.log('Backend URL:', BACKEND_URL);
+console.log('API URL:', API);
 
 // Configure axios defaults for mobile
 axios.defaults.timeout = 30000; // 30 second timeout for slow mobile networks
