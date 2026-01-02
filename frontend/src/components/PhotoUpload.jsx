@@ -246,7 +246,32 @@ export const PhotoUpload = ({ label, value, onChange, testId, showHeightTool = f
           onHeightMeasured={onHeightMeasured}
         />
       )}
-    </div>
+      </div>
+
+      {/* Lightbox Dialog */}
+      <Dialog open={showLightbox} onOpenChange={setShowLightbox}>
+        <DialogContent className="bg-zinc-900 border-zinc-800 max-w-4xl max-h-[90vh] p-2">
+          <div className="relative">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute top-2 right-2 z-10 bg-black/50 hover:bg-black/70 text-white rounded-full"
+              onClick={() => setShowLightbox(false)}
+            >
+              <X className="w-5 h-5" />
+            </Button>
+            <div className="flex flex-col items-center">
+              <p className="text-xs font-mono tracking-widest text-zinc-500 uppercase mb-2">{label}</p>
+              <img 
+                src={value} 
+                alt={label} 
+                className="max-w-full max-h-[80vh] object-contain"
+              />
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 
