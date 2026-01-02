@@ -400,8 +400,11 @@ async def get_job(job_id: str, current_user: dict = Depends(get_current_user)):
 
 @api_router.put("/jobs/{job_id}", response_model=Job)
 async def update_job(job_id: str, job_data: JobUpdate, current_user: dict = Depends(get_current_user)):
-    """Update a job"""
-    existing = await db.jobs.find_one({"id": job_id, "user_id": current_user["id"]})
+    """Update a job - admin can update any job"""
+    if is_admin_user(current_user):
+        existing = await db.jobs.find_one({"id": job_id})
+    else:
+        existing = await db.jobs.find_one({"id": job_id, "user_id": current_user["id"]})
     if not existing:
         raise HTTPException(status_code=404, detail="Job not found")
     
@@ -415,8 +418,11 @@ async def update_job(job_id: str, job_data: JobUpdate, current_user: dict = Depe
 
 @api_router.delete("/jobs/{job_id}")
 async def delete_job(job_id: str, current_user: dict = Depends(get_current_user)):
-    """Delete a job and all its poles"""
-    existing = await db.jobs.find_one({"id": job_id, "user_id": current_user["id"]})
+    """Delete a job and all its poles - admin can delete any job"""
+    if is_admin_user(current_user):
+        existing = await db.jobs.find_one({"id": job_id})
+    else:
+        existing = await db.jobs.find_one({"id": job_id, "user_id": current_user["id"]})
     if not existing:
         raise HTTPException(status_code=404, detail="Job not found")
     
@@ -428,9 +434,11 @@ async def delete_job(job_id: str, current_user: dict = Depends(get_current_user)
 
 @api_router.get("/jobs/{job_id}/poles", response_model=List[Pole])
 async def get_job_poles(job_id: str, current_user: dict = Depends(get_current_user)):
-    """Get all poles for a specific job"""
-    # Verify job belongs to user
-    job = await db.jobs.find_one({"id": job_id, "user_id": current_user["id"]})
+    """Get all poles for a specific job - admin can access any job's poles"""
+    if is_admin_user(current_user):
+        job = await db.jobs.find_one({"id": job_id})
+    else:
+        job = await db.jobs.find_one({"id": job_id, "user_id": current_user["id"]})
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
     
@@ -439,9 +447,11 @@ async def get_job_poles(job_id: str, current_user: dict = Depends(get_current_us
 
 @api_router.get("/jobs/{job_id}/export/excel")
 async def export_job_excel(job_id: str, current_user: dict = Depends(get_current_user)):
-    """Export all poles from a job to Excel"""
-    # Verify job belongs to user
-    job = await db.jobs.find_one({"id": job_id, "user_id": current_user["id"]}, {"_id": 0})
+    """Export all poles from a job to Excel - admin can export any job"""
+    if is_admin_user(current_user):
+        job = await db.jobs.find_one({"id": job_id}, {"_id": 0})
+    else:
+        job = await db.jobs.find_one({"id": job_id, "user_id": current_user["id"]}, {"_id": 0})
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
     
