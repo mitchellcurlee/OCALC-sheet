@@ -94,7 +94,7 @@ const EditPole = () => {
 
   const fetchOptions = async () => {
     try {
-      const response = await axios.get(`${API}/poles/options`);
+      const response = await axios.get("/poles/options");
       setOptions(response.data);
     } catch (error) {
       toast.error("Failed to fetch form options");
@@ -103,7 +103,7 @@ const EditPole = () => {
 
   const fetchPole = async () => {
     try {
-      const response = await axios.get(`${API}/poles/${id}`);
+      const response = await axios.get(`/poles/${id}`);
       const pole = response.data;
       setFormData({
         job_number: pole.job_number || "", pole_number: pole.pole_number || "",
@@ -193,7 +193,7 @@ const EditPole = () => {
         knuckles: knuckles.filter(k => k.count || k.condition || k.photo),
         attachments: attachments.filter(a => a.height || a.owner || a.photo).map(a => ({ ...a, height: a.height ? parseFloat(a.height) : null })),
       };
-      await axios.put(`${API}/poles/${id}`, submitData);
+      await axios.put(`/poles/${id}`, submitData);
       toast.success("Pole updated successfully!");
       navigate(backUrl);
     } catch (error) { toast.error("Failed to update pole"); console.error(error); } finally { setLoading(false); }

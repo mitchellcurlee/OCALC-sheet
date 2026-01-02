@@ -139,7 +139,7 @@ const AddPole = () => {
 
   const fetchOptions = async () => {
     try {
-      const response = await axios.get(`${API}/poles/options`);
+      const response = await axios.get("/poles/options");
       setOptions(response.data);
     } catch (error) {
       toast.error("Failed to fetch form options");
@@ -306,7 +306,7 @@ const AddPole = () => {
         })),
       };
 
-      await axios.post(`${API}/poles`, submitData);
+      await axios.post("/poles", submitData);
       toast.success("Pole data saved successfully!");
       navigate(jobId ? `/jobs/${jobId}` : "/");
     } catch (error) {
