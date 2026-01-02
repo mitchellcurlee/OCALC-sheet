@@ -45,6 +45,37 @@ L.Icon.Default.mergeOptions({
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
+// Photo Display Component - moved outside to prevent re-creation on each render
+const PhotoDisplay = ({ label, src, onImageClick }) => {
+  if (!src) return null;
+  return (
+    <div className="space-y-2">
+      <p className="text-xs font-mono tracking-widest text-zinc-500 uppercase">{label}</p>
+      <div 
+        className="relative group cursor-pointer"
+        onClick={() => onImageClick({ src, label })}
+      >
+        <img 
+          src={src} 
+          alt={label} 
+          className="w-full max-w-sm h-48 object-cover border-2 border-zinc-700 hover:border-red-500 transition-colors" 
+        />
+        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+          <ZoomIn className="w-8 h-8 text-white" />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Data Row Component - moved outside to prevent re-creation on each render
+const DataRow = ({ label, value, mono = false }) => (
+  <div className="space-y-1">
+    <p className="text-xs font-mono tracking-widest text-zinc-500 uppercase">{label}</p>
+    <p className={`text-zinc-200 ${mono ? "font-mono" : ""}`}>{value || "—"}</p>
+  </div>
+);
+
 const ViewPole = () => {
   const { jobId, id } = useParams();
   const navigate = useNavigate();
