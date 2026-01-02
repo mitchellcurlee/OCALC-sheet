@@ -6,6 +6,10 @@ const AuthContext = createContext(null);
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
+// Configure axios defaults for mobile
+axios.defaults.timeout = 30000; // 30 second timeout for slow mobile networks
+axios.defaults.headers.common['Content-Type'] = 'application/json';
+
 // Safe localStorage wrapper for mobile browsers
 const safeStorage = {
   getItem: (key) => {
@@ -62,34 +66,53 @@ export const AuthProvider = ({ children }) => {
   };
 
   const login = async (email, password) => {
-    const response = await axios.post(`${API}/auth/login`, { 
-      email: email.toLowerCase().trim(), 
-      password 
-    });
-    const { access_token, user: userData } = response.data;
-    
-    safeStorage.setItem('token', access_token);
-    axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
-    setToken(access_token);
-    setUser(userData);
-    
-    return userData;
+    try {
+      const response = await axios.post(`${API}/auth/login`, { 
+        email: email.toLowerCase().trim(), 
+        password 
+      });
+      const { access_token, user: userData } = response.data;
+      
+      safeStorage.setItem('token', access_token);
+      axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
+      setToken(access_token);
+      setUser(userData);
+      
+      return userData;
+    } catch (error) {
+      console.error('Login error:', error);
+      if (error.code === 'ERR_NETWORK') {
+        throw new Error('Network error. Please check your internet connection.');
+      }
+      if (error.code === 'ECONNABORTED') {
+        throw new Error('Request timed out. Please try again.');
+      }
+      throw error;
+    }
   };
 
   const register = async (email, password, name) => {
-    const response = await axios.post(`${API}/auth/register`, { 
-      email: email.toLowerCase().trim(), 
-      password, 
-      name 
-    });
-    const { access_token, user: userData } = response.data;
-    
-    safeStorage.setItem('token', access_token);
-    axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
-    setToken(access_token);
-    setUser(userData);
-    
-    return userData;
+    try {
+      const response = await axios.post(`${API}/auth/register`, { 
+        email: email.toLowerCase().trim(), 
+        password, 
+        name 
+      });
+      const { access_token, user: userData } = response.data;
+      
+      safeStorage.setItem('token', access_token);
+      axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
+      setToken(access_token);
+      setUser(userData);
+      
+      return userData;
+    } catch (error) {
+      console.error('Register error:', error);
+      if (error.code === 'ERR_NETWORK') {
+        throw new Error('Network error. Please check your internet connection.');
+      }
+      throw error;
+    }
   };
 
   const logout = () => {
