@@ -312,6 +312,273 @@ async def get_me(current_user: dict = Depends(get_current_user)):
     """Get current user info"""
     return current_user
 
+# Job Endpoints
+@api_router.post("/jobs", response_model=Job)
+async def create_job(job_data: JobCreate, current_user: dict = Depends(get_current_user)):
+    """Create a new job"""
+    job = Job(
+        name=job_data.name,
+        description=job_data.description,
+        location=job_data.location,
+        user_id=current_user["id"],
+        pole_count=0
+    )
+    await db.jobs.insert_one(job.model_dump())
+    return job
+
+@api_router.get("/jobs", response_model=List[Job])
+async def get_jobs(current_user: dict = Depends(get_current_user)):
+    """Get all jobs for current user"""
+    jobs = await db.jobs.find({"user_id": current_user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    # Update pole counts
+    for job in jobs:
+        count = await db.poles.count_documents({"job_id": job["id"]})
+        job["pole_count"] = count
+    return jobs
+
+@api_router.get("/jobs/{job_id}", response_model=Job)
+async def get_job(job_id: str, current_user: dict = Depends(get_current_user)):
+    """Get a specific job"""
+    job = await db.jobs.find_one({"id": job_id, "user_id": current_user["id"]}, {"_id": 0})
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    job["pole_count"] = await db.poles.count_documents({"job_id": job_id})
+    return job
+
+@api_router.put("/jobs/{job_id}", response_model=Job)
+async def update_job(job_id: str, job_data: JobUpdate, current_user: dict = Depends(get_current_user)):
+    """Update a job"""
+    existing = await db.jobs.find_one({"id": job_id, "user_id": current_user["id"]})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    update_data = {k: v for k, v in job_data.model_dump().items() if v is not None}
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    await db.jobs.update_one({"id": job_id}, {"$set": update_data})
+    updated = await db.jobs.find_one({"id": job_id}, {"_id": 0})
+    updated["pole_count"] = await db.poles.count_documents({"job_id": job_id})
+    return updated
+
+@api_router.delete("/jobs/{job_id}")
+async def delete_job(job_id: str, current_user: dict = Depends(get_current_user)):
+    """Delete a job and all its poles"""
+    existing = await db.jobs.find_one({"id": job_id, "user_id": current_user["id"]})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    # Delete all poles in this job
+    await db.poles.delete_many({"job_id": job_id})
+    # Delete the job
+    await db.jobs.delete_one({"id": job_id})
+    return {"message": "Job and all poles deleted successfully"}
+
+@api_router.get("/jobs/{job_id}/poles", response_model=List[Pole])
+async def get_job_poles(job_id: str, current_user: dict = Depends(get_current_user)):
+    """Get all poles for a specific job"""
+    # Verify job belongs to user
+    job = await db.jobs.find_one({"id": job_id, "user_id": current_user["id"]})
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    poles = await db.poles.find({"job_id": job_id}, {"_id": 0}).sort("created_at", -1).to_list(10000)
+    return poles
+
+@api_router.get("/jobs/{job_id}/export/excel")
+async def export_job_excel(job_id: str, current_user: dict = Depends(get_current_user)):
+    """Export all poles from a job to Excel"""
+    # Verify job belongs to user
+    job = await db.jobs.find_one({"id": job_id, "user_id": current_user["id"]}, {"_id": 0})
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    poles = await db.poles.find({"job_id": job_id}, {"_id": 0}).sort("created_at", -1).to_list(10000)
+    
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Pole Data"
+    
+    # Styling
+    header_fill = PatternFill(start_color="374151", end_color="374151", fill_type="solid")
+    header_font = Font(bold=True, color="FFFFFF")
+    section_fill = PatternFill(start_color="1f2937", end_color="1f2937", fill_type="solid")
+    section_font = Font(bold=True, color="FFFFFF")
+    
+    # Job info at top
+    ws.cell(row=1, column=1, value="JOB NAME").fill = header_fill
+    ws.cell(row=1, column=1).font = header_font
+    ws.cell(row=1, column=2, value=job.get("name", ""))
+    ws.cell(row=1, column=3, value="LOCATION").fill = header_fill
+    ws.cell(row=1, column=3).font = header_font
+    ws.cell(row=1, column=4, value=job.get("location", ""))
+    ws.cell(row=1, column=5, value="POLES").fill = header_fill
+    ws.cell(row=1, column=5).font = header_font
+    ws.cell(row=1, column=6, value=len(poles))
+    
+    current_row = 3
+    
+    for pole in poles:
+        start_row = current_row
+        
+        # Row 1: Pole Header
+        ws.cell(row=current_row, column=1, value="POLE #").fill = header_fill
+        ws.cell(row=current_row, column=1).font = header_font
+        ws.cell(row=current_row, column=2, value=pole.get("pole_number", ""))
+        ws.cell(row=current_row, column=3, value="JOB #").fill = header_fill
+        ws.cell(row=current_row, column=3).font = header_font
+        ws.cell(row=current_row, column=4, value=pole.get("job_number", ""))
+        ws.cell(row=current_row, column=5, value="DATE").fill = header_fill
+        ws.cell(row=current_row, column=5).font = header_font
+        inspection_date = pole.get("inspection_date", "")
+        ws.cell(row=current_row, column=6, value=str(inspection_date)[:10] if inspection_date else "")
+        current_row += 1
+        
+        # Row 2: Basic Info
+        ws.cell(row=current_row, column=1, value="SIZE").fill = section_fill
+        ws.cell(row=current_row, column=1).font = section_font
+        ws.cell(row=current_row, column=2, value=pole.get("pole_size", ""))
+        ws.cell(row=current_row, column=3, value="CONDITION").fill = section_fill
+        ws.cell(row=current_row, column=3).font = section_font
+        ws.cell(row=current_row, column=4, value=pole.get("condition", ""))
+        ws.cell(row=current_row, column=5, value="OWNER").fill = section_fill
+        ws.cell(row=current_row, column=5).font = section_font
+        ws.cell(row=current_row, column=6, value=pole.get("pole_owner", ""))
+        current_row += 1
+        
+        # Row 3: GPS & Terminal/Risers
+        ws.cell(row=current_row, column=1, value="LAT").fill = section_fill
+        ws.cell(row=current_row, column=1).font = section_font
+        ws.cell(row=current_row, column=2, value=pole.get("latitude", ""))
+        ws.cell(row=current_row, column=3, value="LONG").fill = section_fill
+        ws.cell(row=current_row, column=3).font = section_font
+        ws.cell(row=current_row, column=4, value=pole.get("longitude", ""))
+        ws.cell(row=current_row, column=5, value="TERMINAL").fill = section_fill
+        ws.cell(row=current_row, column=5).font = section_font
+        ws.cell(row=current_row, column=6, value=pole.get("pole_terminal", ""))
+        ws.cell(row=current_row, column=7, value="RISERS").fill = section_fill
+        ws.cell(row=current_row, column=7).font = section_font
+        ws.cell(row=current_row, column=8, value=pole.get("risers", ""))
+        current_row += 1
+        
+        # Spans
+        ws.cell(row=current_row, column=1, value="SPANS").fill = header_fill
+        ws.cell(row=current_row, column=1).font = header_font
+        current_row += 1
+        for i in range(1, 5):
+            dir_val = pole.get(f"span{i}_direction", "")
+            dist_val = pole.get(f"span{i}_distance", "")
+            owner_val = pole.get(f"span{i}_owner", "")
+            if dir_val or dist_val or owner_val:
+                ws.cell(row=current_row, column=1, value=f"Span {i}")
+                ws.cell(row=current_row, column=2, value=dir_val)
+                ws.cell(row=current_row, column=3, value=dist_val)
+                ws.cell(row=current_row, column=4, value=owner_val)
+                current_row += 1
+        
+        # Down Guys
+        down_guys = pole.get("down_guys", [])
+        if down_guys:
+            ws.cell(row=current_row, column=1, value="DOWN GUYS").fill = header_fill
+            ws.cell(row=current_row, column=1).font = header_font
+            current_row += 1
+            for i, dg in enumerate(down_guys, 1):
+                ws.cell(row=current_row, column=1, value=f"Guy {i}")
+                ws.cell(row=current_row, column=2, value=dg.get("size", ""))
+                ws.cell(row=current_row, column=3, value=dg.get("direction", ""))
+                ws.cell(row=current_row, column=4, value=dg.get("owner", ""))
+                ws.cell(row=current_row, column=5, value=dg.get("height", ""))
+                ws.cell(row=current_row, column=6, value=dg.get("lead", ""))
+                current_row += 1
+        
+        # Knuckles
+        knuckles = pole.get("knuckles", [])
+        if knuckles:
+            ws.cell(row=current_row, column=1, value="KNUCKLES").fill = header_fill
+            ws.cell(row=current_row, column=1).font = header_font
+            current_row += 1
+            for i, kn in enumerate(knuckles, 1):
+                ws.cell(row=current_row, column=1, value=f"Knuckle {i}")
+                ws.cell(row=current_row, column=2, value=kn.get("count", ""))
+                ws.cell(row=current_row, column=3, value=kn.get("condition", ""))
+                current_row += 1
+        
+        # Attachments
+        attachments = pole.get("attachments", [])
+        if attachments:
+            ws.cell(row=current_row, column=1, value="ATTACHMENTS").fill = header_fill
+            ws.cell(row=current_row, column=1).font = header_font
+            current_row += 1
+            for i, att in enumerate(attachments, 1):
+                ws.cell(row=current_row, column=1, value=f"Att {i}")
+                ws.cell(row=current_row, column=2, value=att.get("height", ""))
+                ws.cell(row=current_row, column=3, value=att.get("owner", ""))
+                current_row += 1
+        
+        # Birthmark & MGNV
+        ws.cell(row=current_row, column=1, value="BIRTHMARK").fill = section_fill
+        ws.cell(row=current_row, column=1).font = section_font
+        ws.cell(row=current_row, column=2, value="Yes" if pole.get("has_birthmark", True) else "No")
+        ws.cell(row=current_row, column=3, value="MGNV").fill = section_fill
+        ws.cell(row=current_row, column=3).font = section_font
+        ws.cell(row=current_row, column=4, value=pole.get("mgnv", ""))
+        current_row += 1
+        
+        # Notes
+        if pole.get("notes"):
+            ws.cell(row=current_row, column=1, value="NOTES").fill = section_fill
+            ws.cell(row=current_row, column=1).font = section_font
+            ws.cell(row=current_row, column=2, value=pole.get("notes", ""))
+            current_row += 1
+        
+        # Photos
+        photos = []
+        if pole.get("ocalc_left_photo"): photos.append(("OCALC Left", pole["ocalc_left_photo"]))
+        if pole.get("ocalc_middle_photo"): photos.append(("OCALC Mid", pole["ocalc_middle_photo"]))
+        if pole.get("ocalc_right_photo"): photos.append(("OCALC Right", pole["ocalc_right_photo"]))
+        if pole.get("birthmark_photo"): photos.append(("Birthmark", pole["birthmark_photo"]))
+        if pole.get("mgnv_photo"): photos.append(("MGNV", pole["mgnv_photo"]))
+        
+        if photos:
+            ws.cell(row=current_row, column=1, value="PHOTOS").fill = header_fill
+            ws.cell(row=current_row, column=1).font = header_font
+            current_row += 1
+            link_font = Font(color="0066CC", underline="single")
+            col = 1
+            for label, url in photos:
+                cell = ws.cell(row=current_row, column=col, value=label)
+                cell.hyperlink = url
+                cell.font = link_font
+                col += 1
+            current_row += 1
+        
+        # Blank row separator
+        current_row += 1
+    
+    # Auto-adjust column widths
+    for col in ws.columns:
+        max_length = 0
+        column = col[0].column_letter
+        for cell in col:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except:
+                pass
+        ws.column_dimensions[column].width = max(min(max_length + 2, 30), 12)
+    
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+    
+    safe_name = "".join(c for c in job.get("name", "job") if c.isalnum() or c in (' ', '-', '_')).strip()
+    filename = f"{safe_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    
+    return StreamingResponse(
+        buffer,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
 @api_router.get("/poles/options")
 async def get_pole_options():
     """Get dropdown options for pole form"""
