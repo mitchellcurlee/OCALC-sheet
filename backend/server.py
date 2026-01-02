@@ -913,7 +913,7 @@ async def export_poles_excel():
         for field, col in photo_fields:
             photo_url = pole.get(field, "")
             if photo_url:
-                cell = ws.cell(row=current_row, column=col, value="View Photo")
+                cell = ws.cell(row=current_row, column=col, value="📷 Click to Open")
                 cell.hyperlink = photo_url
                 cell.font = link_font
         current_row += 1
