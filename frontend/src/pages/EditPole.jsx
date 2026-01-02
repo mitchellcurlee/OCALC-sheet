@@ -237,12 +237,23 @@ const EditPole = () => {
           {/* Basic Info */}
           <div className="industrial-card p-4 sm:p-5">
             <h2 className="font-heading text-base sm:text-lg font-bold text-white mb-3 sm:mb-4 flex items-center gap-2"><div className="w-1 h-5 bg-red-500"></div>Basic Information</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
               <div className="space-y-2">
                 <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Pole Size *</Label>
                 <Select value={formData.pole_size} onValueChange={(v) => handleSelectChange("pole_size", v)}>
                   <SelectTrigger className="h-12 sm:h-10 bg-black border-zinc-700 text-white"><SelectValue placeholder="Class-Height" /></SelectTrigger>
                   <SelectContent className="bg-zinc-900 border-zinc-700 max-h-60">{options.sizes.map((s) => (<SelectItem key={s} value={s}>{s}</SelectItem>))}</SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Size Type</Label>
+                <Select value={formData.pole_size_type} onValueChange={(v) => handleSelectChange("pole_size_type", v)}>
+                  <SelectTrigger className="h-12 sm:h-10 bg-black border-zinc-700 text-white"><SelectValue placeholder="Select type" /></SelectTrigger>
+                  <SelectContent className="bg-zinc-900 border-zinc-700">
+                    <SelectItem value="Actual" className="text-green-400">Actual</SelectItem>
+                    <SelectItem value="Estimate" className="text-yellow-400">Estimate</SelectItem>
+                    <SelectItem value="Proposed" className="text-blue-400">Proposed</SelectItem>
+                  </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
