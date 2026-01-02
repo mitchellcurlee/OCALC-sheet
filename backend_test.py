@@ -761,32 +761,40 @@ class PoleAPITester:
         return self.run_test("Get Non-existent Pole", "GET", f"poles/{fake_id}", 404)
 
 def main():
-    print("🚀 Starting Pole Data Sheet Authentication & Photo Testing...")
-    print("Testing new authentication flow and photo features")
-    print("=" * 70)
+    print("🚀 Starting Pole Data Sheet Job Management E2E Testing...")
+    print("Testing complete E2E flow: register → login → create job → add pole → export")
+    print("=" * 80)
     
     tester = PoleAPITester()
     
-    # Test sequence based on review request
+    # E2E Job Management Test Sequence (as requested in review)
     test_functions = [
-        # Basic API tests
+        # 1. Authentication Flow
         tester.test_root_endpoint,
-        tester.test_get_pole_options,
+        tester.test_auth_register,      # Register user
+        tester.test_auth_login,         # Login (if register fails due to existing user)
+        tester.test_auth_me,            # Get current user with Bearer token
+        tester.test_auth_protected_endpoint,  # Verify protected endpoints work
         
-        # Authentication Flow Tests (as requested)
-        tester.test_auth_register,  # 1. Register new user
-        tester.test_auth_login,     # 2. Login with credentials  
-        tester.test_auth_me,        # 3. Get current user with token
-        tester.test_auth_protected_endpoint,  # 4. Verify token required
+        # 2. Jobs Management (Protected - requires Bearer token)
+        tester.test_create_job,         # Create a new job
+        tester.test_get_jobs_list,      # List all jobs for current user
+        tester.test_get_specific_job,   # Get specific job
+        tester.test_update_job,         # Update job
         
-        # Photo Display & Excel Export Tests (as requested)
-        tester.test_create_pole_with_photos,  # 1. Create pole with photo URLs
-        tester.test_excel_export_with_photos, # 2. Export Excel with photo links
+        # 3. Poles within Jobs (Protected)
+        tester.test_create_pole_in_job, # Create pole with job_id and dynamic arrays
+        tester.test_get_job_poles,      # List all poles for the job
+        
+        # 4. Export
+        tester.test_export_job_excel,   # Export all poles from job to Excel
+        
+        # 5. Cleanup
+        tester.test_delete_job_and_poles,  # Delete job and its poles
         
         # Additional verification tests
+        tester.test_get_pole_options,
         tester.test_get_stats,
-        tester.test_get_all_poles,
-        tester.test_get_nonexistent_pole,
     ]
     
     # Run all tests
@@ -797,17 +805,21 @@ def main():
             print(f"❌ Test {test_func.__name__} failed with exception: {str(e)}")
     
     # Print results
-    print("\n" + "=" * 70)
+    print("\n" + "=" * 80)
     print(f"📊 Test Results: {tester.tests_passed}/{tester.tests_run} tests passed")
     
     if tester.tests_passed == tester.tests_run:
-        print("🎉 All authentication and photo tests passed!")
+        print("🎉 All Job Management E2E tests passed!")
         print("✅ Authentication flow working correctly")
-        print("✅ Photo URLs can be stored and exported")
+        print("✅ Job CRUD operations working")
+        print("✅ Poles can be created within jobs with dynamic arrays")
+        print("✅ Job-specific pole listing working")
+        print("✅ Job Excel export working")
+        print("✅ Job deletion cascades to poles")
         return 0
     else:
         print(f"⚠️  {tester.tests_run - tester.tests_passed} tests failed")
-        print("❌ Issues detected with authentication or photo features")
+        print("❌ Issues detected with Job Management E2E flow")
         return 1
 
 if __name__ == "__main__":
