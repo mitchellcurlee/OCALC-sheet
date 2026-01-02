@@ -22,6 +22,7 @@ import {
   Loader2,
   Plus,
   Trash2,
+  Search,
 } from "lucide-react";
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
@@ -54,6 +55,8 @@ const AddPole = () => {
   const { jobId } = useParams();
   const [loading, setLoading] = useState(false);
   const [gpsLoading, setGpsLoading] = useState(false);
+  const [addressSearch, setAddressSearch] = useState("");
+  const [searchLoading, setSearchLoading] = useState(false);
   const [options, setOptions] = useState({
     pole_owners: [],
     conditions: [],
