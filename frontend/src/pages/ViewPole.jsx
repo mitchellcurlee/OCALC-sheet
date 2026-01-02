@@ -15,6 +15,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
+  Dialog,
+  DialogContent,
+} from "@/components/ui/dialog";
+import {
   ArrowLeft,
   Pencil,
   Trash2,
@@ -23,6 +27,8 @@ import {
   Calendar,
   Loader2,
   ExternalLink,
+  X,
+  ZoomIn,
 } from "lucide-react";
 import { MapContainer, TileLayer, Marker } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
