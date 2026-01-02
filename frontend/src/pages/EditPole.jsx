@@ -180,7 +180,7 @@ const EditPole = () => {
         <div className="max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex items-center gap-2 sm:gap-4">
-              <Link to="/"><Button variant="ghost" size="icon" className="text-zinc-400 hover:text-white h-10 w-10 sm:h-9 sm:w-9"><ArrowLeft className="w-5 h-5" /></Button></Link>
+              <Link to={backUrl}><Button variant="ghost" size="icon" className="text-zinc-400 hover:text-white h-10 w-10 sm:h-9 sm:w-9"><ArrowLeft className="w-5 h-5" /></Button></Link>
               <div className="flex items-center gap-2 sm:gap-3">
                 <div className="w-8 h-8 sm:w-10 sm:h-10 bg-orange-600 flex items-center justify-center flex-shrink-0"><Zap className="w-5 h-5 sm:w-6 sm:h-6 text-white" /></div>
                 <h1 className="font-heading text-sm sm:text-xl font-bold tracking-tight uppercase text-white">Pole Data Sheet / OCALC</h1>
@@ -397,7 +397,7 @@ const EditPole = () => {
 
           {/* Submit */}
           <div className="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4 pt-2">
-            <Link to="/" className="w-full sm:w-auto"><Button type="button" variant="outline" className="w-full sm:w-auto h-12 sm:h-10 bg-zinc-800 border-zinc-700 hover:bg-zinc-700 text-white">Cancel</Button></Link>
+            <Link to={backUrl} className="w-full sm:w-auto"><Button type="button" variant="outline" className="w-full sm:w-auto h-12 sm:h-10 bg-zinc-800 border-zinc-700 hover:bg-zinc-700 text-white">Cancel</Button></Link>
             <Button type="submit" disabled={loading} className="w-full sm:w-auto h-12 sm:h-10 bg-orange-600 hover:bg-orange-700 text-white min-w-32">{loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Save className="w-4 h-4 mr-2" />Update Pole</>}</Button>
           </div>
         </form>
