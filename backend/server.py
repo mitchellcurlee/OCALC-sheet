@@ -224,7 +224,30 @@ class PoleUpdate(BaseModel):
 class Pole(PoleBase):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    job_id: Optional[str] = None  # Reference to parent job
     inspection_date: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+# Job Models
+class JobCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    location: Optional[str] = None
+
+class JobUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    location: Optional[str] = None
+
+class Job(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    description: Optional[str] = None
+    location: Optional[str] = None
+    user_id: str  # Owner of the job
+    pole_count: int = 0
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
