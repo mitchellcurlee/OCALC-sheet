@@ -76,13 +76,13 @@ class PoleAPITester:
         return self.run_test("Root API", "GET", "", 200)
 
     def test_auth_register(self):
-        """Test user registration"""
-        # Try to register - if user exists, that's also a valid test result
+        """Test user registration for Job Management E2E flow"""
         success, response = self.run_test("Register User", "POST", "auth/register", 200, data=self.test_user)
         if success and 'access_token' in response:
             self.auth_token = response['access_token']
+            self.current_user = response.get('user', {})
             print(f"   ✅ Registration successful, token obtained")
-            print(f"   User: {response.get('user', {})}")
+            print(f"   User: {self.current_user}")
             return True
         elif not success:
             # Check if it's because user already exists (which is expected behavior)
@@ -96,13 +96,14 @@ class PoleAPITester:
                     error_data = response.json()
                     if 'Email already registered' in error_data.get('detail', ''):
                         print(f"   ✅ Registration correctly prevents duplicate emails")
-                        return True
+                        # Try to login instead
+                        return self.test_auth_login()
             except:
                 pass
         return success
 
     def test_auth_login(self):
-        """Test user login"""
+        """Test user login for Job Management E2E flow"""
         login_data = {
             "email": self.test_user["email"],
             "password": self.test_user["password"]
@@ -110,8 +111,9 @@ class PoleAPITester:
         success, response = self.run_test("Login User", "POST", "auth/login", 200, data=login_data)
         if success and 'access_token' in response:
             self.auth_token = response['access_token']
+            self.current_user = response.get('user', {})
             print(f"   ✅ Login successful, token obtained")
-            print(f"   User: {response.get('user', {})}")
+            print(f"   User: {self.current_user}")
             return True
         return success
 
