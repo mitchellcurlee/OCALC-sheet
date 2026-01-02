@@ -49,13 +49,15 @@ const MapClickHandler = ({ onLocationSelect }) => {
 
 const EditPole = () => {
   const navigate = useNavigate();
-  const { id } = useParams();
+  const { jobId, id } = useParams();
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [gpsLoading, setGpsLoading] = useState(false);
   const [options, setOptions] = useState({
     pole_owners: [], conditions: [], sizes: [], down_guy_owners: [], down_guy_directions: [], down_guy_sizes: [], knuckle_options: [], span_owners: [], span_directions: [], attachment_owners: [], riser_options: [],
   });
+
+  const backUrl = jobId ? `/jobs/${jobId}` : "/";
 
   const [formData, setFormData] = useState({
     job_number: "", pole_number: "", pole_size: "", condition: "",
