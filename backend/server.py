@@ -131,6 +131,9 @@ class Attachment(BaseModel):
 
 # Models
 class PoleBase(BaseModel):
+    # Job Reference
+    job_id: Optional[str] = None
+    
     # Title Info
     job_number: Optional[str] = None
     pole_number: Optional[str] = None
