@@ -68,7 +68,7 @@ const ViewPole = () => {
     try {
       await axios.delete(`${API}/poles/${id}`);
       toast.success("Pole deleted successfully");
-      navigate("/");
+      navigate(backUrl);
     } catch (error) {
       toast.error("Failed to delete pole");
     }
