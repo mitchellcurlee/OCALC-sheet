@@ -47,8 +47,8 @@ const JobDetail = () => {
   const fetchJobAndPoles = async () => {
     try {
       const [jobRes, polesRes] = await Promise.all([
-        axios.get(`${API}/jobs/${jobId}`),
-        axios.get(`${API}/jobs/${jobId}/poles`)
+        axios.get(`/jobs/${jobId}`),
+        axios.get(`/jobs/${jobId}/poles`)
       ]);
       setJob(jobRes.data);
       setPoles(polesRes.data);
@@ -62,7 +62,7 @@ const JobDetail = () => {
 
   const handleExport = async () => {
     try {
-      const response = await axios.get(`${API}/jobs/${jobId}/export/excel`, {
+      const response = await axios.get(`/jobs/${jobId}/export/excel`, {
         responseType: "blob"
       });
       const url = window.URL.createObjectURL(new Blob([response.data]));
@@ -81,7 +81,7 @@ const JobDetail = () => {
 
   const handleDelete = async () => {
     try {
-      await axios.delete(`${API}/poles/${deleteId}`);
+      await axios.delete(`/poles/${deleteId}`);
       toast.success("Pole deleted successfully");
       setDeleteId(null);
       fetchJobAndPoles();
