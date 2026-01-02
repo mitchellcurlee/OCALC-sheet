@@ -207,6 +207,7 @@ class PoleUpdate(BaseModel):
     pole_number: Optional[str] = None
     pole_owner: Optional[str] = None
     pole_size: Optional[str] = None
+    pole_size_type: Optional[str] = None
     condition: Optional[str] = None
     ocalc_left_photo: Optional[str] = None
     ocalc_middle_photo: Optional[str] = None
