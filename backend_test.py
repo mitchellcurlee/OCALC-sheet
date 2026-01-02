@@ -66,7 +66,62 @@ class PoleAPITester:
             print(f"❌ Failed - Error: {str(e)}")
             return False, {}
 
-    def test_root_endpoint(self):
+    def test_auth_register(self):
+        """Test user registration"""
+        success, response = self.run_test("Register User", "POST", "auth/register", 200, data=self.test_user)
+        if success and 'access_token' in response:
+            self.auth_token = response['access_token']
+            print(f"   ✅ Registration successful, token obtained")
+            print(f"   User: {response.get('user', {})}")
+            return True
+        return success
+
+    def test_auth_login(self):
+        """Test user login"""
+        login_data = {
+            "email": self.test_user["email"],
+            "password": self.test_user["password"]
+        }
+        success, response = self.run_test("Login User", "POST", "auth/login", 200, data=login_data)
+        if success and 'access_token' in response:
+            self.auth_token = response['access_token']
+            print(f"   ✅ Login successful, token obtained")
+            print(f"   User: {response.get('user', {})}")
+            return True
+        return success
+
+    def test_auth_me(self):
+        """Test getting current user info"""
+        if not self.auth_token:
+            print("❌ No auth token available for testing")
+            return False
+        
+        success, response = self.run_test("Get Current User", "GET", "auth/me", 200, auth_required=True)
+        if success:
+            required_fields = ['id', 'email', 'name']
+            for field in required_fields:
+                if field not in response:
+                    print(f"   ❌ Missing field in user response: {field}")
+                    return False
+            print(f"   ✅ User info retrieved: {response.get('email')}")
+            return True
+        return success
+
+    def test_auth_protected_endpoint(self):
+        """Test that protected endpoints require authentication"""
+        # Test without token (should fail)
+        old_token = self.auth_token
+        self.auth_token = None
+        success_no_auth, _ = self.run_test("Protected Endpoint (No Auth)", "GET", "auth/me", 401, auth_required=True)
+        
+        # Test with invalid token (should fail)
+        self.auth_token = "invalid-token-12345"
+        success_bad_auth, _ = self.run_test("Protected Endpoint (Bad Auth)", "GET", "auth/me", 401, auth_required=True)
+        
+        # Restore valid token
+        self.auth_token = old_token
+        
+        return success_no_auth and success_bad_auth
         """Test root API endpoint"""
         return self.run_test("Root API", "GET", "", 200)
 
