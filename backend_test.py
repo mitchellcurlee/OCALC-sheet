@@ -2,6 +2,7 @@ import requests
 import sys
 import json
 from datetime import datetime
+import uuid
 
 class PoleAPITester:
     def __init__(self, base_url="https://poledataio.preview.emergentagent.com"):
@@ -10,11 +11,15 @@ class PoleAPITester:
         self.tests_run = 0
         self.tests_passed = 0
         self.created_pole_id = None
+        self.created_job_id = None
         self.auth_token = None
+        self.current_user = None
+        # Use unique email to avoid conflicts
+        unique_id = str(uuid.uuid4())[:8]
         self.test_user = {
-            "email": "testuser@pole.com",
+            "email": f"jobtest{unique_id}@pole.com",
             "password": "test123456",
-            "name": "Pole Tester"
+            "name": "Job Management Tester"
         }
 
     def run_test(self, name, method, endpoint, expected_status, data=None, params=None, auth_required=False):
