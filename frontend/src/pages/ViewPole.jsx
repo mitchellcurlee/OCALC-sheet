@@ -147,7 +147,7 @@ const ViewPole = () => {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Link to="/">
+              <Link to={backUrl}>
                 <Button variant="ghost" size="icon" className="text-zinc-400 hover:text-white" data-testid="back-btn">
                   <ArrowLeft className="w-5 h-5" />
                 </Button>
@@ -169,7 +169,7 @@ const ViewPole = () => {
                   <p className="text-lg font-mono text-white">{pole.pole_number}</p>
                 </div>
               )}
-              <Link to={`/edit/${pole.id}`}>
+              <Link to={jobId ? `/jobs/${jobId}/edit/${pole.id}` : `/edit/${pole.id}`}>
                 <Button variant="outline" className="bg-zinc-800 border-zinc-700 hover:bg-zinc-700 text-white" data-testid="edit-btn">
                   <Pencil className="w-4 h-4 mr-2" />Edit
                 </Button>
