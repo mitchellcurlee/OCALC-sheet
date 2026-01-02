@@ -132,13 +132,6 @@ const ViewPole = () => {
     <PhotoDisplay label={label} src={src} onImageClick={setLightboxImage} />
   );
 
-  const DataRow = ({ label, value, mono = false }) => (
-    <div className="space-y-1">
-      <p className="text-xs font-mono tracking-widest text-zinc-500 uppercase">{label}</p>
-      <p className={`text-zinc-200 ${mono ? "font-mono" : ""}`}>{value || "—"}</p>
-    </div>
-  );
-
   if (loading) {
     return (
       <div className="min-h-screen bg-industrial-bg flex items-center justify-center">
