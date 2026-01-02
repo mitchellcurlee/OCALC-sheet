@@ -190,6 +190,7 @@ class PoleCreate(PoleBase):
     pass
 
 class PoleUpdate(BaseModel):
+    job_id: Optional[str] = None
     job_number: Optional[str] = None
     pole_number: Optional[str] = None
     pole_owner: Optional[str] = None
