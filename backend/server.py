@@ -151,6 +151,7 @@ class PoleBase(BaseModel):
     
     # Basic Info - Pole Owner moved to Height of Attachments section
     pole_size: str
+    pole_size_type: Optional[str] = None  # Actual, Estimate, Proposed
     condition: str
     pole_owner: Optional[str] = None  # Now in Height of Attachments section
     
