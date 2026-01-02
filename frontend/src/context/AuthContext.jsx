@@ -95,23 +95,35 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     console.log('Attempting login to:', `${API}/auth/login`);
+    
     try {
-      const response = await axios({
+      // Use native fetch for better mobile compatibility
+      const response = await fetch(`${API}/auth/login`, {
         method: 'POST',
-        url: `${API}/auth/login`,
-        data: { 
-          email: email.toLowerCase().trim(), 
-          password 
-        },
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
-        timeout: 30000
+        body: JSON.stringify({ 
+          email: email.toLowerCase().trim(), 
+          password 
+        })
       });
       
-      console.log('Login response received');
-      const { access_token, user: userData } = response.data;
+      console.log('Login response status:', response.status);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        if (response.status === 401) {
+          throw new Error('Invalid email or password.');
+        }
+        throw new Error(errorData.detail || `Login failed (${response.status})`);
+      }
+      
+      const data = await response.json();
+      console.log('Login successful');
+      
+      const { access_token, user: userData } = data;
       
       safeStorage.setItem('token', access_token);
       axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
@@ -120,21 +132,14 @@ export const AuthProvider = ({ children }) => {
       
       return userData;
     } catch (error) {
-      console.error('Login error details:', {
-        message: error.message,
-        code: error.code,
-        response: error.response?.data,
-        status: error.response?.status
-      });
+      console.error('Login error:', error.name, error.message);
       
-      if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
-        throw new Error('Unable to connect to server. Please check your internet connection and try again.');
+      // Handle different error types
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        throw new Error('Unable to connect to server. Please check your internet connection.');
       }
-      if (error.code === 'ECONNABORTED') {
-        throw new Error('Request timed out. Please try again.');
-      }
-      if (error.response?.status === 401) {
-        throw new Error('Invalid email or password.');
+      if (error.name === 'TypeError') {
+        throw new Error('Network error. Please try again.');
       }
       throw error;
     }
