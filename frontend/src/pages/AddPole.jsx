@@ -236,6 +236,7 @@ const AddPole = () => {
     try {
       const submitData = {
         ...formData,
+        job_id: jobId || null,
         // Convert numeric fields
         span1_distance: formData.span1_distance ? parseFloat(formData.span1_distance) : null,
         span2_distance: formData.span2_distance ? parseFloat(formData.span2_distance) : null,
@@ -257,7 +258,7 @@ const AddPole = () => {
 
       await axios.post(`${API}/poles`, submitData);
       toast.success("Pole data saved successfully!");
-      navigate("/");
+      navigate(jobId ? `/jobs/${jobId}` : "/");
     } catch (error) {
       toast.error("Failed to save pole data");
       console.error(error);
@@ -266,6 +267,7 @@ const AddPole = () => {
     }
   };
 
+  const backUrl = jobId ? `/jobs/${jobId}` : "/";
   const mapCenter = formData.latitude && formData.longitude
     ? [parseFloat(formData.latitude), parseFloat(formData.longitude)]
     : [37.7749, -122.4194];
@@ -277,7 +279,7 @@ const AddPole = () => {
         <div className="max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex items-center gap-2 sm:gap-4">
-              <Link to="/">
+              <Link to={backUrl}>
                 <Button variant="ghost" size="icon" className="text-zinc-400 hover:text-white h-10 w-10 sm:h-9 sm:w-9" data-testid="back-btn">
                   <ArrowLeft className="w-5 h-5" />
                 </Button>
