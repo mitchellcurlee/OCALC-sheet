@@ -321,6 +321,7 @@ const EditPole = () => {
                     <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" />
                     <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}" />
                     <MapClickHandler onLocationSelect={handleMapClick} />
+                    <MapCenterUpdater lat={formData.latitude} lng={formData.longitude} />
                     {formData.latitude && formData.longitude && <Marker position={[parseFloat(formData.latitude), parseFloat(formData.longitude)]} />}
                   </MapContainer>
                 </div>
