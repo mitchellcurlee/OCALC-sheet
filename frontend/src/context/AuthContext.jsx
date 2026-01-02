@@ -183,7 +183,7 @@ export const AuthProvider = ({ children }) => {
     console.log('Attempting register to:', `${API}/auth/register`);
     
     try {
-      const response = await fetch(`${API}/auth/register`, {
+      const response = await fetchWithRetry(`${API}/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -212,8 +212,8 @@ export const AuthProvider = ({ children }) => {
       return userData;
     } catch (error) {
       console.error('Register error:', error);
-      if (error.name === 'TypeError') {
-        throw new Error('Network error. Please check your internet connection.');
+      if (error.name === 'TypeError' || error.name === 'AbortError') {
+        throw new Error('Unable to connect. Please check your connection and try again.');
       }
       throw error;
     }
