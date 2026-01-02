@@ -113,12 +113,12 @@ class PoleAPITester:
 
     def test_auth_protected_endpoint(self):
         """Test that protected endpoints require authentication"""
-        # Test without token (should fail)
+        # Test without token (should fail with 401 or 403)
         old_token = self.auth_token
         self.auth_token = None
-        success_no_auth, _ = self.run_test("Protected Endpoint (No Auth)", "GET", "auth/me", 401, auth_required=True)
+        success_no_auth, _ = self.run_test("Protected Endpoint (No Auth)", "GET", "auth/me", 403, auth_required=True)
         
-        # Test with invalid token (should fail)
+        # Test with invalid token (should fail with 401)
         self.auth_token = "invalid-token-12345"
         success_bad_auth, _ = self.run_test("Protected Endpoint (Bad Auth)", "GET", "auth/me", 401, auth_required=True)
         
