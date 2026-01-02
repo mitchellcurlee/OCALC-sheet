@@ -51,6 +51,7 @@ const ViewPole = () => {
   const [pole, setPole] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [lightboxImage, setLightboxImage] = useState(null);
   
   const backUrl = jobId ? `/jobs/${jobId}` : "/";
 
