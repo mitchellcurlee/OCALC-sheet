@@ -146,13 +146,29 @@ export const AuthProvider = ({ children }) => {
   };
 
   const register = async (email, password, name) => {
+    console.log('Attempting register to:', `${API}/auth/register`);
+    
     try {
-      const response = await axios.post(`${API}/auth/register`, { 
-        email: email.toLowerCase().trim(), 
-        password, 
-        name 
+      const response = await fetch(`${API}/auth/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({ 
+          email: email.toLowerCase().trim(), 
+          password, 
+          name 
+        })
       });
-      const { access_token, user: userData } = response.data;
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || `Registration failed (${response.status})`);
+      }
+      
+      const data = await response.json();
+      const { access_token, user: userData } = data;
       
       safeStorage.setItem('token', access_token);
       axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
@@ -162,7 +178,7 @@ export const AuthProvider = ({ children }) => {
       return userData;
     } catch (error) {
       console.error('Register error:', error);
-      if (error.code === 'ERR_NETWORK') {
+      if (error.name === 'TypeError') {
         throw new Error('Network error. Please check your internet connection.');
       }
       throw error;
