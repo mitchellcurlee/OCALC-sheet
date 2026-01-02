@@ -74,7 +74,7 @@ export const AuthProvider = ({ children }) => {
 
   const fetchUser = async () => {
     try {
-      const response = await axios.get(`${API}/auth/me`);
+      const response = await axios.get(`/auth/me`);
       setUser(response.data);
     } catch (error) {
       console.error('Failed to fetch user:', error);
@@ -90,8 +90,7 @@ export const AuthProvider = ({ children }) => {
     console.log('Attempting login to:', `${API}/auth/login`);
     
     try {
-      // Use native fetch with retry for better mobile compatibility
-      const response = await fetchWithRetry(`${API}/auth/login`, {
+      const response = await fetchWithTimeout(`${API}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -126,8 +125,6 @@ export const AuthProvider = ({ children }) => {
       return userData;
     } catch (error) {
       console.error('Login error:', error.name, error.message);
-      
-      // Handle different error types
       if (error.name === 'TypeError' && error.message.includes('fetch')) {
         throw new Error('Unable to connect to server. Please check your internet connection.');
       }
