@@ -1,0 +1,26 @@
+{
+  "short_name": "Pole Data",
+  "name": "Pole Data Sheet / OCALC",
+  "description": "Power Pole Data Collection App for field inspections",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#dc2626",
+  "background_color": "#09090b",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "categories": ["utilities", "business"]
+}
