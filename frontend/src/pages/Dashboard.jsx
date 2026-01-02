@@ -50,7 +50,7 @@ const Dashboard = () => {
 
   const fetchPoles = async () => {
     try {
-      let url = `${API}/poles`;
+      let url = "/poles";
       const params = new URLSearchParams();
       if (filterOwner !== "all") params.append("pole_owner", filterOwner);
       if (filterCondition !== "all") params.append("condition", filterCondition);
@@ -66,7 +66,7 @@ const Dashboard = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await axios.get(`${API}/stats`);
+      const response = await axios.get("/stats");
       setStats(response.data);
     } catch (error) {
       console.error("Failed to fetch stats:", error);
@@ -85,7 +85,7 @@ const Dashboard = () => {
   const handleDelete = async () => {
     if (!deleteId) return;
     try {
-      await axios.delete(`${API}/poles/${deleteId}`);
+      await axios.delete(`/poles/${deleteId}`);
       toast.success("Pole deleted successfully");
       setDeleteId(null);
       fetchPoles();
@@ -97,7 +97,7 @@ const Dashboard = () => {
 
   const handleExport = async () => {
     try {
-      const response = await axios.get(`${API}/poles/export/excel`, {
+      const response = await axios.get("/poles/export/excel", {
         responseType: "blob",
       });
       const url = window.URL.createObjectURL(new Blob([response.data]));
