@@ -36,10 +36,10 @@ SECRET_KEY = os.environ.get("JWT_SECRET", "pole-data-secret-key-change-in-produc
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_HOURS = 24
 
-# Master Admin Credentials
-MASTER_ADMIN_EMAIL = "tim.gables@byers.com"
-MASTER_ADMIN_PASSWORD = "Byers@13430"
-MASTER_ADMIN_NAME = "Master Admin"
+# Master Admin Credentials - loaded from environment
+MASTER_ADMIN_EMAIL = os.environ.get("MASTER_ADMIN_EMAIL", "admin@poledata.com")
+MASTER_ADMIN_PASSWORD = os.environ.get("MASTER_ADMIN_PASSWORD", "ChangeMe123!")
+MASTER_ADMIN_NAME = os.environ.get("MASTER_ADMIN_NAME", "Master Admin")
 
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
