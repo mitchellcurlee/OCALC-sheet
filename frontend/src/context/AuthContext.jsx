@@ -125,11 +125,11 @@ export const AuthProvider = ({ children }) => {
       return userData;
     } catch (error) {
       console.error('Login error:', error.name, error.message);
-      if (error.name === 'TypeError' && error.message.includes('fetch')) {
-        throw new Error('Unable to connect to server. Please check your internet connection.');
+      if (error.name === 'AbortError') {
+        throw new Error('Request timed out. Please try again.');
       }
       if (error.name === 'TypeError') {
-        throw new Error('Network error. Please try again.');
+        throw new Error('Unable to connect. Please try again.');
       }
       throw error;
     }
@@ -139,7 +139,7 @@ export const AuthProvider = ({ children }) => {
     console.log('Attempting register to:', `${API}/auth/register`);
     
     try {
-      const response = await fetchWithRetry(`${API}/auth/register`, {
+      const response = await fetchWithTimeout(`${API}/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -168,8 +168,11 @@ export const AuthProvider = ({ children }) => {
       return userData;
     } catch (error) {
       console.error('Register error:', error);
-      if (error.name === 'TypeError' || error.name === 'AbortError') {
-        throw new Error('Unable to connect. Please check your connection and try again.');
+      if (error.name === 'AbortError') {
+        throw new Error('Request timed out. Please try again.');
+      }
+      if (error.name === 'TypeError') {
+        throw new Error('Unable to connect. Please try again.');
       }
       throw error;
     }
