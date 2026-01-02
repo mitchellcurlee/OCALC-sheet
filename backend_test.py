@@ -155,6 +155,15 @@ class PoleAPITester:
             print(f"   Stats: Total={response.get('total_poles')}, By condition={response.get('by_condition')}")
         return success
 
+    def test_get_all_poles(self):
+        """Test getting all poles"""
+        return self.run_test("Get All Poles", "GET", "poles", 200)
+
+    def test_get_nonexistent_pole(self):
+        """Test getting a non-existent pole (should return 404)"""
+        fake_id = "nonexistent-pole-id-12345"
+        return self.run_test("Get Non-existent Pole", "GET", f"poles/{fake_id}", 404)
+
     def test_create_pole_with_photos(self):
         """Create a pole with photo URLs for testing Excel export"""
         pole_data = {
