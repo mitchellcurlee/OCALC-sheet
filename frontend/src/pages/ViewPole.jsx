@@ -395,11 +395,11 @@ const ViewPole = () => {
             </div>
           )}
 
-          {/* Height of Attachments */}
+          {/* HOA */}
           {(hasAttachmentData || pole.pole_terminal || pole.risers) && (
             <div className="industrial-card p-5">
               <h2 className="font-heading text-lg font-bold text-white mb-4 flex items-center gap-2">
-                <div className="w-1 h-5 bg-green-500"></div>Height of Attachments
+                <div className="w-1 h-5 bg-green-500"></div>HOA
               </h2>
               <div className="space-y-3">
                 {[1, 2, 3, 4, 5].map((num) => {
