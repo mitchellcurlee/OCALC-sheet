@@ -149,7 +149,83 @@ class PoleAPITester:
             print(f"   Stats: Total={response.get('total_poles')}, By condition={response.get('by_condition')}")
         return success
 
-    def test_create_comprehensive_pole(self):
+    def test_create_pole_with_photos(self):
+        """Create a pole with photo URLs for testing Excel export"""
+        pole_data = {
+            # Basic Info
+            "pole_owner": "Foreign Owned",
+            "pole_size": "3-35",
+            "condition": "Excellent",
+            
+            # Job/Pole numbers
+            "job_number": "JOB-PHOTO-123",
+            "pole_number": "POLE-PHOTO-456",
+            
+            # GPS
+            "latitude": 40.7128,
+            "longitude": -74.0060,
+            
+            # OCALC Photos
+            "ocalc_left_photo": "https://example.com/photo1.jpg",
+            "ocalc_middle_photo": "https://example.com/photo2.jpg", 
+            "ocalc_right_photo": "https://example.com/photo3.jpg",
+            
+            # Birthmark
+            "has_birthmark": True,
+            "birthmark_photo": "https://example.com/birthmark.jpg",
+            
+            # MGNV
+            "mgnv": "Yes",
+            "mgnv_condition": "Good",
+            "mgnv_photo": "https://example.com/mgnv.jpg",
+            
+            # Knuckles with photos
+            "knuckles": [
+                {
+                    "count": "3",
+                    "condition": "Good",
+                    "photo": "https://example.com/knuckle1.jpg"
+                },
+                {
+                    "count": "2", 
+                    "condition": "Broken",
+                    "photo": "https://example.com/knuckle2.jpg"
+                }
+            ],
+            
+            # Attachments with photos
+            "attachments": [
+                {
+                    "height": 30.0,
+                    "owner": "Power",
+                    "photo": "https://example.com/attachment1.jpg"
+                },
+                {
+                    "height": 25.0,
+                    "owner": "Comcast",
+                    "photo": "https://example.com/attachment2.jpg"
+                }
+            ],
+            
+            # Notes
+            "notes": "Test pole with photo URLs for Excel export testing"
+        }
+        
+        success, response = self.run_test("Create Pole with Photos", "POST", "poles", 201, data=pole_data)
+        if success and 'id' in response:
+            self.created_pole_id = response['id']
+            print(f"   Created pole ID: {self.created_pole_id}")
+            
+            # Verify photo URLs were saved
+            photo_fields = ['ocalc_left_photo', 'ocalc_middle_photo', 'ocalc_right_photo', 'birthmark_photo', 'mgnv_photo']
+            for field in photo_fields:
+                if field in pole_data and response.get(field) != pole_data[field]:
+                    print(f"   ❌ Photo URL mismatch for {field}")
+                    return False
+            
+            print("   ✅ All photo URLs saved correctly")
+            return True
+        return success
         """Create a pole with comprehensive data for all sections"""
         pole_data = {
             # Basic Info
