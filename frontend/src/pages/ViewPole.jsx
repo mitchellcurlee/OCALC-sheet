@@ -381,7 +381,7 @@ const ViewPole = () => {
                               <div className="grid grid-cols-3 gap-4 flex-1">
                                 <DataRow label="Knuckles Used" value={pole[`knuckle${num}_count`]} />
                                 <DataRow label="Condition" value={pole[`knuckle${num}_condition`]} />
-                                <PhotoDisplay label="Photo" src={pole[`knuckle${num}_photo`]} />
+                                {renderPhoto("Photo", pole[`knuckle${num}_photo`])}
                               </div>
                             </div>
                           </div>
@@ -411,7 +411,7 @@ const ViewPole = () => {
                         <div className="grid grid-cols-3 gap-4 flex-1">
                           <DataRow label="Height" value={pole[`attachment${num}_height`] ? `${pole[`attachment${num}_height`]} ft` : null} mono />
                           <DataRow label="Owner" value={pole[`attachment${num}_owner`]} />
-                          <PhotoDisplay label="Photo" src={pole[`attachment${num}_photo`]} />
+                          {renderPhoto("Photo", pole[`attachment${num}_photo`])}
                         </div>
                       </div>
                     </div>
