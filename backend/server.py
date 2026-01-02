@@ -559,10 +559,16 @@ async def export_job_excel(job_id: str, current_user: dict = Depends(get_current
             ws.cell(row=current_row, column=1, value="KNUCKLES").fill = header_fill
             ws.cell(row=current_row, column=1).font = header_font
             current_row += 1
+            link_font = Font(color="0066CC", underline="single")
             for i, kn in enumerate(knuckles, 1):
                 ws.cell(row=current_row, column=1, value=f"Knuckle {i}")
                 ws.cell(row=current_row, column=2, value=kn.get("count", ""))
                 ws.cell(row=current_row, column=3, value=kn.get("condition", ""))
+                # Add photo link if exists
+                if kn.get("photo"):
+                    cell = ws.cell(row=current_row, column=4, value="📷 View Photo")
+                    cell.hyperlink = kn["photo"]
+                    cell.font = link_font
                 current_row += 1
         
         # Attachments
@@ -571,10 +577,16 @@ async def export_job_excel(job_id: str, current_user: dict = Depends(get_current
             ws.cell(row=current_row, column=1, value="ATTACHMENTS").fill = header_fill
             ws.cell(row=current_row, column=1).font = header_font
             current_row += 1
+            link_font = Font(color="0066CC", underline="single")
             for i, att in enumerate(attachments, 1):
                 ws.cell(row=current_row, column=1, value=f"Att {i}")
                 ws.cell(row=current_row, column=2, value=att.get("height", ""))
                 ws.cell(row=current_row, column=3, value=att.get("owner", ""))
+                # Add photo link if exists
+                if att.get("photo"):
+                    cell = ws.cell(row=current_row, column=4, value="📷 View Photo")
+                    cell.hyperlink = att["photo"]
+                    cell.font = link_font
                 current_row += 1
         
         # Birthmark & MGNV
