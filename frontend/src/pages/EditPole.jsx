@@ -285,21 +285,33 @@ const EditPole = () => {
           {/* GPS */}
           <div className="industrial-card p-4 sm:p-5">
             <h2 className="font-heading text-base sm:text-lg font-bold text-white mb-3 sm:mb-4 flex items-center gap-2"><div className="w-1 h-5 bg-emerald-500"></div>GPS Location</h2>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2"><Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Latitude</Label><Input type="text" name="latitude" value={formData.latitude} onChange={handleInputChange} className="h-10 bg-black border-zinc-700 text-white font-mono" /></div>
-                  <div className="space-y-2"><Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Longitude</Label><Input type="text" name="longitude" value={formData.longitude} onChange={handleInputChange} className="h-10 bg-black border-zinc-700 text-white font-mono" /></div>
+            <div className="space-y-4">
+              {/* Address Search - At the top */}
+              <div className="space-y-2">
+                <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Search Address</Label>
+                <div className="flex gap-2">
+                  <Input type="text" value={addressSearch} onChange={(e) => setAddressSearch(e.target.value)} onKeyDown={handleAddressKeyDown} placeholder="Enter address, city, or landmark..." className="h-10 bg-black border-zinc-700 text-white flex-1" />
+                  <Button type="button" onClick={searchAddress} disabled={searchLoading} className="h-10 bg-emerald-600 hover:bg-emerald-700 text-white px-4">{searchLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}</Button>
                 </div>
-                <Button type="button" onClick={getGPSLocation} disabled={gpsLoading} className="w-full h-10 bg-zinc-800 hover:bg-zinc-700 text-white border border-zinc-700">{gpsLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <MapPin className="w-4 h-4 mr-2" />}Get Current Location</Button>
+                <p className="text-xs text-zinc-500">Search for an address to auto-fill coordinates</p>
               </div>
-              <div className="h-64 border border-zinc-700 overflow-hidden">
-                <MapContainer center={mapCenter} zoom={18} style={{ height: "100%", width: "100%" }} className="z-0">
-                  <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" />
-                  <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}" />
-                  <MapClickHandler onLocationSelect={handleMapClick} />
-                  {formData.latitude && formData.longitude && <Marker position={[parseFloat(formData.latitude), parseFloat(formData.longitude)]} />}
-                </MapContainer>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2"><Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Latitude</Label><Input type="text" name="latitude" value={formData.latitude} onChange={handleInputChange} className="h-10 bg-black border-zinc-700 text-white font-mono" /></div>
+                    <div className="space-y-2"><Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Longitude</Label><Input type="text" name="longitude" value={formData.longitude} onChange={handleInputChange} className="h-10 bg-black border-zinc-700 text-white font-mono" /></div>
+                  </div>
+                  <Button type="button" onClick={getGPSLocation} disabled={gpsLoading} className="w-full h-10 bg-zinc-800 hover:bg-zinc-700 text-white border border-zinc-700">{gpsLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <MapPin className="w-4 h-4 mr-2" />}Get Current Location</Button>
+                  <p className="text-xs text-zinc-500">Click on the map to pin location</p>
+                </div>
+                <div className="h-64 border border-zinc-700 overflow-hidden">
+                  <MapContainer center={mapCenter} zoom={18} style={{ height: "100%", width: "100%" }} className="z-0">
+                    <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" />
+                    <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}" />
+                    <MapClickHandler onLocationSelect={handleMapClick} />
+                    {formData.latitude && formData.longitude && <Marker position={[parseFloat(formData.latitude), parseFloat(formData.longitude)]} />}
+                  </MapContainer>
+                </div>
               </div>
             </div>
           </div>
