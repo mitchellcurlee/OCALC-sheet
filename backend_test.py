@@ -126,6 +126,8 @@ class PoleAPITester:
         self.auth_token = old_token
         
         return success_no_auth and success_bad_auth
+
+    def test_root_endpoint(self):
         """Test root API endpoint"""
         return self.run_test("Root API", "GET", "", 200)
 
