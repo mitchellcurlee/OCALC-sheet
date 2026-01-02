@@ -517,6 +517,38 @@ async def export_poles_excel():
         ws.cell(row=current_row, column=2, value=pole.get("notes", ""))
         current_row += 1
         
+        # Row 17: Photos Header
+        ws.cell(row=current_row, column=1, value="PHOTOS").fill = header_fill
+        ws.cell(row=current_row, column=1).font = header_font
+        ws.cell(row=current_row, column=2, value="OCALC Left").fill = section_fill
+        ws.cell(row=current_row, column=2).font = section_font
+        ws.cell(row=current_row, column=3, value="OCALC Middle").fill = section_fill
+        ws.cell(row=current_row, column=3).font = section_font
+        ws.cell(row=current_row, column=4, value="OCALC Right").fill = section_fill
+        ws.cell(row=current_row, column=4).font = section_font
+        ws.cell(row=current_row, column=5, value="Birthmark").fill = section_fill
+        ws.cell(row=current_row, column=5).font = section_font
+        ws.cell(row=current_row, column=6, value="MGNV").fill = section_fill
+        ws.cell(row=current_row, column=6).font = section_font
+        current_row += 1
+        
+        # Row 18: Photo Links
+        link_font = Font(color="0066CC", underline="single")
+        photo_fields = [
+            ("ocalc_left_photo", 2),
+            ("ocalc_middle_photo", 3),
+            ("ocalc_right_photo", 4),
+            ("birthmark_photo", 5),
+            ("mgnv_photo", 6)
+        ]
+        for field, col in photo_fields:
+            photo_url = pole.get(field, "")
+            if photo_url:
+                cell = ws.cell(row=current_row, column=col, value="View Photo")
+                cell.hyperlink = photo_url
+                cell.font = link_font
+        current_row += 1
+        
         # Add a blank row between poles
         current_row += 1
     
