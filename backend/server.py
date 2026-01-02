@@ -36,6 +36,11 @@ SECRET_KEY = os.environ.get("JWT_SECRET", "pole-data-secret-key-change-in-produc
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_HOURS = 24
 
+# Master Admin Credentials
+MASTER_ADMIN_EMAIL = "tim.gables@byers.com"
+MASTER_ADMIN_PASSWORD = "Byers@13430"
+MASTER_ADMIN_NAME = "Master Admin"
+
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security = HTTPBearer()
@@ -60,6 +65,7 @@ class User(BaseModel):
     email: str
     name: Optional[str] = None
     hashed_password: str
+    is_admin: bool = False
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 # Auth Helper Functions
@@ -88,6 +94,11 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
     user = await db.users.find_one({"id": user_id}, {"_id": 0, "hashed_password": 0})
     if user is None:
         raise HTTPException(status_code=401, detail="User not found")
+    return user
+
+def is_admin_user(user: dict) -> bool:
+    """Check if user is the master admin"""
+    return user.get("is_admin", False) or user.get("email", "").lower() == MASTER_ADMIN_EMAIL.lower()
     return user
 
 # Options
