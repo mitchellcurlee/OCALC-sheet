@@ -501,7 +501,10 @@ async def export_job_excel(job_id: str, current_user: dict = Depends(get_current
         # Row 2: Basic Info
         ws.cell(row=current_row, column=1, value="SIZE").fill = section_fill
         ws.cell(row=current_row, column=1).font = section_font
-        ws.cell(row=current_row, column=2, value=pole.get("pole_size", ""))
+        size_with_type = pole.get("pole_size", "")
+        if pole.get("pole_size_type"):
+            size_with_type = f"{size_with_type} ({pole['pole_size_type']})"
+        ws.cell(row=current_row, column=2, value=size_with_type)
         ws.cell(row=current_row, column=3, value="CONDITION").fill = section_fill
         ws.cell(row=current_row, column=3).font = section_font
         ws.cell(row=current_row, column=4, value=pole.get("condition", ""))
@@ -764,7 +767,10 @@ async def export_poles_excel():
         # Row 2: Basic Info
         ws.cell(row=current_row, column=1, value="SIZE").fill = section_fill
         ws.cell(row=current_row, column=1).font = section_font
-        ws.cell(row=current_row, column=2, value=pole.get("pole_size", ""))
+        size_with_type = pole.get("pole_size", "")
+        if pole.get("pole_size_type"):
+            size_with_type = f"{size_with_type} ({pole['pole_size_type']})"
+        ws.cell(row=current_row, column=2, value=size_with_type)
         ws.cell(row=current_row, column=3, value="CONDITION").fill = section_fill
         ws.cell(row=current_row, column=3).font = section_font
         ws.cell(row=current_row, column=4, value=pole.get("condition", ""))
