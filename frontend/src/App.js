@@ -10,6 +10,7 @@ import EditPole from "@/pages/EditPole";
 import ViewPole from "@/pages/ViewPole";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
+import InstallPrompt from "@/components/InstallPrompt";
 
 function App() {
   return (
@@ -31,6 +32,7 @@ function App() {
         </BrowserRouter>
       </AuthProvider>
       <Toaster position="top-right" theme="dark" />
+      <InstallPrompt />
     </div>
   );
 }
