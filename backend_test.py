@@ -66,6 +66,10 @@ class PoleAPITester:
             print(f"❌ Failed - Error: {str(e)}")
             return False, {}
 
+    def test_root_endpoint(self):
+        """Test root API endpoint"""
+        return self.run_test("Root API", "GET", "", 200)
+
     def test_auth_register(self):
         """Test user registration"""
         success, response = self.run_test("Register User", "POST", "auth/register", 200, data=self.test_user)
