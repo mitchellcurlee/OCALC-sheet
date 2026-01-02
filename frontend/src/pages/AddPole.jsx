@@ -89,6 +89,7 @@ const AddPole = () => {
     job_number: "",
     pole_number: "",
     pole_size: "",
+    pole_size_type: "",
     condition: "",
     // OCALC Photos
     ocalc_left_photo: "",
