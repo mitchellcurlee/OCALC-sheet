@@ -324,7 +324,7 @@ async def register(user_data: UserCreate):
     return {
         "access_token": token,
         "token_type": "bearer",
-        "user": {"id": user.id, "email": user.email, "name": user.name}
+        "user": {"id": user.id, "email": user.email, "name": user.name, "is_admin": user.is_admin}
     }
 
 @api_router.post("/auth/login")
@@ -335,16 +335,18 @@ async def login(credentials: UserLogin):
         raise HTTPException(status_code=401, detail="Invalid email or password")
     
     token = create_access_token({"sub": user["id"]})
+    user_is_admin = is_admin_user(user)
     
     return {
         "access_token": token,
         "token_type": "bearer",
-        "user": {"id": user["id"], "email": user["email"], "name": user.get("name", "")}
+        "user": {"id": user["id"], "email": user["email"], "name": user.get("name", ""), "is_admin": user_is_admin}
     }
 
 @api_router.get("/auth/me")
 async def get_me(current_user: dict = Depends(get_current_user)):
     """Get current user info"""
+    current_user["is_admin"] = is_admin_user(current_user)
     return current_user
 
 # Job Endpoints
@@ -356,6 +358,7 @@ async def create_job(job_data: JobCreate, current_user: dict = Depends(get_curre
         description=job_data.description,
         location=job_data.location,
         user_id=current_user["id"],
+        user_email=current_user.get("email", ""),
         pole_count=0
     )
     await db.jobs.insert_one(job.model_dump())
@@ -363,18 +366,33 @@ async def create_job(job_data: JobCreate, current_user: dict = Depends(get_curre
 
 @api_router.get("/jobs", response_model=List[Job])
 async def get_jobs(current_user: dict = Depends(get_current_user)):
-    """Get all jobs for current user"""
-    jobs = await db.jobs.find({"user_id": current_user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(1000)
-    # Update pole counts
-    for job in jobs:
-        count = await db.poles.count_documents({"job_id": job["id"]})
-        job["pole_count"] = count
+    """Get all jobs - admin sees all jobs, regular users see only their own"""
+    if is_admin_user(current_user):
+        # Admin sees all jobs from all users
+        jobs = await db.jobs.find({}, {"_id": 0}).sort("created_at", -1).to_list(10000)
+        # Add user email to each job for admin view
+        for job in jobs:
+            count = await db.poles.count_documents({"job_id": job["id"]})
+            job["pole_count"] = count
+            # Get user email if not already set
+            if not job.get("user_email"):
+                owner = await db.users.find_one({"id": job["user_id"]}, {"_id": 0, "email": 1})
+                job["user_email"] = owner.get("email", "Unknown") if owner else "Unknown"
+    else:
+        # Regular user sees only their jobs
+        jobs = await db.jobs.find({"user_id": current_user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+        for job in jobs:
+            count = await db.poles.count_documents({"job_id": job["id"]})
+            job["pole_count"] = count
     return jobs
 
 @api_router.get("/jobs/{job_id}", response_model=Job)
 async def get_job(job_id: str, current_user: dict = Depends(get_current_user)):
-    """Get a specific job"""
-    job = await db.jobs.find_one({"id": job_id, "user_id": current_user["id"]}, {"_id": 0})
+    """Get a specific job - admin can access any job"""
+    if is_admin_user(current_user):
+        job = await db.jobs.find_one({"id": job_id}, {"_id": 0})
+    else:
+        job = await db.jobs.find_one({"id": job_id, "user_id": current_user["id"]}, {"_id": 0})
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
     job["pole_count"] = await db.poles.count_documents({"job_id": job_id})
