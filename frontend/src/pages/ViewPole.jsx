@@ -311,7 +311,7 @@ const ViewPole = () => {
                   {pole.has_birthmark ? "Has Birthmark" : "No Birthmark"}
                 </Badge>
                 {pole.has_birthmark && pole.birthmark_photo && (
-                  <PhotoDisplay label="Birthmark Photo" src={pole.birthmark_photo} />
+                  {renderPhoto("Birthmark Photo", pole.birthmark_photo)}
                 )}
               </div>
               {/* MGNV */}
@@ -321,7 +321,7 @@ const ViewPole = () => {
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <DataRow label="MGNV Present" value={pole.mgnv} />
                     <DataRow label="Condition" value={pole.mgnv_condition} />
-                    <PhotoDisplay label="MGNV Photo" src={pole.mgnv_photo} />
+                    {renderPhoto("MGNV Photo", pole.mgnv_photo)}
                   </div>
                 </div>
               )}
@@ -335,9 +335,9 @@ const ViewPole = () => {
                 <div className="w-1 h-5 bg-blue-500"></div>OCALC Photos
               </h2>
               <div className="grid grid-cols-3 gap-4">
-                <PhotoDisplay label="Left" src={pole.ocalc_left_photo} />
-                <PhotoDisplay label="Middle" src={pole.ocalc_middle_photo} />
-                <PhotoDisplay label="Right" src={pole.ocalc_right_photo} />
+                {renderPhoto("Left", pole.ocalc_left_photo)}
+                {renderPhoto("Middle", pole.ocalc_middle_photo)}
+                {renderPhoto("Right", pole.ocalc_right_photo)}
               </div>
             </div>
           )}
