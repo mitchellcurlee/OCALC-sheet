@@ -310,9 +310,7 @@ const ViewPole = () => {
                 <Badge className={pole.has_birthmark ? "bg-green-500/20 text-green-400 border-green-500/50" : "bg-zinc-500/20 text-zinc-400 border-zinc-500/50"}>
                   {pole.has_birthmark ? "Has Birthmark" : "No Birthmark"}
                 </Badge>
-                {pole.has_birthmark && pole.birthmark_photo && (
-                  {renderPhoto("Birthmark Photo", pole.birthmark_photo)}
-                )}
+                {pole.has_birthmark && pole.birthmark_photo && renderPhoto("Birthmark Photo", pole.birthmark_photo)}
               </div>
               {/* MGNV */}
               {(pole.mgnv || pole.mgnv_condition || pole.mgnv_photo) && (
