@@ -40,11 +40,13 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
 const ViewPole = () => {
-  const { id } = useParams();
+  const { jobId, id } = useParams();
   const navigate = useNavigate();
   const [pole, setPole] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  
+  const backUrl = jobId ? `/jobs/${jobId}` : "/";
 
   useEffect(() => {
     fetchPole();
@@ -56,7 +58,7 @@ const ViewPole = () => {
       setPole(response.data);
     } catch (error) {
       toast.error("Failed to fetch pole data");
-      navigate("/");
+      navigate(backUrl);
     } finally {
       setLoading(false);
     }
