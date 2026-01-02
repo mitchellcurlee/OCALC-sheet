@@ -46,59 +46,92 @@ export const PhotoUpload = ({ label, value, onChange, testId, showHeightTool = f
   // Compact mode for inline photo uploads
   if (compact) {
     return (
-      <div className="space-y-1">
-        <Label className="text-xs font-mono text-zinc-500">{label}</Label>
-        <input
-          type="file"
-          ref={fileInputRef}
-          accept="image/*"
-          onChange={handleFileChange}
-          className="hidden"
-          data-testid={`${testId}-file-input`}
-        />
-        <input
-          type="file"
-          ref={cameraInputRef}
-          accept="image/*"
-          capture="environment"
-          onChange={handleFileChange}
-          className="hidden"
-          data-testid={`${testId}-camera-input`}
-        />
-        {value ? (
-          <div className="relative inline-block">
-            <img src={value} alt={label} className="w-16 h-12 object-cover border border-zinc-700" />
-            <Button
-              type="button"
-              variant="destructive"
-              size="icon"
-              className="absolute -top-1 -right-1 h-4 w-4 bg-red-600 hover:bg-red-700"
-              onClick={() => onChange("")}
-            >
-              <X className="w-2 h-2" />
-            </Button>
-          </div>
-        ) : (
-          <div className="flex gap-1">
-            <Button
-              type="button"
-              onClick={() => cameraInputRef.current?.click()}
-              className="h-9 px-2 bg-red-600 hover:bg-red-700 text-white"
-              data-testid={`${testId}-camera`}
-            >
-              <Camera className="w-4 h-4" />
-            </Button>
-            <Button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="h-9 px-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 border border-zinc-700"
-              data-testid={`${testId}-upload`}
-            >
-              <Upload className="w-4 h-4" />
-            </Button>
-          </div>
-        )}
-      </div>
+      <>
+        <div className="space-y-1">
+          <Label className="text-xs font-mono text-zinc-500">{label}</Label>
+          <input
+            type="file"
+            ref={fileInputRef}
+            accept="image/*"
+            onChange={handleFileChange}
+            className="hidden"
+            data-testid={`${testId}-file-input`}
+          />
+          <input
+            type="file"
+            ref={cameraInputRef}
+            accept="image/*"
+            capture="environment"
+            onChange={handleFileChange}
+            className="hidden"
+            data-testid={`${testId}-camera-input`}
+          />
+          {value ? (
+            <div className="relative inline-block group">
+              <div 
+                className="cursor-pointer"
+                onClick={() => setShowLightbox(true)}
+              >
+                <img src={value} alt={label} className="w-20 h-16 object-cover border border-zinc-700 hover:border-red-500 transition-colors" />
+                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <ZoomIn className="w-4 h-4 text-white" />
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="destructive"
+                size="icon"
+                className="absolute -top-1 -right-1 h-4 w-4 bg-red-600 hover:bg-red-700"
+                onClick={(e) => { e.stopPropagation(); onChange(""); }}
+              >
+                <X className="w-2 h-2" />
+              </Button>
+            </div>
+          ) : (
+            <div className="flex gap-1">
+              <Button
+                type="button"
+                onClick={() => cameraInputRef.current?.click()}
+                className="h-9 px-2 bg-red-600 hover:bg-red-700 text-white"
+                data-testid={`${testId}-camera`}
+              >
+                <Camera className="w-4 h-4" />
+              </Button>
+              <Button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="h-9 px-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 border border-zinc-700"
+                data-testid={`${testId}-upload`}
+              >
+                <Upload className="w-4 h-4" />
+              </Button>
+            </div>
+          )}
+        </div>
+        {/* Lightbox for compact mode */}
+        <Dialog open={showLightbox} onOpenChange={setShowLightbox}>
+          <DialogContent className="bg-zinc-900 border-zinc-800 max-w-4xl max-h-[90vh] p-2">
+            <div className="relative">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute top-2 right-2 z-10 bg-black/50 hover:bg-black/70 text-white rounded-full"
+                onClick={() => setShowLightbox(false)}
+              >
+                <X className="w-5 h-5" />
+              </Button>
+              <div className="flex flex-col items-center">
+                <p className="text-xs font-mono tracking-widest text-zinc-500 uppercase mb-2">{label}</p>
+                <img 
+                  src={value} 
+                  alt={label} 
+                  className="max-w-full max-h-[80vh] object-contain"
+                />
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </>
     );
   }
 
