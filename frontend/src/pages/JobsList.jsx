@@ -226,6 +226,12 @@ const JobsList = () => {
                           {job.location}
                         </div>
                       )}
+                      {isAdmin && job.user_email && (
+                        <div className="flex items-center gap-1 text-xs text-blue-400 mt-1">
+                          <User className="w-3 h-3" />
+                          {job.user_email}
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
