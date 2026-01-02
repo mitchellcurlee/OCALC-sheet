@@ -136,48 +136,57 @@ export const PhotoUpload = ({ label, value, onChange, testId, showHeightTool = f
   }
 
   return (
-    <div className="space-y-2">
-      <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">
-        {label}
-      </Label>
-      
-      {/* Hidden file inputs */}
-      <input
-        type="file"
-        ref={fileInputRef}
-        accept="image/*"
-        onChange={handleFileChange}
-        className="hidden"
-        data-testid={`${testId}-file-input`}
-      />
-      <input
-        type="file"
-        ref={cameraInputRef}
-        accept="image/*"
-        capture="environment"
-        onChange={handleFileChange}
-        className="hidden"
-        data-testid={`${testId}-camera-input`}
-      />
+    <>
+      <div className="space-y-2">
+        <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">
+          {label}
+        </Label>
+        
+        {/* Hidden file inputs */}
+        <input
+          type="file"
+          ref={fileInputRef}
+          accept="image/*"
+          onChange={handleFileChange}
+          className="hidden"
+          data-testid={`${testId}-file-input`}
+        />
+        <input
+          type="file"
+          ref={cameraInputRef}
+          accept="image/*"
+          capture="environment"
+          onChange={handleFileChange}
+          className="hidden"
+          data-testid={`${testId}-camera-input`}
+        />
 
-      {value ? (
-        <div className="space-y-2">
-          <div className="relative inline-block">
-            <img
-              src={value}
-              alt={label}
-              className="w-full max-w-xs h-32 object-cover border-2 border-zinc-700"
-            />
-            <Button
-              type="button"
-              variant="destructive"
-              size="icon"
-              className="absolute top-1 right-1 h-6 w-6 bg-red-600 hover:bg-red-700"
-              onClick={() => onChange("")}
-            >
-              <X className="w-3 h-3" />
-            </Button>
-          </div>
+        {value ? (
+          <div className="space-y-2">
+            <div className="relative inline-block group">
+              <div 
+                className="cursor-pointer"
+                onClick={() => setShowLightbox(true)}
+              >
+                <img
+                  src={value}
+                  alt={label}
+                  className="w-full max-w-md h-48 object-cover border-2 border-zinc-700 hover:border-red-500 transition-colors"
+                />
+                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <ZoomIn className="w-8 h-8 text-white" />
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="destructive"
+                size="icon"
+                className="absolute top-1 right-1 h-6 w-6 bg-red-600 hover:bg-red-700"
+                onClick={(e) => { e.stopPropagation(); onChange(""); }}
+              >
+                <X className="w-3 h-3" />
+              </Button>
+            </div>
           <div className="flex gap-2">
             <Button
               type="button"
