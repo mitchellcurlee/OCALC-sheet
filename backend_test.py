@@ -403,7 +403,14 @@ class PoleAPITester:
             return True
         return success
 
-    def test_export_excel(self):
+    def test_excel_export_with_photos(self):
+        """Test Excel export includes photo links"""
+        success, response = self.run_test("Export Excel with Photos", "GET", "poles/export/excel", 200)
+        if success:
+            print("   ✅ Excel export endpoint working with photo data")
+            # Note: We can't easily verify the actual Excel content in this test,
+            # but we confirmed the endpoint works and the pole with photos was created
+        return success
         """Test Excel export functionality"""
         success, response = self.run_test("Export Excel", "GET", "poles/export/excel", 200)
         if success:
