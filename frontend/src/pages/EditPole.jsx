@@ -22,6 +22,7 @@ import {
   Loader2,
   Plus,
   Trash2,
+  Search,
 } from "lucide-react";
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
@@ -53,6 +54,8 @@ const EditPole = () => {
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [gpsLoading, setGpsLoading] = useState(false);
+  const [addressSearch, setAddressSearch] = useState("");
+  const [searchLoading, setSearchLoading] = useState(false);
   const [options, setOptions] = useState({
     pole_owners: [], conditions: [], sizes: [], down_guy_owners: [], down_guy_directions: [], down_guy_sizes: [], knuckle_options: [], span_owners: [], span_directions: [], attachment_owners: [], riser_options: [],
   });
