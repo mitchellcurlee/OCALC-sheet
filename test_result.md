@@ -240,7 +240,7 @@ backend:
         comment: "✅ JOB MANAGEMENT E2E FLOW VERIFIED: Complete authentication and job management system tested successfully. All 17 tests passed including: 1) Authentication flow (register/login/protected endpoints with JWT), 2) Job CRUD operations (create/read/update/delete with user isolation), 3) Poles within jobs (poles correctly associated with job_id), 4) Dynamic arrays support (down_guys, knuckles, attachments arrays working), 5) Job-specific pole listing, 6) Job Excel export with all pole data, 7) Cascading job deletion (deletes job and all associated poles). Full E2E flow working: register → login → create job → add pole with dynamic data → verify pole in job → export job → cleanup."
 
 test_plan:
-  current_focus: ["Job Management E2E flow with auth", "Dynamic data in EditPole"]
+  current_focus: ["Complete E2E user flow testing after mobile fix"]
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
