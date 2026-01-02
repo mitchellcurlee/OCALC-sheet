@@ -675,7 +675,7 @@ const AddPole = () => {
 
           {/* Submit */}
           <div className="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4 pt-2">
-            <Link to="/" className="w-full sm:w-auto">
+            <Link to={backUrl} className="w-full sm:w-auto">
               <Button type="button" variant="outline" className="w-full sm:w-auto h-12 sm:h-10 bg-zinc-800 border-zinc-700 hover:bg-zinc-700 text-white" data-testid="cancel-btn">
                 Cancel
               </Button>
