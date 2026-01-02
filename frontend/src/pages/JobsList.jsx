@@ -33,6 +33,8 @@ import {
   LogOut,
   Loader2,
   Radio,
+  Shield,
+  User,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
@@ -41,7 +43,7 @@ const API = `${BACKEND_URL}/api`;
 
 const JobsList = () => {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, logout, isAdmin } = useAuth();
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
