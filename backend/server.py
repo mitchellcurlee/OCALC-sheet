@@ -607,11 +607,11 @@ async def export_job_excel(job_id: str, current_user: dict = Depends(get_current
         
         # Photos
         photos = []
-        if pole.get("ocalc_left_photo"): photos.append(("OCALC Left", pole["ocalc_left_photo"]))
-        if pole.get("ocalc_middle_photo"): photos.append(("OCALC Mid", pole["ocalc_middle_photo"]))
-        if pole.get("ocalc_right_photo"): photos.append(("OCALC Right", pole["ocalc_right_photo"]))
-        if pole.get("birthmark_photo"): photos.append(("Birthmark", pole["birthmark_photo"]))
-        if pole.get("mgnv_photo"): photos.append(("MGNV", pole["mgnv_photo"]))
+        if pole.get("ocalc_left_photo"): photos.append(("📷 OCALC Left", pole["ocalc_left_photo"]))
+        if pole.get("ocalc_middle_photo"): photos.append(("📷 OCALC Mid", pole["ocalc_middle_photo"]))
+        if pole.get("ocalc_right_photo"): photos.append(("📷 OCALC Right", pole["ocalc_right_photo"]))
+        if pole.get("birthmark_photo"): photos.append(("📷 Birthmark", pole["birthmark_photo"]))
+        if pole.get("mgnv_photo"): photos.append(("📷 MGNV", pole["mgnv_photo"]))
         
         if photos:
             ws.cell(row=current_row, column=1, value="PHOTOS").fill = header_fill
