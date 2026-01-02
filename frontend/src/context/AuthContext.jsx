@@ -34,11 +34,12 @@ const API = `${BACKEND_URL}/api`;
 console.log('Backend URL:', BACKEND_URL);
 console.log('API URL:', API);
 
-// Configure axios defaults for mobile
-axios.defaults.timeout = 30000; // 30 second timeout for slow mobile networks
-axios.defaults.headers.common['Content-Type'] = 'application/json';
+// Configure axios defaults for mobile compatibility
+axios.defaults.timeout = 30000;
+axios.defaults.headers.common['Accept'] = 'application/json';
+axios.defaults.headers.post['Content-Type'] = 'application/json';
 
-// Safe localStorage wrapper for mobile browsers
+// Safe localStorage wrapper for mobile browsers (Safari private mode, etc.)
 const safeStorage = {
   getItem: (key) => {
     try {
@@ -84,7 +85,6 @@ export const AuthProvider = ({ children }) => {
       setUser(response.data);
     } catch (error) {
       console.error('Failed to fetch user:', error);
-      // Token invalid, clear it
       safeStorage.removeItem('token');
       setToken(null);
       delete axios.defaults.headers.common['Authorization'];
@@ -94,11 +94,23 @@ export const AuthProvider = ({ children }) => {
   };
 
   const login = async (email, password) => {
+    console.log('Attempting login to:', `${API}/auth/login`);
     try {
-      const response = await axios.post(`${API}/auth/login`, { 
-        email: email.toLowerCase().trim(), 
-        password 
+      const response = await axios({
+        method: 'POST',
+        url: `${API}/auth/login`,
+        data: { 
+          email: email.toLowerCase().trim(), 
+          password 
+        },
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        timeout: 30000
       });
+      
+      console.log('Login response received');
       const { access_token, user: userData } = response.data;
       
       safeStorage.setItem('token', access_token);
@@ -108,12 +120,21 @@ export const AuthProvider = ({ children }) => {
       
       return userData;
     } catch (error) {
-      console.error('Login error:', error);
-      if (error.code === 'ERR_NETWORK') {
-        throw new Error('Network error. Please check your internet connection.');
+      console.error('Login error details:', {
+        message: error.message,
+        code: error.code,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+      
+      if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
+        throw new Error('Unable to connect to server. Please check your internet connection and try again.');
       }
       if (error.code === 'ECONNABORTED') {
         throw new Error('Request timed out. Please try again.');
+      }
+      if (error.response?.status === 401) {
+        throw new Error('Invalid email or password.');
       }
       throw error;
     }
