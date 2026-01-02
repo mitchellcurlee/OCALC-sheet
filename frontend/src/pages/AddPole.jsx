@@ -228,6 +228,44 @@ const AddPole = () => {
     );
   };
 
+  // Address search using Nominatim (OpenStreetMap) geocoding
+  const searchAddress = async () => {
+    if (!addressSearch.trim()) {
+      toast.error("Please enter an address to search");
+      return;
+    }
+    setSearchLoading(true);
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addressSearch)}&limit=1`,
+        { headers: { 'User-Agent': 'PoleDataSheet/1.0' } }
+      );
+      const data = await response.json();
+      if (data && data.length > 0) {
+        const { lat, lon, display_name } = data[0];
+        setFormData((prev) => ({
+          ...prev,
+          latitude: parseFloat(lat).toFixed(6),
+          longitude: parseFloat(lon).toFixed(6),
+        }));
+        toast.success(`Found: ${display_name.substring(0, 50)}...`);
+      } else {
+        toast.error("Address not found. Try a more specific address.");
+      }
+    } catch (error) {
+      toast.error("Failed to search address");
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  const handleAddressKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      searchAddress();
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.pole_size || !formData.condition) {
