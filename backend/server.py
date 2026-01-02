@@ -564,34 +564,22 @@ async def export_job_excel(job_id: str, current_user: dict = Depends(get_current
             ws.cell(row=current_row, column=1, value="KNUCKLES").fill = header_fill
             ws.cell(row=current_row, column=1).font = header_font
             current_row += 1
-            link_font = Font(color="0066CC", underline="single")
             for i, kn in enumerate(knuckles, 1):
                 ws.cell(row=current_row, column=1, value=f"Knuckle {i}")
                 ws.cell(row=current_row, column=2, value=kn.get("count", ""))
                 ws.cell(row=current_row, column=3, value=kn.get("condition", ""))
-                # Add photo link if exists
-                if kn.get("photo"):
-                    cell = ws.cell(row=current_row, column=4, value="📷 View Photo")
-                    cell.hyperlink = kn["photo"]
-                    cell.font = link_font
                 current_row += 1
         
-        # Attachments
+        # HOA (Height of Attachments)
         attachments = pole.get("attachments", [])
         if attachments:
-            ws.cell(row=current_row, column=1, value="ATTACHMENTS").fill = header_fill
+            ws.cell(row=current_row, column=1, value="HOA").fill = header_fill
             ws.cell(row=current_row, column=1).font = header_font
             current_row += 1
-            link_font = Font(color="0066CC", underline="single")
             for i, att in enumerate(attachments, 1):
                 ws.cell(row=current_row, column=1, value=f"Att {i}")
                 ws.cell(row=current_row, column=2, value=att.get("height", ""))
                 ws.cell(row=current_row, column=3, value=att.get("owner", ""))
-                # Add photo link if exists
-                if att.get("photo"):
-                    cell = ws.cell(row=current_row, column=4, value="📷 View Photo")
-                    cell.hyperlink = att["photo"]
-                    cell.font = link_font
                 current_row += 1
         
         # Birthmark & MGNV
@@ -608,27 +596,6 @@ async def export_job_excel(job_id: str, current_user: dict = Depends(get_current
             ws.cell(row=current_row, column=1, value="NOTES").fill = section_fill
             ws.cell(row=current_row, column=1).font = section_font
             ws.cell(row=current_row, column=2, value=pole.get("notes", ""))
-            current_row += 1
-        
-        # Photos
-        photos = []
-        if pole.get("ocalc_left_photo"): photos.append(("📷 OCALC Left", pole["ocalc_left_photo"]))
-        if pole.get("ocalc_middle_photo"): photos.append(("📷 OCALC Mid", pole["ocalc_middle_photo"]))
-        if pole.get("ocalc_right_photo"): photos.append(("📷 OCALC Right", pole["ocalc_right_photo"]))
-        if pole.get("birthmark_photo"): photos.append(("📷 Birthmark", pole["birthmark_photo"]))
-        if pole.get("mgnv_photo"): photos.append(("📷 MGNV", pole["mgnv_photo"]))
-        
-        if photos:
-            ws.cell(row=current_row, column=1, value="PHOTOS").fill = header_fill
-            ws.cell(row=current_row, column=1).font = header_font
-            current_row += 1
-            link_font = Font(color="0066CC", underline="single")
-            col = 1
-            for label, url in photos:
-                cell = ws.cell(row=current_row, column=col, value=label)
-                cell.hyperlink = url
-                cell.font = link_font
-                col += 1
             current_row += 1
         
         # Blank row separator
