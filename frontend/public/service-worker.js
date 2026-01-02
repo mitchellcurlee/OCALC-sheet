@@ -1,8 +1,7 @@
-const CACHE_NAME = 'pole-data-v1';
+const CACHE_NAME = 'pole-data-v2';
 const urlsToCache = [
   '/',
   '/index.html',
-  '/static/js/bundle.js',
   '/manifest.json'
 ];
 
@@ -19,20 +18,30 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// Fetch event - network first, then cache
+// Fetch event - NEVER cache API calls
 self.addEventListener('fetch', (event) => {
+  const url = new URL(event.request.url);
+  
+  // Skip caching for API calls - always go to network
+  if (url.pathname.startsWith('/api') || 
+      url.hostname !== self.location.hostname ||
+      event.request.method !== 'GET') {
+    // For API calls, just pass through to network
+    return;
+  }
+  
+  // For static assets, try network first, then cache
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        // Clone the response
-        const responseClone = response.clone();
-        caches.open(CACHE_NAME)
-          .then((cache) => {
-            // Only cache same-origin requests
-            if (event.request.url.startsWith(self.location.origin)) {
+        // Only cache successful GET requests for same origin
+        if (response.ok && event.request.method === 'GET') {
+          const responseClone = response.clone();
+          caches.open(CACHE_NAME)
+            .then((cache) => {
               cache.put(event.request, responseClone);
-            }
-          });
+            });
+        }
         return response;
       })
       .catch(() => caches.match(event.request))
@@ -46,6 +55,7 @@ self.addEventListener('activate', (event) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
           if (cacheName !== CACHE_NAME) {
+            console.log('Deleting old cache:', cacheName);
             return caches.delete(cacheName);
           }
         })
