@@ -131,8 +131,8 @@ export const AuthProvider = ({ children }) => {
     console.log('Attempting login to:', `${API}/auth/login`);
     
     try {
-      // Use native fetch for better mobile compatibility
-      const response = await fetch(`${API}/auth/login`, {
+      // Use native fetch with retry for better mobile compatibility
+      const response = await fetchWithRetry(`${API}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
