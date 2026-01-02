@@ -34,6 +34,40 @@ const API = `${BACKEND_URL}/api`;
 console.log('Backend URL:', BACKEND_URL);
 console.log('API URL:', API);
 
+// Helper function to make fetch requests with retry for mobile
+const fetchWithRetry = async (url, options, maxRetries = 3) => {
+  let lastError;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`Fetch attempt ${attempt}/${maxRetries} to ${url}`);
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
+      
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal,
+        mode: 'cors',
+        credentials: 'omit'
+      });
+      
+      clearTimeout(timeoutId);
+      return response;
+    } catch (error) {
+      console.error(`Attempt ${attempt} failed:`, error.name, error.message);
+      lastError = error;
+      
+      if (attempt < maxRetries) {
+        // Wait before retry (exponential backoff)
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+      }
+    }
+  }
+  
+  throw lastError;
+};
+
 // Configure axios defaults for mobile compatibility
 axios.defaults.timeout = 30000;
 axios.defaults.headers.common['Accept'] = 'application/json';
