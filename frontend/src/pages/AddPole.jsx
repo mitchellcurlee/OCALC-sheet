@@ -674,12 +674,12 @@ const AddPole = () => {
             </div>
           </div>
 
-          {/* Height of Attachments - Dynamic Rows + Pole Owner */}
+          {/* HOA - Dynamic Rows + Pole Owner */}
           <div className="industrial-card p-4 sm:p-5">
             <div className="flex items-center justify-between mb-3 sm:mb-4">
               <h2 className="font-heading text-base sm:text-lg font-bold text-white flex items-center gap-2">
                 <div className="w-1 h-5 bg-green-500"></div>
-                Height of Attachments
+                HOA
               </h2>
               <Button type="button" onClick={addAttachment} size="sm" className="bg-green-600 hover:bg-green-700 text-white">
                 <Plus className="w-4 h-4 mr-1" /> Add Row
