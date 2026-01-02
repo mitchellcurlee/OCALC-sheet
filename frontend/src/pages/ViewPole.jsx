@@ -221,7 +221,7 @@ const ViewPole = () => {
                 Condition: {pole.condition}
               </Badge>
               <Badge className="bg-zinc-800 text-zinc-300 border-zinc-700 font-mono text-sm px-4 py-2">
-                Size: {pole.pole_size}
+                Size: {pole.pole_size}{pole.pole_size_type ? ` (${pole.pole_size_type})` : ''}
               </Badge>
               <div className="flex items-center gap-2 text-zinc-400 font-mono text-sm ml-auto">
                 <Calendar className="w-4 h-4" />
