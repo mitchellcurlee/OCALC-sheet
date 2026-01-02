@@ -56,7 +56,7 @@ const JobsList = () => {
 
   const fetchJobs = async () => {
     try {
-      const response = await axios.get(`${API}/jobs`);
+      const response = await axios.get("/jobs");
       setJobs(response.data);
     } catch (error) {
       toast.error("Failed to fetch jobs");
@@ -72,7 +72,7 @@ const JobsList = () => {
     }
     setSaving(true);
     try {
-      await axios.post(`${API}/jobs`, formData);
+      await axios.post("/jobs", formData);
       toast.success("Job created successfully!");
       setShowCreateDialog(false);
       setFormData({ name: "", description: "", location: "" });
@@ -91,7 +91,7 @@ const JobsList = () => {
     }
     setSaving(true);
     try {
-      await axios.put(`${API}/jobs/${editingJob.id}`, formData);
+      await axios.put(`/jobs/${editingJob.id}`, formData);
       toast.success("Job updated successfully!");
       setShowEditDialog(false);
       setEditingJob(null);
@@ -106,7 +106,7 @@ const JobsList = () => {
 
   const handleDelete = async () => {
     try {
-      await axios.delete(`${API}/jobs/${deleteId}`);
+      await axios.delete(`/jobs/${deleteId}`);
       toast.success("Job deleted successfully");
       setDeleteId(null);
       fetchJobs();
