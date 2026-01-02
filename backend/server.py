@@ -262,9 +262,33 @@ class Job(BaseModel):
     description: Optional[str] = None
     location: Optional[str] = None
     user_id: str  # Owner of the job
+    user_email: Optional[str] = None  # For admin view
     pole_count: int = 0
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+# Startup event to create master admin
+@app.on_event("startup")
+async def create_master_admin():
+    """Create master admin account on startup if it doesn't exist"""
+    existing = await db.users.find_one({"email": MASTER_ADMIN_EMAIL.lower()})
+    if not existing:
+        admin_user = User(
+            email=MASTER_ADMIN_EMAIL.lower(),
+            name=MASTER_ADMIN_NAME,
+            hashed_password=get_password_hash(MASTER_ADMIN_PASSWORD),
+            is_admin=True
+        )
+        await db.users.insert_one(admin_user.model_dump())
+        logging.info(f"Master admin account created: {MASTER_ADMIN_EMAIL}")
+    else:
+        # Ensure existing user has admin flag
+        if not existing.get("is_admin"):
+            await db.users.update_one(
+                {"email": MASTER_ADMIN_EMAIL.lower()},
+                {"$set": {"is_admin": True}}
+            )
+            logging.info(f"Master admin flag updated for: {MASTER_ADMIN_EMAIL}")
 
 # Health check endpoint for Kubernetes
 @app.get("/health")
