@@ -24,10 +24,11 @@ import {
   Trash2,
   Search,
 } from "lucide-react";
-import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { PhotoUpload } from "@/components/PhotoUpload";
+import { useEffect } from "react";
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -45,6 +46,17 @@ const MapClickHandler = ({ onLocationSelect }) => {
       onLocationSelect(e.latlng.lat, e.latlng.lng);
     },
   });
+  return null;
+};
+
+// Component to recenter map when coordinates change
+const MapCenterUpdater = ({ lat, lng }) => {
+  const map = useMap();
+  useEffect(() => {
+    if (lat && lng) {
+      map.flyTo([parseFloat(lat), parseFloat(lng)], 18, { duration: 1.5 });
+    }
+  }, [lat, lng, map]);
   return null;
 };
 
