@@ -127,27 +127,10 @@ const ViewPole = () => {
     }
   };
 
-  const PhotoDisplay = ({ label, src }) => {
-    if (!src) return null;
-    return (
-      <div className="space-y-2">
-        <p className="text-xs font-mono tracking-widest text-zinc-500 uppercase">{label}</p>
-        <div 
-          className="relative group cursor-pointer"
-          onClick={() => setLightboxImage({ src, label })}
-        >
-          <img 
-            src={src} 
-            alt={label} 
-            className="w-full max-w-sm h-48 object-cover border-2 border-zinc-700 hover:border-red-500 transition-colors" 
-          />
-          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-            <ZoomIn className="w-8 h-8 text-white" />
-          </div>
-        </div>
-      </div>
-    );
-  };
+  // Wrapper to pass setLightboxImage to PhotoDisplay
+  const renderPhoto = (label, src) => (
+    <PhotoDisplay label={label} src={src} onImageClick={setLightboxImage} />
+  );
 
   const DataRow = ({ label, value, mono = false }) => (
     <div className="space-y-1">
