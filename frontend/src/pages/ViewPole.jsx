@@ -89,7 +89,7 @@ const ViewPole = () => {
 
   const fetchPole = async () => {
     try {
-      const response = await axios.get(`${API}/poles/${id}`);
+      const response = await axios.get(`/poles/${id}`);
       setPole(response.data);
     } catch (error) {
       toast.error("Failed to fetch pole data");
@@ -101,7 +101,7 @@ const ViewPole = () => {
 
   const handleDelete = async () => {
     try {
-      await axios.delete(`${API}/poles/${id}`);
+      await axios.delete(`/poles/${id}`);
       toast.success("Pole deleted successfully");
       navigate(backUrl);
     } catch (error) {
