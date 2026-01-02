@@ -10,44 +10,27 @@ const API = '/api';
 // Log for debugging
 console.log('Using relative API URL:', API);
 
-// Helper function to make fetch requests with retry for mobile
-const fetchWithRetry = async (url, options, maxRetries = 3) => {
-  let lastError;
+// Simple fetch with timeout
+const fetchWithTimeout = async (url, options, timeout = 30000) => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
   
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      console.log(`Fetch attempt ${attempt}/${maxRetries} to ${url}`);
-      
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000);
-      
-      const response = await fetch(url, {
-        ...options,
-        signal: controller.signal,
-        mode: 'cors',
-        credentials: 'omit'
-      });
-      
-      clearTimeout(timeoutId);
-      return response;
-    } catch (error) {
-      console.error(`Attempt ${attempt} failed:`, error.name, error.message);
-      lastError = error;
-      
-      if (attempt < maxRetries) {
-        // Wait before retry (exponential backoff)
-        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
-      }
-    }
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    throw error;
   }
-  
-  throw lastError;
 };
 
-// Configure axios defaults for mobile compatibility
+// Configure axios for other API calls
 axios.defaults.timeout = 30000;
-axios.defaults.headers.common['Accept'] = 'application/json';
-axios.defaults.headers.post['Content-Type'] = 'application/json';
+axios.defaults.baseURL = API;
 
 // Safe localStorage wrapper for mobile browsers (Safari private mode, etc.)
 const safeStorage = {
