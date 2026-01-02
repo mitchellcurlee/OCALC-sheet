@@ -113,7 +113,7 @@ const EditPole = () => {
       setAttachments(pole.attachments?.length > 0 ? pole.attachments.map(a => ({ ...a, height: a.height?.toString() || "" })) : [{ height: "", owner: "", photo: "" }]);
     } catch (error) {
       toast.error("Failed to fetch pole data");
-      navigate("/");
+      navigate(backUrl);
     } finally {
       setFetching(false);
     }
@@ -166,7 +166,7 @@ const EditPole = () => {
       };
       await axios.put(`${API}/poles/${id}`, submitData);
       toast.success("Pole updated successfully!");
-      navigate("/");
+      navigate(backUrl);
     } catch (error) { toast.error("Failed to update pole"); console.error(error); } finally { setLoading(false); }
   };
 
