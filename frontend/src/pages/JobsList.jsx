@@ -148,15 +148,23 @@ const JobsList = () => {
                   Pole Data Sheet
                 </h1>
                 <p className="text-xs text-zinc-500 font-mono tracking-wider hidden sm:block">
-                  SELECT OR CREATE A JOB
+                  {isAdmin ? "ADMIN VIEW - ALL JOBS" : "SELECT OR CREATE A JOB"}
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
               {user && (
-                <span className="hidden sm:block text-xs text-zinc-400 font-mono">
-                  {user.name || user.email}
-                </span>
+                <div className="hidden sm:flex items-center gap-2">
+                  {isAdmin && (
+                    <span className="flex items-center gap-1 px-2 py-1 bg-amber-500/20 border border-amber-500/50 text-amber-400 text-xs font-mono rounded">
+                      <Shield className="w-3 h-3" />
+                      ADMIN
+                    </span>
+                  )}
+                  <span className="text-xs text-zinc-400 font-mono">
+                    {user.name || user.email}
+                  </span>
+                </div>
               )}
               <Button
                 onClick={() => setShowCreateDialog(true)}
