@@ -74,7 +74,7 @@ const EditPole = () => {
   const backUrl = jobId ? `/jobs/${jobId}` : "/";
 
   const [formData, setFormData] = useState({
-    job_number: "", pole_number: "", pole_size: "", condition: "",
+    job_number: "", pole_number: "", pole_size: "", pole_size_type: "", condition: "",
     ocalc_left_photo: "", ocalc_middle_photo: "", ocalc_right_photo: "",
     has_birthmark: true, birthmark_photo: "",
     mgnv: "", mgnv_condition: "", mgnv_photo: "",
