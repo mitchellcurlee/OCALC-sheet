@@ -34,12 +34,15 @@ import {
   Trash2,
   FileSpreadsheet,
   Activity,
+  LogOut,
 } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
 const Dashboard = () => {
+  const { user, logout } = useAuth();
   const [poles, setPoles] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
