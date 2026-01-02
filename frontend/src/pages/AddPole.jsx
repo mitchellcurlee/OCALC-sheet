@@ -493,6 +493,7 @@ const AddPole = () => {
                     <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}" attribution='' />
                     <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}" attribution='' />
                     <MapClickHandler onLocationSelect={handleMapClick} />
+                    <MapCenterUpdater lat={formData.latitude} lng={formData.longitude} />
                     {formData.latitude && formData.longitude && (
                       <Marker position={[parseFloat(formData.latitude), parseFloat(formData.longitude)]} />
                     )}
