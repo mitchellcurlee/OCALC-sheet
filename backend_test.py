@@ -10,6 +10,12 @@ class PoleAPITester:
         self.tests_run = 0
         self.tests_passed = 0
         self.created_pole_id = None
+        self.auth_token = None
+        self.test_user = {
+            "email": "testuser@pole.com",
+            "password": "test123456",
+            "name": "Pole Tester"
+        }
 
     def run_test(self, name, method, endpoint, expected_status, data=None, params=None):
         """Run a single API test"""
