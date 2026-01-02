@@ -2,7 +2,7 @@ import { useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Camera, Upload, X, Ruler, Check } from "lucide-react";
+import { Camera, Upload, X, Ruler, Check, ZoomIn } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -16,6 +16,7 @@ export const PhotoUpload = ({ label, value, onChange, testId, showHeightTool = f
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
   const [showHeightDialog, setShowHeightDialog] = useState(false);
+  const [showLightbox, setShowLightbox] = useState(false);
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
