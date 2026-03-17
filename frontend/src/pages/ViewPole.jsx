@@ -398,17 +398,17 @@ const ViewPole = () => {
                 <div className="w-1 h-5 bg-green-500"></div>HOA
               </h2>
               <div className="space-y-3">
-                {[1, 2, 3, 4, 5].map((num) => {
-                  const hasData = pole[`attachment${num}_height`] || pole[`attachment${num}_owner`] || pole[`attachment${num}_photo`];
-                  if (!hasData) return null;
+                {pole.attachments && pole.attachments.map((att, index) => {
+                  if (!att.height && !att.owner && !att.photo && !att.notes) return null;
                   return (
-                    <div key={num} className="bg-zinc-800/50 p-3 border border-zinc-700">
+                    <div key={index} className="bg-zinc-800/50 p-3 border border-zinc-700">
                       <div className="flex items-center gap-4">
-                        <span className="text-sm font-mono text-green-400 w-8">{num}</span>
-                        <div className="grid grid-cols-3 gap-4 flex-1">
-                          <DataRow label="Height" value={pole[`attachment${num}_height`] ? `${pole[`attachment${num}_height`]} ft` : null} mono />
-                          <DataRow label="Owner" value={pole[`attachment${num}_owner`]} />
-                          {renderPhoto("Photo", pole[`attachment${num}_photo`])}
+                        <span className="text-sm font-mono text-green-400 w-8">{index + 1}</span>
+                        <div className="grid grid-cols-4 gap-4 flex-1">
+                          <DataRow label="Height" value={att.height ? `${att.height} ft` : null} mono />
+                          <DataRow label="Owner" value={att.owner} />
+                          <DataRow label="Notes" value={att.notes} />
+                          {renderPhoto("Photo", att.photo)}
                         </div>
                       </div>
                     </div>
