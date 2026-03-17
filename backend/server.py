@@ -104,6 +104,7 @@ def is_admin_user(user: dict) -> bool:
 # Options
 POLE_OWNERS = ["Foreign Owned", "ATT"]
 POLE_CONDITIONS = ["Excellent", "Good", "Bad"]
+POLE_TYPES = ["Wood", "Steel", "Fiber Glass", "Concrete"]
 POLE_SIZES = [
     "1-25", "1-30", "1-35", "1-40", "1-45", "1-50", "1-55", "1-60",
     "2-25", "2-30", "2-35", "2-40", "2-45", "2-50", "2-55", "2-60",
@@ -152,6 +153,7 @@ class PoleBase(BaseModel):
     # Basic Info - Pole Owner moved to Height of Attachments section
     pole_size: str
     pole_size_type: Optional[str] = None  # Actual, Estimate, Proposed
+    pole_type: Optional[str] = None  # Wood, Steel, Fiber Glass, Concrete
     condition: str
     pole_owner: Optional[str] = None  # Now in Height of Attachments section
     
