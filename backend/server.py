@@ -140,6 +140,7 @@ class Attachment(BaseModel):
     height: Optional[float] = None
     owner: Optional[str] = None
     photo: Optional[str] = None
+    notes: Optional[str] = None
 
 # Models
 class PoleBase(BaseModel):
