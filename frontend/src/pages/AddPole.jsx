@@ -302,7 +302,7 @@ const AddPole = () => {
           height: dg.height ? parseFloat(dg.height) : null
         })),
         knuckles: knuckles.filter(k => k.count || k.condition || k.photo),
-        attachments: attachments.filter(a => a.height || a.owner || a.photo).map(a => ({
+        attachments: attachments.filter(a => a.height || a.owner || a.photo || a.notes).map(a => ({
           ...a,
           height: a.height ? parseFloat(a.height) : null
         })),
