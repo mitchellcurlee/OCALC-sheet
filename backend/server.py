@@ -590,10 +590,19 @@ async def export_job_excel(job_id: str, current_user: dict = Depends(get_current
             ws.cell(row=current_row, column=1, value="HOA").fill = header_fill
             ws.cell(row=current_row, column=1).font = header_font
             current_row += 1
+            # Add column headers for HOA
+            ws.cell(row=current_row, column=1, value="Att #")
+            ws.cell(row=current_row, column=2, value="Height")
+            ws.cell(row=current_row, column=3, value="Owner")
+            ws.cell(row=current_row, column=4, value="Notes")
+            for col in range(1, 5):
+                ws.cell(row=current_row, column=col).font = Font(bold=True, size=9)
+            current_row += 1
             for i, att in enumerate(attachments, 1):
                 ws.cell(row=current_row, column=1, value=f"Att {i}")
                 ws.cell(row=current_row, column=2, value=att.get("height", ""))
                 ws.cell(row=current_row, column=3, value=att.get("owner", ""))
+                ws.cell(row=current_row, column=4, value=att.get("notes", ""))
                 current_row += 1
         
         # Birthmark & MGNV
