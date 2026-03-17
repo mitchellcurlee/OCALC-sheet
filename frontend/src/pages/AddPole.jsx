@@ -320,7 +320,7 @@ const AddPole = () => {
   const backUrl = jobId ? `/jobs/${jobId}` : "/";
   const mapCenter = formData.latitude && formData.longitude
     ? [parseFloat(formData.latitude), parseFloat(formData.longitude)]
-    : [37.7749, -122.4194];
+    : [29.7604, -95.3698]; // Houston, TX
 
   return (
     <div className="min-h-screen bg-industrial-bg pb-4" data-testid="add-pole-page">
@@ -485,7 +485,7 @@ const AddPole = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Latitude</Label>
-                      <Input type="text" name="latitude" value={formData.latitude} onChange={handleInputChange} placeholder="37.7749" className="h-10 bg-black border-zinc-700 text-white font-mono" data-testid="latitude-input" />
+                      <Input type="text" name="latitude" value={formData.latitude} onChange={handleInputChange} placeholder="29.7604" className="h-10 bg-black border-zinc-700 text-white font-mono" data-testid="latitude-input" />
                     </div>
                     <div className="space-y-2">
                       <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Longitude</Label>
@@ -499,7 +499,7 @@ const AddPole = () => {
                   <p className="text-xs text-zinc-500">Click on the map to pin location</p>
                 </div>
                 <div className="h-64 border border-zinc-700 overflow-hidden">
-                  <MapContainer center={mapCenter} zoom={18} style={{ height: "100%", width: "100%" }} className="z-0">
+                  <MapContainer center={mapCenter} zoom={18} minZoom={3} maxZoom={22} style={{ height: "100%", width: "100%" }} className="z-0">
                     <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" attribution='&copy; Esri' />
                     <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}" attribution='' />
                     <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}" attribution='' />
