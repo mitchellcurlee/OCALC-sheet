@@ -700,7 +700,7 @@ const AddPole = () => {
                 <div key={index} className="bg-zinc-800/50 p-3 border border-zinc-700">
                   <div className="flex items-center gap-2 sm:gap-4">
                     <span className="text-sm font-mono text-green-400 w-6">{index + 1}</span>
-                    <div className="grid grid-cols-3 gap-2 sm:gap-3 flex-1 items-end">
+                    <div className="grid grid-cols-4 gap-2 sm:gap-3 flex-1 items-end">
                       <div className="space-y-1">
                         <Label className="text-xs font-mono text-zinc-500">Height (ft)</Label>
                         <Input type="number" value={att.height} onChange={(e) => updateAttachment(index, "height", e.target.value)} step="0.1" className="h-9 bg-black border-zinc-700 text-white text-sm" />
@@ -713,6 +713,10 @@ const AddPole = () => {
                             {options.attachment_owners.map((o) => (<SelectItem key={o} value={o}>{o}</SelectItem>))}
                           </SelectContent>
                         </Select>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs font-mono text-zinc-500">Notes</Label>
+                        <Input type="text" value={att.notes || ""} onChange={(e) => updateAttachment(index, "notes", e.target.value)} placeholder="Enter notes" className="h-9 bg-black border-zinc-700 text-white text-sm" />
                       </div>
                       <PhotoUpload label="Photo" value={att.photo} onChange={(v) => updateAttachment(index, "photo", v)} testId={`attachment${index}`} compact />
                     </div>
