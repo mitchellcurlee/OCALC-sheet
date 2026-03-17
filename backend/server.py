@@ -553,6 +553,16 @@ async def export_job_excel(job_id: str, current_user: dict = Depends(get_current
             ws.cell(row=current_row, column=1, value="DOWN GUYS").fill = header_fill
             ws.cell(row=current_row, column=1).font = header_font
             current_row += 1
+            # Add column headers for down guys
+            ws.cell(row=current_row, column=1, value="Guy #")
+            ws.cell(row=current_row, column=2, value="Size")
+            ws.cell(row=current_row, column=3, value="Direction")
+            ws.cell(row=current_row, column=4, value="Owner")
+            ws.cell(row=current_row, column=5, value="Height")
+            ws.cell(row=current_row, column=6, value="Lead")
+            for col in range(1, 7):
+                ws.cell(row=current_row, column=col).font = Font(bold=True, size=9)
+            current_row += 1
             for i, dg in enumerate(down_guys, 1):
                 ws.cell(row=current_row, column=1, value=f"Guy {i}")
                 ws.cell(row=current_row, column=2, value=dg.get("size", ""))
