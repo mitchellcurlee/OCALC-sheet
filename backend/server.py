@@ -856,6 +856,8 @@ async def export_poles_excel():
         ws.cell(row=current_row, column=2).font = section_font
         ws.cell(row=current_row, column=3, value="Owner").fill = section_fill
         ws.cell(row=current_row, column=3).font = section_font
+        ws.cell(row=current_row, column=4, value="Notes").fill = section_fill
+        ws.cell(row=current_row, column=4).font = section_font
         current_row += 1
         
         # Row 14: HOA Data
@@ -865,6 +867,7 @@ async def export_poles_excel():
             ws.cell(row=current_row, column=1, value=f"Att {i+1}")
             ws.cell(row=current_row, column=2, value=att.get("height", ""))
             ws.cell(row=current_row, column=3, value=att.get("owner", ""))
+            ws.cell(row=current_row, column=4, value=att.get("notes", ""))
             current_row += 1
         
         # Row 15: Birthmark & MGNV
