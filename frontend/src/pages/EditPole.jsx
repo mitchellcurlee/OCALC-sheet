@@ -107,7 +107,7 @@ const EditPole = () => {
       const pole = response.data;
       setFormData({
         job_number: pole.job_number || "", pole_number: pole.pole_number || "",
-        pole_size: pole.pole_size || "", pole_size_type: pole.pole_size_type || "", condition: pole.condition || "",
+        pole_size: pole.pole_size || "", pole_size_type: pole.pole_size_type || "", pole_type: pole.pole_type || "", condition: pole.condition || "",
         ocalc_left_photo: pole.ocalc_left_photo || "", ocalc_middle_photo: pole.ocalc_middle_photo || "", ocalc_right_photo: pole.ocalc_right_photo || "",
         has_birthmark: pole.has_birthmark !== false, birthmark_photo: pole.birthmark_photo || "",
         mgnv: pole.mgnv || "", mgnv_condition: pole.mgnv_condition || "", mgnv_photo: pole.mgnv_photo || "",
