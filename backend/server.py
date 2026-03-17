@@ -112,7 +112,7 @@ POLE_SIZES = [
     "4-25", "4-30", "4-35", "4-40", "4-45", "4-50", "4-55", "4-60",
     "5-25", "5-30", "5-35", "5-40", "5-45", "5-50", "5-55", "5-60"
 ]
-DOWN_GUY_OWNERS = ["Power", "ATT", "Comcast", "Lightwave", "Logix", "PS"]
+DOWN_GUY_OWNERS = ["Power", "ATT", "Comcast", "Lightwave", "Logix", "PS", "Overhead Guy"]
 DOWN_GUY_DIRECTIONS = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
 DOWN_GUY_SIZES = ["1/4", "3/8", "1/2", "5/8", "3/4"]
 KNUCKLE_OPTIONS = ["0", "1", "2", "3", "4", "5", "6"]
