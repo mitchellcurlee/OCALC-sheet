@@ -132,7 +132,7 @@ const AddPole = () => {
     { count: "", condition: "", photo: "" }
   ]);
   const [attachments, setAttachments] = useState([
-    { height: "", owner: "", photo: "" }
+    { height: "", owner: "", photo: "", notes: "" }
   ]);
 
   useEffect(() => {
