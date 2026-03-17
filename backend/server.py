@@ -210,6 +210,7 @@ class PoleUpdate(BaseModel):
     pole_owner: Optional[str] = None
     pole_size: Optional[str] = None
     pole_size_type: Optional[str] = None
+    pole_type: Optional[str] = None
     condition: Optional[str] = None
     ocalc_left_photo: Optional[str] = None
     ocalc_middle_photo: Optional[str] = None
@@ -634,6 +635,7 @@ async def get_pole_options():
     return {
         "pole_owners": POLE_OWNERS,
         "conditions": POLE_CONDITIONS,
+        "pole_types": POLE_TYPES,
         "sizes": POLE_SIZES,
         "down_guy_owners": DOWN_GUY_OWNERS,
         "down_guy_directions": DOWN_GUY_DIRECTIONS,
