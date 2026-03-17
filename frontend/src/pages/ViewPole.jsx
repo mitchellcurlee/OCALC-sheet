@@ -158,10 +158,8 @@ const ViewPole = () => {
     pole[`knuckle${num}_count`] || pole[`knuckle${num}_condition`] || pole[`knuckle${num}_photo`]
   );
 
-  // Check if any attachment has data
-  const hasAttachmentData = [1, 2, 3, 4, 5].some(num => 
-    pole[`attachment${num}_height`] || pole[`attachment${num}_owner`] || pole[`attachment${num}_photo`]
-  );
+  // Check if any attachment has data (array format)
+  const hasAttachmentData = pole.attachments && pole.attachments.length > 0 && pole.attachments.some(a => a.height || a.owner || a.photo || a.notes);
 
   return (
     <div className="min-h-screen bg-industrial-bg" data-testid="view-pole-page">
