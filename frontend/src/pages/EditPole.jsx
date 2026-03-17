@@ -121,7 +121,7 @@ const EditPole = () => {
       // Load dynamic arrays
       setDownGuys(pole.down_guys?.length > 0 ? pole.down_guys.map(dg => ({ ...dg, height: dg.height?.toString() || "" })) : [{ size: "", direction: "", owner: "", height: "", lead: "" }]);
       setKnuckles(pole.knuckles?.length > 0 ? pole.knuckles : [{ count: "", condition: "", photo: "" }]);
-      setAttachments(pole.attachments?.length > 0 ? pole.attachments.map(a => ({ ...a, height: a.height?.toString() || "" })) : [{ height: "", owner: "", photo: "" }]);
+      setAttachments(pole.attachments?.length > 0 ? pole.attachments.map(a => ({ ...a, height: a.height?.toString() || "", notes: a.notes || "" })) : [{ height: "", owner: "", photo: "", notes: "" }]);
     } catch (error) {
       toast.error("Failed to fetch pole data");
       navigate(backUrl);
