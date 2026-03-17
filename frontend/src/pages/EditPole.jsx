@@ -142,7 +142,7 @@ const EditPole = () => {
   const removeKnuckle = (index) => { if (knuckles.length > 1) setKnuckles(knuckles.filter((_, i) => i !== index)); };
   const updateKnuckle = (index, field, value) => { const updated = [...knuckles]; updated[index][field] = value; setKnuckles(updated); };
 
-  const addAttachment = () => { setAttachments([...attachments, { height: "", owner: "", photo: "" }]); };
+  const addAttachment = () => { setAttachments([...attachments, { height: "", owner: "", photo: "", notes: "" }]); };
   const removeAttachment = (index) => { if (attachments.length > 1) setAttachments(attachments.filter((_, i) => i !== index)); };
   const updateAttachment = (index, field, value) => { const updated = [...attachments]; updated[index][field] = value; setAttachments(updated); };
 
