@@ -201,7 +201,7 @@ const EditPole = () => {
 
   if (fetching) return <div className="min-h-screen bg-industrial-bg flex items-center justify-center"><Loader2 className="w-12 h-12 text-red-500 animate-spin" /></div>;
 
-  const mapCenter = formData.latitude && formData.longitude ? [parseFloat(formData.latitude), parseFloat(formData.longitude)] : [37.7749, -122.4194];
+  const mapCenter = formData.latitude && formData.longitude ? [parseFloat(formData.latitude), parseFloat(formData.longitude)] : [29.7604, -95.3698]; // Houston, TX
 
   return (
     <div className="min-h-screen bg-industrial-bg pb-4" data-testid="edit-pole-page">
@@ -324,7 +324,7 @@ const EditPole = () => {
                   <p className="text-xs text-zinc-500">Click on the map to pin location</p>
                 </div>
                 <div className="h-64 border border-zinc-700 overflow-hidden">
-                  <MapContainer center={mapCenter} zoom={18} style={{ height: "100%", width: "100%" }} className="z-0">
+                  <MapContainer center={mapCenter} zoom={18} minZoom={3} maxZoom={22} style={{ height: "100%", width: "100%" }} className="z-0">
                     <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" />
                     <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}" />
                     <MapClickHandler onLocationSelect={handleMapClick} />

@@ -141,7 +141,7 @@ const ViewPole = () => {
 
   const mapCenter = pole.latitude && pole.longitude
     ? [pole.latitude, pole.longitude]
-    : [37.7749, -122.4194];
+    : [29.7604, -95.3698]; // Houston, TX
 
   // Check if any span has data
   const hasSpanData = [1, 2, 3, 4].some(num => 
@@ -284,7 +284,7 @@ const ViewPole = () => {
                   </Button>
                 </div>
                 <div className="h-64 border border-zinc-700 overflow-hidden">
-                  <MapContainer center={mapCenter} zoom={18} style={{ height: "100%", width: "100%" }} className="z-0">
+                  <MapContainer center={mapCenter} zoom={18} minZoom={3} maxZoom={22} style={{ height: "100%", width: "100%" }} className="z-0">
                     <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" attribution='&copy; Esri' />
                     <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}" attribution='' />
                     <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}" attribution='' />
