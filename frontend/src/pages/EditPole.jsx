@@ -65,7 +65,7 @@ const EditPole = () => {
   const [addressSearch, setAddressSearch] = useState("");
   const [searchLoading, setSearchLoading] = useState(false);
   const [options, setOptions] = useState({
-    pole_owners: [], conditions: [], sizes: [], down_guy_owners: [], down_guy_directions: [], down_guy_sizes: [], knuckle_options: [], span_owners: [], span_directions: [], attachment_owners: [], riser_options: [],
+    pole_owners: [], conditions: [], sizes: [], down_guy_owners: [], down_guy_directions: [], down_guy_sizes: [], knuckle_options: [], span_owners: [], span_directions: [], attachment_owners: [], riser_options: [], pole_types: [],
   });
 
   const backUrl = jobId ? `/jobs/${jobId}` : "/";
