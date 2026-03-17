@@ -193,7 +193,7 @@ const AddPole = () => {
 
   // Attachments handlers
   const addAttachment = () => {
-    setAttachments([...attachments, { height: "", owner: "", photo: "" }]);
+    setAttachments([...attachments, { height: "", owner: "", photo: "", notes: "" }]);
   };
   const removeAttachment = (index) => {
     if (attachments.length > 1) {
