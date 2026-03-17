@@ -367,7 +367,7 @@ const AddPole = () => {
               <div className="w-1 h-5 bg-red-500"></div>
               Basic Information
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 sm:gap-4">
               <div className="space-y-2">
                 <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Pole Size *</Label>
                 <Select value={formData.pole_size} onValueChange={(v) => handleSelectChange("pole_size", v)}>
@@ -389,6 +389,17 @@ const AddPole = () => {
                     <SelectItem value="Actual" className="text-green-400">Actual</SelectItem>
                     <SelectItem value="Estimate" className="text-yellow-400">Estimate</SelectItem>
                     <SelectItem value="Proposed" className="text-blue-400">Proposed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Type of Pole</Label>
+                <Select value={formData.pole_type} onValueChange={(v) => handleSelectChange("pole_type", v)}>
+                  <SelectTrigger className="h-12 sm:h-10 bg-black border-zinc-700 text-white" data-testid="pole-type-select">
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-zinc-900 border-zinc-700">
+                    {options.pole_types.map((t) => (<SelectItem key={t} value={t}>{t}</SelectItem>))}
                   </SelectContent>
                 </Select>
               </div>
