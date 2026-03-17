@@ -79,6 +79,7 @@ const AddPole = () => {
     span_directions: [],
     attachment_owners: [],
     riser_options: [],
+    pole_types: [],
   });
 
   // Basic form data
@@ -87,6 +88,7 @@ const AddPole = () => {
     pole_number: "",
     pole_size: "",
     pole_size_type: "",
+    pole_type: "",
     condition: "",
     // OCALC Photos
     ocalc_left_photo: "",
