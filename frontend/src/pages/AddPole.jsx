@@ -489,7 +489,7 @@ const AddPole = () => {
                     </div>
                     <div className="space-y-2">
                       <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Longitude</Label>
-                      <Input type="text" name="longitude" value={formData.longitude} onChange={handleInputChange} placeholder="-122.4194" className="h-10 bg-black border-zinc-700 text-white font-mono" data-testid="longitude-input" />
+                      <Input type="text" name="longitude" value={formData.longitude} onChange={handleInputChange} placeholder="-95.3698" className="h-10 bg-black border-zinc-700 text-white font-mono" data-testid="longitude-input" />
                     </div>
                   </div>
                   <Button type="button" onClick={getGPSLocation} disabled={gpsLoading} className="w-full h-10 bg-zinc-800 hover:bg-zinc-700 text-white border border-zinc-700" data-testid="get-gps-btn">
