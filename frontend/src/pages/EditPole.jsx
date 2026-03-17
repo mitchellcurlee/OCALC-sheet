@@ -231,6 +231,13 @@ const EditPole = () => {
 
       <main className="max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
         <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+          {/* Update Button - Top */}
+          <div className="flex justify-end">
+            <Button type="submit" disabled={loading} className="h-11 sm:h-10 bg-orange-600 hover:bg-orange-700 text-white min-w-36">
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Save className="w-4 h-4 mr-2" />Update Pole</>}
+            </Button>
+          </div>
+
           {/* Basic Info */}
           <div className="industrial-card p-4 sm:p-5">
             <h2 className="font-heading text-base sm:text-lg font-bold text-white mb-3 sm:mb-4 flex items-center gap-2"><div className="w-1 h-5 bg-red-500"></div>Basic Information</h2>
