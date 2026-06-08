@@ -45,6 +45,7 @@ Build an app that collects power pole data including: size of the pole, type of 
 - **Maps**: draggable marker (drag to fine-tune position), taller satellite map, maxNativeZoom=19/maxZoom=22.
 - **Fixed latent ViewPole bug**: Down Guys & Knuckles were read from non-existent flat fields; now render from arrays.
 - Testing: backend pytest 6/6 passed; frontend e2e verified photo save + ft/in display + draggable marker.
+- Follow-up tweaks (Jun 8, 2026): removed "Job #" from Add/Edit top bar; added H1 & H2 to pole size dropdown; Spans "Distance" is now two dropdowns (hundreds 1-10 + remainder 0-99) combining into a total (e.g. 2 + 50 = 250 ft) via SpanDistance.jsx — verified saving 250.0.
 
 ## Tech Stack
 - Backend: FastAPI + MongoDB

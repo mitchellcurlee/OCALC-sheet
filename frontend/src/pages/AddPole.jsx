@@ -29,6 +29,7 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { PhotoUpload } from "@/components/PhotoUpload";
 import { HeightInput } from "@/components/HeightInput";
+import { SpanDistance } from "@/components/SpanDistance";
 
 // Fix Leaflet marker icon issue
 delete L.Icon.Default.prototype._getIconUrl;
@@ -437,10 +438,7 @@ const AddPole = () => {
                           </SelectContent>
                         </Select>
                       </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs font-mono text-zinc-500">Distance (ft)</Label>
-                        <Input type="number" name={`span${num}_distance`} value={formData[`span${num}_distance`]} onChange={handleInputChange} step="0.1" className="h-9 bg-black border-zinc-700 text-white text-sm" />
-                      </div>
+                      <SpanDistance value={formData[`span${num}_distance`]} onChange={(v) => handleSelectChange(`span${num}_distance`, v)} testId={`span${num}-distance`} />
                       <div className="space-y-1">
                         <Label className="text-xs font-mono text-zinc-500">Owner</Label>
                         <Select value={formData[`span${num}_owner`]} onValueChange={(v) => handleSelectChange(`span${num}_owner`, v)}>
