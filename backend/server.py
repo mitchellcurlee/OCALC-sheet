@@ -773,10 +773,10 @@ async def serve_file(path: str):
     record = await db.files.find_one({"storage_path": path, "is_deleted": False}, {"_id": 0})
     try:
         data, content_type = await asyncio.to_thread(get_object, path)
+        ct = (record or {}).get("content_type") or content_type
+        return Response(content=data, media_type=ct, headers={"Cache-Control": "public, max-age=31536000"})
     except Exception:
         raise HTTPException(status_code=404, detail="File not found")
-    ct = (record or {}).get("content_type") or content_type
-    return Response(content=data, media_type=ct, headers={"Cache-Control": "public, max-age=31536000"})
 
 def _pole_photo_items(pole: dict):
     """Return [(label, url)] for every photo present on a pole."""

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate, Link, useParams } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
@@ -62,6 +62,13 @@ const MapCenterUpdater = ({ lat, lng }) => {
 
 // Stable key generator for dynamic list rows (kept in component state only)
 const rowKey = () => (typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2));
+
+// Styling for the Pole Owner select trigger based on the selected owner
+const ownerTriggerClass = (owner) => {
+  if (owner === "Foreign Owned") return "text-red-500 border-red-500/50";
+  if (owner === "ATT") return "text-orange-500 border-orange-500/50";
+  return "text-white";
+};
 
 const AddPole = () => {
   const navigate = useNavigate();
@@ -211,14 +218,25 @@ const AddPole = () => {
     setAttachments(updated);
   };
 
-  const handleMapClick = (lat, lng) => {
+  const handleMapClick = useCallback((lat, lng) => {
     setFormData((prev) => ({
       ...prev,
       latitude: lat.toFixed(6),
       longitude: lng.toFixed(6),
     }));
     toast.success("Location pinned on map!");
-  };
+  }, []);
+
+  const markerPosition = useMemo(
+    () => (formData.latitude && formData.longitude ? [parseFloat(formData.latitude), parseFloat(formData.longitude)] : null),
+    [formData.latitude, formData.longitude]
+  );
+  const markerEventHandlers = useMemo(() => ({
+    dragend: (e) => {
+      const { lat, lng } = e.target.getLatLng();
+      handleMapClick(lat, lng);
+    },
+  }), [handleMapClick]);
 
   const getGPSLocation = () => {
     if (!navigator.geolocation) {
@@ -543,16 +561,11 @@ const AddPole = () => {
                     <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}" attribution='' maxNativeZoom={19} maxZoom={22} />
                     <MapClickHandler onLocationSelect={handleMapClick} />
                     <MapCenterUpdater lat={formData.latitude} lng={formData.longitude} />
-                    {formData.latitude && formData.longitude && (
+                    {markerPosition && (
                       <Marker
-                        position={[parseFloat(formData.latitude), parseFloat(formData.longitude)]}
+                        position={markerPosition}
                         draggable={true}
-                        eventHandlers={{
-                          dragend: (e) => {
-                            const { lat, lng } = e.target.getLatLng();
-                            handleMapClick(lat, lng);
-                          },
-                        }}
+                        eventHandlers={markerEventHandlers}
                       />
                     )}
                   </MapContainer>
@@ -763,7 +776,7 @@ const AddPole = () => {
                   <div className="space-y-2">
                     <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Pole Owner</Label>
                     <Select value={formData.pole_owner} onValueChange={(v) => handleSelectChange("pole_owner", v)}>
-                      <SelectTrigger className={`h-10 bg-black border-zinc-700 ${formData.pole_owner === "Foreign Owned" ? "text-red-500 border-red-500/50" : formData.pole_owner === "ATT" ? "text-orange-500 border-orange-500/50" : "text-white"}`} data-testid="pole-owner-select">
+                      <SelectTrigger className={`h-10 bg-black border-zinc-700 ${ownerTriggerClass(formData.pole_owner)}`} data-testid="pole-owner-select">
                         <SelectValue placeholder="Select owner" />
                       </SelectTrigger>
                       <SelectContent className="bg-zinc-900 border-zinc-700">

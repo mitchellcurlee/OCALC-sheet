@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
@@ -60,6 +60,13 @@ const MapCenterUpdater = ({ lat, lng }) => {
 
 // Stable key generator for dynamic list rows (kept in component state only)
 const rowKey = () => (typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2));
+
+// Styling for the Pole Owner select trigger based on the selected owner
+const ownerTriggerClass = (owner) => {
+  if (owner === "Foreign Owned") return "text-red-500 border-red-500/50";
+  if (owner === "ATT") return "text-orange-500 border-orange-500/50";
+  return "text-white";
+};
 
 const EditPole = () => {
   const navigate = useNavigate();
@@ -151,7 +158,15 @@ const EditPole = () => {
   const removeAttachment = (index) => { if (attachments.length > 1) setAttachments(attachments.filter((_, i) => i !== index)); };
   const updateAttachment = (index, field, value) => { const updated = [...attachments]; updated[index][field] = value; setAttachments(updated); };
 
-  const handleMapClick = (lat, lng) => { setFormData((prev) => ({ ...prev, latitude: lat.toFixed(6), longitude: lng.toFixed(6) })); toast.success("Location pinned!"); };
+  const handleMapClick = useCallback((lat, lng) => { setFormData((prev) => ({ ...prev, latitude: lat.toFixed(6), longitude: lng.toFixed(6) })); toast.success("Location pinned!"); }, []);
+
+  const markerPosition = useMemo(
+    () => (formData.latitude && formData.longitude ? [parseFloat(formData.latitude), parseFloat(formData.longitude)] : null),
+    [formData.latitude, formData.longitude]
+  );
+  const markerEventHandlers = useMemo(() => ({
+    dragend: (e) => { const { lat, lng } = e.target.getLatLng(); handleMapClick(lat, lng); },
+  }), [handleMapClick]);
 
   const getGPSLocation = () => {
     if (!navigator.geolocation) { toast.error("Geolocation is not supported by your browser"); return; }
@@ -358,16 +373,11 @@ const EditPole = () => {
                     <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}" maxNativeZoom={19} maxZoom={22} />
                     <MapClickHandler onLocationSelect={handleMapClick} />
                     <MapCenterUpdater lat={formData.latitude} lng={formData.longitude} />
-                    {formData.latitude && formData.longitude && (
+                    {markerPosition && (
                       <Marker
-                        position={[parseFloat(formData.latitude), parseFloat(formData.longitude)]}
+                        position={markerPosition}
                         draggable={true}
-                        eventHandlers={{
-                          dragend: (e) => {
-                            const { lat, lng } = e.target.getLatLng();
-                            handleMapClick(lat, lng);
-                          },
-                        }}
+                        eventHandlers={markerEventHandlers}
                       />
                     )}
                   </MapContainer>
@@ -475,7 +485,7 @@ const EditPole = () => {
               ))}
               <div className="mt-4 pt-4 border-t border-zinc-700">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="space-y-2"><Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Pole Owner</Label><Select value={formData.pole_owner} onValueChange={(v) => handleSelectChange("pole_owner", v)}><SelectTrigger className={`h-10 bg-black border-zinc-700 ${formData.pole_owner === "Foreign Owned" ? "text-red-500 border-red-500/50" : formData.pole_owner === "ATT" ? "text-orange-500 border-orange-500/50" : "text-white"}`}><SelectValue placeholder="Select owner" /></SelectTrigger><SelectContent className="bg-zinc-900 border-zinc-700">{options.pole_owners.map((o) => (<SelectItem key={o} value={o} className={o === "Foreign Owned" ? "text-red-500" : "text-orange-500"}>{o}</SelectItem>))}</SelectContent></Select></div>
+                  <div className="space-y-2"><Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Pole Owner</Label><Select value={formData.pole_owner} onValueChange={(v) => handleSelectChange("pole_owner", v)}><SelectTrigger className={`h-10 bg-black border-zinc-700 ${ownerTriggerClass(formData.pole_owner)}`}><SelectValue placeholder="Select owner" /></SelectTrigger><SelectContent className="bg-zinc-900 border-zinc-700">{options.pole_owners.map((o) => (<SelectItem key={o} value={o} className={o === "Foreign Owned" ? "text-red-500" : "text-orange-500"}>{o}</SelectItem>))}</SelectContent></Select></div>
                   <div className="space-y-2"><Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Pole Terminal</Label><Select value={formData.pole_terminal} onValueChange={(v) => handleSelectChange("pole_terminal", v)}><SelectTrigger className="h-10 bg-black border-zinc-700 text-white"><SelectValue placeholder="Yes / No" /></SelectTrigger><SelectContent className="bg-zinc-900 border-zinc-700"><SelectItem value="Yes">Yes</SelectItem><SelectItem value="No">No</SelectItem></SelectContent></Select></div>
                   <div className="space-y-2"><Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Risers</Label><Select value={formData.risers} onValueChange={(v) => handleSelectChange("risers", v)}><SelectTrigger className="h-10 bg-black border-zinc-700 text-white"><SelectValue placeholder="Select #" /></SelectTrigger><SelectContent className="bg-zinc-900 border-zinc-700">{options.riser_options.map((r) => (<SelectItem key={r} value={r}>{r}</SelectItem>))}</SelectContent></Select></div>
                 </div>

@@ -294,6 +294,13 @@ export const PhotoUpload = ({ label, value, onChange, testId, showHeightTool = f
   );
 };
 
+// Styling for the height-tool mode badge
+const modeBadgeClass = (mode) => {
+  if (mode === "reference") return "bg-green-600 text-white";
+  if (mode === "measure") return "bg-red-600 text-white";
+  return "bg-zinc-700 text-zinc-400";
+};
+
 // Height Measurement Tool
 const HeightMeasurementDialog = ({ open, onOpenChange, imageSrc, onHeightMeasured }) => {
   const canvasRef = useRef(null);
@@ -465,7 +472,7 @@ const HeightMeasurementDialog = ({ open, onOpenChange, imageSrc, onHeightMeasure
               className="w-24 h-8 bg-black border-zinc-700 text-white"
               step="0.5"
             />
-            <span className={`text-xs font-mono px-2 py-1 rounded ${mode === "reference" ? "bg-green-600 text-white" : mode === "measure" ? "bg-red-600 text-white" : "bg-zinc-700 text-zinc-400"}`}>
+            <span className={`text-xs font-mono px-2 py-1 rounded ${modeBadgeClass(mode)}`}>
               {mode === "reference" ? "MARKING REFERENCE" : "MARKING MEASUREMENT"}
             </span>
           </div>
