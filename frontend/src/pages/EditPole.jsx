@@ -154,13 +154,27 @@ const EditPole = () => {
   const handleMapClick = (lat, lng) => { setFormData((prev) => ({ ...prev, latitude: lat.toFixed(6), longitude: lng.toFixed(6) })); toast.success("Location pinned!"); };
 
   const getGPSLocation = () => {
-    if (!navigator.geolocation) { toast.error("Geolocation not supported"); return; }
+    if (!navigator.geolocation) { toast.error("Geolocation is not supported by your browser"); return; }
+    if (typeof window !== "undefined" && window.isSecureContext === false) { toast.error("Location needs a secure (https) connection"); return; }
     setGpsLoading(true);
-    navigator.geolocation.getCurrentPosition(
-      (position) => { setFormData((prev) => ({ ...prev, latitude: position.coords.latitude.toFixed(6), longitude: position.coords.longitude.toFixed(6) })); setGpsLoading(false); toast.success("GPS captured!"); },
-      () => { setGpsLoading(false); toast.error("Failed to get location"); },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-    );
+    const onSuccess = (position) => {
+      setFormData((prev) => ({ ...prev, latitude: position.coords.latitude.toFixed(6), longitude: position.coords.longitude.toFixed(6) }));
+      setGpsLoading(false);
+      toast.success("GPS location captured!");
+    };
+    const onError = (error, isRetry) => {
+      if (!isRetry && error.code === error.TIMEOUT) {
+        navigator.geolocation.getCurrentPosition(onSuccess, (e) => onError(e, true), { enableHighAccuracy: false, timeout: 30000, maximumAge: 60000 });
+        return;
+      }
+      setGpsLoading(false);
+      let msg = "Unable to fetch your location. You can enter coordinates manually or pin on the map.";
+      if (error.code === error.PERMISSION_DENIED) msg = "Location permission denied. Allow location access for this site in your browser settings, then try again.";
+      else if (error.code === error.POSITION_UNAVAILABLE) msg = "Location unavailable. Make sure your device's location/GPS is turned on.";
+      else if (error.code === error.TIMEOUT) msg = "Location request timed out. Try again (ideally outdoors), or enter coordinates manually.";
+      toast.error(msg);
+    };
+    navigator.geolocation.getCurrentPosition(onSuccess, (e) => onError(e, false), { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
   };
 
   // Address search using Nominatim (OpenStreetMap) geocoding

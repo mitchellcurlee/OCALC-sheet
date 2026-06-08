@@ -53,6 +53,7 @@ Build an app that collects power pole data including: size of the pole, type of 
   - Added stable `_key` row identifiers for editable dynamic rows (Down Guys/Knuckles/HOA) in Add/Edit (stripped before submit) to avoid index-key state bugs.
   - Verified: production build compiles, backend pytest 6/6, auth flows (fresh/login/reload) all pass.
   - Deferred (high risk / out of scope): localStorage->httpOnly cookie migration (auth-architecture change); large component splits (Add/Edit/Dashboard) and Excel export function extraction (refactor of working tested code — slated for the P1 PoleForm refactor). `is None` checks and serve_file `data` warning are false positives (left unchanged). Residual mcp-linter findings are experimental React-Compiler rules (set-state-in-effect/immutability) that flag the app's standard fetch-in-effect pattern and are not enforced by the production build.
+- Geolocation hardening (Jun 8, 2026): "Get Current Location" on Add/Edit now reports specific errors (permission denied / GPS off / timeout / insecure context) and auto-retries once with lower accuracy + longer timeout on timeout. Note: GPS is blocked in the preview iframe; works on the deployed site (https://poledatasheet.info) after allowing location permission. Requires redeploy to reach production.
 
 ## Tech Stack
 - Backend: FastAPI + MongoDB
