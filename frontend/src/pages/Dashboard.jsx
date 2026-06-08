@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
@@ -48,7 +48,7 @@ const Dashboard = () => {
   const [deleteId, setDeleteId] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const fetchPoles = async () => {
+  const fetchPoles = useCallback(async () => {
     try {
       let url = "/poles";
       const params = new URLSearchParams();
@@ -62,16 +62,16 @@ const Dashboard = () => {
       toast.error("Failed to fetch poles");
       console.error(error);
     }
-  };
+  }, [filterOwner, filterCondition]);
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
       const response = await axios.get("/stats");
       setStats(response.data);
     } catch (error) {
       console.error("Failed to fetch stats:", error);
     }
-  };
+  }, []);
 
   useEffect(() => {
     const loadData = async () => {
@@ -80,7 +80,7 @@ const Dashboard = () => {
       setLoading(false);
     };
     loadData();
-  }, [filterOwner, filterCondition]);
+  }, [fetchPoles, fetchStats]);
 
   const handleDelete = async () => {
     if (!deleteId) return;

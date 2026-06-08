@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
 
 const AuthContext = createContext(null);
@@ -70,18 +70,10 @@ const safeStorage = {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(safeStorage.getItem('token'));
-  const [loading, setLoading] = useState(true);
+  // Only "loading" while we have a token to validate; otherwise we're ready immediately.
+  const [loading, setLoading] = useState(!!safeStorage.getItem('token'));
 
-  useEffect(() => {
-    if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      fetchUser();
-    } else {
-      setLoading(false);
-    }
-  }, [token]);
-
-  const fetchUser = async () => {
+  const fetchUser = useCallback(async () => {
     try {
       const response = await axios.get(`/auth/me`);
       setUser(response.data);
@@ -93,9 +85,16 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const login = async (email, password) => {
+  useEffect(() => {
+    if (token) {
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      fetchUser();
+    }
+  }, [token, fetchUser]);
+
+  const login = useCallback(async (email, password) => {
     console.log('Attempting login to:', `${API}/auth/login`);
     
     try {
@@ -142,9 +141,9 @@ export const AuthProvider = ({ children }) => {
       }
       throw error;
     }
-  };
+  }, []);
 
-  const register = async (email, password, name) => {
+  const register = useCallback(async (email, password, name) => {
     console.log('Attempting register to:', `${API}/auth/register`);
     
     try {
@@ -185,17 +184,28 @@ export const AuthProvider = ({ children }) => {
       }
       throw error;
     }
-  };
+  }, []);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     safeStorage.removeItem('token');
     delete axios.defaults.headers.common['Authorization'];
     setToken(null);
     setUser(null);
-  };
+  }, []);
+
+  const value = useMemo(() => ({
+    user,
+    token,
+    loading,
+    login,
+    register,
+    logout,
+    isAuthenticated: !!user,
+    isAdmin: user?.is_admin || false,
+  }), [user, token, loading, login, register, logout]);
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, logout, isAuthenticated: !!user, isAdmin: user?.is_admin || false }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

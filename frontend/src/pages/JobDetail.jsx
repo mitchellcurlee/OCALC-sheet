@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
@@ -40,11 +40,7 @@ const JobDetail = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteId, setDeleteId] = useState(null);
 
-  useEffect(() => {
-    fetchJobAndPoles();
-  }, [jobId]);
-
-  const fetchJobAndPoles = async () => {
+  const fetchJobAndPoles = useCallback(async () => {
     try {
       const [jobRes, polesRes] = await Promise.all([
         axios.get(`/jobs/${jobId}`),
@@ -58,7 +54,11 @@ const JobDetail = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [jobId, navigate]);
+
+  useEffect(() => {
+    fetchJobAndPoles();
+  }, [fetchJobAndPoles]);
 
   const handleExport = async () => {
     try {

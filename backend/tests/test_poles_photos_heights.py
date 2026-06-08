@@ -12,13 +12,19 @@ import io
 import os
 import re
 import uuid
+from pathlib import Path
+
 import pytest
 import requests
+from dotenv import load_dotenv
 
-BASE_URL = os.environ.get("REACT_APP_BACKEND_URL").rstrip("/")
-ADMIN_EMAIL = "tim.gables@byers.com"
-ADMIN_PASSWORD = "Byers@13430"
-SEED_JOB_ID = "e5dc0bae-96bb-4cef-8001-7baf4e41d80a"
+# Load backend/.env so credentials come from configuration, never hardcoded.
+load_dotenv(Path(__file__).resolve().parents[1] / ".env")
+
+BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "").rstrip("/")
+ADMIN_EMAIL = os.environ.get("MASTER_ADMIN_EMAIL")
+ADMIN_PASSWORD = os.environ.get("MASTER_ADMIN_PASSWORD")
+SEED_JOB_ID = os.environ.get("TEST_SEED_JOB_ID", "e5dc0bae-96bb-4cef-8001-7baf4e41d80a")
 
 # 1x1 PNG
 PNG_BYTES = (
@@ -30,6 +36,8 @@ PNG_BYTES = (
 
 @pytest.fixture(scope="module")
 def admin_token():
+    if not BASE_URL or not ADMIN_EMAIL or not ADMIN_PASSWORD:
+        pytest.skip("BASE_URL / admin credentials not configured in environment")
     r = requests.post(
         f"{BASE_URL}/api/auth/login",
         json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD},

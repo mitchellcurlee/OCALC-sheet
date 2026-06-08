@@ -46,6 +46,13 @@ Build an app that collects power pole data including: size of the pole, type of 
 - **Fixed latent ViewPole bug**: Down Guys & Knuckles were read from non-existent flat fields; now render from arrays.
 - Testing: backend pytest 6/6 passed; frontend e2e verified photo save + ft/in display + draggable marker.
 - Follow-up tweaks (Jun 8, 2026): removed "Job #" from Add/Edit top bar; added H1 & H2 to pole size dropdown; Spans "Distance" is now two dropdowns (hundreds 1-10 + remainder 0-99) combining into a total (e.g. 2 + 50 = 250 ft) via SpanDistance.jsx — verified saving 250.0.
+- Code-quality pass (Jun 8, 2026):
+  - Removed hardcoded admin password from backend test; credentials now loaded from backend/.env (MASTER_ADMIN_*).
+  - AuthContext: memoized login/register/logout/fetchUser with useCallback, context value with useMemo, and derived initial `loading` from token presence (removed synchronous setState-in-effect).
+  - Wrapped mount/id data fetches in useCallback with correct effect deps across Dashboard, JobsList, JobDetail, ViewPole, AddPole, EditPole.
+  - Added stable `_key` row identifiers for editable dynamic rows (Down Guys/Knuckles/HOA) in Add/Edit (stripped before submit) to avoid index-key state bugs.
+  - Verified: production build compiles, backend pytest 6/6, auth flows (fresh/login/reload) all pass.
+  - Deferred (high risk / out of scope): localStorage->httpOnly cookie migration (auth-architecture change); large component splits (Add/Edit/Dashboard) and Excel export function extraction (refactor of working tested code — slated for the P1 PoleForm refactor). `is None` checks and serve_file `data` warning are false positives (left unchanged). Residual mcp-linter findings are experimental React-Compiler rules (set-state-in-effect/immutability) that flag the app's standard fetch-in-effect pattern and are not enforced by the production build.
 
 ## Tech Stack
 - Backend: FastAPI + MongoDB

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
@@ -58,6 +58,9 @@ const MapCenterUpdater = ({ lat, lng }) => {
   return null;
 };
 
+// Stable key generator for dynamic list rows (kept in component state only)
+const rowKey = () => (typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2));
+
 const EditPole = () => {
   const navigate = useNavigate();
   const { jobId, id } = useParams();
@@ -85,25 +88,20 @@ const EditPole = () => {
     latitude: "", longitude: "", notes: "",
   });
 
-  const [downGuys, setDownGuys] = useState([{ size: "", direction: "", owner: "", height: "", lead: "" }]);
-  const [knuckles, setKnuckles] = useState([{ count: "", condition: "", photo: "" }]);
-  const [attachments, setAttachments] = useState([{ height: "", owner: "", photo: "" }]);
+  const [downGuys, setDownGuys] = useState([{ _key: rowKey(), size: "", direction: "", owner: "", height: "", lead: "" }]);
+  const [knuckles, setKnuckles] = useState([{ _key: rowKey(), count: "", condition: "", photo: "" }]);
+  const [attachments, setAttachments] = useState([{ _key: rowKey(), height: "", owner: "", photo: "" }]);
 
-  useEffect(() => {
-    fetchOptions();
-    fetchPole();
-  }, [id]);
-
-  const fetchOptions = async () => {
+  const fetchOptions = useCallback(async () => {
     try {
       const response = await axios.get("/poles/options");
       setOptions(response.data);
     } catch (error) {
       toast.error("Failed to fetch form options");
     }
-  };
+  }, []);
 
-  const fetchPole = async () => {
+  const fetchPole = useCallback(async () => {
     try {
       const response = await axios.get(`/poles/${id}`);
       const pole = response.data;
@@ -120,31 +118,36 @@ const EditPole = () => {
         span4_direction: pole.span4_direction || "", span4_distance: pole.span4_distance?.toString() || "", span4_owner: pole.span4_owner || "",
         latitude: pole.latitude?.toString() || "", longitude: pole.longitude?.toString() || "", notes: pole.notes || "",
       });
-      // Load dynamic arrays
-      setDownGuys(pole.down_guys?.length > 0 ? pole.down_guys.map(dg => ({ ...dg, height: dg.height?.toString() || "" })) : [{ size: "", direction: "", owner: "", height: "", lead: "" }]);
-      setKnuckles(pole.knuckles?.length > 0 ? pole.knuckles : [{ count: "", condition: "", photo: "" }]);
-      setAttachments(pole.attachments?.length > 0 ? pole.attachments.map(a => ({ ...a, height: a.height?.toString() || "", notes: a.notes || "" })) : [{ height: "", owner: "", photo: "", notes: "" }]);
+      // Load dynamic arrays (attach a stable _key for React list rendering)
+      setDownGuys(pole.down_guys?.length > 0 ? pole.down_guys.map(dg => ({ _key: rowKey(), ...dg, height: dg.height?.toString() || "" })) : [{ _key: rowKey(), size: "", direction: "", owner: "", height: "", lead: "" }]);
+      setKnuckles(pole.knuckles?.length > 0 ? pole.knuckles.map(k => ({ _key: rowKey(), ...k })) : [{ _key: rowKey(), count: "", condition: "", photo: "" }]);
+      setAttachments(pole.attachments?.length > 0 ? pole.attachments.map(a => ({ _key: rowKey(), ...a, height: a.height?.toString() || "", notes: a.notes || "" })) : [{ _key: rowKey(), height: "", owner: "", photo: "", notes: "" }]);
     } catch (error) {
       toast.error("Failed to fetch pole data");
       navigate(backUrl);
     } finally {
       setFetching(false);
     }
-  };
+  }, [id, navigate, backUrl]);
+
+  useEffect(() => {
+    fetchOptions();
+    fetchPole();
+  }, [fetchOptions, fetchPole]);
 
   const handleInputChange = (e) => { const { name, value } = e.target; setFormData((prev) => ({ ...prev, [name]: value })); };
   const handleSelectChange = (name, value) => { setFormData((prev) => ({ ...prev, [name]: value })); };
   const handlePhotoChange = (field, value) => { setFormData((prev) => ({ ...prev, [field]: value })); };
 
-  const addDownGuy = () => { setDownGuys([...downGuys, { size: "", direction: "", owner: "", height: "", lead: "" }]); };
+  const addDownGuy = () => { setDownGuys([...downGuys, { _key: rowKey(), size: "", direction: "", owner: "", height: "", lead: "" }]); };
   const removeDownGuy = (index) => { if (downGuys.length > 1) setDownGuys(downGuys.filter((_, i) => i !== index)); };
   const updateDownGuy = (index, field, value) => { const updated = [...downGuys]; updated[index][field] = value; setDownGuys(updated); };
 
-  const addKnuckle = () => { setKnuckles([...knuckles, { count: "", condition: "", photo: "" }]); };
+  const addKnuckle = () => { setKnuckles([...knuckles, { _key: rowKey(), count: "", condition: "", photo: "" }]); };
   const removeKnuckle = (index) => { if (knuckles.length > 1) setKnuckles(knuckles.filter((_, i) => i !== index)); };
   const updateKnuckle = (index, field, value) => { const updated = [...knuckles]; updated[index][field] = value; setKnuckles(updated); };
 
-  const addAttachment = () => { setAttachments([...attachments, { height: "", owner: "", photo: "", notes: "" }]); };
+  const addAttachment = () => { setAttachments([...attachments, { _key: rowKey(), height: "", owner: "", photo: "", notes: "" }]); };
   const removeAttachment = (index) => { if (attachments.length > 1) setAttachments(attachments.filter((_, i) => i !== index)); };
   const updateAttachment = (index, field, value) => { const updated = [...attachments]; updated[index][field] = value; setAttachments(updated); };
 
@@ -191,9 +194,9 @@ const EditPole = () => {
         span4_distance: formData.span4_distance ? parseFloat(formData.span4_distance) : null,
         latitude: formData.latitude ? parseFloat(formData.latitude) : null,
         longitude: formData.longitude ? parseFloat(formData.longitude) : null,
-        down_guys: downGuys.filter(dg => dg.size || dg.direction || dg.owner || dg.height || dg.lead).map(dg => ({ ...dg, height: dg.height ? parseFloat(dg.height) : null })),
-        knuckles: knuckles.filter(k => k.count || k.condition || k.photo),
-        attachments: attachments.filter(a => a.height || a.owner || a.photo).map(a => ({ ...a, height: a.height ? parseFloat(a.height) : null })),
+        down_guys: downGuys.filter(dg => dg.size || dg.direction || dg.owner || dg.height || dg.lead).map(({ _key, ...dg }) => ({ ...dg, height: dg.height ? parseFloat(dg.height) : null })),
+        knuckles: knuckles.filter(k => k.count || k.condition || k.photo).map(({ _key, ...k }) => k),
+        attachments: attachments.filter(a => a.height || a.owner || a.photo).map(({ _key, ...a }) => ({ ...a, height: a.height ? parseFloat(a.height) : null })),
       };
       await axios.put(`/poles/${id}`, submitData);
       toast.success("Pole updated successfully!");
@@ -396,7 +399,7 @@ const EditPole = () => {
             </div>
             <div className="space-y-3">
               {downGuys.map((guy, index) => (
-                <div key={index} className="bg-zinc-800/50 p-3 border border-zinc-700">
+                <div key={guy._key} className="bg-zinc-800/50 p-3 border border-zinc-700">
                   <div className="flex items-center gap-2 sm:gap-4">
                     <span className="text-sm font-mono text-yellow-400 w-6">{index + 1}</span>
                     <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3 flex-1">
@@ -419,7 +422,7 @@ const EditPole = () => {
               </div>
               <div className="space-y-3">
                 {knuckles.map((knuckle, index) => (
-                  <div key={index} className="bg-zinc-800/50 p-3 border border-zinc-700">
+                  <div key={knuckle._key} className="bg-zinc-800/50 p-3 border border-zinc-700">
                     <div className="flex items-center gap-2 sm:gap-4">
                       <span className="text-sm font-mono text-orange-400 w-6">{index + 1}</span>
                       <div className="grid grid-cols-3 gap-2 sm:gap-3 flex-1 items-end">
@@ -443,7 +446,7 @@ const EditPole = () => {
             </div>
             <div className="space-y-3">
               {attachments.map((att, index) => (
-                <div key={index} className="bg-zinc-800/50 p-3 border border-zinc-700">
+                <div key={att._key} className="bg-zinc-800/50 p-3 border border-zinc-700">
                   <div className="flex items-center gap-2 sm:gap-4">
                     <span className="text-sm font-mono text-green-400 w-6">{index + 1}</span>
                     <div className="grid grid-cols-4 gap-2 sm:gap-3 flex-1 items-end">

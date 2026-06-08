@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
@@ -50,11 +50,7 @@ const JobsList = () => {
   const [formData, setFormData] = useState({ name: "", description: "", location: "" });
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    fetchJobs();
-  }, []);
-
-  const fetchJobs = async () => {
+  const fetchJobs = useCallback(async () => {
     try {
       const response = await axios.get("/jobs");
       setJobs(response.data);
@@ -63,7 +59,11 @@ const JobsList = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchJobs();
+  }, [fetchJobs]);
 
   const handleCreate = async () => {
     if (!formData.name.trim()) {

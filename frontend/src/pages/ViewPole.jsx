@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
@@ -84,11 +84,7 @@ const ViewPole = () => {
   
   const backUrl = jobId ? `/jobs/${jobId}` : "/";
 
-  useEffect(() => {
-    fetchPole();
-  }, [id]);
-
-  const fetchPole = async () => {
+  const fetchPole = useCallback(async () => {
     try {
       const response = await axios.get(`/poles/${id}`);
       setPole(response.data);
@@ -98,7 +94,11 @@ const ViewPole = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, navigate, backUrl]);
+
+  useEffect(() => {
+    fetchPole();
+  }, [fetchPole]);
 
   const handleDelete = async () => {
     try {

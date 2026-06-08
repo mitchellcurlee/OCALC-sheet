@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate, Link, useParams } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
@@ -59,6 +59,9 @@ const MapCenterUpdater = ({ lat, lng }) => {
   }, [lat, lng, map]);
   return null;
 };
+
+// Stable key generator for dynamic list rows (kept in component state only)
+const rowKey = () => (typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2));
 
 const AddPole = () => {
   const navigate = useNavigate();
@@ -128,27 +131,27 @@ const AddPole = () => {
 
   // Dynamic arrays - start with 1 row each
   const [downGuys, setDownGuys] = useState([
-    { size: "", direction: "", owner: "", height: "", lead: "" }
+    { _key: rowKey(), size: "", direction: "", owner: "", height: "", lead: "" }
   ]);
   const [knuckles, setKnuckles] = useState([
-    { count: "", condition: "", photo: "" }
+    { _key: rowKey(), count: "", condition: "", photo: "" }
   ]);
   const [attachments, setAttachments] = useState([
-    { height: "", owner: "", photo: "", notes: "" }
+    { _key: rowKey(), height: "", owner: "", photo: "", notes: "" }
   ]);
 
-  useEffect(() => {
-    fetchOptions();
-  }, []);
-
-  const fetchOptions = async () => {
+  const fetchOptions = useCallback(async () => {
     try {
       const response = await axios.get("/poles/options");
       setOptions(response.data);
     } catch (error) {
       toast.error("Failed to fetch form options");
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchOptions();
+  }, [fetchOptions]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -165,7 +168,7 @@ const AddPole = () => {
 
   // Down Guys handlers
   const addDownGuy = () => {
-    setDownGuys([...downGuys, { size: "", direction: "", owner: "", height: "", lead: "" }]);
+    setDownGuys([...downGuys, { _key: rowKey(), size: "", direction: "", owner: "", height: "", lead: "" }]);
   };
   const removeDownGuy = (index) => {
     if (downGuys.length > 1) {
@@ -180,7 +183,7 @@ const AddPole = () => {
 
   // Knuckles handlers
   const addKnuckle = () => {
-    setKnuckles([...knuckles, { count: "", condition: "", photo: "" }]);
+    setKnuckles([...knuckles, { _key: rowKey(), count: "", condition: "", photo: "" }]);
   };
   const removeKnuckle = (index) => {
     if (knuckles.length > 1) {
@@ -195,7 +198,7 @@ const AddPole = () => {
 
   // Attachments handlers
   const addAttachment = () => {
-    setAttachments([...attachments, { height: "", owner: "", photo: "", notes: "" }]);
+    setAttachments([...attachments, { _key: rowKey(), height: "", owner: "", photo: "", notes: "" }]);
   };
   const removeAttachment = (index) => {
     if (attachments.length > 1) {
@@ -299,12 +302,12 @@ const AddPole = () => {
         latitude: formData.latitude ? parseFloat(formData.latitude) : null,
         longitude: formData.longitude ? parseFloat(formData.longitude) : null,
         // Dynamic arrays
-        down_guys: downGuys.filter(dg => dg.size || dg.direction || dg.owner || dg.height || dg.lead).map(dg => ({
+        down_guys: downGuys.filter(dg => dg.size || dg.direction || dg.owner || dg.height || dg.lead).map(({ _key, ...dg }) => ({
           ...dg,
           height: dg.height ? parseFloat(dg.height) : null
         })),
-        knuckles: knuckles.filter(k => k.count || k.condition || k.photo),
-        attachments: attachments.filter(a => a.height || a.owner || a.photo || a.notes).map(a => ({
+        knuckles: knuckles.filter(k => k.count || k.condition || k.photo).map(({ _key, ...k }) => k),
+        attachments: attachments.filter(a => a.height || a.owner || a.photo || a.notes).map(({ _key, ...a }) => ({
           ...a,
           height: a.height ? parseFloat(a.height) : null
         })),
@@ -598,7 +601,7 @@ const AddPole = () => {
             </div>
             <div className="space-y-3">
               {downGuys.map((guy, index) => (
-                <div key={index} className="bg-zinc-800/50 p-3 border border-zinc-700">
+                <div key={guy._key} className="bg-zinc-800/50 p-3 border border-zinc-700">
                   <div className="flex items-center gap-2 sm:gap-4">
                     <span className="text-sm font-mono text-yellow-400 w-6">{index + 1}</span>
                     <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3 flex-1">
@@ -649,7 +652,7 @@ const AddPole = () => {
               </div>
               <div className="space-y-3">
                 {knuckles.map((knuckle, index) => (
-                  <div key={index} className="bg-zinc-800/50 p-3 border border-zinc-700">
+                  <div key={knuckle._key} className="bg-zinc-800/50 p-3 border border-zinc-700">
                     <div className="flex items-center gap-2 sm:gap-4">
                       <span className="text-sm font-mono text-orange-400 w-6">{index + 1}</span>
                       <div className="grid grid-cols-3 gap-2 sm:gap-3 flex-1 items-end">
@@ -698,7 +701,7 @@ const AddPole = () => {
             </div>
             <div className="space-y-3">
               {attachments.map((att, index) => (
-                <div key={index} className="bg-zinc-800/50 p-3 border border-zinc-700">
+                <div key={att._key} className="bg-zinc-800/50 p-3 border border-zinc-700">
                   <div className="flex items-center gap-2 sm:gap-4">
                     <span className="text-sm font-mono text-green-400 w-6">{index + 1}</span>
                     <div className="grid grid-cols-4 gap-2 sm:gap-3 flex-1 items-end">
