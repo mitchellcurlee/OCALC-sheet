@@ -1,192 +1,142 @@
 <analysis>**original_problem_statement:**
-The user's core requirement is to build and enhance a full-stack application for power pole data collection.
+The user is building a full-stack application for power pole data collection. PRODUCT REQUIREMENTS include mobile compatibility (PWA), dynamic forms for pole attributes (Attachments/HOA, Down Guys, Knuckles), photo uploads, interactive GPS mapping, and data export to Excel. Recently, the focus has been on resolving mobile CORS issues (fetching jobs), adding new dropdown categories for pole types and attachments, setting a default geographic map center, and adding custom notes to specific dynamic fields.
 
-Initial requests from the previous session included a detailed data form, dark theme, Excel export, GPS coordinates, and photo uploads.
+**User's preferred language**: English (INSTRUCT next agent to respond in English only)
 
-This session focused on implementing several new features and fixing usability issues based on user feedback. The key requests addressed were:
-1.  **Address Search:** Add an address search bar to the GPS section to auto-fill coordinates.
-2.  **Master Login:** Create a super admin account that can view all jobs and poles from all users.
-3.  **Map Interaction:** Make the map pin automatically center on the searched address.
-4.  **In-App Photo Viewing:** Make photos larger and allow them to be opened in a full-size lightbox modal.
-5.  **Excel Hyperlinks:** Ensure photo URLs in the Excel export are clickable hyperlinks. (This was later reverted by the user).
-6.  **New Form Field:** Add a dropdown for Actual, Estimate, Proposed next to the pole size field.
-7.  **UI/UX Tweaks:**
-    *   Rename Height of Attachments to HOA.
-    *   Remove picture links from the Excel export.
-    *   Add 0 to the number of risers dropdown.
-8.  **Mobile Support:** Configure the app for mobile use (PWA) and resolve login/data fetching issues on mobile devices.
-9.  **Deployment Prep:** Run a health check to ensure the app is ready for deployment.
+**what currently exists?** 
+A full-stack React/FastAPI application for pole data management featuring:
+- JWT Authentication with a Master Admin role.
+- PWA setup for mobile installation.
+- Dynamic Pole Forms (dynamic addition/removal of attachments, down guys).
+- Interactive Leaflet map with Nominatim address geocoding.
+- Excel Export generation for job data.
+- **New in this session:** Mobile API routing uses relative paths () to bypass CORS, map defaults to Houston, TX, Type of Pole category added, and HOA rows now support persistent Notes.
 
-**User's preferred language**: English
+**Last working item**: 
+    - Last item agent was working: Adding Overhead Guy to the  dropdown list in the backend (). The agent added the option and successfully verified the backend output via a python curl script. 
+    - Status: USER VERIFICATION PENDING
+    - Agent Testing Done: Y
+    - Which testing method agent to use? manual testing by python -c / curl
+    - User Testing Done: N
 
-**what currently exists?**
-A full-stack React/FastAPI application for pole data management. The app features:
-- **JWT Authentication:** Secure user registration and login.
-- **Job Management:** Poles are organized under Jobs.
-- **Master Admin Role:** A super admin user () can view all data from all users.
-- **Dynamic Pole Form:** A comprehensive form for adding/editing poles with sections for dynamically adding/removing rows (attachments, knuckles, down guys).
-- **Address Search:** The GPS section includes a search bar that uses Nominatim (OpenStreetMap) to find coordinates for an address.
-- **Interactive Map:** A Leaflet map that centers on the user's current location, a clicked point, or a searched address.
-- **Image Lightbox:** Photos in the app can be clicked to open a full-size view in a modal.
-- **Excel Export:** Generates a multi-row Excel file for each job. Photo links have been removed per user request.
-- **PWA (Progressive Web App):** The app is configured with a service worker and manifest file, allowing it to be installed on mobile devices for an app-like experience.
-
-**Last working item**:
-    - Last item agent was working: Fixing the unable to fetch jobs error on mobile devices, which occurs after a successful login. The agent correctly identified that this is likely a cross-origin (CORS) issue on mobile browsers like Safari. The chosen solution was to refactor all frontend API calls from using an absolute backend URL () to using relative URLs (e.g., ). This works because the Kubernetes ingress routes all  requests to the backend service, keeping the requests on the same domain and avoiding CORS problems. The agent started this refactoring but did not complete it.
-    - Status: IN PROGRESS
-    - Agent Testing Done: N
-    - Which testing method agent to use? manual testing by curl. The agent needs to systematically refactor all API calls across multiple frontend components and then test the entire flow.
-    - User Testing Done: Y (User confirmed the unable to fetch jobs error exists).
-
-**All Pending/In progress Issue list**:
-  - Issue 1: Unable to fetch jobs on mobile devices after login (P0)
-  - Issue 2:  is likely broken for dynamic data (P1)
-
+**All Pending/In progress Issue list**: 
+  Issue 1: Technical Debt -  and  code duplication (P1)
+  
   Issues Detail:
   - Issue 1: 
-     - Attempted fixes: The agent correctly diagnosed the issue as CORS-related on mobile and started refactoring API calls to use relative URLs. It successfully refactored the  for login/register but did not apply the same fix to the components responsible for fetching data post-login (like  and ).
-     - Next debug checklist:
-       1. Identify all components making API calls (, , , , etc.) by searching for  or .
-       2. Create a centralized API utility file (e.g., ) that exports an  instance or fetch wrapper configured with the correct relative base URL ().
-       3. Refactor all components to import and use this central utility for their API calls, removing all references to .
-       4. Test the full user flow: login, view jobs, view job details, add a pole, edit a pole.
-     - Why fix this issue and what will be achieved with the fix? The application is currently unusable on mobile devices, which is a primary use case for a field data collection app. This fix will restore core functionality.
-     - Status:  IN PROGRESS
+     - Attempted fixes: None. Both files continue to be modified separately when new features are added (like the new Type of Pole field and HOA Notes field), which increases maintenance overhead.
+     - Next debug checklist: 
+       1. Identify shared logic between  and .
+       2. Extract the form UI into a reusable  component.
+       3. Pass  and  handlers as props.
+     - Why fix this issue and what will be achieved with the fix? Reduces over 1500 lines of duplicated code, prevents bugs where a field is added to Add but forgotten in Edit, and makes future form modifications significantly easier.
+     - Status: NOT STARTED
      - Is recurring issue? Y
-     - Should Test frontend/backend/both after fix? Frontend
+     - Should Test frontend/backend/both after fix? Frontend testing agent
      - Blocked on other issue: None
-  - Issue 2: 
-     - Attempted fixes: None in this session. This issue was identified in the initial handoff summary.
-     - Next debug checklist:
-       1. Navigate to the  page for a pole that has data in its dynamic arrays (down guys, knuckles, attachments).
-       2. Verify that the existing data is correctly loaded and displayed in the form fields.
-       3. Test adding a new row, deleting an existing row, and modifying a row.
-       4. Save the changes and verify the data is updated correctly in the database and on the  page.
-     - Why fix this issue and what will be achieved with the fix? Editing existing pole data is a critical CRUD function. It is almost certainly broken due to the complexity of managing dynamic form state for existing data, and it was never tested after the dynamic rows feature was added.
-     - Status:  NOT STARTED
-     - Is recurring issue? Y
-     - Should Test frontend/backend/both after fix? Frontend
-     - Blocked on other issue: Issue 1 (must be able to fetch data to navigate to the edit page).
 
-**In progress Task List**:
-- Task 1:  Refactor all API calls to use relative URLs (P0)
-   - Where to resume: The  has been partially updated. The next step is to create a central API utility and apply it to , , , , and .
-   - What will be achieved with this?: Fix the unable to fetch jobs error on mobile and make the app's data access robust against cross-origin issues.
-   - Status:  IN PROGRESS
-   - Should Test frontend/backend/both after fix?: Frontend
-   - Blocked on something: No
+**In progress Task List**: 
+None currently in progress.
 
 **Upcoming and Future Tasks**
-- **P0: Google Maps Integration:** A long-pending request. The agent must ask the user for a Google Maps API key, then replace the Leaflet.js components in , , and .
-- **P1: Refactor  Component:**  and  share over 1500 lines of duplicated code. They MUST be refactored into a single reusable  component to improve maintainability.
-- **P2: Implement Height Measurement Logic:** The UI for a camera-based height measurement tool exists in  but the core calculation logic has not been implemented.
+- **P0: Google Maps Integration:** Replace Leaflet.js components with Google Maps API in , , and . (Requires asking the user for a Google Maps API Key).
+- **P1: Refactor  Component:** Combine  and  into a unified, reusable component.
+- **P2: Implement Height Measurement Logic:** Build the core calculation logic for the camera-based height measurement tool (UI already exists in ).
 
 **Completed work in this session**
-- **Job System Verified:** The backend and frontend for the Job Management and Authentication system were tested and verified.
-- **Master Admin Implemented:** Created a super admin role that can view all jobs from all users, with a corresponding ADMIN badge in the UI. Credentials are now managed via environment variables.
-- **Address Search & Map Centering:** Added an address search bar to the GPS section and made the map automatically center on the searched coordinates.
-- **In-App Image Lightbox:** Implemented larger, clickable photo thumbnails that open a full-size image in a modal.
-- **Pole Size Type Field:** Added a new Actual/Estimate/Proposed dropdown next to Pole Size and integrated it into the forms, view page, and Excel export.
-- **Multiple UI/UX Improvements:**
-  - Renamed Height of Attachments to HOA in the UI and Excel export.
-  - Added 0 to the Number of Risers dropdown.
-  - Removed photo hyperlinks from the Excel export per user request.
-- **PWA Configuration:** Set up the application as a Progressive Web App with a manifest file, service worker, and app icons.
-- **Mobile Login Fixes:** Resolved several mobile login issues, including creating a missing user account and making multiple attempts to fix network errors, culminating in the ongoing relative URL refactoring.
-- **Deployment Readiness:** Passed a deployment health check by moving hardcoded credentials to  files and verifying service status.
+- Mobile data fetch fix: Replaced absolute API paths with relative  paths across all frontend components (DONE)
+- Set map default location to Houston, TX and added zoom controls (DONE)
+- Added Neutral, Primary, Midspan to HOA Owners dropdown (DONE)
+- Added Update Pole UI button to the top of  (DONE)
+- Added Type of Pole field (Wood, Steel, Fiber Glass, Concrete) to models and UI (DONE)
+- Added Notes text field to HOA rows, updated  Pydantic model (DONE)
+- Updated Excel export to clearly label Down Guy parameters and include HOA Notes (DONE)
+- Added Overhead Guy to Down Guy Owners dropdown (DONE)
 
 **Earlier issues found/mentioned but not fixed**
-   - **Issue 1:  dynamic data loading.** This was identified in the initial handoff summary from the previous fork and has still not been addressed or tested. Its complexity was overlooked in favor of new feature requests.
-   - **Issue 2: Google Maps Integration.** This was also a pending task from the previous fork.
+   Issue 1:  Centralized API Utility
+   - Debug checklist: Move  configuration out of  into a dedicated  file and import it where needed.
+   - Why to solve this issue and what will be achieved with this? While the relative path fix worked, relying on  to set global Axios defaults is an anti-pattern and could cause race conditions if other components mount before the context initializes.
+   - Should Test frontend/backend/both after fix: Frontend
+   - Is recurring issue? N
 
 **Known issue recurrence from previous fork**
-  - **Issue recurrence in previous fork**: The  page was identified as a likely source of bugs in the previous fork summary due to simplistic code duplication. This issue persists and has become more critical with the addition of more complex, dynamic fields.
-  - **Recurrence count**: 2
-  - **Status**: NOT STARTED
+  - Issue recurrence in previous fork:  duplicated code and dynamic array edge cases.
+  - Recurrence count: 3
+  - Status: NOT STARTED
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
-- **Backend:** FastAPI, Pydantic,  &  for JWT. Admin logic added.
-- **Frontend:** React, React Router,  for state management.
-- **API Strategy:** Transitioning from absolute URLs () to relative URLs () to resolve mobile CORS issues.
-- **PWA:** Using a  and  to enable app installation and offline capabilities on mobile.
-- **Geocoding:** Using the public Nominatim API (via ) to convert addresses to lat/long coordinates.
+- **Frontend**: React, React Router, Tailwind CSS, Leaflet Maps, Axios (using relative  paths).
+- **Backend**: FastAPI, MongoDB (Motor Async), JWT ().
+- **Export Engine**:  used for structured multi-row Excel generation.
 
 **key DB schema**
-  - **users**: 
-  - **jobs**: 
   - **poles**: 
 
 **changes in tech stack**
-  - No new package installations, but PWA functionality was added using standard web technologies (, ).
+  - None.
 
 **All files of reference**
-- : Contains the core logic for authentication and the incomplete relative URL refactoring. **This is the starting point for the next task.**
-- : The first component that fails on mobile after login. It needs its API call refactored.
-- : Also needs its API call refactored.
--  & : Need API call refactoring and represent significant technical debt.
-- : Contains all backend logic, including the admin role implementation and Excel export changes.
-- , , : Key files for the PWA implementation.
+  -  (Updated with new dropdown parameters, ,  in  model, and Excel export logic)
+  -  (Updated with UI fields, map coords)
+  -  (Updated with UI fields, map coords, Update Pole button)
+  -  (Updated with UI fields, map coords)
+  -  (Handles the relative URL baseline)
+  - , ,  (Refactored to strip absolute URLs)
 
-**Areas that need refactoring**:
-- **Critical:** All frontend components making API calls need to be refactored to use a centralized, relative-URL-based utility to fix the mobile data fetching bug. The current approach of defining the base URL in  is a partial fix and should be moved to a dedicated  file for better code structure.
-- **High Priority:** The  and  files must be refactored into a single shared  component to reduce code duplication and prevent future bugs.
+**Areas that need refactoring**: 
+-  and  share an extreme amount of duplicated code.
+- API utility logic is currently tied to .
 
 **key api endpoints**
-- , 
-- ,  (Now handles admin vs. regular user data access)
-- 
--  (Updated to change Attachments to HOA and remove photo links)
+- ,  (Now handled entirely via relative paths in React)
+-  (Updated to include Down guy labels and HOA Notes)
 
 **Critical Info for New Agent**
-1.  **Resume the API Refactor Immediately:** Your first priority is to finish the work the previous agent started. You must refactor all data-fetching calls in , , , , etc., to use a relative path (). This is the only way to fix the unable to fetch jobs error on mobile. Do not attempt other fixes; this is the correct path.
-2.  **Centralize API Logic:** Instead of copying the URL logic into every component, create a single utility file (e.g., ) that exports a pre-configured  wrapper or  instance. Use this utility everywhere.
-3.  ** is Untested and Risky:** After fixing the mobile data fetching, your next priority should be to thoroughly test the  page with a pole that contains dynamic data (attachments, knuckles). It is almost certainly broken.
-4.  **Do Not Trust :** Avoid using  in any new code. The relative path strategy is the way forward.
+- **API Calls:** All frontend API calls MUST use relative paths (e.g., ). Do not use  in component logic, as this breaks the mobile application.  currently handles the global  assignment.
+- **Database Consistency:** When modifying Pydantic models (like adding  to attachments), ensure existing records in MongoDB will not break by using  types and default values ().
 
 **documents and test reports created in this job**
--  was updated several times.
+  - 
+  -  (Frontend testing agent output validating mobile fetch fix)
 
-**Last 10 User Messages and any pending HUMAN messages**
-1.  **User:** When logged into mobile device it says it is unable to fetch jobs - **Status: In Progress.** This is the current highest-priority issue.
-2.  **Agent:** Provides a fix using relative URLs and asks the user to test.
-3.  **User:** im still getting network issues. Please try again. This happens when trying to log in via moble device - **Status: In Progress.** Confirms the issue persists.
-4.  **Agent:** Provides another attempted fix (retry mechanism, service worker changes) and asks for more details.
-5.  **User:** 1, now is saying unable to connect to server, please check your internet connection. I confirmed I do have service - **Status: In Progress.** Provides specific error message.
-6.  **Agent:** Provides a fix using  instead of  and asks the user to test.
-7.  **User:** Tried logging in on my mobile device. It stated there is a network error... - **Status: In Progress.** Confirms the issue persists.
-8.  **Agent:** Deploys a fix for the network error after using the troubleshooter.
-9.  **User:** im getting a network error when trying to login, what is the issue? - **Status: Resolved** (temporarily, led to next error).
-10. **User:** Allow logins for mobile devices - **Status: In Progress.** This was the start of the mobile login saga.
+**Last 10 User Messages and any pending HUMAN messages** 
+ 1. When logged into mobile device it says it is unable to fetch jobs (From previous job) - RESOLVED
+ 2. Add Neutral, Primary and midspan to HOA Drop box/ increase ability to zoom on gps map and make houston tx the home location/ - RESOLVED
+ 3. add a update pole button between title header and the basic info box - RESOLVED
+ 4. Add type of pole category with wood, steel, fiber glass, concrete in a drop down box in the basic information box - RESOLVED
+ 5. Add a text box in the HOA box per row added - RESOLVED
+ 6. The notes added in the hoa box are not saving - RESOLVED
+ 7. Show labeled height and lead for down guy information in export. Also show notes for HOAs in export - RESOLVED
+ 8. add overhead guy in drop down in down guy box - VERIFICATION PENDING
 
 **Project Health Check:**
-- **Broken**:
-  - Data fetching on mobile devices (e.g., in ) is confirmed to be non-functional.
-  - The  page's functionality for poles with existing dynamic data is untested and presumed broken.
-- **Mocked**:
-  - The camera-based height measurement tool's calculation logic.
+- Broken: None confirmed. 
+- Mocked: Photo-based height measurement calculation logic is still a mock.
 
 **3rd Party Integrations**
-- **Leaflet.js:** Currently used for maps.
-- **Nominatim (OpenStreetMap):** Used for address geocoding.
-- **Google Maps API:** Integration is pending user-provided API key.
-- **python-jose & passlib:** Used for JWT authentication.
+  - Leaflet.js (Maps)
+  - Nominatim (Geocoding)
+  - Pending: Google Maps API (Requires User API Key)
 
 **Testing status**
-  - Testing agent used after significant changes: YES (for the initial backend job management/auth system).
-  - Troubleshoot agent used after agent stuck in loop: YES (for the persistent mobile network error).
+  - Testing agent used after significant changes: YES (Frontend deep testing agent used to verify mobile job fetching fix)
+  - Troubleshoot agent used after agent stuck in loop: NO
   - Test files created: []
-  - Known regressions: The fix for mobile login has introduced a regression where data cannot be fetched post-login on mobile.
+  - Known regressions: None currently.
 
 **Credentials to test flow:**
-- **Master Admin:**
-  - **Email:** 
-  - **Password:** 
-- **Regular User:**
-  - **Email:** 
-  - **Password:** 
+- **Master Admin:**  / 
+- **Regular User:**  / 
 
 **What agent forgot to execute**
-- The agent did not systematically apply the relative URL fix to all necessary files. It only patched  and then got stuck re-testing login instead of fixing the components that fetch data *after* login, like , which was the user's explicit complaint.</analysis>
+- The agent successfully completed all immediate requests. However, it bypassed extracting the Axios base URL configuration into a centralized  utility, opting instead to remove absolute URLs from individual components and rely on  defaults. Ensure this does not create race conditions on initial page loads.
+
+**Debugging checklist for current issue**
+    Issue: Overhead Guy verification pending
+    Frontend files to check: View/Add/Edit pole pages for dropdown population.
+    Backend files to check:   list.
+    Testing Method: Screenshot tool to visually confirm Overhead Guy appears in the Down Guy Owner dropdown.</analysis>
