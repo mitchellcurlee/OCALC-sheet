@@ -98,6 +98,7 @@ const Dashboard = () => {
   const handleExport = async () => {
     try {
       const response = await axios.get("/poles/export/excel", {
+        params: { base_url: window.location.origin },
         responseType: "blob",
       });
       const url = window.URL.createObjectURL(new Blob([response.data]));

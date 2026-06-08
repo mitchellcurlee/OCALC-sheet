@@ -60,6 +60,7 @@ Build an app that collects power pole data including: size of the pole, type of 
   - Excel export now lists poles in NUMERICAL order by pole_number (_pole_sort_key: numeric first 1,2,10..., non-numeric last) in both export endpoints.
   - Per-pole gallery (GET /api/poles/{id}/gallery, opened from the Excel "PHOTOS" link) now supports DOWNLOAD: a "Download all" button + per-photo "Download" links (download filename) + click-to-open each photo in a new tab; gallery page also restyled to the light theme.
   - Verified: backend pytest 14/14 (added /app/backend/tests/test_export_sort_and_gallery.py), frontend testing agent 100% across login/jobs/job-detail/add-pole (theme readable, all data-testids intact, both export features working). Requires redeploy to push to production (https://poledatasheet.info).
+- Excel photo-link 403 fix (Jun 8, 2026): the per-pole "PHOTOS" gallery hyperlink was built from request.base_url, which behind the ingress is the INTERNAL cluster host (http://...cluster...emergentcf.cloud) and is not publicly reachable -> opening it returned 403. Fix: export endpoints (/api/jobs/{id}/export/excel and /api/poles/export/excel) now accept an optional `base_url` query param; frontend (JobDetail + Dashboard handleExport) passes `window.location.origin`. Hyperlink now uses the public domain and opens fine (verified 200). Fallback to request.base_url retained. Requires redeploy for production.
 
 ## Tech Stack
 - Backend: FastAPI + MongoDB

@@ -63,6 +63,7 @@ const JobDetail = () => {
   const handleExport = async () => {
     try {
       const response = await axios.get(`/jobs/${jobId}/export/excel`, {
+        params: { base_url: window.location.origin },
         responseType: "blob"
       });
       const url = window.URL.createObjectURL(new Blob([response.data]));

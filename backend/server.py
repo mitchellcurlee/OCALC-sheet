@@ -546,7 +546,7 @@ async def get_job_poles(job_id: str, current_user: dict = Depends(get_current_us
     return poles
 
 @api_router.get("/jobs/{job_id}/export/excel")
-async def export_job_excel(job_id: str, request: Request, current_user: dict = Depends(get_current_user)):
+async def export_job_excel(job_id: str, request: Request, base_url: Optional[str] = None, current_user: dict = Depends(get_current_user)):
     """Export all poles from a job to Excel - admin can export any job"""
     if is_admin_user(current_user):
         job = await db.jobs.find_one({"id": job_id}, {"_id": 0})
@@ -712,7 +712,7 @@ async def export_job_excel(job_id: str, request: Request, current_user: dict = D
         ws.cell(row=current_row, column=1, value="PHOTOS").fill = section_fill
         ws.cell(row=current_row, column=1).font = section_font
         if photo_items:
-            gallery_url = f"{str(request.base_url).rstrip('/')}/api/poles/{pole.get('id')}/gallery"
+            gallery_url = f"{(base_url or str(request.base_url)).rstrip('/')}/api/poles/{pole.get('id')}/gallery"
             link_cell = ws.cell(row=current_row, column=2, value=f"View {len(photo_items)} photo(s)")
             link_cell.hyperlink = gallery_url
             link_cell.font = Font(color="2563EB", underline="single", bold=True)
@@ -956,7 +956,7 @@ async def delete_pole(pole_id: str):
     return {"message": "Pole deleted successfully"}
 
 @api_router.get("/poles/export/excel")
-async def export_poles_excel(request: Request):
+async def export_poles_excel(request: Request, base_url: Optional[str] = None):
     """Export all poles to Excel - 16 rows per pole format"""
     poles = await db.poles.find({}, {"_id": 0}).sort("created_at", -1).to_list(10000)
     poles.sort(key=_pole_sort_key)
@@ -1125,7 +1125,7 @@ async def export_poles_excel(request: Request):
         ws.cell(row=current_row, column=1, value="PHOTOS").fill = section_fill
         ws.cell(row=current_row, column=1).font = section_font
         if photo_items:
-            gallery_url = f"{str(request.base_url).rstrip('/')}/api/poles/{pole.get('id')}/gallery"
+            gallery_url = f"{(base_url or str(request.base_url)).rstrip('/')}/api/poles/{pole.get('id')}/gallery"
             link_cell = ws.cell(row=current_row, column=2, value=f"View {len(photo_items)} photo(s)")
             link_cell.hyperlink = gallery_url
             link_cell.font = Font(color="2563EB", underline="single", bold=True)
