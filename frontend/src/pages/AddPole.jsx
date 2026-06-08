@@ -348,10 +348,6 @@ const AddPole = () => {
             </div>
             <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto">
               <div className="flex items-center gap-1 sm:gap-2 flex-1 sm:flex-initial">
-                <Label className="text-xs font-mono text-zinc-500 whitespace-nowrap">JOB:</Label>
-                <Input name="job_number" value={formData.job_number} onChange={handleInputChange} placeholder="Job #" className="w-full sm:w-28 h-9 sm:h-8 bg-black border-zinc-700 text-white text-sm" data-testid="job-number-input" />
-              </div>
-              <div className="flex items-center gap-1 sm:gap-2 flex-1 sm:flex-initial">
                 <Label className="text-xs font-mono text-zinc-500 whitespace-nowrap">POLE:</Label>
                 <Input name="pole_number" value={formData.pole_number} onChange={handleInputChange} placeholder="Pole #" className="w-full sm:w-28 h-9 sm:h-8 bg-black border-zinc-700 text-white text-sm" data-testid="pole-number-input" />
               </div>

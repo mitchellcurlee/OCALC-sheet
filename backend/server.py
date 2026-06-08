@@ -184,6 +184,7 @@ POLE_OWNERS = ["Foreign Owned", "ATT"]
 POLE_CONDITIONS = ["Excellent", "Good", "Bad"]
 POLE_TYPES = ["Wood", "Steel", "Fiber Glass", "Concrete"]
 POLE_SIZES = [
+    "H1", "H2",
     "1-25", "1-30", "1-35", "1-40", "1-45", "1-50", "1-55", "1-60",
     "2-25", "2-30", "2-35", "2-40", "2-45", "2-50", "2-55", "2-60",
     "3-25", "3-30", "3-35", "3-40", "3-45", "3-50", "3-55", "3-60",
