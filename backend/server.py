@@ -851,18 +851,18 @@ async def pole_gallery(pole_id: str):
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Pole {pole_no} - Photos</title>
 <style>
-  body{{margin:0;background:#0a0a0a;color:#e4e4e7;font-family:system-ui,-apple-system,sans-serif;}}
-  header{{padding:16px 24px;border-bottom:1px solid #27272a;position:sticky;top:0;background:#0a0a0aee;backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}}
+  body{{margin:0;background:#ffffff;color:#09090b;font-family:system-ui,-apple-system,sans-serif;}}
+  header{{padding:16px 24px;border-bottom:1px solid #e4e4e7;position:sticky;top:0;background:rgba(255,255,255,0.95);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}}
   h1{{margin:0;font-size:18px;letter-spacing:.05em;text-transform:uppercase;}}
-  h1 span{{color:#ef4444;}}
-  .dlall{{background:#ef4444;color:#fff;border:0;border-radius:6px;padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;letter-spacing:.03em;}}
-  .dlall:hover{{background:#dc2626;}}
+  h1 span{{color:#dc2626;}}
+  .dlall{{background:#dc2626;color:#fff;border:0;border-radius:6px;padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;letter-spacing:.03em;}}
+  .dlall:hover{{background:#b91c1c;}}
   .grid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;padding:24px;}}
-  figure{{margin:0;background:#18181b;border:1px solid #27272a;border-radius:8px;overflow:hidden;display:flex;flex-direction:column;}}
-  figure img{{width:100%;height:240px;object-fit:cover;display:block;background:#000;cursor:zoom-in;}}
-  figcaption{{padding:10px 12px;font-size:13px;font-family:monospace;color:#a1a1aa;text-transform:uppercase;letter-spacing:.05em;}}
-  .dl{{display:block;text-align:center;padding:10px 12px;margin:0 12px 12px;background:#27272a;color:#fff;text-decoration:none;border-radius:6px;font-size:13px;font-weight:600;}}
-  .dl:hover{{background:#3f3f46;}}
+  figure{{margin:0;background:#ffffff;border:1px solid #d4d4d8;border-radius:8px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 1px 2px rgba(0,0,0,0.05);}}
+  figure img{{width:100%;height:240px;object-fit:cover;display:block;background:#f4f4f5;cursor:zoom-in;}}
+  figcaption{{padding:10px 12px;font-size:13px;font-family:monospace;color:#52525b;text-transform:uppercase;letter-spacing:.05em;}}
+  .dl{{display:block;text-align:center;padding:10px 12px;margin:0 12px 12px;background:#f4f4f5;color:#18181b;text-decoration:none;border:1px solid #d4d4d8;border-radius:6px;font-size:13px;font-weight:600;}}
+  .dl:hover{{background:#e4e4e7;}}
   .empty{{padding:40px;color:#71717a;}}
 </style></head><body>
 <header><h1>Pole <span>{pole_no}</span> &middot; Photos ({len(items)})</h1>{download_all_btn}</header>
