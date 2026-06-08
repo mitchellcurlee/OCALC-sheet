@@ -743,6 +743,8 @@ async def upload_photo(file: UploadFile = File(...)):
     """Upload a photo to object storage and return a servable URL."""
     ext = (file.filename.rsplit(".", 1)[-1].lower() if file.filename and "." in file.filename else "jpg")
     content_type = file.content_type or MIME_TYPES.get(ext, "application/octet-stream")
+    if not content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Only image files are allowed")
     data = await file.read()
     if not data:
         raise HTTPException(status_code=400, detail="Empty file")
