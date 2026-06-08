@@ -1,0 +1,50 @@
+{
+  "summary": "Verified the photo-upload / pole-save bug fix end-to-end (backend + frontend). Backend pytest: 6/6 passed. Frontend E2E (admin login on seed job A050ABC): pole saved successfully with an OCALC photo URL (no DocumentTooLarge), draggable Leaflet marker present, ft/in dropdowns wired with the requested data-testids. ViewPole renders Down Guys and Attachments sections but the ft/in formatted height string (e.g., 35' 6\") was not visible on the new pole's view page even though the height was selected via the dropdown.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/upload-photo", "issue": "Accepts non-image content-types (e.g., text/plain) and stores them; no MIME/extension validation."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "ViewPole - Down Guys / HOA height rendering", "issue": "Saved a pole with down_guys[0].height=35.5 and attachments[0].height=35.5 via the new feet/inches dropdowns; the View Pole page contains the Down Guys and Attachments section headings but does NOT show the expected feet/inches formatted string (35' 6\"). Likely ViewPole renders the height only when other row fields (e.g. size/owner) are populated, OR formatHeight() is not invoked for the row. Please verify that formatHeight() is called unconditionally for down_guys[*].height and attachments[*].height.", "selector": "ViewPole.jsx down_guys / attachments rendering", "priority": "HIGH"},
+      {"component": "AddPole pole-size dropdown", "issue": "Selecting option labeled '2-40' via get_by_role('option', name='2-40') matched a different option ('1-35' ended up persisted as pole_size). Not blocking but indicates fuzzy option matching. Cosmetic for automated tests."}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "passed_tests": [
+    "POST /api/upload-photo (no auth) returns {url:'/api/files/...', path:'...'}",
+    "GET /api/files/{path} publicly serves image bytes with image/* content-type",
+    "POST /api/poles with 3 photo URLs + down_guys + attachments returns 201 and persists (no DocumentTooLarge)",
+    "GET /api/poles/{id}/gallery returns HTML with <img> tags for every photo",
+    "GET /api/jobs/{id}/export/excel returns xlsx containing 'PHOTOS' row, gallery hyperlink, and ft/in heights",
+    "Frontend admin login + navigate to seed job A050ABC",
+    "Add Pole form exposes data-testids downguy0-height-feet/inches, attachment0-height-feet/inches, ocalc-left-file-input, birthmark-file-input, mgnv-file-input",
+    "Setting latitude/longitude renders a Leaflet marker with class 'leaflet-marker-draggable' (draggable=true)",
+    "Uploading a PNG to ocalc-left-file-input posts to /api/upload-photo and renders preview img with src starting /api/files/",
+    "Pole save shows 'Pole data saved successfully!' toast and the new pole appears in job list (pole count 2->3); ViewPole still shows that uploaded /api/files/* image"
+  ],
+  "test_report_links": [
+    "/app/backend/tests/test_poles_photos_heights.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "ViewPole.jsx: ensure down_guys[].height and attachments[].height always render via formatHeight() (currently appears blank for rows that only have height set).",
+    "(Optional) Validate file type in /api/upload-photo - currently accepts non-image uploads."
+  ],
+  "critical_code_review_comments": [
+    "backend/server.py is ~1157 lines - consider splitting routers (poles, jobs, auth, exports, files) into modules for maintainability.",
+    "POST /api/upload-photo performs no MIME/extension validation; could be abused to host arbitrary files via public endpoint."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_poles_photos_heights.py"
+  ],
+  "success_rate": {"backend": "100% (6/6 pytest)", "frontend": "~90% (save+upload+marker OK; ViewPole height format not visible)"},
+  "test_credentials": "Admin tim.gables@byers.com / Byers@13430 (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "Backend test created 1 temporary pole (TEST_*) and deleted it in test_cleanup_pole. Frontend test created UI_f37c63 and deleted it via UI trash button.",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Use admin credentials and seed job e5dc0bae-96bb-4cef-8001-7baf4e41d80a. After main agent fixes ViewPole height rendering, re-run backend pytest (already green) and re-run an Add Pole -> View Pole flow asserting that the body text contains an apostrophe+number+\\\" sequence like 35' 6\". Use existing data-testids: downguy0-height-feet, downguy0-height-inches, attachment0-height-feet, attachment0-height-inches, ocalc-left-file-input."
+}

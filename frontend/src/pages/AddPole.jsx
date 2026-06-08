@@ -28,6 +28,7 @@ import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from "react-lea
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { PhotoUpload } from "@/components/PhotoUpload";
+import { HeightInput } from "@/components/HeightInput";
 
 // Fix Leaflet marker icon issue
 delete L.Icon.Default.prototype._getIconUrl;
@@ -509,17 +510,26 @@ const AddPole = () => {
                     {gpsLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <MapPin className="w-4 h-4 mr-2" />}
                     Get Current Location
                   </Button>
-                  <p className="text-xs text-zinc-500">Click on the map to pin location</p>
+                  <p className="text-xs text-zinc-500">Click the map to drop a pin, or drag the pin to fine-tune its position</p>
                 </div>
-                <div className="h-64 border border-zinc-700 overflow-hidden">
-                  <MapContainer center={mapCenter} zoom={18} minZoom={3} maxZoom={22} style={{ height: "100%", width: "100%" }} className="z-0">
-                    <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" attribution='&copy; Esri' />
-                    <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}" attribution='' />
-                    <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}" attribution='' />
+                <div className="h-72 sm:h-80 border border-zinc-700 overflow-hidden relative">
+                  <MapContainer center={mapCenter} zoom={18} minZoom={3} maxZoom={22} scrollWheelZoom={true} style={{ height: "100%", width: "100%" }} className="z-0">
+                    <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" attribution='&copy; Esri' maxNativeZoom={19} maxZoom={22} />
+                    <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}" attribution='' maxNativeZoom={19} maxZoom={22} />
+                    <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}" attribution='' maxNativeZoom={19} maxZoom={22} />
                     <MapClickHandler onLocationSelect={handleMapClick} />
                     <MapCenterUpdater lat={formData.latitude} lng={formData.longitude} />
                     {formData.latitude && formData.longitude && (
-                      <Marker position={[parseFloat(formData.latitude), parseFloat(formData.longitude)]} />
+                      <Marker
+                        position={[parseFloat(formData.latitude), parseFloat(formData.longitude)]}
+                        draggable={true}
+                        eventHandlers={{
+                          dragend: (e) => {
+                            const { lat, lng } = e.target.getLatLng();
+                            handleMapClick(lat, lng);
+                          },
+                        }}
+                      />
                     )}
                   </MapContainer>
                 </div>
@@ -619,10 +629,7 @@ const AddPole = () => {
                           <SelectContent className="bg-zinc-900 border-zinc-700">{options.down_guy_owners.map((o) => (<SelectItem key={o} value={o}>{o}</SelectItem>))}</SelectContent>
                         </Select>
                       </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs font-mono text-zinc-500">Height (ft)</Label>
-                        <Input type="number" value={guy.height} onChange={(e) => updateDownGuy(index, "height", e.target.value)} step="0.1" className="h-9 bg-black border-zinc-700 text-white text-sm" />
-                      </div>
+                      <HeightInput value={guy.height} onChange={(v) => updateDownGuy(index, "height", v)} label="Height" testId={`downguy${index}-height`} />
                       <div className="space-y-1">
                         <Label className="text-xs font-mono text-zinc-500">Lead</Label>
                         <Input value={guy.lead} onChange={(e) => updateDownGuy(index, "lead", e.target.value)} className="h-9 bg-black border-zinc-700 text-white text-sm" />
@@ -701,10 +708,7 @@ const AddPole = () => {
                   <div className="flex items-center gap-2 sm:gap-4">
                     <span className="text-sm font-mono text-green-400 w-6">{index + 1}</span>
                     <div className="grid grid-cols-4 gap-2 sm:gap-3 flex-1 items-end">
-                      <div className="space-y-1">
-                        <Label className="text-xs font-mono text-zinc-500">Height (ft)</Label>
-                        <Input type="number" value={att.height} onChange={(e) => updateAttachment(index, "height", e.target.value)} step="0.1" className="h-9 bg-black border-zinc-700 text-white text-sm" />
-                      </div>
+                      <HeightInput value={att.height} onChange={(v) => updateAttachment(index, "height", v)} label="Height" testId={`attachment${index}-height`} />
                       <div className="space-y-1">
                         <Label className="text-xs font-mono text-zinc-500">Owner</Label>
                         <Select value={att.owner} onValueChange={(v) => updateAttachment(index, "owner", v)}>

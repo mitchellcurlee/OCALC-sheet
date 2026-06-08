@@ -1,11 +1,13 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, status
-from fastapi.responses import StreamingResponse
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, status, UploadFile, File, Request
+from fastapi.responses import StreamingResponse, Response, HTMLResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
+import asyncio
+import requests
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict, EmailStr
 from typing import List, Optional
@@ -44,6 +46,82 @@ MASTER_ADMIN_NAME = os.environ.get("MASTER_ADMIN_NAME", "Master Admin")
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security = HTTPBearer()
+
+# ---------------------------------------------------------------------------
+# Object Storage (Emergent) - store photos in object storage instead of inline
+# base64 (which blows past MongoDB's 16MB document limit).
+# ---------------------------------------------------------------------------
+STORAGE_URL = "https://integrations.emergentagent.com/objstore/api/v1/storage"
+EMERGENT_KEY = os.environ.get("EMERGENT_LLM_KEY")
+APP_NAME = "poledata"
+_storage_key = None
+
+MIME_TYPES = {
+    "jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png",
+    "gif": "image/gif", "webp": "image/webp", "heic": "image/heic", "heif": "image/heif",
+}
+
+def init_storage():
+    """Initialize and cache a session-scoped storage key. Called once at startup."""
+    global _storage_key
+    if _storage_key:
+        return _storage_key
+    resp = requests.post(f"{STORAGE_URL}/init", json={"emergent_key": EMERGENT_KEY}, timeout=30)
+    resp.raise_for_status()
+    _storage_key = resp.json()["storage_key"]
+    return _storage_key
+
+def put_object(path: str, data: bytes, content_type: str) -> dict:
+    key = init_storage()
+    resp = requests.put(
+        f"{STORAGE_URL}/objects/{path}",
+        headers={"X-Storage-Key": key, "Content-Type": content_type},
+        data=data, timeout=120,
+    )
+    if resp.status_code == 403:
+        # storage key expired - re-init once and retry
+        global _storage_key
+        _storage_key = None
+        key = init_storage()
+        resp = requests.put(
+            f"{STORAGE_URL}/objects/{path}",
+            headers={"X-Storage-Key": key, "Content-Type": content_type},
+            data=data, timeout=120,
+        )
+    resp.raise_for_status()
+    return resp.json()
+
+def get_object(path: str):
+    key = init_storage()
+    resp = requests.get(
+        f"{STORAGE_URL}/objects/{path}",
+        headers={"X-Storage-Key": key}, timeout=60,
+    )
+    if resp.status_code == 403:
+        global _storage_key
+        _storage_key = None
+        key = init_storage()
+        resp = requests.get(
+            f"{STORAGE_URL}/objects/{path}",
+            headers={"X-Storage-Key": key}, timeout=60,
+        )
+    resp.raise_for_status()
+    return resp.content, resp.headers.get("Content-Type", "application/octet-stream")
+
+def format_height(value):
+    """Convert a decimal-feet value to a 'X' Y\"' string for display/export."""
+    if value is None or value == "":
+        return ""
+    try:
+        v = float(value)
+    except (TypeError, ValueError):
+        return str(value)
+    feet = int(v)
+    inches = int(round((v - feet) * 12))
+    if inches == 12:
+        feet += 1
+        inches = 0
+    return f"{feet}' {inches}\""
 
 # Auth Models
 class UserCreate(BaseModel):
@@ -452,7 +530,7 @@ async def get_job_poles(job_id: str, current_user: dict = Depends(get_current_us
     return poles
 
 @api_router.get("/jobs/{job_id}/export/excel")
-async def export_job_excel(job_id: str, current_user: dict = Depends(get_current_user)):
+async def export_job_excel(job_id: str, request: Request, current_user: dict = Depends(get_current_user)):
     """Export all poles from a job to Excel - admin can export any job"""
     if is_admin_user(current_user):
         job = await db.jobs.find_one({"id": job_id}, {"_id": 0})
@@ -487,8 +565,6 @@ async def export_job_excel(job_id: str, current_user: dict = Depends(get_current
     current_row = 3
     
     for pole in poles:
-        start_row = current_row
-        
         # Row 1: Pole Header
         ws.cell(row=current_row, column=1, value="POLE #").fill = header_fill
         ws.cell(row=current_row, column=1).font = header_font
@@ -568,7 +644,7 @@ async def export_job_excel(job_id: str, current_user: dict = Depends(get_current
                 ws.cell(row=current_row, column=2, value=dg.get("size", ""))
                 ws.cell(row=current_row, column=3, value=dg.get("direction", ""))
                 ws.cell(row=current_row, column=4, value=dg.get("owner", ""))
-                ws.cell(row=current_row, column=5, value=dg.get("height", ""))
+                ws.cell(row=current_row, column=5, value=format_height(dg.get("height")))
                 ws.cell(row=current_row, column=6, value=dg.get("lead", ""))
                 current_row += 1
         
@@ -600,7 +676,7 @@ async def export_job_excel(job_id: str, current_user: dict = Depends(get_current
             current_row += 1
             for i, att in enumerate(attachments, 1):
                 ws.cell(row=current_row, column=1, value=f"Att {i}")
-                ws.cell(row=current_row, column=2, value=att.get("height", ""))
+                ws.cell(row=current_row, column=2, value=format_height(att.get("height")))
                 ws.cell(row=current_row, column=3, value=att.get("owner", ""))
                 ws.cell(row=current_row, column=4, value=att.get("notes", ""))
                 current_row += 1
@@ -612,6 +688,19 @@ async def export_job_excel(job_id: str, current_user: dict = Depends(get_current
         ws.cell(row=current_row, column=3, value="MGNV").fill = section_fill
         ws.cell(row=current_row, column=3).font = section_font
         ws.cell(row=current_row, column=4, value=pole.get("mgnv", ""))
+        current_row += 1
+        
+        # Photos - single link per pole to a gallery of all its photos
+        photo_items = _pole_photo_items(pole)
+        ws.cell(row=current_row, column=1, value="PHOTOS").fill = section_fill
+        ws.cell(row=current_row, column=1).font = section_font
+        if photo_items:
+            gallery_url = f"{str(request.base_url).rstrip('/')}/api/poles/{pole.get('id')}/gallery"
+            link_cell = ws.cell(row=current_row, column=2, value=f"View {len(photo_items)} photo(s)")
+            link_cell.hyperlink = gallery_url
+            link_cell.font = Font(color="2563EB", underline="single", bold=True)
+        else:
+            ws.cell(row=current_row, column=2, value="No photos")
         current_row += 1
         
         # Notes
@@ -632,7 +721,7 @@ async def export_job_excel(job_id: str, current_user: dict = Depends(get_current
             try:
                 if len(str(cell.value)) > max_length:
                     max_length = len(str(cell.value))
-            except:
+            except Exception:
                 pass
         ws.column_dimensions[column].width = max(min(max_length + 2, 30), 12)
     
@@ -648,6 +737,94 @@ async def export_job_excel(job_id: str, current_user: dict = Depends(get_current
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
+
+@api_router.post("/upload-photo")
+async def upload_photo(file: UploadFile = File(...)):
+    """Upload a photo to object storage and return a servable URL."""
+    ext = (file.filename.rsplit(".", 1)[-1].lower() if file.filename and "." in file.filename else "jpg")
+    content_type = file.content_type or MIME_TYPES.get(ext, "application/octet-stream")
+    data = await file.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="Empty file")
+    path = f"{APP_NAME}/uploads/{uuid.uuid4()}.{ext}"
+    try:
+        result = await asyncio.to_thread(put_object, path, data, content_type)
+    except Exception as e:
+        logger.error(f"Photo upload failed: {e}")
+        raise HTTPException(status_code=502, detail="Photo upload failed")
+    stored_path = result.get("path", path)
+    await db.files.insert_one({
+        "id": str(uuid.uuid4()),
+        "storage_path": stored_path,
+        "original_filename": file.filename,
+        "content_type": content_type,
+        "size": result.get("size"),
+        "is_deleted": False,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+    return {"url": f"/api/files/{stored_path}", "path": stored_path}
+
+@api_router.get("/files/{path:path}")
+async def serve_file(path: str):
+    """Publicly serve a stored file (no auth so <img> tags and Excel links work)."""
+    record = await db.files.find_one({"storage_path": path, "is_deleted": False}, {"_id": 0})
+    try:
+        data, content_type = await asyncio.to_thread(get_object, path)
+    except Exception:
+        raise HTTPException(status_code=404, detail="File not found")
+    ct = (record or {}).get("content_type") or content_type
+    return Response(content=data, media_type=ct, headers={"Cache-Control": "public, max-age=31536000"})
+
+def _pole_photo_items(pole: dict):
+    """Return [(label, url)] for every photo present on a pole."""
+    items = []
+    labeled = [
+        ("OCALC Left", pole.get("ocalc_left_photo")),
+        ("OCALC Middle", pole.get("ocalc_middle_photo")),
+        ("OCALC Right", pole.get("ocalc_right_photo")),
+        ("Birthmark", pole.get("birthmark_photo")),
+        ("MGNV", pole.get("mgnv_photo")),
+    ]
+    for i, kn in enumerate(pole.get("knuckles", []) or [], 1):
+        labeled.append((f"Knuckle {i}", kn.get("photo")))
+    for i, att in enumerate(pole.get("attachments", []) or [], 1):
+        labeled.append((f"HOA {i}", att.get("photo")))
+    for label, val in labeled:
+        if val:
+            items.append((label, val))
+    return items
+
+@api_router.get("/poles/{pole_id}/gallery", response_class=HTMLResponse)
+async def pole_gallery(pole_id: str):
+    """Public HTML gallery showing every photo attached to a pole (used by Excel links)."""
+    pole = await db.poles.find_one({"id": pole_id}, {"_id": 0})
+    if not pole:
+        raise HTTPException(status_code=404, detail="Pole not found")
+    items = _pole_photo_items(pole)
+    pole_no = pole.get("pole_number") or pole_id[:8]
+    cards = "".join(
+        f'<figure><img src="{url}" alt="{label}" loading="lazy"/>'
+        f'<figcaption>{label}</figcaption></figure>'
+        for label, url in items
+    ) or '<p class="empty">No photos attached to this pole.</p>'
+    html = f"""<!doctype html><html lang="en"><head><meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Pole {pole_no} - Photos</title>
+<style>
+  body{{margin:0;background:#0a0a0a;color:#e4e4e7;font-family:system-ui,-apple-system,sans-serif;}}
+  header{{padding:20px 24px;border-bottom:1px solid #27272a;position:sticky;top:0;background:#0a0a0aee;backdrop-filter:blur(8px);}}
+  h1{{margin:0;font-size:18px;letter-spacing:.05em;text-transform:uppercase;}}
+  h1 span{{color:#ef4444;}}
+  .grid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;padding:24px;}}
+  figure{{margin:0;background:#18181b;border:1px solid #27272a;border-radius:8px;overflow:hidden;}}
+  figure img{{width:100%;height:240px;object-fit:cover;display:block;background:#000;}}
+  figcaption{{padding:10px 12px;font-size:13px;font-family:monospace;color:#a1a1aa;text-transform:uppercase;letter-spacing:.05em;}}
+  .empty{{padding:40px;color:#71717a;}}
+</style></head><body>
+<header><h1>Pole <span>{pole_no}</span> &middot; Photos ({len(items)})</h1></header>
+<div class="grid">{cards}</div>
+</body></html>"""
+    return HTMLResponse(content=html)
 
 @api_router.get("/poles/options")
 async def get_pole_options():
@@ -723,7 +900,7 @@ async def delete_pole(pole_id: str):
     return {"message": "Pole deleted successfully"}
 
 @api_router.get("/poles/export/excel")
-async def export_poles_excel():
+async def export_poles_excel(request: Request):
     """Export all poles to Excel - 16 rows per pole format"""
     poles = await db.poles.find({}, {"_id": 0}).sort("created_at", -1).to_list(10000)
     
@@ -740,8 +917,6 @@ async def export_poles_excel():
     current_row = 1
     
     for pole_idx, pole in enumerate(poles):
-        start_row = current_row
-        
         # Row 1: Pole Header
         ws.cell(row=current_row, column=1, value="POLE #").fill = header_fill
         ws.cell(row=current_row, column=1).font = header_font
@@ -827,7 +1002,7 @@ async def export_poles_excel():
             ws.cell(row=current_row, column=2, value=dg.get("size", ""))
             ws.cell(row=current_row, column=3, value=dg.get("direction", ""))
             ws.cell(row=current_row, column=4, value=dg.get("owner", ""))
-            ws.cell(row=current_row, column=5, value=dg.get("height", ""))
+            ws.cell(row=current_row, column=5, value=format_height(dg.get("height")))
             ws.cell(row=current_row, column=6, value=dg.get("lead", ""))
             current_row += 1
         
@@ -865,7 +1040,7 @@ async def export_poles_excel():
         for i in range(max(1, len(attachments))):
             att = attachments[i] if i < len(attachments) else {}
             ws.cell(row=current_row, column=1, value=f"Att {i+1}")
-            ws.cell(row=current_row, column=2, value=att.get("height", ""))
+            ws.cell(row=current_row, column=2, value=format_height(att.get("height")))
             ws.cell(row=current_row, column=3, value=att.get("owner", ""))
             ws.cell(row=current_row, column=4, value=att.get("notes", ""))
             current_row += 1
@@ -888,6 +1063,19 @@ async def export_poles_excel():
         ws.cell(row=current_row, column=2, value=pole.get("notes", ""))
         current_row += 1
         
+        # Photos link
+        photo_items = _pole_photo_items(pole)
+        ws.cell(row=current_row, column=1, value="PHOTOS").fill = section_fill
+        ws.cell(row=current_row, column=1).font = section_font
+        if photo_items:
+            gallery_url = f"{str(request.base_url).rstrip('/')}/api/poles/{pole.get('id')}/gallery"
+            link_cell = ws.cell(row=current_row, column=2, value=f"View {len(photo_items)} photo(s)")
+            link_cell.hyperlink = gallery_url
+            link_cell.font = Font(color="2563EB", underline="single", bold=True)
+        else:
+            ws.cell(row=current_row, column=2, value="No photos")
+        current_row += 1
+        
         # Add a blank row between poles
         current_row += 1
     
@@ -899,7 +1087,7 @@ async def export_poles_excel():
             try:
                 if len(str(cell.value)) > max_length:
                     max_length = len(str(cell.value))
-            except:
+            except Exception:
                 pass
         adjusted_width = min(max_length + 2, 30)
         ws.column_dimensions[column].width = max(adjusted_width, 12)
@@ -954,6 +1142,14 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+@app.on_event("startup")
+async def startup_storage():
+    try:
+        await asyncio.to_thread(init_storage)
+        logger.info("Object storage initialized")
+    except Exception as e:
+        logger.error(f"Storage init failed (will retry on first upload): {e}")
 
 @app.on_event("shutdown")
 async def shutdown_db_client():

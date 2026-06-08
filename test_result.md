@@ -240,10 +240,18 @@ backend:
         comment: "✅ JOB MANAGEMENT E2E FLOW VERIFIED: Complete authentication and job management system tested successfully. All 17 tests passed including: 1) Authentication flow (register/login/protected endpoints with JWT), 2) Job CRUD operations (create/read/update/delete with user isolation), 3) Poles within jobs (poles correctly associated with job_id), 4) Dynamic arrays support (down_guys, knuckles, attachments arrays working), 5) Job-specific pole listing, 6) Job Excel export with all pole data, 7) Cascading job deletion (deletes job and all associated poles). Full E2E flow working: register → login → create job → add pole with dynamic data → verify pole in job → export job → cleanup."
 
 test_plan:
-  current_focus: ["Complete E2E user flow testing after mobile fix"]
+  current_focus:
+    - "Photo upload to object storage + pole save with photos (DocumentTooLarge bug fix)"
+    - "Feet/Inches dropdown height inputs (Down Guys + HOA) save & display"
+    - "Excel export: per-pole photo gallery link + heights formatted as ft/in"
+    - "Draggable map marker on Add/Edit"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
+
+agent_communication:
+  - agent: "main"
+    message: "Implemented object storage for photos (root cause of 'cannot save pole with pictures' was MongoDB 16MB DocumentTooLarge from inline base64). New backend: POST /api/upload-photo (multipart->object storage, returns /api/files/{path}), GET /api/files/{path} (public serve), GET /api/poles/{id}/gallery (public HTML gallery). PhotoUpload.jsx now uploads files and stores URLs. Added HeightInput component (ft 0-50 / in 0-11 dropdowns, stores decimal feet); wired into Down Guys + HOA height on Add/Edit, ViewPole formats as X' Y\". Excel exports (job + all-poles) now format heights as ft/in and add a 'PHOTOS' row hyperlinking to the per-pole gallery. Maps: added draggable marker + taller map + maxNativeZoom. Verified backend via python: 5 uploads + pole create returned 201 (small doc), file serve 200, gallery shows 6 photos. Need full e2e UI testing."
 
 agent_communication:
   - agent: "main"

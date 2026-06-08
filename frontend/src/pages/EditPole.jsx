@@ -28,6 +28,7 @@ import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from "react-lea
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { PhotoUpload } from "@/components/PhotoUpload";
+import { HeightInput } from "@/components/HeightInput";
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -337,15 +338,27 @@ const EditPole = () => {
                     <div className="space-y-2"><Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Longitude</Label><Input type="text" name="longitude" value={formData.longitude} onChange={handleInputChange} className="h-10 bg-black border-zinc-700 text-white font-mono" /></div>
                   </div>
                   <Button type="button" onClick={getGPSLocation} disabled={gpsLoading} className="w-full h-10 bg-zinc-800 hover:bg-zinc-700 text-white border border-zinc-700">{gpsLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <MapPin className="w-4 h-4 mr-2" />}Get Current Location</Button>
-                  <p className="text-xs text-zinc-500">Click on the map to pin location</p>
+                  <p className="text-xs text-zinc-500">Click the map to drop a pin, or drag the pin to fine-tune its position</p>
                 </div>
-                <div className="h-64 border border-zinc-700 overflow-hidden">
-                  <MapContainer center={mapCenter} zoom={18} minZoom={3} maxZoom={22} style={{ height: "100%", width: "100%" }} className="z-0">
-                    <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" />
-                    <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}" />
+                <div className="h-72 sm:h-80 border border-zinc-700 overflow-hidden">
+                  <MapContainer center={mapCenter} zoom={18} minZoom={3} maxZoom={22} scrollWheelZoom={true} style={{ height: "100%", width: "100%" }} className="z-0">
+                    <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" maxNativeZoom={19} maxZoom={22} />
+                    <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}" maxNativeZoom={19} maxZoom={22} />
+                    <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}" maxNativeZoom={19} maxZoom={22} />
                     <MapClickHandler onLocationSelect={handleMapClick} />
                     <MapCenterUpdater lat={formData.latitude} lng={formData.longitude} />
-                    {formData.latitude && formData.longitude && <Marker position={[parseFloat(formData.latitude), parseFloat(formData.longitude)]} />}
+                    {formData.latitude && formData.longitude && (
+                      <Marker
+                        position={[parseFloat(formData.latitude), parseFloat(formData.longitude)]}
+                        draggable={true}
+                        eventHandlers={{
+                          dragend: (e) => {
+                            const { lat, lng } = e.target.getLatLng();
+                            handleMapClick(lat, lng);
+                          },
+                        }}
+                      />
+                    )}
                   </MapContainer>
                 </div>
               </div>
@@ -396,7 +409,7 @@ const EditPole = () => {
                       <div className="space-y-1"><Label className="text-xs font-mono text-zinc-500">Size</Label><Select value={guy.size} onValueChange={(v) => updateDownGuy(index, "size", v)}><SelectTrigger className="h-9 bg-black border-zinc-700 text-white text-sm"><SelectValue placeholder="Size" /></SelectTrigger><SelectContent className="bg-zinc-900 border-zinc-700">{options.down_guy_sizes.map((s) => (<SelectItem key={s} value={s}>{s}</SelectItem>))}</SelectContent></Select></div>
                       <div className="space-y-1"><Label className="text-xs font-mono text-zinc-500">Direction</Label><Select value={guy.direction} onValueChange={(v) => updateDownGuy(index, "direction", v)}><SelectTrigger className="h-9 bg-black border-zinc-700 text-white text-sm"><SelectValue placeholder="Dir" /></SelectTrigger><SelectContent className="bg-zinc-900 border-zinc-700">{options.down_guy_directions.map((d) => (<SelectItem key={d} value={d}>{d}</SelectItem>))}</SelectContent></Select></div>
                       <div className="space-y-1"><Label className="text-xs font-mono text-zinc-500">Owner</Label><Select value={guy.owner} onValueChange={(v) => updateDownGuy(index, "owner", v)}><SelectTrigger className="h-9 bg-black border-zinc-700 text-white text-sm"><SelectValue placeholder="Owner" /></SelectTrigger><SelectContent className="bg-zinc-900 border-zinc-700">{options.down_guy_owners.map((o) => (<SelectItem key={o} value={o}>{o}</SelectItem>))}</SelectContent></Select></div>
-                      <div className="space-y-1"><Label className="text-xs font-mono text-zinc-500">Height (ft)</Label><Input type="number" value={guy.height} onChange={(e) => updateDownGuy(index, "height", e.target.value)} step="0.1" className="h-9 bg-black border-zinc-700 text-white text-sm" /></div>
+                      <HeightInput value={guy.height} onChange={(v) => updateDownGuy(index, "height", v)} label="Height" testId={`downguy${index}-height`} />
                       <div className="space-y-1"><Label className="text-xs font-mono text-zinc-500">Lead</Label><Input value={guy.lead} onChange={(e) => updateDownGuy(index, "lead", e.target.value)} className="h-9 bg-black border-zinc-700 text-white text-sm" /></div>
                     </div>
                     {downGuys.length > 1 && <Button type="button" onClick={() => removeDownGuy(index)} size="icon" variant="ghost" className="text-red-400 hover:text-red-300 hover:bg-red-500/10 h-8 w-8"><Trash2 className="w-4 h-4" /></Button>}
@@ -440,7 +453,7 @@ const EditPole = () => {
                   <div className="flex items-center gap-2 sm:gap-4">
                     <span className="text-sm font-mono text-green-400 w-6">{index + 1}</span>
                     <div className="grid grid-cols-4 gap-2 sm:gap-3 flex-1 items-end">
-                      <div className="space-y-1"><Label className="text-xs font-mono text-zinc-500">Height (ft)</Label><Input type="number" value={att.height} onChange={(e) => updateAttachment(index, "height", e.target.value)} step="0.1" className="h-9 bg-black border-zinc-700 text-white text-sm" /></div>
+                      <HeightInput value={att.height} onChange={(v) => updateAttachment(index, "height", v)} label="Height" testId={`attachment${index}-height`} />
                       <div className="space-y-1"><Label className="text-xs font-mono text-zinc-500">Owner</Label><Select value={att.owner} onValueChange={(v) => updateAttachment(index, "owner", v)}><SelectTrigger className="h-9 bg-black border-zinc-700 text-white text-sm"><SelectValue placeholder="Owner" /></SelectTrigger><SelectContent className="bg-zinc-900 border-zinc-700">{options.attachment_owners.map((o) => (<SelectItem key={o} value={o}>{o}</SelectItem>))}</SelectContent></Select></div>
                       <div className="space-y-1"><Label className="text-xs font-mono text-zinc-500">Notes</Label><Input type="text" value={att.notes || ""} onChange={(e) => updateAttachment(index, "notes", e.target.value)} placeholder="Enter notes" className="h-9 bg-black border-zinc-700 text-white text-sm" /></div>
                       <PhotoUpload label="Photo" value={att.photo} onChange={(v) => updateAttachment(index, "photo", v)} testId={`attachment${index}`} compact />

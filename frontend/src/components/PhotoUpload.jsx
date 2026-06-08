@@ -1,8 +1,9 @@
 import { useState, useRef, useCallback, useEffect } from "react";
+import axios from "axios";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Camera, Upload, X, Ruler, Check, ZoomIn } from "lucide-react";
+import { Camera, Upload, X, Ruler, Check, ZoomIn, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -17,22 +18,36 @@ export const PhotoUpload = ({ label, value, onChange, testId, showHeightTool = f
   const cameraInputRef = useRef(null);
   const [showHeightDialog, setShowHeightDialog] = useState(false);
   const [showLightbox, setShowLightbox] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
       processFile(file);
     }
+    // Reset input so selecting the same file again re-triggers change
+    e.target.value = "";
   };
 
-  const processFile = (file) => {
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error("Image size must be less than 10MB");
+  const processFile = async (file) => {
+    if (file.size > 25 * 1024 * 1024) {
+      toast.error("Image size must be less than 25MB");
       return;
     }
-    const reader = new FileReader();
-    reader.onloadend = () => onChange(reader.result);
-    reader.readAsDataURL(file);
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await axios.post("/upload-photo", fd, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      onChange(res.data.url);
+    } catch (err) {
+      console.error("Photo upload failed", err);
+      toast.error("Photo upload failed. Please try again.");
+    } finally {
+      setUploading(false);
+    }
   };
 
   const openHeightTool = () => {
@@ -91,14 +106,16 @@ export const PhotoUpload = ({ label, value, onChange, testId, showHeightTool = f
             <div className="flex gap-1">
               <Button
                 type="button"
+                disabled={uploading}
                 onClick={() => cameraInputRef.current?.click()}
                 className="h-9 px-2 bg-red-600 hover:bg-red-700 text-white"
                 data-testid={`${testId}-camera`}
               >
-                <Camera className="w-4 h-4" />
+                {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
               </Button>
               <Button
                 type="button"
+                disabled={uploading}
                 onClick={() => fileInputRef.current?.click()}
                 className="h-9 px-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 border border-zinc-700"
                 data-testid={`${testId}-upload`}
@@ -214,17 +231,19 @@ export const PhotoUpload = ({ label, value, onChange, testId, showHeightTool = f
         <div className="flex gap-2">
           <Button
             type="button"
+            disabled={uploading}
             onClick={() => cameraInputRef.current?.click()}
             className="flex-1 h-20 bg-red-600 hover:bg-red-700 text-white border-0"
             data-testid={`${testId}-camera`}
           >
             <div className="flex flex-col items-center gap-1">
-              <Camera className="w-6 h-6" />
-              <span className="text-xs font-mono">CAMERA</span>
+              {uploading ? <Loader2 className="w-6 h-6 animate-spin" /> : <Camera className="w-6 h-6" />}
+              <span className="text-xs font-mono">{uploading ? "UPLOADING" : "CAMERA"}</span>
             </div>
           </Button>
           <Button
             type="button"
+            disabled={uploading}
             onClick={() => fileInputRef.current?.click()}
             className="flex-1 h-20 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 border border-zinc-700"
             data-testid={`${testId}-upload`}

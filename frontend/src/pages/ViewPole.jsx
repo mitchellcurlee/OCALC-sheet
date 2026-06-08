@@ -33,6 +33,7 @@ import {
 import { MapContainer, TileLayer, Marker } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
+import { formatHeight } from "@/components/HeightInput";
 
 // Fix Leaflet marker icon
 delete L.Icon.Default.prototype._getIconUrl;
@@ -148,15 +149,11 @@ const ViewPole = () => {
     pole[`span${num}_direction`] || pole[`span${num}_distance`] || pole[`span${num}_owner`]
   );
 
-  // Check if any down guy has data
-  const hasDownGuyData = [1, 2, 3, 4].some(num => 
-    pole[`down_guy${num}_size`] || pole[`down_guy${num}_direction`] || pole[`down_guy${num}_owner`] || pole[`down_guy${num}_height`] || pole[`down_guy${num}_lead`]
-  );
+  // Check if any down guy has data (array format)
+  const hasDownGuyData = pole.down_guys && pole.down_guys.length > 0 && pole.down_guys.some(g => g.size || g.direction || g.owner || g.height || g.lead);
 
-  // Check if any knuckle has data
-  const hasKnuckleData = [1, 2, 3, 4].some(num => 
-    pole[`knuckle${num}_count`] || pole[`knuckle${num}_condition`] || pole[`knuckle${num}_photo`]
-  );
+  // Check if any knuckle has data (array format)
+  const hasKnuckleData = pole.knuckles && pole.knuckles.length > 0 && pole.knuckles.some(k => k.count || k.condition || k.photo);
 
   // Check if any attachment has data (array format)
   const hasAttachmentData = pole.attachments && pole.attachments.length > 0 && pole.attachments.some(a => a.height || a.owner || a.photo || a.notes);
@@ -282,11 +279,11 @@ const ViewPole = () => {
                     <MapPin className="w-4 h-4 mr-2" />Open in Google Maps<ExternalLink className="w-3 h-3 ml-2" />
                   </Button>
                 </div>
-                <div className="h-64 border border-zinc-700 overflow-hidden">
-                  <MapContainer center={mapCenter} zoom={18} minZoom={3} maxZoom={22} style={{ height: "100%", width: "100%" }} className="z-0">
-                    <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" attribution='&copy; Esri' />
-                    <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}" attribution='' />
-                    <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}" attribution='' />
+                <div className="h-72 sm:h-80 border border-zinc-700 overflow-hidden">
+                  <MapContainer center={mapCenter} zoom={18} minZoom={3} maxZoom={22} scrollWheelZoom={true} style={{ height: "100%", width: "100%" }} className="z-0">
+                    <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" attribution='&copy; Esri' maxNativeZoom={19} maxZoom={22} />
+                    <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}" attribution='' maxNativeZoom={19} maxZoom={22} />
+                    <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}" attribution='' maxNativeZoom={19} maxZoom={22} />
                     <Marker position={mapCenter} />
                   </MapContainer>
                 </div>
@@ -344,19 +341,18 @@ const ViewPole = () => {
                 <div className="w-1 h-5 bg-yellow-500"></div>Down Guys
               </h2>
               <div className="space-y-3">
-                {[1, 2, 3, 4].map((num) => {
-                  const hasData = pole[`down_guy${num}_size`] || pole[`down_guy${num}_direction`] || pole[`down_guy${num}_owner`] || pole[`down_guy${num}_height`] || pole[`down_guy${num}_lead`];
-                  if (!hasData) return null;
+                {pole.down_guys && pole.down_guys.map((guy, index) => {
+                  if (!guy.size && !guy.direction && !guy.owner && !guy.height && !guy.lead) return null;
                   return (
-                    <div key={num} className="bg-zinc-800/50 p-3 border border-zinc-700">
+                    <div key={index} className="bg-zinc-800/50 p-3 border border-zinc-700">
                       <div className="flex items-center gap-4">
-                        <span className="text-sm font-mono text-yellow-400 w-8">{num}</span>
+                        <span className="text-sm font-mono text-yellow-400 w-8">{index + 1}</span>
                         <div className="grid grid-cols-5 gap-4 flex-1">
-                          <DataRow label="Size" value={pole[`down_guy${num}_size`]} />
-                          <DataRow label="Direction" value={pole[`down_guy${num}_direction`]} />
-                          <DataRow label="Owner" value={pole[`down_guy${num}_owner`]} />
-                          <DataRow label="Height" value={pole[`down_guy${num}_height`] ? `${pole[`down_guy${num}_height`]} ft` : null} mono />
-                          <DataRow label="Lead" value={pole[`down_guy${num}_lead`]} />
+                          <DataRow label="Size" value={guy.size} />
+                          <DataRow label="Direction" value={guy.direction} />
+                          <DataRow label="Owner" value={guy.owner} />
+                          <DataRow label="Height" value={guy.height ? formatHeight(guy.height) : null} mono />
+                          <DataRow label="Lead" value={guy.lead} />
                         </div>
                       </div>
                     </div>
@@ -368,17 +364,16 @@ const ViewPole = () => {
                   <div className="mt-4 pt-4 border-t border-zinc-700">
                     <h3 className="text-sm font-mono text-orange-400 mb-3">KNUCKLES</h3>
                     <div className="space-y-3">
-                      {[1, 2, 3, 4].map((num) => {
-                        const hasData = pole[`knuckle${num}_count`] || pole[`knuckle${num}_condition`] || pole[`knuckle${num}_photo`];
-                        if (!hasData) return null;
+                      {pole.knuckles && pole.knuckles.map((knuckle, index) => {
+                        if (!knuckle.count && !knuckle.condition && !knuckle.photo) return null;
                         return (
-                          <div key={num} className="bg-zinc-800/50 p-3 border border-zinc-700">
+                          <div key={index} className="bg-zinc-800/50 p-3 border border-zinc-700">
                             <div className="flex items-center gap-4">
-                              <span className="text-sm font-mono text-orange-400 w-8">{num}</span>
+                              <span className="text-sm font-mono text-orange-400 w-8">{index + 1}</span>
                               <div className="grid grid-cols-3 gap-4 flex-1">
-                                <DataRow label="Knuckles Used" value={pole[`knuckle${num}_count`]} />
-                                <DataRow label="Condition" value={pole[`knuckle${num}_condition`]} />
-                                {renderPhoto("Photo", pole[`knuckle${num}_photo`])}
+                                <DataRow label="Knuckles Used" value={knuckle.count} />
+                                <DataRow label="Condition" value={knuckle.condition} />
+                                {renderPhoto("Photo", knuckle.photo)}
                               </div>
                             </div>
                           </div>
@@ -405,7 +400,7 @@ const ViewPole = () => {
                       <div className="flex items-center gap-4">
                         <span className="text-sm font-mono text-green-400 w-8">{index + 1}</span>
                         <div className="grid grid-cols-4 gap-4 flex-1">
-                          <DataRow label="Height" value={att.height ? `${att.height} ft` : null} mono />
+                          <DataRow label="Height" value={att.height ? formatHeight(att.height) : null} mono />
                           <DataRow label="Owner" value={att.owner} />
                           <DataRow label="Notes" value={att.notes} />
                           {renderPhoto("Photo", att.photo)}
