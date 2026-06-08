@@ -1,8 +1,8 @@
 {
   "design_system": {
-    "name": "Grid-Ops Industrial",
-    "description": "A high-contrast, rugged, field-ready design system optimized for outdoor visibility and rapid data entry. Aesthetic draws from industrial control panels, sci-fi HUDs, and precision tools.",
-    "theme_strategy": "dark_only",
+    "name": "Grid-Ops Field Light",
+    "description": "A high-contrast, bright white theme optimized for outdoor glare and sunlight readability, replacing the old dark mode. Follows Archetype 4 (Swiss/High-Contrast) with rigid, function-first aesthetics.",
+    "theme_strategy": "light_only",
     "typography": {
       "font_family": {
         "heading": "Chivo, sans-serif",
@@ -10,117 +10,112 @@
         "mono": "JetBrains Mono, monospace"
       },
       "scale": {
-        "h1": "text-4xl font-black tracking-tight uppercase",
-        "h2": "text-2xl font-bold tracking-tight uppercase",
-        "h3": "text-xl font-bold tracking-wide text-zinc-400",
-        "body": "text-base font-normal leading-relaxed",
-        "label": "text-xs font-bold tracking-widest uppercase text-zinc-500",
-        "data": "font-mono text-sm tracking-tight"
-      },
-      "imports": [
-        "@import url('https://fonts.googleapis.com/css2?family=Chivo:wght@400;700;900&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;700&display=swap');"
-      ]
+        "h1": "text-4xl font-black tracking-tight uppercase text-zinc-950",
+        "h2": "text-2xl font-bold tracking-tight uppercase text-zinc-900",
+        "h3": "text-xl font-bold tracking-wide text-zinc-700",
+        "body": "text-base font-normal leading-relaxed text-zinc-800",
+        "label": "text-xs font-bold tracking-widest uppercase text-zinc-600",
+        "data": "font-mono text-sm tracking-tight text-zinc-950"
+      }
     },
     "colors": {
       "palette": {
-        "background": "#09090b",
-        "surface": "#18181b",
-        "surface_highlight": "#27272a",
-        "border": "#3f3f46",
-        "text_primary": "#fafafa",
-        "text_secondary": "#a1a1aa",
-        "primary": "#ef4444",
-        "secondary": "#f97316",
-        "accent": "#eab308",
-        "success": "#22c55e",
-        "danger": "#ef4444"
+        "page_background": "#ffffff",
+        "card_surface": "#ffffff",
+        "card_border": "#d4d4d8",
+        "card_shadow": "shadow-sm",
+        "input_background": "#ffffff",
+        "input_border": "#a1a1aa",
+        "input_placeholder": "#71717a",
+        "input_focus_ring": "#dc2626",
+        "text_primary": "#09090b",
+        "text_secondary": "#3f3f46",
+        "text_muted": "#52525b",
+        "primary_button_bg": "#dc2626",
+        "primary_button_text": "#ffffff",
+        "section_accent_bars": "bg-zinc-200 border-zinc-300",
+        "brand_red_accent": "#dc2626",
+        "brand_orange_accent": "#ea580c"
       },
       "usage": {
-        "power_pole": "text-red-500 border-red-500/50 bg-red-500/10",
-        "telecom_pole": "text-orange-500 border-orange-500/50 bg-orange-500/10",
-        "action_primary": "bg-red-600 hover:bg-red-700 text-white",
-        "action_secondary": "bg-zinc-800 hover:bg-zinc-700 text-white border border-zinc-700"
+        "power_pole_badge": "text-red-700 border-red-200 bg-red-50 font-bold",
+        "telecom_pole_badge": "text-orange-700 border-orange-200 bg-orange-50 font-bold",
+        "header_sticky_bar": "bg-white/95 backdrop-blur-md border-b border-zinc-200 shadow-sm",
+        "mobile_bottom_nav": "bg-white/95 backdrop-blur-md border-t border-zinc-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]"
       }
     },
     "layout": {
       "container": "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8",
-      "spacing": {
-        "section": "py-12",
-        "component": "p-6"
-      },
       "grid_strategy": "bento_grid_dense",
       "border_radius": "rounded-none"
     },
     "components": {
-      "buttons": {
-        "style": "sharp_edges",
-        "classes": "rounded-none font-mono uppercase tracking-wider border-2 border-transparent hover:border-white/20 transition-all active:scale-95"
-      },
-      "cards": {
-        "style": "data_plate",
-        "classes": "bg-zinc-900/50 border border-zinc-800 rounded-none backdrop-blur-sm relative overflow-hidden"
-      },
-      "inputs": {
-        "style": "rugged",
-        "classes": "bg-black border-zinc-700 rounded-none focus:ring-2 focus:ring-red-500 focus:border-transparent font-mono"
-      }
-    },
-    "visual_enhancers": {
-      "textures": {
-        "background_overlay": "url('https://images.unsplash.com/photo-1764083292858-1576bce9e678?crop=entropy&cs=srgb&fm=jpg&q=85') opacity-10 mix-blend-overlay fixed inset-0 pointer-events-none z-0",
-        "scanlines": "repeating-linear-gradient(0deg, transparent, transparent 2px, #000 3px) opacity-10 pointer-events-none fixed inset-0 z-50"
-      },
-      "effects": {
-        "glow": "shadow-[0_0_15px_rgba(239,68,68,0.3)]",
-        "glass": "backdrop-blur-md bg-black/70 border-b border-white/10"
-      }
-    },
-    "assets": {
-      "images": {
-        "hero_bg": "https://images.unsplash.com/photo-1682122602211-bbf52f9e010a?crop=entropy&cs=srgb&fm=jpg&q=85",
-        "texture_concrete": "https://images.unsplash.com/photo-1764083292858-1576bce9e678?crop=entropy&cs=srgb&fm=jpg&q=85"
-      },
-      "icons": {
-        "library": "lucide-react",
-        "style": "stroke-width-2"
-      }
+      "cards": "bg-white border border-zinc-200 shadow-sm relative overflow-hidden",
+      "inputs": "bg-white border-2 border-zinc-300 text-zinc-900 placeholder:text-zinc-500 focus:ring-2 focus:ring-red-600 focus:border-transparent font-mono h-12",
+      "buttons": "font-mono uppercase tracking-wider border-2 border-transparent bg-red-600 text-white hover:bg-red-700 active:scale-95 transition-all h-12"
     }
   },
   "implementation_guide": {
-    "global_css_rules": [
-      "html { background-color: #09090b; color: #fafafa; }",
-      ".font-heading { font-family: 'Chivo', sans-serif; }",
-      ".font-mono { font-family: 'JetBrains Mono', monospace; }",
-      "/* Custom Scrollbar */ ::-webkit-scrollbar { width: 8px; } ::-webkit-scrollbar-track { bg: #09090b; } ::-webkit-scrollbar-thumb { bg: #3f3f46; }"
-    ],
-    "tailwind_config_updates": {
-      "extend": {
-        "colors": {
-          "industrial-bg": "#09090b",
-          "industrial-surface": "#18181b",
-          "power-red": "#ef4444",
-          "telecom-orange": "#f97316"
-        },
-        "fontFamily": {
-          "heading": ["Chivo", "sans-serif"],
-          "mono": ["JetBrains Mono", "monospace"]
-        }
+    "shadcn_css_variables": {
+      "root": {
+        "--background": "0 0% 100%",
+        "--foreground": "240 10% 3.9%",
+        "--card": "0 0% 100%",
+        "--card-foreground": "240 10% 3.9%",
+        "--popover": "0 0% 100%",
+        "--popover-foreground": "240 10% 3.9%",
+        "--primary": "0 72% 51%",
+        "--primary-foreground": "0 0% 98%",
+        "--secondary": "240 4.8% 95.9%",
+        "--secondary-foreground": "240 5.9% 10%",
+        "--muted": "240 4.8% 95.9%",
+        "--muted-foreground": "240 3.8% 46.1%",
+        "--accent": "240 4.8% 95.9%",
+        "--accent-foreground": "240 5.9% 10%",
+        "--destructive": "0 84.2% 60.2%",
+        "--destructive-foreground": "0 0% 98%",
+        "--border": "240 5.9% 80%",
+        "--input": "240 5.9% 80%",
+        "--ring": "0 72% 51%",
+        "--radius": "0"
       }
     },
-    "component_overrides": {
-      "Button": "Remove rounded classes. Add 'font-mono uppercase tracking-wider'. Use 'h-12' for touch targets.",
-      "Card": "Remove rounded classes. Add 'border-zinc-800 bg-zinc-900/80'.",
-      "Input": "Remove rounded classes. Darker background 'bg-black'.",
-      "Badge": "Use for Pole Type. Red for Power, Orange for Telecom. Square edges."
+    "global_css_updates": [
+      "html, body { background-color: #ffffff; color: #09090b; }",
+      "::-webkit-scrollbar-track { background: #f4f4f5; }",
+      "::-webkit-scrollbar-thumb { background: #a1a1aa; border-radius: 0; }",
+      "::-webkit-scrollbar-thumb:hover { background: #71717a; }",
+      ".industrial-card { @apply bg-white border border-zinc-300 shadow-sm relative overflow-hidden; }",
+      ".industrial-input { @apply bg-white border-2 border-zinc-300 text-zinc-900 focus:ring-2 focus:ring-red-600 focus:border-transparent font-mono h-12; }",
+      ".industrial-button { @apply font-mono uppercase tracking-wider border-2 border-transparent bg-red-600 text-white hover:bg-red-700 transition-all active:scale-95 h-12; }",
+      ".mobile-bottom-nav { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-top: 1px solid #e4e4e7; z-index: 50; }",
+      ".pole-power { color: #b91c1c; border-color: rgba(220, 38, 38, 0.3); background-color: rgba(254, 226, 226, 0.8); }",
+      ".pole-telecom { color: #c2410c; border-color: rgba(234, 88, 12, 0.3); background-color: rgba(255, 237, 213, 0.8); }"
+    ],
+    "tailwind_class_mapping": {
+      "bg-black": "bg-white",
+      "bg-[#09090b]": "bg-white",
+      "bg-zinc-900": "bg-zinc-50",
+      "bg-zinc-900/50": "bg-white",
+      "bg-zinc-800": "bg-zinc-100",
+      "border-zinc-800": "border-zinc-200",
+      "border-zinc-700": "border-zinc-300",
+      "text-white": "text-zinc-900",
+      "text-[#fafafa]": "text-zinc-900",
+      "text-zinc-400": "text-zinc-600",
+      "text-zinc-500": "text-zinc-500",
+      "text-red-500": "text-red-600",
+      "text-orange-500": "text-orange-600",
+      "ring-red-500": "ring-red-600",
+      "hover:border-white/20": "hover:border-black/20",
+      "hover:bg-zinc-800": "hover:bg-zinc-100"
     }
   },
   "universal_guidelines": [
-    "DO NOT use gradients for backgrounds. Use solid dark colors + noise texture.",
-    "Ensure all touch targets are at least 44px height (h-11 or h-12) for gloved usage.",
-    "Use 'JetBrains Mono' for all numerical data (coordinates, height, dates).",
-    "Always display Power Poles in RED and Telecom Poles in ORANGE.",
-    "No login screen required - land directly on the Dashboard.",
-    "Use 'sonner' for all notifications (success/error).",
-    "Add 'data-testid' to all interactive elements."
+    "Prioritize high-contrast text and robust outlines over soft shadows.",
+    "Input borders should be strong (zinc-300) to ensure visibility in outdoor sunlight.",
+    "Primary call to action colors (red-600) must meet WCAG AA against the white background.",
+    "All interactive elements MUST include a data-testid attribute.",
+    "Ensure touch targets remain minimum 48px height."
   ]
 }

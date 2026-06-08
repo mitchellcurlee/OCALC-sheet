@@ -7,6 +7,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 import asyncio
+import json
 import requests
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict, EmailStr
@@ -122,6 +123,20 @@ def format_height(value):
         feet += 1
         inches = 0
     return f"{feet}' {inches}\""
+
+def _pole_sort_key(pole):
+    """Sort poles by pole_number in natural numeric order (1, 2, 10, ...).
+    Poles whose number has no leading digits sort after numbered ones, alphabetically."""
+    pn = str(pole.get("pole_number") or "").strip()
+    digits = ""
+    for ch in pn:
+        if ch.isdigit():
+            digits += ch
+        else:
+            break
+    if digits:
+        return (0, int(digits), pn.lower())
+    return (1, 0, pn.lower())
 
 # Auth Models
 class UserCreate(BaseModel):
@@ -541,6 +556,7 @@ async def export_job_excel(job_id: str, request: Request, current_user: dict = D
         raise HTTPException(status_code=404, detail="Job not found")
     
     poles = await db.poles.find({"job_id": job_id}, {"_id": 0}).sort("created_at", -1).to_list(10000)
+    poles.sort(key=_pole_sort_key)
     
     wb = Workbook()
     ws = wb.active
@@ -805,27 +821,64 @@ async def pole_gallery(pole_id: str):
         raise HTTPException(status_code=404, detail="Pole not found")
     items = _pole_photo_items(pole)
     pole_no = pole.get("pole_number") or pole_id[:8]
-    cards = "".join(
-        f'<figure><img src="{url}" alt="{label}" loading="lazy"/>'
-        f'<figcaption>{label}</figcaption></figure>'
-        for label, url in items
-    ) or '<p class="empty">No photos attached to this pole.</p>'
+
+    def _safe(s):
+        return ("".join(c if (c.isalnum() or c in " -_") else "_" for c in str(s)).strip().replace(" ", "_")) or "photo"
+
+    def _ext_of(u):
+        if u.startswith("data:image/"):
+            return (u.split("data:image/", 1)[1].split(";", 1)[0][:5]) or "jpg"
+        tail = u.split("?", 1)[0].rsplit("/", 1)[-1]
+        return tail.rsplit(".", 1)[-1][:5] if "." in tail else "jpg"
+
+    downloads = []
+    card_html = []
+    for label, url in items:
+        fname = f"Pole_{_safe(pole_no)}_{_safe(label)}.{_ext_of(url)}"
+        downloads.append({"u": url, "n": fname})
+        card_html.append(
+            '<figure>'
+            f'<a href="{url}" target="_blank" rel="noopener"><img src="{url}" alt="{label}" loading="lazy"/></a>'
+            f'<figcaption>{label}</figcaption>'
+            f'<a class="dl" href="{url}" download="{fname}">Download</a>'
+            '</figure>'
+        )
+    cards = "".join(card_html) or '<p class="empty">No photos attached to this pole.</p>'
+    dl_json = json.dumps(downloads)
+    download_all_btn = '<button class="dlall" onclick="downloadAll()">Download all</button>' if items else ''
+
     html = f"""<!doctype html><html lang="en"><head><meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Pole {pole_no} - Photos</title>
 <style>
   body{{margin:0;background:#0a0a0a;color:#e4e4e7;font-family:system-ui,-apple-system,sans-serif;}}
-  header{{padding:20px 24px;border-bottom:1px solid #27272a;position:sticky;top:0;background:#0a0a0aee;backdrop-filter:blur(8px);}}
+  header{{padding:16px 24px;border-bottom:1px solid #27272a;position:sticky;top:0;background:#0a0a0aee;backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}}
   h1{{margin:0;font-size:18px;letter-spacing:.05em;text-transform:uppercase;}}
   h1 span{{color:#ef4444;}}
+  .dlall{{background:#ef4444;color:#fff;border:0;border-radius:6px;padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;letter-spacing:.03em;}}
+  .dlall:hover{{background:#dc2626;}}
   .grid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;padding:24px;}}
-  figure{{margin:0;background:#18181b;border:1px solid #27272a;border-radius:8px;overflow:hidden;}}
-  figure img{{width:100%;height:240px;object-fit:cover;display:block;background:#000;}}
+  figure{{margin:0;background:#18181b;border:1px solid #27272a;border-radius:8px;overflow:hidden;display:flex;flex-direction:column;}}
+  figure img{{width:100%;height:240px;object-fit:cover;display:block;background:#000;cursor:zoom-in;}}
   figcaption{{padding:10px 12px;font-size:13px;font-family:monospace;color:#a1a1aa;text-transform:uppercase;letter-spacing:.05em;}}
+  .dl{{display:block;text-align:center;padding:10px 12px;margin:0 12px 12px;background:#27272a;color:#fff;text-decoration:none;border-radius:6px;font-size:13px;font-weight:600;}}
+  .dl:hover{{background:#3f3f46;}}
   .empty{{padding:40px;color:#71717a;}}
 </style></head><body>
-<header><h1>Pole <span>{pole_no}</span> &middot; Photos ({len(items)})</h1></header>
+<header><h1>Pole <span>{pole_no}</span> &middot; Photos ({len(items)})</h1>{download_all_btn}</header>
 <div class="grid">{cards}</div>
+<script>
+var FILES = {dl_json};
+function downloadAll(){{
+  FILES.forEach(function(f, i){{
+    setTimeout(function(){{
+      var a = document.createElement('a');
+      a.href = f.u; a.download = f.n;
+      document.body.appendChild(a); a.click(); a.remove();
+    }}, i * 400);
+  }});
+}}
+</script>
 </body></html>"""
     return HTMLResponse(content=html)
 
@@ -906,6 +959,7 @@ async def delete_pole(pole_id: str):
 async def export_poles_excel(request: Request):
     """Export all poles to Excel - 16 rows per pole format"""
     poles = await db.poles.find({}, {"_id": 0}).sort("created_at", -1).to_list(10000)
+    poles.sort(key=_pole_sort_key)
     
     wb = Workbook()
     ws = wb.active
