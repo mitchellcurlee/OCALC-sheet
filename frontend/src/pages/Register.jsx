@@ -62,7 +62,7 @@ const Register = () => {
           <div className="inline-flex items-center justify-center w-16 h-16 bg-red-600 mb-4">
             <Zap className="w-10 h-10 text-white" />
           </div>
-          <h1 className="font-heading text-2xl font-bold tracking-tight uppercase text-white">
+          <h1 className="font-heading text-2xl font-bold tracking-tight uppercase text-zinc-900">
             Pole Data Sheet
           </h1>
           <p className="text-zinc-500 text-sm mt-1">Create your account</p>
@@ -86,7 +86,7 @@ const Register = () => {
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="Your name"
-                  className="h-14 pl-10 bg-black border-zinc-700 text-white text-base"
+                  className="h-14 pl-10 bg-white border-zinc-300 text-zinc-900 text-base"
                   data-testid="name-input"
                 />
               </div>
@@ -110,7 +110,7 @@ const Register = () => {
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   placeholder="your@email.com"
-                  className="h-14 pl-10 bg-black border-zinc-700 text-white text-base"
+                  className="h-14 pl-10 bg-white border-zinc-300 text-zinc-900 text-base"
                   data-testid="email-input"
                   required
                 />
@@ -131,7 +131,7 @@ const Register = () => {
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   placeholder="••••••••"
-                  className="h-14 pl-10 bg-black border-zinc-700 text-white text-base"
+                  className="h-14 pl-10 bg-white border-zinc-300 text-zinc-900 text-base"
                   data-testid="password-input"
                   required
                 />
@@ -152,7 +152,7 @@ const Register = () => {
                   value={formData.confirmPassword}
                   onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                   placeholder="••••••••"
-                  className="h-14 pl-10 bg-black border-zinc-700 text-white text-base"
+                  className="h-14 pl-10 bg-white border-zinc-300 text-zinc-900 text-base"
                   data-testid="confirm-password-input"
                   required
                 />
@@ -176,7 +176,7 @@ const Register = () => {
           <div className="mt-6 text-center">
             <p className="text-zinc-500 text-sm">
               Already have an account?{' '}
-              <Link to="/login" className="text-red-500 hover:text-red-400 font-medium">
+              <Link to="/login" className="text-red-600 hover:text-red-600 font-medium">
                 Sign in
               </Link>
             </p>

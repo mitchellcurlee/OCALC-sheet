@@ -92,11 +92,11 @@ const JobDetail = () => {
 
   const getConditionColor = (condition) => {
     const colors = {
-      Excellent: "bg-green-500/20 text-green-400 border-green-500/50",
-      Good: "bg-yellow-500/20 text-yellow-400 border-yellow-500/50",
-      Bad: "bg-red-500/20 text-red-400 border-red-500/50",
+      Excellent: "bg-green-500/20 text-green-700 border-green-500/50",
+      Good: "bg-yellow-500/20 text-yellow-700 border-yellow-500/50",
+      Bad: "bg-red-500/20 text-red-600 border-red-500/50",
     };
-    return colors[condition] || "bg-zinc-500/20 text-zinc-400 border-zinc-500/50";
+    return colors[condition] || "bg-zinc-500/20 text-zinc-600 border-zinc-500/50";
   };
 
   const filteredPoles = poles.filter((pole) => {
@@ -113,7 +113,7 @@ const JobDetail = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-industrial-bg flex items-center justify-center">
-        <Loader2 className="w-12 h-12 text-red-500 animate-spin" />
+        <Loader2 className="w-12 h-12 text-red-600 animate-spin" />
       </div>
     );
   }
@@ -121,20 +121,20 @@ const JobDetail = () => {
   return (
     <div className="min-h-screen bg-industrial-bg" data-testid="job-detail">
       {/* Header */}
-      <header className="border-b border-zinc-800 bg-zinc-900/50 backdrop-blur-sm sticky top-0 z-40">
+      <header className="border-b border-zinc-200 bg-white backdrop-blur-sm sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
             <div className="flex items-center gap-2 sm:gap-3">
               <Link to="/">
-                <Button variant="ghost" size="icon" className="text-zinc-400 hover:text-white">
+                <Button variant="ghost" size="icon" className="text-zinc-600 hover:text-zinc-900">
                   <ArrowLeft className="w-5 h-5" />
                 </Button>
               </Link>
               <div className="w-9 h-9 sm:w-10 sm:h-10 bg-red-600 flex items-center justify-center flex-shrink-0">
-                <Folder className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                <Folder className="w-5 h-5 sm:w-6 sm:h-6 text-zinc-900" />
               </div>
               <div>
-                <h1 className="font-heading text-lg sm:text-2xl font-black tracking-tight uppercase text-white">
+                <h1 className="font-heading text-lg sm:text-2xl font-black tracking-tight uppercase text-zinc-900">
                   {job?.name}
                 </h1>
                 {job?.location && (
@@ -149,7 +149,7 @@ const JobDetail = () => {
               <Button
                 onClick={handleExport}
                 variant="outline"
-                className="flex-1 sm:flex-initial h-11 sm:h-10 bg-zinc-800 border-zinc-700 hover:bg-zinc-700 text-white text-sm"
+                className="flex-1 sm:flex-initial h-11 sm:h-10 bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900 text-sm"
                 data-testid="export-btn"
               >
                 <FileSpreadsheet className="w-4 h-4 mr-2" />
@@ -173,7 +173,7 @@ const JobDetail = () => {
             <div className="flex items-center gap-3">
               <Radio className="w-5 h-5 text-yellow-500" />
               <div>
-                <p className="text-2xl font-bold text-white">{poles.length}</p>
+                <p className="text-2xl font-bold text-zinc-900">{poles.length}</p>
                 <p className="text-xs text-zinc-500 uppercase font-mono">Total Poles</p>
               </div>
             </div>
@@ -182,7 +182,7 @@ const JobDetail = () => {
             <div className="flex items-center gap-3">
               <div className="w-3 h-3 rounded-full bg-green-500"></div>
               <div>
-                <p className="text-2xl font-bold text-white">{poles.filter(p => p.condition === "Excellent").length}</p>
+                <p className="text-2xl font-bold text-zinc-900">{poles.filter(p => p.condition === "Excellent").length}</p>
                 <p className="text-xs text-zinc-500 uppercase font-mono">Excellent</p>
               </div>
             </div>
@@ -191,7 +191,7 @@ const JobDetail = () => {
             <div className="flex items-center gap-3">
               <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
               <div>
-                <p className="text-2xl font-bold text-white">{poles.filter(p => p.condition === "Good").length}</p>
+                <p className="text-2xl font-bold text-zinc-900">{poles.filter(p => p.condition === "Good").length}</p>
                 <p className="text-xs text-zinc-500 uppercase font-mono">Good</p>
               </div>
             </div>
@@ -200,7 +200,7 @@ const JobDetail = () => {
             <div className="flex items-center gap-3">
               <div className="w-3 h-3 rounded-full bg-red-500"></div>
               <div>
-                <p className="text-2xl font-bold text-white">{poles.filter(p => p.condition === "Bad").length}</p>
+                <p className="text-2xl font-bold text-zinc-900">{poles.filter(p => p.condition === "Bad").length}</p>
                 <p className="text-xs text-zinc-500 uppercase font-mono">Bad</p>
               </div>
             </div>
@@ -215,7 +215,7 @@ const JobDetail = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search poles..."
-              className="pl-10 h-11 bg-zinc-900 border-zinc-700 text-white"
+              className="pl-10 h-11 bg-zinc-50 border-zinc-300 text-zinc-900"
             />
           </div>
         </div>
@@ -224,10 +224,10 @@ const JobDetail = () => {
         {filteredPoles.length === 0 ? (
           <div className="industrial-card p-12 text-center">
             <Radio className="w-16 h-16 text-zinc-600 mx-auto mb-4" />
-            <h2 className="text-xl font-bold text-white mb-2">
+            <h2 className="text-xl font-bold text-zinc-900 mb-2">
               {poles.length === 0 ? "No Poles Yet" : "No Results"}
             </h2>
-            <p className="text-zinc-400 mb-6">
+            <p className="text-zinc-600 mb-6">
               {poles.length === 0 ? "Add your first pole to this job" : "Try a different search term"}
             </p>
             {poles.length === 0 && (
@@ -244,7 +244,7 @@ const JobDetail = () => {
             {filteredPoles.map((pole) => (
               <div
                 key={pole.id}
-                className="industrial-card p-4 hover:border-zinc-600 transition-colors"
+                className="industrial-card p-4 hover:border-zinc-300 transition-colors"
                 data-testid={`pole-card-${pole.id}`}
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -254,7 +254,7 @@ const JobDetail = () => {
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-white">{pole.pole_number || "No #"}</span>
+                        <span className="font-bold text-zinc-900">{pole.pole_number || "No #"}</span>
                         <Badge className={`${getConditionColor(pole.condition)} text-xs`}>
                           {pole.condition}
                         </Badge>
@@ -282,19 +282,19 @@ const JobDetail = () => {
                       {new Date(pole.inspection_date).toLocaleDateString()}
                     </div>
                     <Link to={`/jobs/${jobId}/view/${pole.id}`}>
-                      <Button size="sm" variant="ghost" className="text-zinc-400 hover:text-white">
+                      <Button size="sm" variant="ghost" className="text-zinc-600 hover:text-zinc-900">
                         <Eye className="w-4 h-4" />
                       </Button>
                     </Link>
                     <Link to={`/jobs/${jobId}/edit/${pole.id}`}>
-                      <Button size="sm" variant="ghost" className="text-zinc-400 hover:text-white">
+                      <Button size="sm" variant="ghost" className="text-zinc-600 hover:text-zinc-900">
                         <Pencil className="w-4 h-4" />
                       </Button>
                     </Link>
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="text-zinc-400 hover:text-red-400"
+                      className="text-zinc-600 hover:text-red-600"
                       onClick={() => setDeleteId(pole.id)}
                     >
                       <Trash2 className="w-4 h-4" />
@@ -309,15 +309,15 @@ const JobDetail = () => {
 
       {/* Delete Confirmation */}
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
-        <AlertDialogContent className="bg-zinc-900 border-zinc-800">
+        <AlertDialogContent className="bg-zinc-50 border-zinc-200">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-white">Delete Pole?</AlertDialogTitle>
-            <AlertDialogDescription className="text-zinc-400">
+            <AlertDialogTitle className="text-zinc-900">Delete Pole?</AlertDialogTitle>
+            <AlertDialogDescription className="text-zinc-600">
               This action cannot be undone. This will permanently delete the pole data.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="bg-zinc-800 border-zinc-700 text-white">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="bg-zinc-100 border-zinc-300 text-zinc-900">Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700 text-white">
               Delete
             </AlertDialogAction>

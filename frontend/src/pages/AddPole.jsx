@@ -65,9 +65,9 @@ const rowKey = () => (typeof crypto !== "undefined" && crypto.randomUUID ? crypt
 
 // Styling for the Pole Owner select trigger based on the selected owner
 const ownerTriggerClass = (owner) => {
-  if (owner === "Foreign Owned") return "text-red-500 border-red-500/50";
-  if (owner === "ATT") return "text-orange-500 border-orange-500/50";
-  return "text-white";
+  if (owner === "Foreign Owned") return "text-red-600 border-red-500/50";
+  if (owner === "ATT") return "text-orange-600 border-orange-500/50";
+  return "text-zinc-900";
 };
 
 const AddPole = () => {
@@ -377,12 +377,12 @@ const AddPole = () => {
   return (
     <div className="min-h-screen bg-industrial-bg pb-4" data-testid="add-pole-page">
       {/* Header */}
-      <header className="border-b border-zinc-800 bg-zinc-900/50 backdrop-blur-sm sticky top-0 z-[1000]">
+      <header className="border-b border-zinc-200 bg-white backdrop-blur-sm sticky top-0 z-[1000]">
         <div className="max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex items-center gap-2 sm:gap-4">
               <Link to={backUrl}>
-                <Button variant="ghost" size="icon" className="text-zinc-400 hover:text-white h-10 w-10 sm:h-9 sm:w-9" data-testid="back-btn">
+                <Button variant="ghost" size="icon" className="text-zinc-600 hover:text-zinc-900 h-10 w-10 sm:h-9 sm:w-9" data-testid="back-btn">
                   <ArrowLeft className="w-5 h-5" />
                 </Button>
               </Link>
@@ -390,7 +390,7 @@ const AddPole = () => {
                 <div className="w-8 h-8 sm:w-10 sm:h-10 bg-red-600 flex items-center justify-center flex-shrink-0">
                   <Zap className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                 </div>
-                <h1 className="font-heading text-sm sm:text-xl font-bold tracking-tight uppercase text-white">
+                <h1 className="font-heading text-sm sm:text-xl font-bold tracking-tight uppercase text-zinc-900">
                   Pole Data Sheet / OCALC
                 </h1>
               </div>
@@ -398,7 +398,7 @@ const AddPole = () => {
             <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto">
               <div className="flex items-center gap-1 sm:gap-2 flex-1 sm:flex-initial">
                 <Label className="text-xs font-mono text-zinc-500 whitespace-nowrap">POLE:</Label>
-                <Input name="pole_number" value={formData.pole_number} onChange={handleInputChange} placeholder="Pole #" className="w-full sm:w-28 h-9 sm:h-8 bg-black border-zinc-700 text-white text-sm" data-testid="pole-number-input" />
+                <Input name="pole_number" value={formData.pole_number} onChange={handleInputChange} placeholder="Pole #" className="w-full sm:w-28 h-9 sm:h-8 bg-white border-zinc-300 text-zinc-900 text-sm" data-testid="pole-number-input" />
               </div>
             </div>
           </div>
@@ -409,7 +409,7 @@ const AddPole = () => {
         <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
           {/* Basic Info - WITHOUT Pole Owner */}
           <div className="industrial-card p-4 sm:p-5">
-            <h2 className="font-heading text-base sm:text-lg font-bold text-white mb-3 sm:mb-4 flex items-center gap-2">
+            <h2 className="font-heading text-base sm:text-lg font-bold text-zinc-900 mb-3 sm:mb-4 flex items-center gap-2">
               <div className="w-1 h-5 bg-red-500"></div>
               Basic Information
             </h2>
@@ -417,10 +417,10 @@ const AddPole = () => {
               <div className="space-y-2">
                 <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Pole Size *</Label>
                 <Select value={formData.pole_size} onValueChange={(v) => handleSelectChange("pole_size", v)}>
-                  <SelectTrigger className="h-12 sm:h-10 bg-black border-zinc-700 text-white" data-testid="pole-size-select">
+                  <SelectTrigger className="h-12 sm:h-10 bg-white border-zinc-300 text-zinc-900" data-testid="pole-size-select">
                     <SelectValue placeholder="Class-Height" />
                   </SelectTrigger>
-                  <SelectContent className="bg-zinc-900 border-zinc-700 max-h-60">
+                  <SelectContent className="bg-zinc-50 border-zinc-300 max-h-60">
                     {options.sizes.map((s) => (<SelectItem key={s} value={s}>{s}</SelectItem>))}
                   </SelectContent>
                 </Select>
@@ -428,23 +428,23 @@ const AddPole = () => {
               <div className="space-y-2">
                 <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Size Type</Label>
                 <Select value={formData.pole_size_type} onValueChange={(v) => handleSelectChange("pole_size_type", v)}>
-                  <SelectTrigger className="h-12 sm:h-10 bg-black border-zinc-700 text-white" data-testid="pole-size-type-select">
+                  <SelectTrigger className="h-12 sm:h-10 bg-white border-zinc-300 text-zinc-900" data-testid="pole-size-type-select">
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
-                  <SelectContent className="bg-zinc-900 border-zinc-700">
-                    <SelectItem value="Actual" className="text-green-400">Actual</SelectItem>
-                    <SelectItem value="Estimate" className="text-yellow-400">Estimate</SelectItem>
-                    <SelectItem value="Proposed" className="text-blue-400">Proposed</SelectItem>
+                  <SelectContent className="bg-zinc-50 border-zinc-300">
+                    <SelectItem value="Actual" className="text-green-700">Actual</SelectItem>
+                    <SelectItem value="Estimate" className="text-yellow-700">Estimate</SelectItem>
+                    <SelectItem value="Proposed" className="text-blue-600">Proposed</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
                 <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Type of Pole</Label>
                 <Select value={formData.pole_type} onValueChange={(v) => handleSelectChange("pole_type", v)}>
-                  <SelectTrigger className="h-12 sm:h-10 bg-black border-zinc-700 text-white" data-testid="pole-type-select">
+                  <SelectTrigger className="h-12 sm:h-10 bg-white border-zinc-300 text-zinc-900" data-testid="pole-type-select">
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
-                  <SelectContent className="bg-zinc-900 border-zinc-700">
+                  <SelectContent className="bg-zinc-50 border-zinc-300">
                     {options.pole_types.map((t) => (<SelectItem key={t} value={t}>{t}</SelectItem>))}
                   </SelectContent>
                 </Select>
@@ -452,13 +452,13 @@ const AddPole = () => {
               <div className="space-y-2">
                 <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Condition *</Label>
                 <Select value={formData.condition} onValueChange={(v) => handleSelectChange("condition", v)}>
-                  <SelectTrigger className="h-12 sm:h-10 bg-black border-zinc-700 text-white" data-testid="condition-select">
+                  <SelectTrigger className="h-12 sm:h-10 bg-white border-zinc-300 text-zinc-900" data-testid="condition-select">
                     <SelectValue placeholder="Select condition" />
                   </SelectTrigger>
-                  <SelectContent className="bg-zinc-900 border-zinc-700">
-                    <SelectItem value="Excellent" className="text-green-400">Excellent</SelectItem>
-                    <SelectItem value="Good" className="text-yellow-400">Good</SelectItem>
-                    <SelectItem value="Bad" className="text-red-400">Bad</SelectItem>
+                  <SelectContent className="bg-zinc-50 border-zinc-300">
+                    <SelectItem value="Excellent" className="text-green-700">Excellent</SelectItem>
+                    <SelectItem value="Good" className="text-yellow-700">Good</SelectItem>
+                    <SelectItem value="Bad" className="text-red-600">Bad</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -467,21 +467,21 @@ const AddPole = () => {
 
           {/* Spans - 4 Rows */}
           <div className="industrial-card p-4 sm:p-5">
-            <h2 className="font-heading text-base sm:text-lg font-bold text-white mb-3 sm:mb-4 flex items-center gap-2">
+            <h2 className="font-heading text-base sm:text-lg font-bold text-zinc-900 mb-3 sm:mb-4 flex items-center gap-2">
               <div className="w-1 h-5 bg-indigo-500"></div>
               Spans
             </h2>
             <div className="space-y-3">
               {[1, 2, 3, 4].map((num) => (
-                <div key={num} className="bg-zinc-800/50 p-3 border border-zinc-700">
+                <div key={num} className="bg-zinc-50 p-3 border border-zinc-300">
                   <div className="flex items-center gap-4">
-                    <span className="text-sm font-mono text-indigo-400 w-6">{num}</span>
+                    <span className="text-sm font-mono text-indigo-600 w-6">{num}</span>
                     <div className="grid grid-cols-3 gap-3 flex-1">
                       <div className="space-y-1">
                         <Label className="text-xs font-mono text-zinc-500">Direction</Label>
                         <Select value={formData[`span${num}_direction`]} onValueChange={(v) => handleSelectChange(`span${num}_direction`, v)}>
-                          <SelectTrigger className="h-9 bg-black border-zinc-700 text-white text-sm"><SelectValue placeholder="Dir" /></SelectTrigger>
-                          <SelectContent className="bg-zinc-900 border-zinc-700">
+                          <SelectTrigger className="h-9 bg-white border-zinc-300 text-zinc-900 text-sm"><SelectValue placeholder="Dir" /></SelectTrigger>
+                          <SelectContent className="bg-zinc-50 border-zinc-300">
                             {options.span_directions.map((d) => (<SelectItem key={d} value={d}>{d}</SelectItem>))}
                           </SelectContent>
                         </Select>
@@ -490,8 +490,8 @@ const AddPole = () => {
                       <div className="space-y-1">
                         <Label className="text-xs font-mono text-zinc-500">Owner</Label>
                         <Select value={formData[`span${num}_owner`]} onValueChange={(v) => handleSelectChange(`span${num}_owner`, v)}>
-                          <SelectTrigger className="h-9 bg-black border-zinc-700 text-white text-sm"><SelectValue placeholder="Owner" /></SelectTrigger>
-                          <SelectContent className="bg-zinc-900 border-zinc-700">
+                          <SelectTrigger className="h-9 bg-white border-zinc-300 text-zinc-900 text-sm"><SelectValue placeholder="Owner" /></SelectTrigger>
+                          <SelectContent className="bg-zinc-50 border-zinc-300">
                             {options.span_owners.map((o) => (<SelectItem key={o} value={o}>{o}</SelectItem>))}
                           </SelectContent>
                         </Select>
@@ -505,7 +505,7 @@ const AddPole = () => {
 
           {/* GPS & Map */}
           <div className="industrial-card p-4 sm:p-5">
-            <h2 className="font-heading text-base sm:text-lg font-bold text-white mb-3 sm:mb-4 flex items-center gap-2">
+            <h2 className="font-heading text-base sm:text-lg font-bold text-zinc-900 mb-3 sm:mb-4 flex items-center gap-2">
               <div className="w-1 h-5 bg-emerald-500"></div>
               GPS Location
             </h2>
@@ -520,7 +520,7 @@ const AddPole = () => {
                     onChange={(e) => setAddressSearch(e.target.value)}
                     onKeyDown={handleAddressKeyDown}
                     placeholder="Enter address, city, or landmark..." 
-                    className="h-10 bg-black border-zinc-700 text-white flex-1" 
+                    className="h-10 bg-white border-zinc-300 text-zinc-900 flex-1" 
                     data-testid="address-search-input"
                   />
                   <Button 
@@ -541,20 +541,20 @@ const AddPole = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Latitude</Label>
-                      <Input type="text" name="latitude" value={formData.latitude} onChange={handleInputChange} placeholder="29.7604" className="h-10 bg-black border-zinc-700 text-white font-mono" data-testid="latitude-input" />
+                      <Input type="text" name="latitude" value={formData.latitude} onChange={handleInputChange} placeholder="29.7604" className="h-10 bg-white border-zinc-300 text-zinc-900 font-mono" data-testid="latitude-input" />
                     </div>
                     <div className="space-y-2">
                       <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Longitude</Label>
-                      <Input type="text" name="longitude" value={formData.longitude} onChange={handleInputChange} placeholder="-95.3698" className="h-10 bg-black border-zinc-700 text-white font-mono" data-testid="longitude-input" />
+                      <Input type="text" name="longitude" value={formData.longitude} onChange={handleInputChange} placeholder="-95.3698" className="h-10 bg-white border-zinc-300 text-zinc-900 font-mono" data-testid="longitude-input" />
                     </div>
                   </div>
-                  <Button type="button" onClick={getGPSLocation} disabled={gpsLoading} className="w-full h-10 bg-zinc-800 hover:bg-zinc-700 text-white border border-zinc-700" data-testid="get-gps-btn">
+                  <Button type="button" onClick={getGPSLocation} disabled={gpsLoading} className="w-full h-10 bg-zinc-100 hover:bg-zinc-200 text-zinc-900 border border-zinc-300" data-testid="get-gps-btn">
                     {gpsLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <MapPin className="w-4 h-4 mr-2" />}
                     Get Current Location
                   </Button>
                   <p className="text-xs text-zinc-500">Click the map to drop a pin, or drag the pin to fine-tune its position</p>
                 </div>
-                <div className="h-72 sm:h-80 border border-zinc-700 overflow-hidden relative">
+                <div className="h-72 sm:h-80 border border-zinc-300 overflow-hidden relative">
                   <MapContainer center={mapCenter} zoom={18} minZoom={3} maxZoom={22} scrollWheelZoom={true} style={{ height: "100%", width: "100%" }} className="z-0">
                     <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" attribution='&copy; Esri' maxNativeZoom={19} maxZoom={22} />
                     <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}" attribution='' maxNativeZoom={19} maxZoom={22} />
@@ -576,7 +576,7 @@ const AddPole = () => {
 
           {/* Birthmark & MGNV */}
           <div className="industrial-card p-4 sm:p-5">
-            <h2 className="font-heading text-base sm:text-lg font-bold text-white mb-3 sm:mb-4 flex items-center gap-2">
+            <h2 className="font-heading text-base sm:text-lg font-bold text-zinc-900 mb-3 sm:mb-4 flex items-center gap-2">
               <div className="w-1 h-5 bg-purple-500"></div>
               Birthmark & MGNV
             </h2>
@@ -584,7 +584,7 @@ const AddPole = () => {
               <div className="flex flex-col sm:flex-row items-start gap-6">
                 <div className="flex items-center gap-3">
                   <Switch checked={formData.has_birthmark} onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, has_birthmark: checked, birthmark_photo: checked ? prev.birthmark_photo : "" }))} data-testid="has-birthmark-switch" />
-                  <Label className="text-sm text-zinc-300">{formData.has_birthmark ? "Has Birthmark" : "No Birthmark"}</Label>
+                  <Label className="text-sm text-zinc-700">{formData.has_birthmark ? "Has Birthmark" : "No Birthmark"}</Label>
                 </div>
                 {formData.has_birthmark && (
                   <div className="flex-1 w-full sm:w-auto">
@@ -592,21 +592,21 @@ const AddPole = () => {
                   </div>
                 )}
               </div>
-              <div className="pt-4 border-t border-zinc-700">
-                <h3 className="text-sm font-mono text-cyan-400 mb-3">MGNV</h3>
+              <div className="pt-4 border-t border-zinc-300">
+                <h3 className="text-sm font-mono text-cyan-700 mb-3">MGNV</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">MGNV Present</Label>
                     <Select value={formData.mgnv} onValueChange={(v) => handleSelectChange("mgnv", v)}>
-                      <SelectTrigger className="h-10 bg-black border-zinc-700 text-white" data-testid="mgnv-select"><SelectValue placeholder="Yes / No" /></SelectTrigger>
-                      <SelectContent className="bg-zinc-900 border-zinc-700"><SelectItem value="Yes">Yes</SelectItem><SelectItem value="No">No</SelectItem></SelectContent>
+                      <SelectTrigger className="h-10 bg-white border-zinc-300 text-zinc-900" data-testid="mgnv-select"><SelectValue placeholder="Yes / No" /></SelectTrigger>
+                      <SelectContent className="bg-zinc-50 border-zinc-300"><SelectItem value="Yes">Yes</SelectItem><SelectItem value="No">No</SelectItem></SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Condition</Label>
                     <Select value={formData.mgnv_condition} onValueChange={(v) => handleSelectChange("mgnv_condition", v)}>
-                      <SelectTrigger className="h-10 bg-black border-zinc-700 text-white" data-testid="mgnv-condition-select"><SelectValue placeholder="Good / Broken" /></SelectTrigger>
-                      <SelectContent className="bg-zinc-900 border-zinc-700"><SelectItem value="Good" className="text-green-400">Good</SelectItem><SelectItem value="Broken" className="text-red-400">Broken</SelectItem></SelectContent>
+                      <SelectTrigger className="h-10 bg-white border-zinc-300 text-zinc-900" data-testid="mgnv-condition-select"><SelectValue placeholder="Good / Broken" /></SelectTrigger>
+                      <SelectContent className="bg-zinc-50 border-zinc-300"><SelectItem value="Good" className="text-green-700">Good</SelectItem><SelectItem value="Broken" className="text-red-600">Broken</SelectItem></SelectContent>
                     </Select>
                   </div>
                   <PhotoUpload label="MGNV Photo" value={formData.mgnv_photo} onChange={(v) => handlePhotoChange("mgnv_photo", v)} testId="mgnv" />
@@ -617,7 +617,7 @@ const AddPole = () => {
 
           {/* OCALC Photos */}
           <div className="industrial-card p-4 sm:p-5">
-            <h2 className="font-heading text-base sm:text-lg font-bold text-white mb-3 sm:mb-4 flex items-center gap-2">
+            <h2 className="font-heading text-base sm:text-lg font-bold text-zinc-900 mb-3 sm:mb-4 flex items-center gap-2">
               <div className="w-1 h-5 bg-blue-500"></div>
               OCALC Photos
             </h2>
@@ -631,7 +631,7 @@ const AddPole = () => {
           {/* Down Guys - Dynamic Rows */}
           <div className="industrial-card p-4 sm:p-5">
             <div className="flex items-center justify-between mb-3 sm:mb-4">
-              <h2 className="font-heading text-base sm:text-lg font-bold text-white flex items-center gap-2">
+              <h2 className="font-heading text-base sm:text-lg font-bold text-zinc-900 flex items-center gap-2">
                 <div className="w-1 h-5 bg-yellow-500"></div>
                 Down Guys
               </h2>
@@ -641,39 +641,39 @@ const AddPole = () => {
             </div>
             <div className="space-y-3">
               {downGuys.map((guy, index) => (
-                <div key={guy._key} className="bg-zinc-800/50 p-3 border border-zinc-700">
+                <div key={guy._key} className="bg-zinc-50 p-3 border border-zinc-300">
                   <div className="flex items-center gap-2 sm:gap-4">
-                    <span className="text-sm font-mono text-yellow-400 w-6">{index + 1}</span>
+                    <span className="text-sm font-mono text-yellow-700 w-6">{index + 1}</span>
                     <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3 flex-1">
                       <div className="space-y-1">
                         <Label className="text-xs font-mono text-zinc-500">Size</Label>
                         <Select value={guy.size} onValueChange={(v) => updateDownGuy(index, "size", v)}>
-                          <SelectTrigger className="h-9 bg-black border-zinc-700 text-white text-sm"><SelectValue placeholder="Size" /></SelectTrigger>
-                          <SelectContent className="bg-zinc-900 border-zinc-700">{options.down_guy_sizes.map((s) => (<SelectItem key={s} value={s}>{s}</SelectItem>))}</SelectContent>
+                          <SelectTrigger className="h-9 bg-white border-zinc-300 text-zinc-900 text-sm"><SelectValue placeholder="Size" /></SelectTrigger>
+                          <SelectContent className="bg-zinc-50 border-zinc-300">{options.down_guy_sizes.map((s) => (<SelectItem key={s} value={s}>{s}</SelectItem>))}</SelectContent>
                         </Select>
                       </div>
                       <div className="space-y-1">
                         <Label className="text-xs font-mono text-zinc-500">Direction</Label>
                         <Select value={guy.direction} onValueChange={(v) => updateDownGuy(index, "direction", v)}>
-                          <SelectTrigger className="h-9 bg-black border-zinc-700 text-white text-sm"><SelectValue placeholder="Dir" /></SelectTrigger>
-                          <SelectContent className="bg-zinc-900 border-zinc-700">{options.down_guy_directions.map((d) => (<SelectItem key={d} value={d}>{d}</SelectItem>))}</SelectContent>
+                          <SelectTrigger className="h-9 bg-white border-zinc-300 text-zinc-900 text-sm"><SelectValue placeholder="Dir" /></SelectTrigger>
+                          <SelectContent className="bg-zinc-50 border-zinc-300">{options.down_guy_directions.map((d) => (<SelectItem key={d} value={d}>{d}</SelectItem>))}</SelectContent>
                         </Select>
                       </div>
                       <div className="space-y-1">
                         <Label className="text-xs font-mono text-zinc-500">Owner</Label>
                         <Select value={guy.owner} onValueChange={(v) => updateDownGuy(index, "owner", v)}>
-                          <SelectTrigger className="h-9 bg-black border-zinc-700 text-white text-sm"><SelectValue placeholder="Owner" /></SelectTrigger>
-                          <SelectContent className="bg-zinc-900 border-zinc-700">{options.down_guy_owners.map((o) => (<SelectItem key={o} value={o}>{o}</SelectItem>))}</SelectContent>
+                          <SelectTrigger className="h-9 bg-white border-zinc-300 text-zinc-900 text-sm"><SelectValue placeholder="Owner" /></SelectTrigger>
+                          <SelectContent className="bg-zinc-50 border-zinc-300">{options.down_guy_owners.map((o) => (<SelectItem key={o} value={o}>{o}</SelectItem>))}</SelectContent>
                         </Select>
                       </div>
                       <HeightInput value={guy.height} onChange={(v) => updateDownGuy(index, "height", v)} label="Height" testId={`downguy${index}-height`} />
                       <div className="space-y-1">
                         <Label className="text-xs font-mono text-zinc-500">Lead</Label>
-                        <Input value={guy.lead} onChange={(e) => updateDownGuy(index, "lead", e.target.value)} className="h-9 bg-black border-zinc-700 text-white text-sm" />
+                        <Input value={guy.lead} onChange={(e) => updateDownGuy(index, "lead", e.target.value)} className="h-9 bg-white border-zinc-300 text-zinc-900 text-sm" />
                       </div>
                     </div>
                     {downGuys.length > 1 && (
-                      <Button type="button" onClick={() => removeDownGuy(index)} size="icon" variant="ghost" className="text-red-400 hover:text-red-300 hover:bg-red-500/10 h-8 w-8">
+                      <Button type="button" onClick={() => removeDownGuy(index)} size="icon" variant="ghost" className="text-red-600 hover:text-red-300 hover:bg-red-500/10 h-8 w-8">
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     )}
@@ -683,41 +683,41 @@ const AddPole = () => {
             </div>
 
             {/* Knuckles - Dynamic Rows */}
-            <div className="mt-4 pt-4 border-t border-zinc-700">
+            <div className="mt-4 pt-4 border-t border-zinc-300">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-mono text-orange-400">KNUCKLES</h3>
+                <h3 className="text-sm font-mono text-orange-600">KNUCKLES</h3>
                 <Button type="button" onClick={addKnuckle} size="sm" className="bg-orange-600 hover:bg-orange-700 text-white">
                   <Plus className="w-4 h-4 mr-1" /> Add Row
                 </Button>
               </div>
               <div className="space-y-3">
                 {knuckles.map((knuckle, index) => (
-                  <div key={knuckle._key} className="bg-zinc-800/50 p-3 border border-zinc-700">
+                  <div key={knuckle._key} className="bg-zinc-50 p-3 border border-zinc-300">
                     <div className="flex items-center gap-2 sm:gap-4">
-                      <span className="text-sm font-mono text-orange-400 w-6">{index + 1}</span>
+                      <span className="text-sm font-mono text-orange-600 w-6">{index + 1}</span>
                       <div className="grid grid-cols-3 gap-2 sm:gap-3 flex-1 items-end">
                         <div className="space-y-1">
                           <Label className="text-xs font-mono text-zinc-500">Knuckles Used</Label>
                           <Select value={knuckle.count} onValueChange={(v) => updateKnuckle(index, "count", v)}>
-                            <SelectTrigger className="h-9 bg-black border-zinc-700 text-white text-sm"><SelectValue placeholder="Count" /></SelectTrigger>
-                            <SelectContent className="bg-zinc-900 border-zinc-700">{options.knuckle_options.map((k) => (<SelectItem key={k} value={k}>{k}</SelectItem>))}</SelectContent>
+                            <SelectTrigger className="h-9 bg-white border-zinc-300 text-zinc-900 text-sm"><SelectValue placeholder="Count" /></SelectTrigger>
+                            <SelectContent className="bg-zinc-50 border-zinc-300">{options.knuckle_options.map((k) => (<SelectItem key={k} value={k}>{k}</SelectItem>))}</SelectContent>
                           </Select>
                         </div>
                         <div className="space-y-1">
                           <Label className="text-xs font-mono text-zinc-500">Condition</Label>
                           <Select value={knuckle.condition} onValueChange={(v) => updateKnuckle(index, "condition", v)}>
-                            <SelectTrigger className="h-9 bg-black border-zinc-700 text-white text-sm"><SelectValue placeholder="Condition" /></SelectTrigger>
-                            <SelectContent className="bg-zinc-900 border-zinc-700">
-                              <SelectItem value="Excellent" className="text-green-400">Excellent</SelectItem>
-                              <SelectItem value="Good" className="text-yellow-400">Good</SelectItem>
-                              <SelectItem value="Bad" className="text-red-400">Bad</SelectItem>
+                            <SelectTrigger className="h-9 bg-white border-zinc-300 text-zinc-900 text-sm"><SelectValue placeholder="Condition" /></SelectTrigger>
+                            <SelectContent className="bg-zinc-50 border-zinc-300">
+                              <SelectItem value="Excellent" className="text-green-700">Excellent</SelectItem>
+                              <SelectItem value="Good" className="text-yellow-700">Good</SelectItem>
+                              <SelectItem value="Bad" className="text-red-600">Bad</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
                         <PhotoUpload label="Photo" value={knuckle.photo} onChange={(v) => updateKnuckle(index, "photo", v)} testId={`knuckle${index}`} compact />
                       </div>
                       {knuckles.length > 1 && (
-                        <Button type="button" onClick={() => removeKnuckle(index)} size="icon" variant="ghost" className="text-red-400 hover:text-red-300 hover:bg-red-500/10 h-8 w-8">
+                        <Button type="button" onClick={() => removeKnuckle(index)} size="icon" variant="ghost" className="text-red-600 hover:text-red-300 hover:bg-red-500/10 h-8 w-8">
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       )}
@@ -731,7 +731,7 @@ const AddPole = () => {
           {/* HOA - Dynamic Rows + Pole Owner */}
           <div className="industrial-card p-4 sm:p-5">
             <div className="flex items-center justify-between mb-3 sm:mb-4">
-              <h2 className="font-heading text-base sm:text-lg font-bold text-white flex items-center gap-2">
+              <h2 className="font-heading text-base sm:text-lg font-bold text-zinc-900 flex items-center gap-2">
                 <div className="w-1 h-5 bg-green-500"></div>
                 HOA
               </h2>
@@ -741,28 +741,28 @@ const AddPole = () => {
             </div>
             <div className="space-y-3">
               {attachments.map((att, index) => (
-                <div key={att._key} className="bg-zinc-800/50 p-3 border border-zinc-700">
+                <div key={att._key} className="bg-zinc-50 p-3 border border-zinc-300">
                   <div className="flex items-center gap-2 sm:gap-4">
-                    <span className="text-sm font-mono text-green-400 w-6">{index + 1}</span>
+                    <span className="text-sm font-mono text-green-700 w-6">{index + 1}</span>
                     <div className="grid grid-cols-4 gap-2 sm:gap-3 flex-1 items-end">
                       <HeightInput value={att.height} onChange={(v) => updateAttachment(index, "height", v)} label="Height" testId={`attachment${index}-height`} />
                       <div className="space-y-1">
                         <Label className="text-xs font-mono text-zinc-500">Owner</Label>
                         <Select value={att.owner} onValueChange={(v) => updateAttachment(index, "owner", v)}>
-                          <SelectTrigger className="h-9 bg-black border-zinc-700 text-white text-sm"><SelectValue placeholder="Owner" /></SelectTrigger>
-                          <SelectContent className="bg-zinc-900 border-zinc-700">
+                          <SelectTrigger className="h-9 bg-white border-zinc-300 text-zinc-900 text-sm"><SelectValue placeholder="Owner" /></SelectTrigger>
+                          <SelectContent className="bg-zinc-50 border-zinc-300">
                             {options.attachment_owners.map((o) => (<SelectItem key={o} value={o}>{o}</SelectItem>))}
                           </SelectContent>
                         </Select>
                       </div>
                       <div className="space-y-1">
                         <Label className="text-xs font-mono text-zinc-500">Notes</Label>
-                        <Input type="text" value={att.notes || ""} onChange={(e) => updateAttachment(index, "notes", e.target.value)} placeholder="Enter notes" className="h-9 bg-black border-zinc-700 text-white text-sm" />
+                        <Input type="text" value={att.notes || ""} onChange={(e) => updateAttachment(index, "notes", e.target.value)} placeholder="Enter notes" className="h-9 bg-white border-zinc-300 text-zinc-900 text-sm" />
                       </div>
                       <PhotoUpload label="Photo" value={att.photo} onChange={(v) => updateAttachment(index, "photo", v)} testId={`attachment${index}`} compact />
                     </div>
                     {attachments.length > 1 && (
-                      <Button type="button" onClick={() => removeAttachment(index)} size="icon" variant="ghost" className="text-red-400 hover:text-red-300 hover:bg-red-500/10 h-8 w-8">
+                      <Button type="button" onClick={() => removeAttachment(index)} size="icon" variant="ghost" className="text-red-600 hover:text-red-300 hover:bg-red-500/10 h-8 w-8">
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     )}
@@ -771,17 +771,17 @@ const AddPole = () => {
               ))}
 
               {/* Pole Owner, Pole Terminal and Risers */}
-              <div className="mt-4 pt-4 border-t border-zinc-700">
+              <div className="mt-4 pt-4 border-t border-zinc-300">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Pole Owner</Label>
                     <Select value={formData.pole_owner} onValueChange={(v) => handleSelectChange("pole_owner", v)}>
-                      <SelectTrigger className={`h-10 bg-black border-zinc-700 ${ownerTriggerClass(formData.pole_owner)}`} data-testid="pole-owner-select">
+                      <SelectTrigger className={`h-10 bg-white border-zinc-300 ${ownerTriggerClass(formData.pole_owner)}`} data-testid="pole-owner-select">
                         <SelectValue placeholder="Select owner" />
                       </SelectTrigger>
-                      <SelectContent className="bg-zinc-900 border-zinc-700">
+                      <SelectContent className="bg-zinc-50 border-zinc-300">
                         {options.pole_owners.map((o) => (
-                          <SelectItem key={o} value={o} className={o === "Foreign Owned" ? "text-red-500" : "text-orange-500"}>{o}</SelectItem>
+                          <SelectItem key={o} value={o} className={o === "Foreign Owned" ? "text-red-600" : "text-orange-600"}>{o}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -789,10 +789,10 @@ const AddPole = () => {
                   <div className="space-y-2">
                     <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Pole Terminal</Label>
                     <Select value={formData.pole_terminal} onValueChange={(v) => handleSelectChange("pole_terminal", v)}>
-                      <SelectTrigger className="h-10 bg-black border-zinc-700 text-white" data-testid="pole-terminal-select">
+                      <SelectTrigger className="h-10 bg-white border-zinc-300 text-zinc-900" data-testid="pole-terminal-select">
                         <SelectValue placeholder="Yes / No" />
                       </SelectTrigger>
-                      <SelectContent className="bg-zinc-900 border-zinc-700">
+                      <SelectContent className="bg-zinc-50 border-zinc-300">
                         <SelectItem value="Yes">Yes</SelectItem>
                         <SelectItem value="No">No</SelectItem>
                       </SelectContent>
@@ -801,10 +801,10 @@ const AddPole = () => {
                   <div className="space-y-2">
                     <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Risers</Label>
                     <Select value={formData.risers} onValueChange={(v) => handleSelectChange("risers", v)}>
-                      <SelectTrigger className="h-10 bg-black border-zinc-700 text-white" data-testid="risers-select">
+                      <SelectTrigger className="h-10 bg-white border-zinc-300 text-zinc-900" data-testid="risers-select">
                         <SelectValue placeholder="Select #" />
                       </SelectTrigger>
-                      <SelectContent className="bg-zinc-900 border-zinc-700">
+                      <SelectContent className="bg-zinc-50 border-zinc-300">
                         {options.riser_options.map((r) => (<SelectItem key={r} value={r}>{r}</SelectItem>))}
                       </SelectContent>
                     </Select>
@@ -816,17 +816,17 @@ const AddPole = () => {
 
           {/* Notes */}
           <div className="industrial-card p-4 sm:p-5">
-            <h2 className="font-heading text-base sm:text-lg font-bold text-white mb-3 sm:mb-4 flex items-center gap-2">
+            <h2 className="font-heading text-base sm:text-lg font-bold text-zinc-900 mb-3 sm:mb-4 flex items-center gap-2">
               <div className="w-1 h-5 bg-zinc-500"></div>
               Notes
             </h2>
-            <Textarea name="notes" value={formData.notes} onChange={handleInputChange} placeholder="Additional notes..." rows={3} className="bg-black border-zinc-700 text-white resize-none" data-testid="notes-input" />
+            <Textarea name="notes" value={formData.notes} onChange={handleInputChange} placeholder="Additional notes..." rows={3} className="bg-white border-zinc-300 text-zinc-900 resize-none" data-testid="notes-input" />
           </div>
 
           {/* Submit */}
           <div className="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4 pt-2">
             <Link to={backUrl} className="w-full sm:w-auto">
-              <Button type="button" variant="outline" className="w-full sm:w-auto h-12 sm:h-10 bg-zinc-800 border-zinc-700 hover:bg-zinc-700 text-white" data-testid="cancel-btn">
+              <Button type="button" variant="outline" className="w-full sm:w-auto h-12 sm:h-10 bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900" data-testid="cancel-btn">
                 Cancel
               </Button>
             </Link>

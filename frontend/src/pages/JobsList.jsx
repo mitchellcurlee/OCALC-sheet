@@ -125,7 +125,7 @@ const JobsList = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-industrial-bg flex items-center justify-center">
-        <Loader2 className="w-12 h-12 text-red-500 animate-spin" />
+        <Loader2 className="w-12 h-12 text-red-600 animate-spin" />
       </div>
     );
   }
@@ -133,7 +133,7 @@ const JobsList = () => {
   return (
     <div className="min-h-screen bg-industrial-bg" data-testid="jobs-list">
       {/* Header */}
-      <header className="border-b border-zinc-800 bg-zinc-900/50 backdrop-blur-sm sticky top-0 z-40">
+      <header className="border-b border-zinc-200 bg-white backdrop-blur-sm sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
             <div className="flex items-center gap-2 sm:gap-3">
@@ -141,7 +141,7 @@ const JobsList = () => {
                 <Zap className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               </div>
               <div>
-                <h1 className="font-heading text-lg sm:text-2xl font-black tracking-tight uppercase text-white">
+                <h1 className="font-heading text-lg sm:text-2xl font-black tracking-tight uppercase text-zinc-900">
                   Pole Data Sheet
                 </h1>
                 <p className="text-xs text-zinc-500 font-mono tracking-wider hidden sm:block">
@@ -158,7 +158,7 @@ const JobsList = () => {
                       ADMIN
                     </span>
                   )}
-                  <span className="text-xs text-zinc-400 font-mono">
+                  <span className="text-xs text-zinc-600 font-mono">
                     {user.name || user.email}
                   </span>
                 </div>
@@ -175,7 +175,7 @@ const JobsList = () => {
                 onClick={logout}
                 variant="ghost"
                 size="icon"
-                className="h-11 w-11 sm:h-10 sm:w-10 text-zinc-400 hover:text-white hover:bg-zinc-800"
+                className="h-11 w-11 sm:h-10 sm:w-10 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100"
                 title="Logout"
               >
                 <LogOut className="w-4 h-4" />
@@ -189,8 +189,8 @@ const JobsList = () => {
         {jobs.length === 0 ? (
           <div className="industrial-card p-12 text-center">
             <Folder className="w-16 h-16 text-zinc-600 mx-auto mb-4" />
-            <h2 className="text-xl font-bold text-white mb-2">No Jobs Yet</h2>
-            <p className="text-zinc-400 mb-6">Create your first job to start collecting pole data</p>
+            <h2 className="text-xl font-bold text-zinc-900 mb-2">No Jobs Yet</h2>
+            <p className="text-zinc-600 mb-6">Create your first job to start collecting pole data</p>
             <Button
               onClick={() => setShowCreateDialog(true)}
               className="bg-red-600 hover:bg-red-700 text-white"
@@ -211,10 +211,10 @@ const JobsList = () => {
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-red-600/20 border border-red-500/30 flex items-center justify-center">
-                      <Folder className="w-5 h-5 text-red-500" />
+                      <Folder className="w-5 h-5 text-red-600" />
                     </div>
                     <div>
-                      <h3 className="font-heading text-lg font-bold text-white group-hover:text-red-400 transition-colors">
+                      <h3 className="font-heading text-lg font-bold text-zinc-900 group-hover:text-red-600 transition-colors">
                         {job.name}
                       </h3>
                       {job.location && (
@@ -224,7 +224,7 @@ const JobsList = () => {
                         </div>
                       )}
                       {isAdmin && job.user_email && (
-                        <div className="flex items-center gap-1 text-xs text-blue-400 mt-1">
+                        <div className="flex items-center gap-1 text-xs text-blue-600 mt-1">
                           <User className="w-3 h-3" />
                           {job.user_email}
                         </div>
@@ -235,7 +235,7 @@ const JobsList = () => {
                     <Button
                       size="icon"
                       variant="ghost"
-                      className="h-8 w-8 text-zinc-400 hover:text-white"
+                      className="h-8 w-8 text-zinc-600 hover:text-zinc-900"
                       onClick={(e) => openEditDialog(job, e)}
                     >
                       <Pencil className="w-4 h-4" />
@@ -243,7 +243,7 @@ const JobsList = () => {
                     <Button
                       size="icon"
                       variant="ghost"
-                      className="h-8 w-8 text-zinc-400 hover:text-red-400"
+                      className="h-8 w-8 text-zinc-600 hover:text-red-600"
                       onClick={(e) => { e.stopPropagation(); setDeleteId(job.id); }}
                     >
                       <Trash2 className="w-4 h-4" />
@@ -252,13 +252,13 @@ const JobsList = () => {
                 </div>
                 
                 {job.description && (
-                  <p className="text-sm text-zinc-400 mb-3 line-clamp-2">{job.description}</p>
+                  <p className="text-sm text-zinc-600 mb-3 line-clamp-2">{job.description}</p>
                 )}
                 
-                <div className="flex items-center justify-between pt-3 border-t border-zinc-800">
+                <div className="flex items-center justify-between pt-3 border-t border-zinc-200">
                   <div className="flex items-center gap-2 text-sm">
                     <Radio className="w-4 h-4 text-yellow-500" />
-                    <span className="text-zinc-300 font-mono">{job.pole_count}</span>
+                    <span className="text-zinc-700 font-mono">{job.pole_count}</span>
                     <span className="text-zinc-500">poles</span>
                   </div>
                   <div className="flex items-center gap-1 text-xs text-zinc-500">
@@ -274,9 +274,9 @@ const JobsList = () => {
 
       {/* Create Job Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="bg-zinc-900 border-zinc-800">
+        <DialogContent className="bg-zinc-50 border-zinc-200">
           <DialogHeader>
-            <DialogTitle className="text-white">Create New Job</DialogTitle>
+            <DialogTitle className="text-zinc-900">Create New Job</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
@@ -285,7 +285,7 @@ const JobsList = () => {
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 placeholder="e.g., Main Street Project"
-                className="bg-black border-zinc-700 text-white"
+                className="bg-white border-zinc-300 text-zinc-900"
               />
             </div>
             <div className="space-y-2">
@@ -294,7 +294,7 @@ const JobsList = () => {
                 value={formData.location}
                 onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                 placeholder="e.g., Dallas, TX"
-                className="bg-black border-zinc-700 text-white"
+                className="bg-white border-zinc-300 text-zinc-900"
               />
             </div>
             <div className="space-y-2">
@@ -303,12 +303,12 @@ const JobsList = () => {
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 placeholder="Optional description..."
-                className="bg-black border-zinc-700 text-white"
+                className="bg-white border-zinc-300 text-zinc-900"
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCreateDialog(false)} className="bg-zinc-800 border-zinc-700 text-white">
+            <Button variant="outline" onClick={() => setShowCreateDialog(false)} className="bg-zinc-100 border-zinc-300 text-zinc-900">
               Cancel
             </Button>
             <Button onClick={handleCreate} disabled={saving} className="bg-red-600 hover:bg-red-700 text-white">
@@ -320,9 +320,9 @@ const JobsList = () => {
 
       {/* Edit Job Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="bg-zinc-900 border-zinc-800">
+        <DialogContent className="bg-zinc-50 border-zinc-200">
           <DialogHeader>
-            <DialogTitle className="text-white">Edit Job</DialogTitle>
+            <DialogTitle className="text-zinc-900">Edit Job</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
@@ -330,7 +330,7 @@ const JobsList = () => {
               <Input
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="bg-black border-zinc-700 text-white"
+                className="bg-white border-zinc-300 text-zinc-900"
               />
             </div>
             <div className="space-y-2">
@@ -338,7 +338,7 @@ const JobsList = () => {
               <Input
                 value={formData.location}
                 onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                className="bg-black border-zinc-700 text-white"
+                className="bg-white border-zinc-300 text-zinc-900"
               />
             </div>
             <div className="space-y-2">
@@ -346,12 +346,12 @@ const JobsList = () => {
               <Input
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                className="bg-black border-zinc-700 text-white"
+                className="bg-white border-zinc-300 text-zinc-900"
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowEditDialog(false)} className="bg-zinc-800 border-zinc-700 text-white">
+            <Button variant="outline" onClick={() => setShowEditDialog(false)} className="bg-zinc-100 border-zinc-300 text-zinc-900">
               Cancel
             </Button>
             <Button onClick={handleEdit} disabled={saving} className="bg-red-600 hover:bg-red-700 text-white">
@@ -363,15 +363,15 @@ const JobsList = () => {
 
       {/* Delete Confirmation */}
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
-        <AlertDialogContent className="bg-zinc-900 border-zinc-800">
+        <AlertDialogContent className="bg-zinc-50 border-zinc-200">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-white">Delete Job?</AlertDialogTitle>
-            <AlertDialogDescription className="text-zinc-400">
+            <AlertDialogTitle className="text-zinc-900">Delete Job?</AlertDialogTitle>
+            <AlertDialogDescription className="text-zinc-600">
               This will permanently delete this job and ALL poles in it. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="bg-zinc-800 border-zinc-700 text-white">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="bg-zinc-100 border-zinc-300 text-zinc-900">Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700 text-white">
               Delete Job
             </AlertDialogAction>

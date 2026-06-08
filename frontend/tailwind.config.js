@@ -13,10 +13,10 @@ module.exports = {
                 sans: ['Inter', 'sans-serif'],
             },
             colors: {
-                'industrial-bg': '#09090b',
-                'industrial-surface': '#18181b',
-                'power-red': '#ef4444',
-                'telecom-orange': '#f97316',
+                'industrial-bg': '#ffffff',
+                'industrial-surface': '#f4f4f5',
+                'power-red': '#dc2626',
+                'telecom-orange': '#ea580c',
                 background: 'hsl(var(--background))',
                 foreground: 'hsl(var(--foreground))',
                 card: {

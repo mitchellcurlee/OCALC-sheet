@@ -87,7 +87,7 @@ export const PhotoUpload = ({ label, value, onChange, testId, showHeightTool = f
                 className="cursor-pointer"
                 onClick={() => setShowLightbox(true)}
               >
-                <img src={value} alt={label} className="w-20 h-16 object-cover border border-zinc-700 hover:border-red-500 transition-colors" />
+                <img src={value} alt={label} className="w-20 h-16 object-cover border border-zinc-300 hover:border-red-500 transition-colors" />
                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                   <ZoomIn className="w-4 h-4 text-white" />
                 </div>
@@ -117,7 +117,7 @@ export const PhotoUpload = ({ label, value, onChange, testId, showHeightTool = f
                 type="button"
                 disabled={uploading}
                 onClick={() => fileInputRef.current?.click()}
-                className="h-9 px-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 border border-zinc-700"
+                className="h-9 px-2 bg-zinc-100 hover:bg-zinc-200 text-zinc-600 border border-zinc-300"
                 data-testid={`${testId}-upload`}
               >
                 <Upload className="w-4 h-4" />
@@ -127,7 +127,7 @@ export const PhotoUpload = ({ label, value, onChange, testId, showHeightTool = f
         </div>
         {/* Lightbox for compact mode */}
         <Dialog open={showLightbox} onOpenChange={setShowLightbox}>
-          <DialogContent className="bg-zinc-900 border-zinc-800 max-w-4xl max-h-[90vh] p-2">
+          <DialogContent className="bg-zinc-50 border-zinc-200 max-w-4xl max-h-[90vh] p-2">
             <div className="relative">
               <Button
                 variant="ghost"
@@ -188,7 +188,7 @@ export const PhotoUpload = ({ label, value, onChange, testId, showHeightTool = f
                 <img
                   src={value}
                   alt={label}
-                  className="w-full max-w-md h-48 object-cover border-2 border-zinc-700 hover:border-red-500 transition-colors"
+                  className="w-full max-w-md h-48 object-cover border-2 border-zinc-300 hover:border-red-500 transition-colors"
                 />
                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                   <ZoomIn className="w-8 h-8 text-white" />
@@ -209,7 +209,7 @@ export const PhotoUpload = ({ label, value, onChange, testId, showHeightTool = f
               type="button"
               size="sm"
               onClick={() => cameraInputRef.current?.click()}
-              className="h-8 bg-zinc-800 hover:bg-zinc-700 text-white text-xs"
+              className="h-8 bg-zinc-100 hover:bg-zinc-200 text-zinc-900 text-xs"
             >
               <Camera className="w-3 h-3 mr-1" />
               Retake
@@ -245,7 +245,7 @@ export const PhotoUpload = ({ label, value, onChange, testId, showHeightTool = f
             type="button"
             disabled={uploading}
             onClick={() => fileInputRef.current?.click()}
-            className="flex-1 h-20 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 border border-zinc-700"
+            className="flex-1 h-20 bg-zinc-100 hover:bg-zinc-200 text-zinc-600 border border-zinc-300"
             data-testid={`${testId}-upload`}
           >
             <div className="flex flex-col items-center gap-1">
@@ -269,7 +269,7 @@ export const PhotoUpload = ({ label, value, onChange, testId, showHeightTool = f
 
       {/* Lightbox Dialog */}
       <Dialog open={showLightbox} onOpenChange={setShowLightbox}>
-        <DialogContent className="bg-zinc-900 border-zinc-800 max-w-4xl max-h-[90vh] p-2">
+        <DialogContent className="bg-zinc-50 border-zinc-200 max-w-4xl max-h-[90vh] p-2">
           <div className="relative">
             <Button
               variant="ghost"
@@ -298,7 +298,7 @@ export const PhotoUpload = ({ label, value, onChange, testId, showHeightTool = f
 const modeBadgeClass = (mode) => {
   if (mode === "reference") return "bg-green-600 text-white";
   if (mode === "measure") return "bg-red-600 text-white";
-  return "bg-zinc-700 text-zinc-400";
+  return "bg-zinc-200 text-zinc-600";
 };
 
 // Height Measurement Tool
@@ -446,19 +446,19 @@ const HeightMeasurementDialog = ({ open, onOpenChange, imageSrc, onHeightMeasure
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-zinc-900 border-zinc-800 max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="bg-zinc-50 border-zinc-200 max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-white font-heading">Height Measurement Tool</DialogTitle>
+          <DialogTitle className="text-zinc-900 font-heading">Height Measurement Tool</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
           {/* Instructions */}
-          <div className="bg-zinc-800 p-3 text-sm space-y-2">
-            <p className="text-zinc-300">
-              <span className="text-green-400 font-bold">Step 1:</span> Set reference height and click two points for a known height (e.g., person = 6ft)
+          <div className="bg-zinc-100 p-3 text-sm space-y-2">
+            <p className="text-zinc-700">
+              <span className="text-green-700 font-bold">Step 1:</span> Set reference height and click two points for a known height (e.g., person = 6ft)
             </p>
-            <p className="text-zinc-300">
-              <span className="text-red-400 font-bold">Step 2:</span> Click two points to measure the attachment height
+            <p className="text-zinc-700">
+              <span className="text-red-600 font-bold">Step 2:</span> Click two points to measure the attachment height
             </p>
           </div>
 
@@ -469,7 +469,7 @@ const HeightMeasurementDialog = ({ open, onOpenChange, imageSrc, onHeightMeasure
               type="number"
               value={referenceHeight}
               onChange={(e) => setReferenceHeight(e.target.value)}
-              className="w-24 h-8 bg-black border-zinc-700 text-white"
+              className="w-24 h-8 bg-white border-zinc-300 text-zinc-900"
               step="0.5"
             />
             <span className={`text-xs font-mono px-2 py-1 rounded ${modeBadgeClass(mode)}`}>
@@ -478,7 +478,7 @@ const HeightMeasurementDialog = ({ open, onOpenChange, imageSrc, onHeightMeasure
           </div>
 
           {/* Canvas */}
-          <div className="border border-zinc-700 overflow-hidden">
+          <div className="border border-zinc-300 overflow-hidden">
             <canvas
               ref={canvasRef}
               onClick={handleCanvasClick}
@@ -490,8 +490,8 @@ const HeightMeasurementDialog = ({ open, onOpenChange, imageSrc, onHeightMeasure
           {/* Result */}
           {measuredHeight && (
             <div className="bg-red-600/20 border border-red-500 p-4 text-center">
-              <p className="text-xs font-mono text-zinc-400">MEASURED HEIGHT</p>
-              <p className="text-4xl font-heading font-black text-red-500">{measuredHeight} ft</p>
+              <p className="text-xs font-mono text-zinc-600">MEASURED HEIGHT</p>
+              <p className="text-4xl font-heading font-black text-red-600">{measuredHeight} ft</p>
             </div>
           )}
 
@@ -500,7 +500,7 @@ const HeightMeasurementDialog = ({ open, onOpenChange, imageSrc, onHeightMeasure
             <Button
               type="button"
               onClick={resetMeasurement}
-              className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white"
+              className="flex-1 bg-zinc-100 hover:bg-zinc-200 text-zinc-900"
             >
               Reset
             </Button>

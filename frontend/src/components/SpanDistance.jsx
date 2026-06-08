@@ -34,7 +34,7 @@ export const SpanDistance = ({ value, onChange, label = "Distance (ft)", testId 
   const handleHundreds = (h) => onChange(combine(h, remainder));
   const handleRemainder = (r) => onChange(combine(hundreds, r));
 
-  const triggerCls = "h-9 bg-black border-zinc-700 text-white text-sm";
+  const triggerCls = "h-9 bg-white border-zinc-300 text-zinc-900 text-sm";
 
   return (
     <div className="space-y-1">
@@ -44,7 +44,7 @@ export const SpanDistance = ({ value, onChange, label = "Distance (ft)", testId 
           <SelectTrigger className={triggerCls} data-testid={testId ? `${testId}-hundreds` : undefined}>
             <SelectValue placeholder="0" />
           </SelectTrigger>
-          <SelectContent className="bg-zinc-900 border-zinc-700 max-h-60">
+          <SelectContent className="bg-zinc-50 border-zinc-300 max-h-60">
             {HUNDREDS_OPTIONS.map((h) => (
               <SelectItem key={h} value={String(h)}>{h}</SelectItem>
             ))}
@@ -54,7 +54,7 @@ export const SpanDistance = ({ value, onChange, label = "Distance (ft)", testId 
           <SelectTrigger className={triggerCls} data-testid={testId ? `${testId}-remainder` : undefined}>
             <SelectValue placeholder="00" />
           </SelectTrigger>
-          <SelectContent className="bg-zinc-900 border-zinc-700 max-h-60">
+          <SelectContent className="bg-zinc-50 border-zinc-300 max-h-60">
             {REMAINDER_OPTIONS.map((r) => (
               <SelectItem key={r} value={String(r)}>{r}</SelectItem>
             ))}

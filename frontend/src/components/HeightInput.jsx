@@ -38,7 +38,7 @@ export const HeightInput = ({ value, onChange, label = "Height", testId, compact
   const handleFeet = (f) => onChange(feetInchesToDecimal(f, inches));
   const handleInches = (i) => onChange(feetInchesToDecimal(feet, i));
 
-  const triggerCls = "h-9 bg-black border-zinc-700 text-white text-sm";
+  const triggerCls = "h-9 bg-white border-zinc-300 text-zinc-900 text-sm";
 
   return (
     <div className="space-y-1">
@@ -48,7 +48,7 @@ export const HeightInput = ({ value, onChange, label = "Height", testId, compact
           <SelectTrigger className={triggerCls} data-testid={testId ? `${testId}-feet` : undefined}>
             <SelectValue placeholder="ft" />
           </SelectTrigger>
-          <SelectContent className="bg-zinc-900 border-zinc-700 max-h-60">
+          <SelectContent className="bg-zinc-50 border-zinc-300 max-h-60">
             {FEET_OPTIONS.map((f) => (
               <SelectItem key={f} value={String(f)}>{f}{"'"}</SelectItem>
             ))}
@@ -58,7 +58,7 @@ export const HeightInput = ({ value, onChange, label = "Height", testId, compact
           <SelectTrigger className={triggerCls} data-testid={testId ? `${testId}-inches` : undefined}>
             <SelectValue placeholder="in" />
           </SelectTrigger>
-          <SelectContent className="bg-zinc-900 border-zinc-700 max-h-60">
+          <SelectContent className="bg-zinc-50 border-zinc-300 max-h-60">
             {INCH_OPTIONS.map((i) => (
               <SelectItem key={i} value={String(i)}>{i}{'"'}</SelectItem>
             ))}
