@@ -73,6 +73,7 @@ Build an app that collects power pole data including: size of the pole, type of 
 - Small tweaks (Jun 9, 2026): pole number box now defaults to "P-" on Add Pole (formData.pole_number); added "No Telco on Pole" to the HOA Owner dropdown (backend ATTACHMENT_OWNERS). Verified via API + UI. Requires redeploy for production.
 - Duplicate pole (Jun 9, 2026): new POST /api/poles/{id}/duplicate copies a pole (new id + timestamps, all other data incl. spans/down_guys/knuckles/attachments/photos copied). Added a Duplicate (Copy icon) action per pole row in JobDetail and a "Duplicate" button on ViewPole; both navigate to Edit the new copy. The copy clears GPS (latitude/longitude=None) and sets pole number to "P-". Verified via curl + UI. Requires redeploy for production.
 - Longitude default (Jun 9, 2026): AddPole longitude box defaults to "-" (US longitudes are negative); EditPole shows "-" when a pole has no longitude (e.g. a freshly duplicated pole). Submit conversion hardened with Number.isFinite so a lone "-" saves as null, not NaN. Verified via UI. Requires redeploy for production.
+- Natural pole ordering (Jun 9, 2026): _pole_sort_key upgraded to a natural alphanumeric sort so 'P-2' < 'P-12' and '1' < '2' < '10'. Applied to GET /jobs/{id}/poles (Job Detail / add-pole page now lists poles in numerical order) and both Excel exports. Verified order P-1,P-2,P-10,P-12; pytest 19/19. Requires redeploy for production.
 
 ## Tech Stack
 - Backend: FastAPI + MongoDB

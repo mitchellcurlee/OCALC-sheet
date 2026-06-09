@@ -8,6 +8,7 @@ import os
 import logging
 import asyncio
 import json
+import re
 import requests
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict, EmailStr
@@ -125,18 +126,11 @@ def format_height(value):
     return f"{feet}' {inches}\""
 
 def _pole_sort_key(pole):
-    """Sort poles by pole_number in natural numeric order (1, 2, 10, ...).
-    Poles whose number has no leading digits sort after numbered ones, alphabetically."""
-    pn = str(pole.get("pole_number") or "").strip()
-    digits = ""
-    for ch in pn:
-        if ch.isdigit():
-            digits += ch
-        else:
-            break
-    if digits:
-        return (0, int(digits), pn.lower())
-    return (1, 0, pn.lower())
+    """Natural sort by pole_number so numbers compare numerically regardless of
+    prefix: '1' < '2' < '10', and 'P-2' < 'P-12'. Mixes safely (digit chunks vs
+    text chunks compare by a type flag to avoid int/str comparison errors)."""
+    pn = str(pole.get("pole_number") or "").strip().lower()
+    return [(0, int(t)) if t.isdigit() else (1, t) for t in re.split(r"(\d+)", pn) if t]
 
 # Auth Models
 class UserCreate(BaseModel):
@@ -538,6 +532,7 @@ async def get_job_poles(job_id: str, current_user: dict = Depends(get_current_us
         raise HTTPException(status_code=404, detail="Job not found")
     
     poles = await db.poles.find({"job_id": job_id}, {"_id": 0}).sort("created_at", -1).to_list(10000)
+    poles.sort(key=_pole_sort_key)
     return poles
 
 @api_router.get("/jobs/{job_id}/export/excel")
