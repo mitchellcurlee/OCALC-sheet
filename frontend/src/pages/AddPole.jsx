@@ -139,7 +139,7 @@ const AddPole = () => {
     span4_owner: "",
     // GPS
     latitude: "",
-    longitude: "",
+    longitude: "-",
     notes: "",
   });
 
@@ -355,8 +355,8 @@ const AddPole = () => {
         span2_distance: formData.span2_distance ? parseFloat(formData.span2_distance) : null,
         span3_distance: formData.span3_distance ? parseFloat(formData.span3_distance) : null,
         span4_distance: formData.span4_distance ? parseFloat(formData.span4_distance) : null,
-        latitude: formData.latitude ? parseFloat(formData.latitude) : null,
-        longitude: formData.longitude ? parseFloat(formData.longitude) : null,
+        latitude: Number.isFinite(parseFloat(formData.latitude)) ? parseFloat(formData.latitude) : null,
+        longitude: Number.isFinite(parseFloat(formData.longitude)) ? parseFloat(formData.longitude) : null,
         // Dynamic arrays
         down_guys: downGuys.filter(dg => dg.size || dg.direction || dg.owner || dg.height || dg.lead).map(({ _key, ...dg }) => ({
           ...dg,

@@ -917,10 +917,10 @@ async def duplicate_pole(pole_id: str):
         raise HTTPException(status_code=404, detail="Pole not found")
     for k in ("id", "created_at", "updated_at", "inspection_date"):
         src.pop(k, None)
-    # Force the copy to get its own location and a distinct number
+    # Force the copy to get its own location and number
     src["latitude"] = None
     src["longitude"] = None
-    src["pole_number"] = f"{src.get('pole_number') or ''}-copy"
+    src["pole_number"] = "P-"
     pole = Pole(**src)
     doc = pole.model_dump()
     await db.poles.insert_one(doc)

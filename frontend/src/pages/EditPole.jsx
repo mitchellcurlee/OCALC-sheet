@@ -129,7 +129,7 @@ const EditPole = () => {
         span2_direction: pole.span2_direction || "", span2_distance: pole.span2_distance?.toString() || "", span2_owner: pole.span2_owner || "",
         span3_direction: pole.span3_direction || "", span3_distance: pole.span3_distance?.toString() || "", span3_owner: pole.span3_owner || "",
         span4_direction: pole.span4_direction || "", span4_distance: pole.span4_distance?.toString() || "", span4_owner: pole.span4_owner || "",
-        latitude: pole.latitude?.toString() || "", longitude: pole.longitude?.toString() || "", notes: pole.notes || "",
+        latitude: pole.latitude?.toString() || "", longitude: pole.longitude?.toString() || "-", notes: pole.notes || "",
       });
       // Load dynamic arrays (attach a stable _key for React list rendering)
       setDownGuys(pole.down_guys?.length > 0 ? pole.down_guys.map(dg => ({ _key: rowKey(), ...dg, height: dg.height?.toString() || "" })) : [{ _key: rowKey(), size: "", direction: "", owner: "", height: "", lead: "" }]);
@@ -231,8 +231,8 @@ const EditPole = () => {
         span2_distance: formData.span2_distance ? parseFloat(formData.span2_distance) : null,
         span3_distance: formData.span3_distance ? parseFloat(formData.span3_distance) : null,
         span4_distance: formData.span4_distance ? parseFloat(formData.span4_distance) : null,
-        latitude: formData.latitude ? parseFloat(formData.latitude) : null,
-        longitude: formData.longitude ? parseFloat(formData.longitude) : null,
+        latitude: Number.isFinite(parseFloat(formData.latitude)) ? parseFloat(formData.latitude) : null,
+        longitude: Number.isFinite(parseFloat(formData.longitude)) ? parseFloat(formData.longitude) : null,
         down_guys: downGuys.filter(dg => dg.size || dg.direction || dg.owner || dg.height || dg.lead).map(({ _key, ...dg }) => ({ ...dg, height: dg.height ? parseFloat(dg.height) : null })),
         knuckles: knuckles.filter(k => k.count || k.condition || k.photo).map(({ _key, ...k }) => k),
         attachments: attachments.filter(a => a.height || a.owner || a.photo).map(({ _key, ...a }) => ({ ...a, height: a.height ? parseFloat(a.height) : null })),
