@@ -103,7 +103,7 @@ const AddPole = () => {
   // Basic form data
   const [formData, setFormData] = useState({
     job_number: "",
-    pole_number: "",
+    pole_number: "P-",
     pole_owner: "",
     pole_class: "",
     pole_size: "",

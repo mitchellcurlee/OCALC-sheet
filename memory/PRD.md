@@ -70,6 +70,7 @@ Build an app that collects power pole data including: size of the pole, type of 
   - Blank/clear option ("—", sentinel "__none__" -> "") added to ALL dropdowns (Basic Info, Spans, Down Guys, Knuckles, HOA, MGNV, Terminal, Risers, HeightInput ft/in, SpanDistance) so a mistaken selection can be reset.
   - Fixed white-on-white EditPole section headings (light-theme conversion had restored them to text-white because they're single-line with the accent bar); now text-zinc-900.
   - Removed dead code in is_admin_user. Verified: backend pytest 19/19 (added test_options_and_class.py), frontend self-verified (crash fix, new Basic Info layout, Class/Size dropdowns, EditPole dark headings, pole_class round-trip). Requires redeploy for production.
+- Small tweaks (Jun 9, 2026): pole number box now defaults to "P-" on Add Pole (formData.pole_number); added "No Telco on Pole" to the HOA Owner dropdown (backend ATTACHMENT_OWNERS). Verified via API + UI. Requires redeploy for production.
 
 ## Tech Stack
 - Backend: FastAPI + MongoDB
