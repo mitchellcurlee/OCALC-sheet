@@ -31,8 +31,8 @@ const combine = (hundreds, remainder) => {
 export const SpanDistance = ({ value, onChange, label = "Distance (ft)", testId }) => {
   const { hundreds, remainder } = splitValue(value);
 
-  const handleHundreds = (h) => onChange(combine(h, remainder));
-  const handleRemainder = (r) => onChange(combine(hundreds, r));
+  const handleHundreds = (h) => onChange(combine(h === "__none__" ? "" : h, remainder));
+  const handleRemainder = (r) => onChange(combine(hundreds, r === "__none__" ? "" : r));
 
   const triggerCls = "h-9 bg-white border-zinc-300 text-zinc-900 text-sm";
 
@@ -45,6 +45,7 @@ export const SpanDistance = ({ value, onChange, label = "Distance (ft)", testId 
             <SelectValue placeholder="0" />
           </SelectTrigger>
           <SelectContent className="bg-zinc-50 border-zinc-300 max-h-60">
+            <SelectItem value="__none__" className="text-zinc-500">—</SelectItem>
             {HUNDREDS_OPTIONS.map((h) => (
               <SelectItem key={h} value={String(h)}>{h}</SelectItem>
             ))}
@@ -55,6 +56,7 @@ export const SpanDistance = ({ value, onChange, label = "Distance (ft)", testId 
             <SelectValue placeholder="00" />
           </SelectTrigger>
           <SelectContent className="bg-zinc-50 border-zinc-300 max-h-60">
+            <SelectItem value="__none__" className="text-zinc-500">—</SelectItem>
             {REMAINDER_OPTIONS.map((r) => (
               <SelectItem key={r} value={String(r)}>{r}</SelectItem>
             ))}

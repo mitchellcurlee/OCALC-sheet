@@ -35,8 +35,8 @@ const feetInchesToDecimal = (feet, inches) => {
 export const HeightInput = ({ value, onChange, label = "Height", testId, compact = false }) => {
   const { feet, inches } = decimalToFeetInches(value);
 
-  const handleFeet = (f) => onChange(feetInchesToDecimal(f, inches));
-  const handleInches = (i) => onChange(feetInchesToDecimal(feet, i));
+  const handleFeet = (f) => onChange(feetInchesToDecimal(f === "__none__" ? "" : f, inches));
+  const handleInches = (i) => onChange(feetInchesToDecimal(feet, i === "__none__" ? "" : i));
 
   const triggerCls = "h-9 bg-white border-zinc-300 text-zinc-900 text-sm";
 
@@ -49,6 +49,7 @@ export const HeightInput = ({ value, onChange, label = "Height", testId, compact
             <SelectValue placeholder="ft" />
           </SelectTrigger>
           <SelectContent className="bg-zinc-50 border-zinc-300 max-h-60">
+            <SelectItem value="__none__" className="text-zinc-500">—</SelectItem>
             {FEET_OPTIONS.map((f) => (
               <SelectItem key={f} value={String(f)}>{f}{"'"}</SelectItem>
             ))}
@@ -59,6 +60,7 @@ export const HeightInput = ({ value, onChange, label = "Height", testId, compact
             <SelectValue placeholder="in" />
           </SelectTrigger>
           <SelectContent className="bg-zinc-50 border-zinc-300 max-h-60">
+            <SelectItem value="__none__" className="text-zinc-500">—</SelectItem>
             {INCH_OPTIONS.map((i) => (
               <SelectItem key={i} value={String(i)}>{i}{'"'}</SelectItem>
             ))}

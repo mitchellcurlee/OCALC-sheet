@@ -192,20 +192,13 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
 def is_admin_user(user: dict) -> bool:
     """Check if user is the master admin"""
     return user.get("is_admin", False) or user.get("email", "").lower() == MASTER_ADMIN_EMAIL.lower()
-    return user
 
 # Options
 POLE_OWNERS = ["Foreign Owned", "ATT"]
 POLE_CONDITIONS = ["Excellent", "Good", "Bad"]
 POLE_TYPES = ["Wood", "Steel", "Fiber Glass", "Concrete"]
-POLE_SIZES = [
-    "H1", "H2",
-    "1-25", "1-30", "1-35", "1-40", "1-45", "1-50", "1-55", "1-60",
-    "2-25", "2-30", "2-35", "2-40", "2-45", "2-50", "2-55", "2-60",
-    "3-25", "3-30", "3-35", "3-40", "3-45", "3-50", "3-55", "3-60",
-    "4-25", "4-30", "4-35", "4-40", "4-45", "4-50", "4-55", "4-60",
-    "5-25", "5-30", "5-35", "5-40", "5-45", "5-50", "5-55", "5-60"
-]
+POLE_CLASSES = ["H1", "H2", "1", "2", "3", "4", "5", "6"]
+POLE_SIZES = ["20", "25", "30", "35", "40", "45", "50", "55", "60", "65"]
 DOWN_GUY_OWNERS = ["Power", "ATT", "Comcast", "Lightwave", "Logix", "PS", "Overhead Guy"]
 DOWN_GUY_DIRECTIONS = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
 DOWN_GUY_SIZES = ["1/4", "3/8", "1/2", "5/8", "3/4"]
@@ -248,6 +241,7 @@ class PoleBase(BaseModel):
     # Basic Info - Pole Owner moved to Height of Attachments section
     pole_size: str
     pole_size_type: Optional[str] = None  # Actual, Estimate, Proposed
+    pole_class: Optional[str] = None  # H1, H2, 1-6
     pole_type: Optional[str] = None  # Wood, Steel, Fiber Glass, Concrete
     condition: str
     pole_owner: Optional[str] = None  # Now in Height of Attachments section
@@ -305,6 +299,7 @@ class PoleUpdate(BaseModel):
     pole_owner: Optional[str] = None
     pole_size: Optional[str] = None
     pole_size_type: Optional[str] = None
+    pole_class: Optional[str] = None
     pole_type: Optional[str] = None
     condition: Optional[str] = None
     ocalc_left_photo: Optional[str] = None
@@ -608,6 +603,9 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
         ws.cell(row=current_row, column=5, value="OWNER").fill = section_fill
         ws.cell(row=current_row, column=5).font = section_font
         ws.cell(row=current_row, column=6, value=pole.get("pole_owner", ""))
+        ws.cell(row=current_row, column=7, value="CLASS").fill = section_fill
+        ws.cell(row=current_row, column=7).font = section_font
+        ws.cell(row=current_row, column=8, value=pole.get("pole_class", ""))
         current_row += 1
         
         # Row 3: GPS & Terminal/Risers
@@ -889,6 +887,7 @@ async def get_pole_options():
         "pole_owners": POLE_OWNERS,
         "conditions": POLE_CONDITIONS,
         "pole_types": POLE_TYPES,
+        "pole_classes": POLE_CLASSES,
         "sizes": POLE_SIZES,
         "down_guy_owners": DOWN_GUY_OWNERS,
         "down_guy_directions": DOWN_GUY_DIRECTIONS,
@@ -1000,6 +999,9 @@ async def export_poles_excel(request: Request, base_url: Optional[str] = None):
         ws.cell(row=current_row, column=5, value="OWNER").fill = section_fill
         ws.cell(row=current_row, column=5).font = section_font
         ws.cell(row=current_row, column=6, value=pole.get("pole_owner", ""))
+        ws.cell(row=current_row, column=7, value="CLASS").fill = section_fill
+        ws.cell(row=current_row, column=7).font = section_font
+        ws.cell(row=current_row, column=8, value=pole.get("pole_class", ""))
         current_row += 1
         
         # Row 3: GPS & Terminal/Risers

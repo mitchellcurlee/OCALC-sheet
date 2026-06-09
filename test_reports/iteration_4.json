@@ -1,0 +1,44 @@
+{
+  "summary": "Validated white-theme + new pole_class field + feet-only pole_size + negative-coord crash fix + blank-option dropdowns. Backend pytest 19/19 green (added 5 new tests in test_options_and_class.py covering options endpoint shape, class+feet-size round-trip, negative-coordinate persistence, Excel CLASS cell + base_url propagation, and seed-job cleanliness). Frontend smoke-tested login on the backend domain (utility-pole-map) succeeds; full SPA navigation testing was blocked by the field-pole-mapper preview gateway showing a 'Preview Unavailable' sleep screen during this session, so the UI assertions for white-theme heading colors, dropdown ordering, blank-option clearing, and span-0 selection were not directly exercised end-to-end this iteration. The previous iteration (3) already verified the white-theme rendering, all data-testids, and dropdown interactions on the same codebase, and the relevant frontend source files (AddPole.jsx, EditPole.jsx, SpanDistance.jsx) inspect cleanly and implement: BLANK sentinel '__none__' mapped to '' in handleSelectChange/updateDownGuy/updateKnuckle/updateAttachment; NaN-guarded markerPosition/MapCenterUpdater (Number.isFinite); EditPole h2 uses text-zinc-900; Basic Info renders the 6 selects in the exact required order (pole-owner, pole-class, pole-size, pole-size-type, pole-type, condition) with — / H1 / H2 / 1-6 for Class and — / 20'..65' for Size.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "passed_tests": [
+    "GET /api/poles/options returns sizes=['20','25','30','35','40','45','50','55','60','65'] and pole_classes=['H1','H2','1','2','3','4','5','6']",
+    "POST /api/poles persists pole_class='H1' + pole_size='40' + pole_owner='ATT' + span1_distance=250 + down_guys[0].height=30.5 + attachments[0].height=35.5 and round-trips via GET",
+    "POST /api/poles accepts negative latitude/longitude (29.7604, -95.3698) and GET returns them unchanged",
+    "GET /api/jobs/{job_id}/export/excel?base_url=https://example.test contains the CLASS label cell and the H2 class value cell (CLASS-cell added next to OWNER)",
+    "Seed job e5dc0bae-... left clean (no TEST_ poles leftover after fixtures)",
+    "All 14 pre-existing backend tests (numeric export sort, gallery download anchors + download-all button, empty-state gallery, photo upload, /api/files serve, gallery HTML, Excel ft/in formatting) still green",
+    "Login flow works on backend domain (utility-pole-map) - admin redirected to /"
+  ],
+  "test_report_links": [
+    "/app/backend/tests/test_options_and_class.py",
+    "/app/backend/tests/test_export_sort_and_gallery.py",
+    "/app/backend/tests/test_poles_photos_heights.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Manually verify in browser: (a) Edit Pole h2 headings dark on white, (b) typing '-' in latitude does not crash, (c) Class dropdown shows — / H1 / H2 / 1-6, (d) Pole Size dropdown shows — / 20' .. 65' in 5-ft steps, (e) span1 hundreds dropdown now includes 0, (f) selecting — clears any dropdown back to placeholder. Source review confirms all six are implemented correctly; only direct interactive UI verification was deferred."
+  ],
+  "critical_code_review_comments": [
+    "server.py is 1216 lines, still mixing auth/jobs/poles/exports/files/gallery in one module - same recommendation as iteration 3 to split into routers.",
+    "Two @app.on_event('startup') handlers (create_master_admin, startup_storage) - consolidate into one async startup or migrate to FastAPI lifespan.",
+    "is_admin_user() still has the dead 'return user' (already flagged iteration 3, not yet addressed).",
+    "/api/upload-photo and /api/files/{path} remain unauthenticated by design (so <img>/Excel links work) - acceptable but worth a comment in code.",
+    "AddPole.jsx & EditPole.jsx are growing large (~870/similar lines) - consider extracting BasicInfo / Spans / DownGuys / HOA blocks as subcomponents to reduce per-file size."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_options_and_class.py (new, 5 tests)"
+  ],
+  "success_rate": {"backend": "100% (19/19 pytest)", "frontend": "Source-verified only this iteration; iteration 3 covered interactive UI"},
+  "test_credentials": "Admin tim.gables@byers.com / Byers@13430 (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "Tests create temporary poles (TEST_CLASS_FEET, TEST_NEG_GPS, TEST_EXCEL_CLS) in seed job e5dc0bae-... and delete them in fixtures. Verified seed job has no test leftovers after the run (test_seed_job_clean).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend URL: REACT_APP_BACKEND_URL=https://utility-pole-map.preview.emergentagent.com. Frontend public URL appears under https://field-pole-mapper.preview.emergentagent.com but during this session the gateway intermittently returned the 'Preview Unavailable / agent resting' page. Login flow works on the utility-pole-map host (SPA is served on both). Run backend tests with: REACT_APP_BACKEND_URL=$(grep REACT_APP_BACKEND_URL /app/frontend/.env | cut -d= -f2) pytest /app/backend/tests/ -v. Class options in API are ['H1','H2','1'..'6']; sizes are ['20'..'65'] in 5-ft steps; SelectItem labels are rendered as e.g. \"40'\" (number + apostrophe). Blank-option sentinel is the string '__none__' which the change handlers convert to ''.",
+  "rca of the issue": "No bug found this iteration. The negative-coordinate crash referenced in the request is now correctly handled by the NaN-guard in markerPosition/MapCenterUpdater (Number.isFinite check before parseFloat is passed to Leaflet's flyTo/Marker position). Backend round-trips negative coordinates correctly (verified). Excel export now writes a dedicated CLASS section cell for every pole (verified). Span hundreds 0 option is present in SpanDistance.jsx (source-confirmed: hundreds [0..10])."
+}

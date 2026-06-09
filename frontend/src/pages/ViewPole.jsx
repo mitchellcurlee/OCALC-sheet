@@ -227,9 +227,10 @@ const ViewPole = () => {
             <h2 className="font-heading text-lg font-bold text-zinc-900 mb-4 flex items-center gap-2">
               <div className="w-1 h-5 bg-red-500"></div>Basic Information
             </h2>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
               <DataRow label="Pole Owner" value={pole.pole_owner} />
-              <DataRow label="Pole Size" value={pole.pole_size} />
+              <DataRow label="Class" value={pole.pole_class} />
+              <DataRow label="Pole Size" value={pole.pole_size ? `${pole.pole_size}'` : ""} />
               <DataRow label="Size Type" value={pole.pole_size_type} />
               <DataRow label="Type of Pole" value={pole.pole_type} />
               <DataRow label="Condition" value={pole.condition} />

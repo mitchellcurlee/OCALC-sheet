@@ -72,6 +72,9 @@ const ownerTriggerClass = (owner) => {
   return "text-zinc-900";
 };
 
+// Sentinel value for a "blank/clear" option in dropdowns (Radix forbids empty-string values)
+const BLANK = "__none__";
+
 const AddPole = () => {
   const navigate = useNavigate();
   const { jobId } = useParams();
@@ -94,12 +97,15 @@ const AddPole = () => {
     attachment_owners: [],
     riser_options: [],
     pole_types: [],
+    pole_classes: [],
   });
 
   // Basic form data
   const [formData, setFormData] = useState({
     job_number: "",
     pole_number: "",
+    pole_owner: "",
+    pole_class: "",
     pole_size: "",
     pole_size_type: "",
     pole_type: "",
@@ -118,7 +124,6 @@ const AddPole = () => {
     // Pole Terminal & Risers (in Height of Attachments section)
     pole_terminal: "",
     risers: "",
-    pole_owner: "", // Moved to Height of Attachments
     // Spans (4 fixed)
     span1_direction: "",
     span1_distance: "",
@@ -168,7 +173,7 @@ const AddPole = () => {
   };
 
   const handleSelectChange = (name, value) => {
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value === BLANK ? "" : value }));
   };
 
   const handlePhotoChange = (field, value) => {
@@ -186,7 +191,7 @@ const AddPole = () => {
   };
   const updateDownGuy = (index, field, value) => {
     const updated = [...downGuys];
-    updated[index][field] = value;
+    updated[index][field] = value === BLANK ? "" : value;
     setDownGuys(updated);
   };
 
@@ -201,7 +206,7 @@ const AddPole = () => {
   };
   const updateKnuckle = (index, field, value) => {
     const updated = [...knuckles];
-    updated[index][field] = value;
+    updated[index][field] = value === BLANK ? "" : value;
     setKnuckles(updated);
   };
 
@@ -216,7 +221,7 @@ const AddPole = () => {
   };
   const updateAttachment = (index, field, value) => {
     const updated = [...attachments];
-    updated[index][field] = value;
+    updated[index][field] = value === BLANK ? "" : value;
     setAttachments(updated);
   };
 
@@ -411,21 +416,48 @@ const AddPole = () => {
 
       <main className="max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
         <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
-          {/* Basic Info - WITHOUT Pole Owner */}
+          {/* Basic Info */}
           <div className="industrial-card p-4 sm:p-5">
             <h2 className="font-heading text-base sm:text-lg font-bold text-zinc-900 mb-3 sm:mb-4 flex items-center gap-2">
               <div className="w-1 h-5 bg-red-500"></div>
               Basic Information
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 sm:gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+              <div className="space-y-2">
+                <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Pole Owner</Label>
+                <Select value={formData.pole_owner} onValueChange={(v) => handleSelectChange("pole_owner", v)}>
+                  <SelectTrigger className={`h-12 sm:h-10 bg-white border-zinc-300 ${ownerTriggerClass(formData.pole_owner)}`} data-testid="pole-owner-select">
+                    <SelectValue placeholder="Owner" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-zinc-50 border-zinc-300">
+                    <SelectItem value={BLANK} className="text-zinc-500">—</SelectItem>
+                    {options.pole_owners.map((o) => (
+                      <SelectItem key={o} value={o} className={o === "Foreign Owned" ? "text-red-600" : "text-orange-600"}>{o}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Class</Label>
+                <Select value={formData.pole_class} onValueChange={(v) => handleSelectChange("pole_class", v)}>
+                  <SelectTrigger className="h-12 sm:h-10 bg-white border-zinc-300 text-zinc-900" data-testid="pole-class-select">
+                    <SelectValue placeholder="Class" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-zinc-50 border-zinc-300 max-h-60">
+                    <SelectItem value={BLANK} className="text-zinc-500">—</SelectItem>
+                    {options.pole_classes.map((c) => (<SelectItem key={c} value={c}>{c}</SelectItem>))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="space-y-2">
                 <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Pole Size *</Label>
                 <Select value={formData.pole_size} onValueChange={(v) => handleSelectChange("pole_size", v)}>
                   <SelectTrigger className="h-12 sm:h-10 bg-white border-zinc-300 text-zinc-900" data-testid="pole-size-select">
-                    <SelectValue placeholder="Class-Height" />
+                    <SelectValue placeholder="Feet" />
                   </SelectTrigger>
                   <SelectContent className="bg-zinc-50 border-zinc-300 max-h-60">
-                    {options.sizes.map((s) => (<SelectItem key={s} value={s}>{s}</SelectItem>))}
+                    <SelectItem value={BLANK} className="text-zinc-500">—</SelectItem>
+                    {options.sizes.map((s) => (<SelectItem key={s} value={s}>{s}{"'"}</SelectItem>))}
                   </SelectContent>
                 </Select>
               </div>
@@ -436,6 +468,7 @@ const AddPole = () => {
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
                   <SelectContent className="bg-zinc-50 border-zinc-300">
+                    <SelectItem value={BLANK} className="text-zinc-500">—</SelectItem>
                     <SelectItem value="Actual" className="text-green-700">Actual</SelectItem>
                     <SelectItem value="Estimate" className="text-yellow-700">Estimate</SelectItem>
                     <SelectItem value="Proposed" className="text-blue-600">Proposed</SelectItem>
@@ -449,6 +482,7 @@ const AddPole = () => {
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
                   <SelectContent className="bg-zinc-50 border-zinc-300">
+                    <SelectItem value={BLANK} className="text-zinc-500">—</SelectItem>
                     {options.pole_types.map((t) => (<SelectItem key={t} value={t}>{t}</SelectItem>))}
                   </SelectContent>
                 </Select>
@@ -460,6 +494,7 @@ const AddPole = () => {
                     <SelectValue placeholder="Select condition" />
                   </SelectTrigger>
                   <SelectContent className="bg-zinc-50 border-zinc-300">
+                    <SelectItem value={BLANK} className="text-zinc-500">—</SelectItem>
                     <SelectItem value="Excellent" className="text-green-700">Excellent</SelectItem>
                     <SelectItem value="Good" className="text-yellow-700">Good</SelectItem>
                     <SelectItem value="Bad" className="text-red-600">Bad</SelectItem>
@@ -486,6 +521,7 @@ const AddPole = () => {
                         <Select value={formData[`span${num}_direction`]} onValueChange={(v) => handleSelectChange(`span${num}_direction`, v)}>
                           <SelectTrigger className="h-9 bg-white border-zinc-300 text-zinc-900 text-sm"><SelectValue placeholder="Dir" /></SelectTrigger>
                           <SelectContent className="bg-zinc-50 border-zinc-300">
+                            <SelectItem value={BLANK} className="text-zinc-500">—</SelectItem>
                             {options.span_directions.map((d) => (<SelectItem key={d} value={d}>{d}</SelectItem>))}
                           </SelectContent>
                         </Select>
@@ -496,6 +532,7 @@ const AddPole = () => {
                         <Select value={formData[`span${num}_owner`]} onValueChange={(v) => handleSelectChange(`span${num}_owner`, v)}>
                           <SelectTrigger className="h-9 bg-white border-zinc-300 text-zinc-900 text-sm"><SelectValue placeholder="Owner" /></SelectTrigger>
                           <SelectContent className="bg-zinc-50 border-zinc-300">
+                            <SelectItem value={BLANK} className="text-zinc-500">—</SelectItem>
                             {options.span_owners.map((o) => (<SelectItem key={o} value={o}>{o}</SelectItem>))}
                           </SelectContent>
                         </Select>
@@ -603,14 +640,14 @@ const AddPole = () => {
                     <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">MGNV Present</Label>
                     <Select value={formData.mgnv} onValueChange={(v) => handleSelectChange("mgnv", v)}>
                       <SelectTrigger className="h-10 bg-white border-zinc-300 text-zinc-900" data-testid="mgnv-select"><SelectValue placeholder="Yes / No" /></SelectTrigger>
-                      <SelectContent className="bg-zinc-50 border-zinc-300"><SelectItem value="Yes">Yes</SelectItem><SelectItem value="No">No</SelectItem></SelectContent>
+                      <SelectContent className="bg-zinc-50 border-zinc-300"><SelectItem value={BLANK} className="text-zinc-500">—</SelectItem><SelectItem value="Yes">Yes</SelectItem><SelectItem value="No">No</SelectItem></SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Condition</Label>
                     <Select value={formData.mgnv_condition} onValueChange={(v) => handleSelectChange("mgnv_condition", v)}>
                       <SelectTrigger className="h-10 bg-white border-zinc-300 text-zinc-900" data-testid="mgnv-condition-select"><SelectValue placeholder="Good / Broken" /></SelectTrigger>
-                      <SelectContent className="bg-zinc-50 border-zinc-300"><SelectItem value="Good" className="text-green-700">Good</SelectItem><SelectItem value="Broken" className="text-red-600">Broken</SelectItem></SelectContent>
+                      <SelectContent className="bg-zinc-50 border-zinc-300"><SelectItem value={BLANK} className="text-zinc-500">—</SelectItem><SelectItem value="Good" className="text-green-700">Good</SelectItem><SelectItem value="Broken" className="text-red-600">Broken</SelectItem></SelectContent>
                     </Select>
                   </div>
                   <PhotoUpload label="MGNV Photo" value={formData.mgnv_photo} onChange={(v) => handlePhotoChange("mgnv_photo", v)} testId="mgnv" />
@@ -653,21 +690,21 @@ const AddPole = () => {
                         <Label className="text-xs font-mono text-zinc-500">Size</Label>
                         <Select value={guy.size} onValueChange={(v) => updateDownGuy(index, "size", v)}>
                           <SelectTrigger className="h-9 bg-white border-zinc-300 text-zinc-900 text-sm"><SelectValue placeholder="Size" /></SelectTrigger>
-                          <SelectContent className="bg-zinc-50 border-zinc-300">{options.down_guy_sizes.map((s) => (<SelectItem key={s} value={s}>{s}</SelectItem>))}</SelectContent>
+                          <SelectContent className="bg-zinc-50 border-zinc-300"><SelectItem value={BLANK} className="text-zinc-500">—</SelectItem>{options.down_guy_sizes.map((s) => (<SelectItem key={s} value={s}>{s}</SelectItem>))}</SelectContent>
                         </Select>
                       </div>
                       <div className="space-y-1">
                         <Label className="text-xs font-mono text-zinc-500">Direction</Label>
                         <Select value={guy.direction} onValueChange={(v) => updateDownGuy(index, "direction", v)}>
                           <SelectTrigger className="h-9 bg-white border-zinc-300 text-zinc-900 text-sm"><SelectValue placeholder="Dir" /></SelectTrigger>
-                          <SelectContent className="bg-zinc-50 border-zinc-300">{options.down_guy_directions.map((d) => (<SelectItem key={d} value={d}>{d}</SelectItem>))}</SelectContent>
+                          <SelectContent className="bg-zinc-50 border-zinc-300"><SelectItem value={BLANK} className="text-zinc-500">—</SelectItem>{options.down_guy_directions.map((d) => (<SelectItem key={d} value={d}>{d}</SelectItem>))}</SelectContent>
                         </Select>
                       </div>
                       <div className="space-y-1">
                         <Label className="text-xs font-mono text-zinc-500">Owner</Label>
                         <Select value={guy.owner} onValueChange={(v) => updateDownGuy(index, "owner", v)}>
                           <SelectTrigger className="h-9 bg-white border-zinc-300 text-zinc-900 text-sm"><SelectValue placeholder="Owner" /></SelectTrigger>
-                          <SelectContent className="bg-zinc-50 border-zinc-300">{options.down_guy_owners.map((o) => (<SelectItem key={o} value={o}>{o}</SelectItem>))}</SelectContent>
+                          <SelectContent className="bg-zinc-50 border-zinc-300"><SelectItem value={BLANK} className="text-zinc-500">—</SelectItem>{options.down_guy_owners.map((o) => (<SelectItem key={o} value={o}>{o}</SelectItem>))}</SelectContent>
                         </Select>
                       </div>
                       <HeightInput value={guy.height} onChange={(v) => updateDownGuy(index, "height", v)} label="Height" testId={`downguy${index}-height`} />
@@ -704,7 +741,7 @@ const AddPole = () => {
                           <Label className="text-xs font-mono text-zinc-500">Knuckles Used</Label>
                           <Select value={knuckle.count} onValueChange={(v) => updateKnuckle(index, "count", v)}>
                             <SelectTrigger className="h-9 bg-white border-zinc-300 text-zinc-900 text-sm"><SelectValue placeholder="Count" /></SelectTrigger>
-                            <SelectContent className="bg-zinc-50 border-zinc-300">{options.knuckle_options.map((k) => (<SelectItem key={k} value={k}>{k}</SelectItem>))}</SelectContent>
+                            <SelectContent className="bg-zinc-50 border-zinc-300"><SelectItem value={BLANK} className="text-zinc-500">—</SelectItem>{options.knuckle_options.map((k) => (<SelectItem key={k} value={k}>{k}</SelectItem>))}</SelectContent>
                           </Select>
                         </div>
                         <div className="space-y-1">
@@ -712,6 +749,7 @@ const AddPole = () => {
                           <Select value={knuckle.condition} onValueChange={(v) => updateKnuckle(index, "condition", v)}>
                             <SelectTrigger className="h-9 bg-white border-zinc-300 text-zinc-900 text-sm"><SelectValue placeholder="Condition" /></SelectTrigger>
                             <SelectContent className="bg-zinc-50 border-zinc-300">
+                              <SelectItem value={BLANK} className="text-zinc-500">—</SelectItem>
                               <SelectItem value="Excellent" className="text-green-700">Excellent</SelectItem>
                               <SelectItem value="Good" className="text-yellow-700">Good</SelectItem>
                               <SelectItem value="Bad" className="text-red-600">Bad</SelectItem>
@@ -755,6 +793,7 @@ const AddPole = () => {
                         <Select value={att.owner} onValueChange={(v) => updateAttachment(index, "owner", v)}>
                           <SelectTrigger className="h-9 bg-white border-zinc-300 text-zinc-900 text-sm"><SelectValue placeholder="Owner" /></SelectTrigger>
                           <SelectContent className="bg-zinc-50 border-zinc-300">
+                            <SelectItem value={BLANK} className="text-zinc-500">—</SelectItem>
                             {options.attachment_owners.map((o) => (<SelectItem key={o} value={o}>{o}</SelectItem>))}
                           </SelectContent>
                         </Select>
@@ -774,22 +813,9 @@ const AddPole = () => {
                 </div>
               ))}
 
-              {/* Pole Owner, Pole Terminal and Risers */}
+              {/* Pole Terminal and Risers */}
               <div className="mt-4 pt-4 border-t border-zinc-300">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Pole Owner</Label>
-                    <Select value={formData.pole_owner} onValueChange={(v) => handleSelectChange("pole_owner", v)}>
-                      <SelectTrigger className={`h-10 bg-white border-zinc-300 ${ownerTriggerClass(formData.pole_owner)}`} data-testid="pole-owner-select">
-                        <SelectValue placeholder="Select owner" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-zinc-50 border-zinc-300">
-                        {options.pole_owners.map((o) => (
-                          <SelectItem key={o} value={o} className={o === "Foreign Owned" ? "text-red-600" : "text-orange-600"}>{o}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Pole Terminal</Label>
                     <Select value={formData.pole_terminal} onValueChange={(v) => handleSelectChange("pole_terminal", v)}>
@@ -797,6 +823,7 @@ const AddPole = () => {
                         <SelectValue placeholder="Yes / No" />
                       </SelectTrigger>
                       <SelectContent className="bg-zinc-50 border-zinc-300">
+                        <SelectItem value={BLANK} className="text-zinc-500">—</SelectItem>
                         <SelectItem value="Yes">Yes</SelectItem>
                         <SelectItem value="No">No</SelectItem>
                       </SelectContent>
@@ -809,6 +836,7 @@ const AddPole = () => {
                         <SelectValue placeholder="Select #" />
                       </SelectTrigger>
                       <SelectContent className="bg-zinc-50 border-zinc-300">
+                        <SelectItem value={BLANK} className="text-zinc-500">—</SelectItem>
                         {options.riser_options.map((r) => (<SelectItem key={r} value={r}>{r}</SelectItem>))}
                       </SelectContent>
                     </Select>
