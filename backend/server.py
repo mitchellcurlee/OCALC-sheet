@@ -909,6 +909,19 @@ async def create_pole(pole_data: PoleCreate):
     await db.poles.insert_one(doc)
     return pole
 
+@api_router.post("/poles/{pole_id}/duplicate", response_model=Pole, status_code=201)
+async def duplicate_pole(pole_id: str):
+    """Create a copy of an existing pole (new id + timestamps, all other data copied)."""
+    src = await db.poles.find_one({"id": pole_id}, {"_id": 0})
+    if not src:
+        raise HTTPException(status_code=404, detail="Pole not found")
+    for k in ("id", "created_at", "updated_at", "inspection_date"):
+        src.pop(k, None)
+    pole = Pole(**src)
+    doc = pole.model_dump()
+    await db.poles.insert_one(doc)
+    return pole
+
 @api_router.get("/poles", response_model=List[Pole])
 async def get_poles(
     pole_owner: Optional[str] = None,

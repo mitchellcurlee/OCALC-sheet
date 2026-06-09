@@ -22,6 +22,7 @@ import {
   ArrowLeft,
   Pencil,
   Trash2,
+  Copy,
   Zap,
   MapPin,
   Calendar,
@@ -110,6 +111,16 @@ const ViewPole = () => {
     }
   };
 
+  const handleDuplicate = async () => {
+    try {
+      const res = await axios.post(`/poles/${id}/duplicate`);
+      toast.success("Pole duplicated — edit the copy");
+      navigate(jobId ? `/jobs/${jobId}/edit/${res.data.id}` : `/edit/${res.data.id}`);
+    } catch (error) {
+      toast.error("Failed to duplicate pole");
+    }
+  };
+
   const getConditionColor = (condition) => {
     const colors = {
       Excellent: "bg-green-500/20 text-green-700 border-green-500/50",
@@ -192,6 +203,9 @@ const ViewPole = () => {
                   <Pencil className="w-4 h-4 mr-2" />Edit
                 </Button>
               </Link>
+              <Button variant="outline" onClick={handleDuplicate} className="bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900" data-testid="duplicate-btn">
+                <Copy className="w-4 h-4 mr-2" />Duplicate
+              </Button>
               <Button variant="destructive" onClick={() => setShowDeleteDialog(true)} className="bg-red-600 hover:bg-red-700" data-testid="delete-btn">
                 <Trash2 className="w-4 h-4 mr-2" />Delete
               </Button>

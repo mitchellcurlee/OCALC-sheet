@@ -25,6 +25,7 @@ import {
   Eye,
   Pencil,
   Trash2,
+  Copy,
   FileSpreadsheet,
   ArrowLeft,
   Loader2,
@@ -88,6 +89,16 @@ const JobDetail = () => {
       fetchJobAndPoles();
     } catch (error) {
       toast.error("Failed to delete pole");
+    }
+  };
+
+  const handleDuplicate = async (poleId) => {
+    try {
+      const res = await axios.post(`/poles/${poleId}/duplicate`);
+      toast.success("Pole duplicated — edit the copy");
+      navigate(`/jobs/${jobId}/edit/${res.data.id}`);
+    } catch (error) {
+      toast.error("Failed to duplicate pole");
     }
   };
 
@@ -292,6 +303,16 @@ const JobDetail = () => {
                         <Pencil className="w-4 h-4" />
                       </Button>
                     </Link>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-zinc-600 hover:text-zinc-900"
+                      onClick={() => handleDuplicate(pole.id)}
+                      title="Duplicate pole"
+                      data-testid={`duplicate-pole-${pole.id}`}
+                    >
+                      <Copy className="w-4 h-4" />
+                    </Button>
                     <Button
                       size="sm"
                       variant="ghost"
