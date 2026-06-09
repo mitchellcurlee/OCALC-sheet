@@ -8,8 +8,8 @@ import {
 import { Label } from "@/components/ui/label";
 
 // Span distance selector built from two dropdowns that combine into a total:
-//   hundreds (1-10) * 100 + remainder (0-99)  e.g. 2 + 50 => 250 ft
-const HUNDREDS_OPTIONS = Array.from({ length: 10 }, (_, i) => i + 1); // 1-10
+//   hundreds (0-10) * 100 + remainder (0-99)  e.g. 2 + 50 => 250 ft
+const HUNDREDS_OPTIONS = Array.from({ length: 11 }, (_, i) => i); // 0-10
 const REMAINDER_OPTIONS = Array.from({ length: 100 }, (_, i) => i); // 0-99
 
 const splitValue = (value) => {

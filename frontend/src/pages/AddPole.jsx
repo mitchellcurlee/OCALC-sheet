@@ -53,8 +53,10 @@ const MapClickHandler = ({ onLocationSelect }) => {
 const MapCenterUpdater = ({ lat, lng }) => {
   const map = useMap();
   useEffect(() => {
-    if (lat && lng) {
-      map.flyTo([parseFloat(lat), parseFloat(lng)], 18, { duration: 1.5 });
+    const latN = parseFloat(lat);
+    const lngN = parseFloat(lng);
+    if (Number.isFinite(latN) && Number.isFinite(lngN)) {
+      map.flyTo([latN, lngN], 18, { duration: 1.5 });
     }
   }, [lat, lng, map]);
   return null;
@@ -228,7 +230,11 @@ const AddPole = () => {
   }, []);
 
   const markerPosition = useMemo(
-    () => (formData.latitude && formData.longitude ? [parseFloat(formData.latitude), parseFloat(formData.longitude)] : null),
+    () => {
+      const latN = parseFloat(formData.latitude);
+      const lngN = parseFloat(formData.longitude);
+      return (Number.isFinite(latN) && Number.isFinite(lngN)) ? [latN, lngN] : null;
+    },
     [formData.latitude, formData.longitude]
   );
   const markerEventHandlers = useMemo(() => ({
@@ -370,9 +376,7 @@ const AddPole = () => {
   };
 
   const backUrl = jobId ? `/jobs/${jobId}` : "/";
-  const mapCenter = formData.latitude && formData.longitude
-    ? [parseFloat(formData.latitude), parseFloat(formData.longitude)]
-    : [29.7604, -95.3698]; // Houston, TX
+  const mapCenter = markerPosition || [29.7604, -95.3698]; // Houston, TX
 
   return (
     <div className="min-h-screen bg-industrial-bg pb-4" data-testid="add-pole-page">
