@@ -61,6 +61,15 @@ Build an app that collects power pole data including: size of the pole, type of 
   - Per-pole gallery (GET /api/poles/{id}/gallery, opened from the Excel "PHOTOS" link) now supports DOWNLOAD: a "Download all" button + per-photo "Download" links (download filename) + click-to-open each photo in a new tab; gallery page also restyled to the light theme.
   - Verified: backend pytest 14/14 (added /app/backend/tests/test_export_sort_and_gallery.py), frontend testing agent 100% across login/jobs/job-detail/add-pole (theme readable, all data-testids intact, both export features working). Requires redeploy to push to production (https://poledatasheet.info).
 - Excel photo-link 403 fix (Jun 8, 2026): the per-pole "PHOTOS" gallery hyperlink was built from request.base_url, which behind the ingress is the INTERNAL cluster host (http://...cluster...emergentcf.cloud) and is not publicly reachable -> opening it returned 403. Fix: export endpoints (/api/jobs/{id}/export/excel and /api/poles/export/excel) now accept an optional `base_url` query param; frontend (JobDetail + Dashboard handleExport) passes `window.location.origin`. Hyperlink now uses the public domain and opens fine (verified 200). Fallback to request.base_url retained. Requires redeploy for production.
+- Forms overhaul (Jun 9, 2026):
+  - FIXED blank-screen crash when typing "-" in latitude/longitude: NaN guards (Number.isFinite) added to MapCenterUpdater (flyTo), markerPosition, and mapCenter in Add/Edit (Leaflet was throwing "Invalid LatLng (NaN, ...)").
+  - Span Distance first dropdown now includes 0 (range 0-10 hundreds).
+  - Basic Information restructured to: Pole Owner | Class | Pole Size | Size Type | Type of Pole | Condition. Pole Owner moved here (removed from HOA section).
+  - New Class field/dropdown (pole_class): H1, H2, 1-6. Backend POLE_CLASSES + pole_class on models + options endpoint + Excel CLASS cell.
+  - Pole Size changed to feet 20-65 in 5-ft steps (20,25,...,65), displayed like 40' (backend POLE_SIZES updated).
+  - Blank/clear option ("—", sentinel "__none__" -> "") added to ALL dropdowns (Basic Info, Spans, Down Guys, Knuckles, HOA, MGNV, Terminal, Risers, HeightInput ft/in, SpanDistance) so a mistaken selection can be reset.
+  - Fixed white-on-white EditPole section headings (light-theme conversion had restored them to text-white because they're single-line with the accent bar); now text-zinc-900.
+  - Removed dead code in is_admin_user. Verified: backend pytest 19/19 (added test_options_and_class.py), frontend self-verified (crash fix, new Basic Info layout, Class/Size dropdowns, EditPole dark headings, pole_class round-trip). Requires redeploy for production.
 
 ## Tech Stack
 - Backend: FastAPI + MongoDB
