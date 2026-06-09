@@ -71,7 +71,7 @@ Build an app that collects power pole data including: size of the pole, type of 
   - Fixed white-on-white EditPole section headings (light-theme conversion had restored them to text-white because they're single-line with the accent bar); now text-zinc-900.
   - Removed dead code in is_admin_user. Verified: backend pytest 19/19 (added test_options_and_class.py), frontend self-verified (crash fix, new Basic Info layout, Class/Size dropdowns, EditPole dark headings, pole_class round-trip). Requires redeploy for production.
 - Small tweaks (Jun 9, 2026): pole number box now defaults to "P-" on Add Pole (formData.pole_number); added "No Telco on Pole" to the HOA Owner dropdown (backend ATTACHMENT_OWNERS). Verified via API + UI. Requires redeploy for production.
-- Duplicate pole (Jun 9, 2026): new POST /api/poles/{id}/duplicate copies a pole (new id + timestamps, all other data incl. spans/down_guys/knuckles/attachments/photos copied). Added a Duplicate (Copy icon) action per pole row in JobDetail and a "Duplicate" button on ViewPole; both navigate to Edit the new copy. Verified via curl (data copied, 404 on missing) + UI. Requires redeploy for production.
+- Duplicate pole (Jun 9, 2026): new POST /api/poles/{id}/duplicate copies a pole (new id + timestamps, all other data incl. spans/down_guys/knuckles/attachments/photos copied). Added a Duplicate (Copy icon) action per pole row in JobDetail and a "Duplicate" button on ViewPole; both navigate to Edit the new copy. The copy now clears GPS (latitude/longitude=None) and appends "-copy" to the pole number so each duplicate gets its own location/number. Verified via curl + UI. Requires redeploy for production.
 
 ## Tech Stack
 - Backend: FastAPI + MongoDB
