@@ -17,7 +17,7 @@ YES_NO = ["Yes", "No"]
 GOOD_BROKEN = ["Good", "Broken"]
 SPAN_OWNERS = ["Power", "ATT", "Comcast", "Lightwave", "Logix", "PS"]
 SPAN_DIRECTIONS = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
-ATTACHMENT_OWNERS = ["Power", "ATT", "Comcast", "Lightwave", "Logix", "PS", "Neutral", "Primary", "Midspan", "No Telco on Pole"]
+ATTACHMENT_OWNERS = ["Power", "ATT", "Comcast", "Lightwave", "Logix", "PS", "Neutral", "Primary", "Secondary", "Midspan", "No Telco on Pole"]
 RISER_OPTIONS = ["0", "1", "2", "3", "4", "5", "6"]
 UNDERGROUND_TYPES = [
     "Handhole", "Manhole", "Brooks Enclosure", "Flowerpot", "Hoffman Box", "Pedestal",
