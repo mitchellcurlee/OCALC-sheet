@@ -221,3 +221,12 @@ Build an app that collects power pole data including: size of the pole, type of 
   - Uses same haversine formula as the map for consistency
   - Added helper functions to services/helpers.py: haversine_feet(), has_gps(), compute_route_segments()
   - Verified: Excel export shows 248.9 ft matching map's 249 ft display. Requires redeploy for production.
+- Added 600ft segmented map download (Jun 10, 2026): Map download now offers two options via dropdown menu:
+  - **Single Image**: Full map in one file (original behavior)
+  - **600ft Segments (ZIP)**: Generates multiple pages split at ~600ft intervals, each numbered "Page X of Y" with segment info (start pole → end pole, footage). Downloads as ZIP file.
+  - Each page includes: Blue header with page number/segment info, satellite imagery, route lines, distance labels, pole markers, underground items, footer with segment summary
+  - For routes under 600ft, falls back to single image download
+  - Added JSZip dependency for ZIP generation
+  - Added downloadSegmentedMapPages() function in poleMapImage.js
+  - Added dropdown menu UI in JobMap.jsx
+  - Requires redeploy for production.

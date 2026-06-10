@@ -6,8 +6,14 @@ import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap } from "react-
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ListOrdered } from "lucide-react";
-import { computeRoute, fmtFeet, markerLabel, downloadPoleMapImage, ugWithGps, undergroundAbbr, computeUgConnectors } from "@/lib/poleMapImage";
+import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ListOrdered, ChevronDown, FileImage, Files } from "lucide-react";
+import { computeRoute, fmtFeet, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, ugWithGps, undergroundAbbr, computeUgConnectors } from "@/lib/poleMapImage";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const poleIcon = (label) =>
   L.divIcon({
@@ -139,6 +145,15 @@ const JobMap = () => {
     }
   }, [poles, job, showStops, underground]);
 
+  const downloadSegmented = useCallback(async () => {
+    setDownloading(true);
+    try {
+      await downloadSegmentedMapPages({ poles, job, showStops, underground, targetFeet: 600 });
+    } finally {
+      setDownloading(false);
+    }
+  }, [poles, job, showStops, underground]);
+
   // Auto-download when opened with ?download=1 (e.g. from the Excel "Map Image" link)
   useEffect(() => {
     if (loading || autoDownloadedRef.current) return;
@@ -189,10 +204,31 @@ const JobMap = () => {
               <ListOrdered className="w-4 h-4 mr-2" />
               Stop #{"'"}s
             </Button>
-            <Button onClick={downloadImage} disabled={downloading || allPoints.length === 0} className="bg-red-600 hover:bg-red-700 text-white" data-testid="download-map-btn">
-              {downloading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
-              Download image
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button disabled={downloading || allPoints.length === 0} className="bg-red-600 hover:bg-red-700 text-white" data-testid="download-map-btn">
+                  {downloading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+                  Download
+                  <ChevronDown className="w-4 h-4 ml-1" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem onClick={downloadImage} className="cursor-pointer" data-testid="download-single-btn">
+                  <FileImage className="w-4 h-4 mr-2" />
+                  <div>
+                    <div className="font-medium">Single Image</div>
+                    <div className="text-xs text-zinc-500">Full map in one file</div>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={downloadSegmented} className="cursor-pointer" data-testid="download-segmented-btn">
+                  <Files className="w-4 h-4 mr-2" />
+                  <div>
+                    <div className="font-medium">600ft Segments (ZIP)</div>
+                    <div className="text-xs text-zinc-500">Numbered pages, ~600ft each</div>
+                  </div>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </header>

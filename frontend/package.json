@@ -39,6 +39,7 @@
     "date-fns": "^4.1.0",
     "embla-carousel-react": "^8.6.0",
     "input-otp": "^1.4.2",
+    "jszip": "^3.10.1",
     "leaflet": "^1.9.4",
     "leaflet-image": "^0.4.0",
     "lucide-react": "^0.507.0",

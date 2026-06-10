@@ -1,5 +1,6 @@
 import axios from "axios";
 import { toast } from "sonner";
+import JSZip from "jszip";
 
 export const FEET_PER_METER = 3.28084;
 const toRad = (d) => (d * Math.PI) / 180;
@@ -541,6 +542,377 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
   } catch (e) {
     console.error(e);
     toast.error("Could not generate the map image. Please try again.");
+    return false;
+  }
+};
+
+// Split route into segments of approximately targetFeet (default 600ft)
+const splitRouteIntoSegments = (route, segments, targetFeet = 600) => {
+  if (route.length < 2) return [{ poles: route, segments: [], startIdx: 0, endIdx: route.length - 1, footage: 0 }];
+  
+  const pages = [];
+  let currentPage = { poles: [route[0]], segments: [], startIdx: 0, footage: 0 };
+  
+  for (let i = 0; i < segments.length; i++) {
+    const seg = segments[i];
+    const nextPole = route[i + 1];
+    
+    // Add segment to current page
+    currentPage.segments.push(seg);
+    currentPage.footage += seg.ft;
+    currentPage.poles.push(nextPole);
+    currentPage.endIdx = i + 1;
+    
+    // If we've exceeded targetFeet, start a new page (unless it's the last segment)
+    if (currentPage.footage >= targetFeet && i < segments.length - 1) {
+      pages.push(currentPage);
+      // Start new page with overlap (last pole of previous page is first of next)
+      currentPage = { 
+        poles: [nextPole], 
+        segments: [], 
+        startIdx: i + 1, 
+        footage: 0 
+      };
+    }
+  }
+  
+  // Add the last page if it has content
+  if (currentPage.poles.length > 0) {
+    pages.push(currentPage);
+  }
+  
+  return pages;
+};
+
+// Generate a single page image for a segment
+const generateSegmentPage = async ({ 
+  pageNum, totalPages, pagePoles, pageSegments, pageFootage,
+  startPole, endPole, job, showStops, ug, connectors, allRoute
+}) => {
+  const R = 6378137;
+  const mercX = (lng) => ((lng * Math.PI) / 180) * R;
+  const mercY = (lat) => Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360)) * R;
+
+  const mapW = 1400;
+  const mapH = 1050;
+  const headerH = 60;
+  const s = 2;
+
+  // Calculate bounds for this segment's poles (with padding)
+  const allPts = pagePoles.map((p) => p.pos);
+  // Also include any underground items near these poles
+  const relevantUg = ug.filter(u => {
+    return pagePoles.some(p => distanceFeet(u.pos, p.pos) < 200);
+  });
+  relevantUg.forEach(u => allPts.push(u.pos));
+  
+  if (allPts.length === 0) return null;
+
+  const xs = allPts.map((p) => mercX(p[1]));
+  const ys = allPts.map((p) => mercY(p[0]));
+  let xmin = Math.min(...xs);
+  let xmax = Math.max(...xs);
+  let ymin = Math.min(...ys);
+  let ymax = Math.max(...ys);
+  const padX = Math.max((xmax - xmin) * 0.25, 180);
+  const padY = Math.max((ymax - ymin) * 0.25, 180);
+  xmin -= padX; xmax += padX; ymin -= padY; ymax += padY;
+  const targetAR = mapW / mapH;
+  if ((xmax - xmin) / (ymax - ymin) > targetAR) {
+    const nh = (xmax - xmin) / targetAR;
+    const cy = (ymin + ymax) / 2;
+    ymin = cy - nh / 2;
+    ymax = cy + nh / 2;
+  } else {
+    const nw = (ymax - ymin) * targetAR;
+    const cx = (xmin + xmax) / 2;
+    xmin = cx - nw / 2;
+    xmax = cx + nw / 2;
+  }
+
+  // Fetch satellite image for this segment's bounds
+  const res = await axios.get("/maps/static", {
+    params: { bbox: `${xmin},${ymin},${xmax},${ymax}`, size: `${mapW},${mapH}` },
+    responseType: "blob",
+  });
+  const imgUrl = URL.createObjectURL(res.data);
+  const img = new Image();
+  await new Promise((resolve, reject) => {
+    img.onload = resolve;
+    img.onerror = reject;
+    img.src = imgUrl;
+  });
+
+  const canvas = document.createElement("canvas");
+  canvas.width = mapW;
+  canvas.height = mapH + headerH;
+  const ctx = canvas.getContext("2d");
+  
+  // Draw header background
+  ctx.fillStyle = "#1e40af"; // Blue header
+  ctx.fillRect(0, 0, mapW, headerH);
+  
+  // Draw page number and segment info
+  ctx.fillStyle = "#ffffff";
+  ctx.font = `bold ${18 * s}px ui-sans-serif, system-ui, sans-serif`;
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  const pageLabel = `Page ${pageNum} of ${totalPages}`;
+  ctx.fillText(pageLabel, 20 * s, headerH / 2);
+  
+  ctx.font = `${14 * s}px ui-sans-serif, system-ui, sans-serif`;
+  ctx.textAlign = "center";
+  const segmentLabel = `${startPole} → ${endPole}  |  ${fmtFeet(pageFootage)}`;
+  ctx.fillText(segmentLabel, mapW / 2, headerH / 2);
+  
+  ctx.textAlign = "right";
+  ctx.font = `${12 * s}px ui-sans-serif, system-ui, sans-serif`;
+  const jobLabel = job?.name || "Job Map";
+  ctx.fillText(jobLabel, mapW - 20 * s, headerH / 2);
+
+  // Draw satellite image below header
+  ctx.drawImage(img, 0, headerH, mapW, mapH);
+  URL.revokeObjectURL(imgUrl);
+
+  const pt = (latlng) => {
+    const mx = mercX(latlng[1]);
+    const my = mercY(latlng[0]);
+    return [
+      ((mx - xmin) / (xmax - xmin)) * mapW, 
+      headerH + ((ymax - my) / (ymax - ymin)) * mapH
+    ];
+  };
+
+  // Draw aerial route line (BLUE) for this segment
+  if (pagePoles.length > 1) {
+    ctx.strokeStyle = "#2563eb";
+    ctx.lineWidth = 4 * s;
+    ctx.lineJoin = "round";
+    ctx.beginPath();
+    pagePoles.forEach((p, i) => {
+      const [x, y] = pt(p.pos);
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+  }
+
+  // Draw underground connectors for relevant UG items
+  const pageConnectors = connectors.filter(c => 
+    pagePoles.some(p => p.pole_number === c.pole)
+  );
+  if (pageConnectors.length) {
+    ctx.save();
+    ctx.setLineDash([6 * s, 4 * s]);
+    ctx.strokeStyle = "#16a34a";
+    ctx.lineWidth = 2.5 * s;
+    pageConnectors.forEach((c) => {
+      const [x1, y1] = pt(c.from);
+      const [x2, y2] = pt(c.to);
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+    });
+    ctx.restore();
+  }
+
+  // Draw direction arrows at segment midpoints
+  pageSegments.forEach((seg) => {
+    const [mx, my] = pt(seg.mid);
+    const ang = toRad(seg.deg - 90);
+    const len = 10 * s;
+    const ax = mx + Math.cos(ang) * len;
+    const ay = my + Math.sin(ang) * len;
+    const left = ang + toRad(150);
+    const right = ang - toRad(150);
+    ctx.fillStyle = "#2563eb";
+    ctx.beginPath();
+    ctx.moveTo(ax, ay);
+    ctx.lineTo(ax + Math.cos(left) * len, ay + Math.sin(left) * len);
+    ctx.lineTo(ax + Math.cos(right) * len, ay + Math.sin(right) * len);
+    ctx.closePath();
+    ctx.fill();
+  });
+
+  // Draw distance labels on segments
+  pageSegments.forEach((seg, i) => {
+    const [mx, my] = pt(seg.mid);
+    const ang = toRad(seg.deg - 90);
+    const perp = ang + Math.PI / 2;
+    const side = i % 2 === 0 ? 1 : -1;
+    const off = 28 * s * side;
+    const lx = mx + Math.cos(perp) * off;
+    const ly = my + Math.sin(perp) * off;
+    // leader line
+    ctx.strokeStyle = "rgba(37,99,235,0.6)";
+    ctx.lineWidth = 1.5 * s;
+    ctx.beginPath();
+    ctx.moveTo(mx, my);
+    ctx.lineTo(lx, ly);
+    ctx.stroke();
+    // pill background
+    const text = fmtFeet(seg.ft);
+    ctx.font = `bold ${12 * s}px ui-monospace, monospace`;
+    const tw = ctx.measureText(text).width;
+    const padX2 = 6 * s;
+    const ph = 22 * s;
+    const pw = tw + padX2 * 2;
+    const px = lx - pw / 2;
+    const py = ly - ph / 2;
+    ctx.fillStyle = "#ffffff";
+    ctx.strokeStyle = "#2563eb";
+    ctx.lineWidth = 2 * s;
+    ctx.beginPath();
+    ctx.roundRect(px, py, pw, ph, 4 * s);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "#1e40af";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(text, lx, ly);
+  });
+
+  // Draw pole markers (RED circles with labels)
+  pagePoles.forEach((p, i) => {
+    const [x, y] = pt(p.pos);
+    const label = p.pole_number || `${i + 1}`;
+    ctx.font = `bold ${12 * s}px ui-monospace, monospace`;
+    const tw = ctx.measureText(label).width;
+    const r = 14 * s;
+    const w = Math.max(2 * r, tw + 14 * s);
+    const rx = x - w / 2;
+    const ry = y - r;
+    ctx.fillStyle = "#dc2626";
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 3 * s;
+    ctx.beginPath();
+    ctx.moveTo(rx + r, ry);
+    ctx.arcTo(rx + w, ry, rx + w, ry + 2 * r, r);
+    ctx.arcTo(rx + w, ry + 2 * r, rx, ry + 2 * r, r);
+    ctx.arcTo(rx, ry + 2 * r, rx, ry, r);
+    ctx.arcTo(rx, ry, rx + w, ry, r);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "#ffffff";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(label, x, y + 1 * s);
+  });
+
+  // Draw underground items (GREEN squares)
+  relevantUg.forEach((u) => {
+    const [x, y] = pt(u.pos);
+    const abbr = undergroundAbbr(u.type);
+    ctx.font = `bold ${10 * s}px ui-monospace, monospace`;
+    const tw = ctx.measureText(abbr).width;
+    const sz = Math.max(24 * s, tw + 10 * s);
+    ctx.fillStyle = "#16a34a";
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 2.5 * s;
+    ctx.beginPath();
+    ctx.rect(x - sz / 2, y - sz / 2, sz, sz);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "#ffffff";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(abbr, x, y + 1 * s);
+  });
+
+  // Add page footer with segment summary
+  const footerH = 40 * s;
+  const footerY = mapH + headerH - footerH;
+  ctx.fillStyle = "rgba(0,0,0,0.7)";
+  ctx.fillRect(0, footerY, mapW, footerH);
+  ctx.fillStyle = "#ffffff";
+  ctx.font = `bold ${11 * s}px ui-monospace, monospace`;
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  ctx.fillText(`Segment ${pageNum}: ${pagePoles.length} poles | ${fmtFeet(pageFootage)}`, 20 * s, footerY + footerH / 2);
+  
+  // Add scale reference
+  ctx.textAlign = "right";
+  ctx.fillText(`${pageNum}/${totalPages}`, mapW - 20 * s, footerY + footerH / 2);
+
+  return canvas.toDataURL("image/png");
+};
+
+// Download segmented map pages as a ZIP file
+export const downloadSegmentedMapPages = async ({ 
+  poles, job, showStops = false, underground = [], 
+  targetFeet = 600 
+}) => {
+  const { route, segments, totalFeet } = computeRoute(poles);
+  const ug = ugWithGps(underground);
+  const connectors = computeUgConnectors(route, ug);
+  
+  if (route.length === 0) {
+    toast.error("No poles with GPS coordinates to map");
+    return false;
+  }
+
+  try {
+    toast.info("Generating map pages...");
+    
+    // Split route into 600ft segments
+    const pages = splitRouteIntoSegments(route, segments, targetFeet);
+    const totalPages = pages.length;
+    
+    if (totalPages === 1) {
+      // If only one page needed, just download single image
+      return downloadPoleMapImage({ poles, job, showStops, underground });
+    }
+
+    const zip = new JSZip();
+    
+    for (let i = 0; i < pages.length; i++) {
+      const page = pages[i];
+      const pageNum = i + 1;
+      const startPole = page.poles[0]?.pole_number || `Pole ${page.startIdx + 1}`;
+      const endPole = page.poles[page.poles.length - 1]?.pole_number || `Pole ${page.endIdx + 1}`;
+      
+      toast.info(`Generating page ${pageNum} of ${totalPages}...`);
+      
+      const dataUrl = await generateSegmentPage({
+        pageNum,
+        totalPages,
+        pagePoles: page.poles,
+        pageSegments: page.segments,
+        pageFootage: page.footage,
+        startPole,
+        endPole,
+        job,
+        showStops,
+        ug,
+        connectors,
+        allRoute: route
+      });
+      
+      if (dataUrl) {
+        // Convert data URL to blob for ZIP
+        const base64 = dataUrl.split(",")[1];
+        zip.file(`page_${String(pageNum).padStart(2, "0")}_${startPole}_to_${endPole}.png`.replace(/[^a-z0-9_.-]/gi, "_"), base64, { base64: true });
+      }
+    }
+    
+    // Generate and download ZIP
+    const zipBlob = await zip.generateAsync({ type: "blob" });
+    const url = URL.createObjectURL(zipBlob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${(job?.name || "job").replace(/[^a-z0-9-_]+/gi, "_")}_map_pages.zip`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    
+    toast.success(`Downloaded ${totalPages} map pages as ZIP`);
+    return true;
+  } catch (e) {
+    console.error(e);
+    toast.error("Could not generate segmented map. Please try again.");
     return false;
   }
 };
