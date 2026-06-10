@@ -17,6 +17,14 @@ const EditPole = () => {
     try {
       // Add cache-busting timestamp to ensure fresh data
       const response = await axios.get(`/poles/${id}?_t=${Date.now()}`);
+      console.log('[EditPole] Fetched pole data:', {
+        pole_owner: response.data.pole_owner,
+        pole_class: response.data.pole_class,
+        pole_type: response.data.pole_type,
+        condition: response.data.condition,
+        access: response.data.access,
+        pole_size: response.data.pole_size,
+      });
       setPole(response.data);
     } catch (error) {
       toast.error("Failed to fetch pole data");

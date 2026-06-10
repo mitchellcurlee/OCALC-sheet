@@ -143,6 +143,17 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
   useEffect(() => {
     if (!initialPole) return;
     const p = initialPole;
+    
+    // Debug: Log what data is being loaded
+    console.log('[PoleForm] Loading initialPole:', {
+      pole_owner: p.pole_owner,
+      pole_class: p.pole_class,
+      pole_type: p.pole_type,
+      condition: p.condition,
+      access: p.access,
+      pole_size: p.pole_size,
+    });
+    
     setFormData({
       job_number: p.job_number || "", pole_number: p.pole_number || "",
       pole_owner: p.pole_owner || "", access: p.access || "", pole_class: p.pole_class || "",
@@ -430,6 +441,16 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
         height: a.height ? parseFloat(a.height) : null
       })),
     };
+
+    // Debug: Log what's being submitted
+    console.log('[PoleForm] Submitting data:', {
+      pole_owner: submitData.pole_owner,
+      pole_class: submitData.pole_class,
+      pole_type: submitData.pole_type,
+      condition: submitData.condition,
+      access: submitData.access,
+      pole_size: submitData.pole_size,
+    });
 
     const ok = await onSubmit(submitData);
     if (ok) {
