@@ -224,6 +224,14 @@ body {
 }
 
 /* Sticky bottom navigation for mobile */
+/* Map marker divIcons: strip Leaflet's default white box so custom labels/arrows show cleanly */
+.leaflet-marker-icon.pole-route-marker,
+.leaflet-marker-icon.seg-arrow,
+.leaflet-marker-icon.seg-label {
+    background: transparent;
+    border: 0;
+}
+
 .mobile-bottom-nav {
     position: fixed;
     bottom: 0;

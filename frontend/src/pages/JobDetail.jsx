@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
+import { downloadPoleMapImage } from "@/lib/poleMapImage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +32,7 @@ import {
   Loader2,
   Folder,
   Map as MapIcon,
+  ImageDown,
 } from "lucide-react";
 
 const JobDetail = () => {
@@ -41,6 +43,16 @@ const JobDetail = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteId, setDeleteId] = useState(null);
+  const [mapDownloading, setMapDownloading] = useState(false);
+
+  const handleDownloadMap = async () => {
+    setMapDownloading(true);
+    try {
+      await downloadPoleMapImage({ poles, job });
+    } finally {
+      setMapDownloading(false);
+    }
+  };
 
   const fetchJobAndPoles = useCallback(async () => {
     try {
@@ -169,6 +181,16 @@ const JobDetail = () => {
                   Map
                 </Button>
               </Link>
+              <Button
+                onClick={handleDownloadMap}
+                disabled={mapDownloading}
+                variant="outline"
+                className="flex-1 sm:flex-initial h-11 sm:h-10 bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900 text-sm"
+                data-testid="download-map-btn"
+              >
+                {mapDownloading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <ImageDown className="w-4 h-4 mr-2" />}
+                Map Image
+              </Button>
               <Button
                 onClick={handleExport}
                 variant="outline"
