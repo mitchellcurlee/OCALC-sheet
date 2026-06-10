@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, useSearchParams, Link } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
 import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap } from "react-leaflet";
@@ -7,7 +7,7 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ListOrdered } from "lucide-react";
-import { computeRoute, fmtFeet, markerLabel, downloadPoleMapImage } from "@/lib/poleMapImage";
+import { computeRoute, fmtFeet, markerLabel, downloadPoleMapImage, ugWithGps, undergroundAbbr } from "@/lib/poleMapImage";
 
 const poleIcon = (label) =>
   L.divIcon({
@@ -35,6 +35,15 @@ const labelIcon = (text, ox, oy) =>
     iconAnchor: [32 - ox, 11 - oy],
   });
 
+// Underground item marker (amber square with abbreviation)
+const ugIcon = (abbr) =>
+  L.divIcon({
+    className: "ug-marker",
+    html: `<div style="background:#d97706;color:#fff;border:2px solid #fff;border-radius:4px;min-width:24px;height:24px;padding:0 5px;display:flex;align-items:center;justify-content:center;font:700 11px/1 ui-monospace,monospace;box-shadow:0 1px 4px rgba(0,0,0,.5);white-space:nowrap;">${abbr}</div>`,
+    iconSize: [24, 24],
+    iconAnchor: [12, 12],
+  });
+
 const FitBounds = ({ points }) => {
   const map = useMap();
   useEffect(() => {
@@ -54,21 +63,26 @@ const MapRefSetter = ({ mapRef }) => {
 
 const JobMap = () => {
   const { jobId } = useParams();
+  const [searchParams] = useSearchParams();
   const [job, setJob] = useState(null);
   const [poles, setPoles] = useState([]);
+  const [underground, setUnderground] = useState([]);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
   const [showStops, setShowStops] = useState(false);
   const mapRef = useRef(null);
+  const autoDownloadedRef = useRef(false);
 
   const fetchData = useCallback(async () => {
     try {
-      const [jobRes, polesRes] = await Promise.all([
+      const [jobRes, polesRes, ugRes] = await Promise.all([
         axios.get(`/jobs/${jobId}`),
         axios.get(`/jobs/${jobId}/poles`),
+        axios.get(`/jobs/${jobId}/underground`),
       ]);
       setJob(jobRes.data);
       setPoles(polesRes.data);
+      setUnderground(ugRes.data);
     } catch (e) {
       toast.error("Failed to load job map data");
     } finally {
@@ -81,7 +95,9 @@ const JobMap = () => {
   }, [fetchData]);
 
   const { route, missing, segments, totalFeet } = useMemo(() => computeRoute(poles), [poles]);
+  const ug = useMemo(() => ugWithGps(underground), [underground]);
   const linePoints = route.map((p) => p.pos);
+  const allPoints = useMemo(() => [...linePoints, ...ug.map((u) => u.pos)], [linePoints, ug]);
 
   // perpendicular screen offset for each segment label (alternating sides so
   // close-together measurements don't overlap each other or the markers)
@@ -98,19 +114,28 @@ const JobMap = () => {
 
   const recenter = () => {
     const m = mapRef.current;
-    if (!m || linePoints.length === 0) return;
-    if (linePoints.length === 1) m.setView(linePoints[0], 19);
-    else m.fitBounds(linePoints, { padding: [60, 60], maxZoom: 20 });
+    if (!m || allPoints.length === 0) return;
+    if (allPoints.length === 1) m.setView(allPoints[0], 19);
+    else m.fitBounds(allPoints, { padding: [60, 60], maxZoom: 20 });
   };
 
-  const downloadImage = async () => {
+  const downloadImage = useCallback(async () => {
     setDownloading(true);
     try {
-      await downloadPoleMapImage({ poles, job, showStops });
+      await downloadPoleMapImage({ poles, job, showStops, underground });
     } finally {
       setDownloading(false);
     }
-  };
+  }, [poles, job, showStops, underground]);
+
+  // Auto-download when opened with ?download=1 (e.g. from the Excel "Map Image" link)
+  useEffect(() => {
+    if (loading || autoDownloadedRef.current) return;
+    if (searchParams.get("download") === "1" && allPoints.length > 0) {
+      autoDownloadedRef.current = true;
+      downloadImage();
+    }
+  }, [loading, searchParams, allPoints, downloadImage]);
 
   if (loading) {
     return (
@@ -120,7 +145,7 @@ const JobMap = () => {
     );
   }
 
-  const center = route.length ? route[0].pos : [29.7604, -95.3698];
+  const center = allPoints.length ? allPoints[0] : [29.7604, -95.3698];
 
   return (
     <div className="min-h-screen bg-industrial-bg" data-testid="job-map-page">
@@ -140,12 +165,12 @@ const JobMap = () => {
                 {job?.name || "Job"} — Pole Map
               </h1>
               <p className="text-xs font-mono text-zinc-500">
-                {route.length} pole(s) plotted · {fmtFeet(totalFeet)} total route
+                {route.length} pole(s){ug.length ? ` · ${ug.length} underground` : ""} · {fmtFeet(totalFeet)} total route
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button onClick={recenter} disabled={route.length === 0} variant="outline" className="bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900" data-testid="recenter-btn">
+            <Button onClick={recenter} disabled={allPoints.length === 0} variant="outline" className="bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900" data-testid="recenter-btn">
               <Crosshair className="w-4 h-4 mr-2" />
               Fit all
             </Button>
@@ -153,7 +178,7 @@ const JobMap = () => {
               <ListOrdered className="w-4 h-4 mr-2" />
               Stop #{"'"}s
             </Button>
-            <Button onClick={downloadImage} disabled={downloading || route.length === 0} className="bg-red-600 hover:bg-red-700 text-white" data-testid="download-map-btn">
+            <Button onClick={downloadImage} disabled={downloading || allPoints.length === 0} className="bg-red-600 hover:bg-red-700 text-white" data-testid="download-map-btn">
               {downloading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
               Download image
             </Button>
@@ -172,16 +197,16 @@ const JobMap = () => {
           </div>
         )}
 
-        {route.length === 0 ? (
+        {route.length === 0 && ug.length === 0 ? (
           <div className="industrial-card p-8 text-center text-zinc-500">
-            No poles with GPS coordinates yet. Add coordinates to poles to see them on the map.
+            No poles or underground items with GPS coordinates yet. Add coordinates to see them on the map.
           </div>
         ) : (
           <div className="h-[70vh] border border-zinc-300 overflow-hidden rounded">
             <MapContainer center={center} zoom={18} minZoom={3} maxZoom={22} scrollWheelZoom={true} style={{ height: "100%", width: "100%" }} className="z-0">
               <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" attribution="&copy; Esri" maxNativeZoom={19} maxZoom={22} />
               <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}" maxNativeZoom={19} maxZoom={22} />
-              <FitBounds points={linePoints} />
+              <FitBounds points={allPoints} />
               <MapRefSetter mapRef={mapRef} />
               {route.length > 1 && <Polyline positions={linePoints} pathOptions={{ color: "#dc2626", weight: 3 }} />}
               {route.map((p, i) => (
@@ -211,6 +236,20 @@ const JobMap = () => {
               ))}
               {segLabels.map((s, i) => (
                 <Marker key={`lbl-${i}`} position={s.mid} icon={labelIcon(fmtFeet(s.ft), s.ox, s.oy)} interactive={false} zIndexOffset={1000} />
+              ))}
+              {ug.map((u) => (
+                <Marker key={u.id} position={u.pos} icon={ugIcon(undergroundAbbr(u.type))}>
+                  <Popup>
+                    <div className="min-w-[170px] font-mono" data-testid={`ug-popup-${u.id}`}>
+                      <div className="text-sm font-bold text-amber-700">{undergroundAbbr(u.type)} · {u.type}</div>
+                      {u.label && <div className="text-xs text-zinc-600 mt-1">{u.label}</div>}
+                      {u.notes && <div className="text-xs text-zinc-500 mt-1">{u.notes}</div>}
+                      <Link to={`/jobs/${jobId}/underground/edit/${u.id}`}>
+                        <Button size="sm" className="w-full h-8 mt-2 bg-amber-600 hover:bg-amber-700 text-white" data-testid={`ug-edit-${u.id}`}>Edit</Button>
+                      </Link>
+                    </div>
+                  </Popup>
+                </Marker>
               ))}
             </MapContainer>
           </div>

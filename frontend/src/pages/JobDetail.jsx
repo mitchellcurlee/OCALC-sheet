@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
-import { downloadPoleMapImage } from "@/lib/poleMapImage";
+import { downloadPoleMapImage, UNDERGROUND_TYPES, undergroundAbbr } from "@/lib/poleMapImage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -33,13 +33,22 @@ import {
   Folder,
   Map as MapIcon,
   ImageDown,
+  Layers,
+  ChevronDown,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 
 const JobDetail = () => {
   const { jobId } = useParams();
   const navigate = useNavigate();
   const [job, setJob] = useState(null);
   const [poles, setPoles] = useState([]);
+  const [undergroundItems, setUndergroundItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteId, setDeleteId] = useState(null);
@@ -48,7 +57,7 @@ const JobDetail = () => {
   const handleDownloadMap = async () => {
     setMapDownloading(true);
     try {
-      await downloadPoleMapImage({ poles, job });
+      await downloadPoleMapImage({ poles, job, underground: undergroundItems });
     } finally {
       setMapDownloading(false);
     }
@@ -56,12 +65,14 @@ const JobDetail = () => {
 
   const fetchJobAndPoles = useCallback(async () => {
     try {
-      const [jobRes, polesRes] = await Promise.all([
+      const [jobRes, polesRes, ugRes] = await Promise.all([
         axios.get(`/jobs/${jobId}`),
-        axios.get(`/jobs/${jobId}/poles`)
+        axios.get(`/jobs/${jobId}/poles`),
+        axios.get(`/jobs/${jobId}/underground`),
       ]);
       setJob(jobRes.data);
       setPoles(polesRes.data);
+      setUndergroundItems(ugRes.data);
     } catch (error) {
       toast.error("Failed to fetch job data");
       navigate("/");
@@ -69,6 +80,16 @@ const JobDetail = () => {
       setLoading(false);
     }
   }, [jobId, navigate]);
+
+  const deleteUnderground = async (itemId) => {
+    try {
+      await axios.delete(`/underground/${itemId}`);
+      toast.success("Underground item deleted");
+      fetchJobAndPoles();
+    } catch (e) {
+      toast.error("Failed to delete underground item");
+    }
+  };
 
   useEffect(() => {
     fetchJobAndPoles();
@@ -206,6 +227,23 @@ const JobDetail = () => {
                   Add Pole
                 </Button>
               </Link>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button className="flex-1 sm:flex-initial w-full sm:w-auto h-11 sm:h-10 bg-amber-600 hover:bg-amber-700 text-white text-sm" data-testid="add-underground-btn">
+                    <Layers className="w-4 h-4 mr-2" />
+                    Add Underground
+                    <ChevronDown className="w-4 h-4 ml-1" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="bg-white border-zinc-200 max-h-80 overflow-auto">
+                  {UNDERGROUND_TYPES.map((t) => (
+                    <DropdownMenuItem key={t} onClick={() => navigate(`/jobs/${jobId}/underground/add?type=${encodeURIComponent(t)}`)} data-testid={`add-ug-${t}`} className="cursor-pointer">
+                      <span className="font-mono text-xs text-amber-700 w-12 inline-block">{undergroundAbbr(t)}</span>
+                      {t}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </div>
@@ -358,6 +396,50 @@ const JobDetail = () => {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Underground items */}
+        {undergroundItems.length > 0 && (
+          <div className="mt-8" data-testid="underground-list">
+            <h2 className="font-heading text-base font-bold text-zinc-900 mb-3 flex items-center gap-2">
+              <Layers className="w-4 h-4 text-amber-600" />
+              Underground ({undergroundItems.length})
+            </h2>
+            <div className="space-y-3">
+              {undergroundItems.map((u) => (
+                <div key={u.id} className="industrial-card p-4" data-testid={`ug-card-${u.id}`}>
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 flex items-center justify-center bg-amber-600 text-white font-mono text-xs font-bold rounded">
+                        {undergroundAbbr(u.type)}
+                      </div>
+                      <div>
+                        <span className="font-bold text-zinc-900">{u.type}{u.label ? ` · ${u.label}` : ""}</span>
+                        <div className="flex items-center gap-3 text-xs text-zinc-500 mt-1">
+                          {u.latitude && u.longitude ? (
+                            <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />GPS</span>
+                          ) : (
+                            <span className="text-amber-600">No GPS</span>
+                          )}
+                          {u.notes && <span className="truncate max-w-[200px]">{u.notes}</span>}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Link to={`/jobs/${jobId}/underground/edit/${u.id}`}>
+                        <Button size="sm" variant="ghost" className="text-zinc-600 hover:text-zinc-900" data-testid={`edit-ug-${u.id}`}>
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                      </Link>
+                      <Button size="sm" variant="ghost" className="text-zinc-600 hover:text-red-600" onClick={() => deleteUnderground(u.id)} data-testid={`delete-ug-${u.id}`}>
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </main>

@@ -207,6 +207,11 @@ SPAN_OWNERS = ["Power", "ATT", "Comcast", "Lightwave", "Logix", "PS"]
 SPAN_DIRECTIONS = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
 ATTACHMENT_OWNERS = ["Power", "ATT", "Comcast", "Lightwave", "Logix", "PS", "Neutral", "Primary", "Midspan", "No Telco on Pole"]
 RISER_OPTIONS = ["0", "1", "2", "3", "4", "5", "6"]
+# Underground attributes (separate map features, each with its own coordinates)
+UNDERGROUND_TYPES = [
+    "Handhole", "Manhole", "Brooks Enclosure", "Flowerpot", "Pedestal",
+    "Point of Intersection", "FBT", "NTE", "FBT/NTE", "PFP",
+]
 
 # Models for dynamic arrays
 class DownGuy(BaseModel):
@@ -343,6 +348,33 @@ class Pole(PoleBase):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     job_id: Optional[str] = None  # Reference to parent job
     inspection_date: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+# Underground attribute Models (separate map features, each with its own coordinates)
+class UndergroundBase(BaseModel):
+    type: str  # one of UNDERGROUND_TYPES
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    label: Optional[str] = None  # optional identifier shown alongside the abbreviation
+    notes: Optional[str] = None
+    photo: Optional[str] = None
+
+class UndergroundCreate(UndergroundBase):
+    job_id: str
+
+class UndergroundUpdate(BaseModel):
+    type: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    label: Optional[str] = None
+    notes: Optional[str] = None
+    photo: Optional[str] = None
+
+class Underground(UndergroundBase):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    job_id: Optional[str] = None
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
@@ -560,6 +592,7 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
     
     poles = await db.poles.find({"job_id": job_id}, {"_id": 0}).sort("created_at", -1).to_list(10000)
     poles.sort(key=_pole_sort_key)
+    underground = await db.underground.find({"job_id": job_id}, {"_id": 0}).sort("created_at", 1).to_list(10000)
 
     public_base = (base_url or str(request.base_url)).rstrip("/")
 
@@ -592,6 +625,11 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
     map_cell = ws.cell(row=1, column=10, value="Open satellite overview")
     map_cell.hyperlink = f"{public_base}/jobs/{job_id}/map"
     map_cell.font = Font(color="2563EB", underline="single", bold=True)
+    ws.cell(row=1, column=11, value="MAP IMAGE").fill = header_fill
+    ws.cell(row=1, column=11).font = header_font
+    img_cell = ws.cell(row=1, column=12, value="Download map image")
+    img_cell.hyperlink = f"{public_base}/jobs/{job_id}/map?download=1"
+    img_cell.font = Font(color="2563EB", underline="single", bold=True)
     
     current_row = 3
     bold9 = Font(bold=True, size=9)
@@ -739,6 +777,28 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
 
         # Blank row separator
         current_row += 1
+    
+    # Underground items section
+    if underground:
+        UG_ABBR = {
+            "Handhole": "HH", "Manhole": "MH", "Brooks Enclosure": "BE", "Flowerpot": "FP",
+            "Pedestal": "PED", "Point of Intersection": "PI", "FBT": "FBT", "NTE": "NTE",
+            "FBT/NTE": "FBT/NTE", "PFP": "PFP",
+        }
+        ws.cell(row=current_row, column=1, value="UNDERGROUND").fill = header_fill
+        ws.cell(row=current_row, column=1).font = header_font
+        current_row += 1
+        for h_i, h in enumerate(["Abbr", "Type", "Label", "Latitude", "Longitude", "Notes"], 1):
+            ws.cell(row=current_row, column=h_i, value=h).font = Font(bold=True, size=9)
+        current_row += 1
+        for u in underground:
+            ws.cell(row=current_row, column=1, value=UG_ABBR.get(u.get("type", ""), ""))
+            ws.cell(row=current_row, column=2, value=u.get("type", ""))
+            ws.cell(row=current_row, column=3, value=u.get("label", ""))
+            ws.cell(row=current_row, column=4, value=u.get("latitude", ""))
+            ws.cell(row=current_row, column=5, value=u.get("longitude", ""))
+            ws.cell(row=current_row, column=6, value=u.get("notes", ""))
+            current_row += 1
     
     # Auto-adjust column widths
     for col in ws.columns:
@@ -922,6 +982,7 @@ async def get_pole_options():
         "conditions": POLE_CONDITIONS,
         "pole_types": POLE_TYPES,
         "pole_classes": POLE_CLASSES,
+        "underground_types": UNDERGROUND_TYPES,
         "sizes": POLE_SIZES,
         "down_guy_owners": DOWN_GUY_OWNERS,
         "down_guy_directions": DOWN_GUY_DIRECTIONS,
@@ -1008,6 +1069,43 @@ async def delete_pole(pole_id: str):
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Pole not found")
     return {"message": "Pole deleted successfully"}
+
+# -------------------------- Underground attributes --------------------------
+@api_router.post("/underground", response_model=Underground, status_code=201)
+async def create_underground(data: UndergroundCreate):
+    item = Underground(**data.model_dump())
+    await db.underground.insert_one(item.model_dump())
+    return item
+
+@api_router.get("/jobs/{job_id}/underground", response_model=List[Underground])
+async def get_job_underground(job_id: str):
+    items = await db.underground.find({"job_id": job_id}, {"_id": 0}).sort("created_at", 1).to_list(10000)
+    return items
+
+@api_router.get("/underground/{item_id}", response_model=Underground)
+async def get_underground(item_id: str):
+    item = await db.underground.find_one({"id": item_id}, {"_id": 0})
+    if not item:
+        raise HTTPException(status_code=404, detail="Underground item not found")
+    return item
+
+@api_router.put("/underground/{item_id}", response_model=Underground)
+async def update_underground(item_id: str, data: UndergroundUpdate):
+    existing = await db.underground.find_one({"id": item_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Underground item not found")
+    updates = {k: v for k, v in data.model_dump(exclude_unset=True).items()}
+    updates["updated_at"] = datetime.now(timezone.utc).isoformat()
+    await db.underground.update_one({"id": item_id}, {"$set": updates})
+    merged = {**existing, **updates}
+    return Underground(**merged)
+
+@api_router.delete("/underground/{item_id}")
+async def delete_underground(item_id: str):
+    result = await db.underground.delete_one({"id": item_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Underground item not found")
+    return {"message": "Underground item deleted successfully"}
 
 @api_router.get("/poles/export/excel")
 async def export_poles_excel(request: Request, base_url: Optional[str] = None):

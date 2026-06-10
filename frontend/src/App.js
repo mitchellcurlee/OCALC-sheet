@@ -9,6 +9,7 @@ import AddPole from "@/pages/AddPole";
 import EditPole from "@/pages/EditPole";
 import ViewPole from "@/pages/ViewPole";
 import JobMap from "@/pages/JobMap";
+import UndergroundForm from "@/pages/UndergroundForm";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import InstallPrompt from "@/components/InstallPrompt";
@@ -30,6 +31,8 @@ function App() {
             <Route path="/jobs/:jobId/edit/:id" element={<ProtectedRoute><EditPole /></ProtectedRoute>} />
             <Route path="/jobs/:jobId/view/:id" element={<ProtectedRoute><ViewPole /></ProtectedRoute>} />
             <Route path="/jobs/:jobId/map" element={<ProtectedRoute><JobMap /></ProtectedRoute>} />
+            <Route path="/jobs/:jobId/underground/add" element={<ProtectedRoute><UndergroundForm /></ProtectedRoute>} />
+            <Route path="/jobs/:jobId/underground/edit/:id" element={<ProtectedRoute><UndergroundForm /></ProtectedRoute>} />
           </Routes>
         </BrowserRouter>
       </AuthProvider>

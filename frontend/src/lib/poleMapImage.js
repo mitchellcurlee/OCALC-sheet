@@ -33,6 +33,27 @@ export const naturalCompare = (a, b) =>
 
 export const fmtFeet = (ft) => `${Math.round(ft).toLocaleString()} ft`;
 
+// Underground attribute abbreviations for map labels
+export const UNDERGROUND_ABBR = {
+  Handhole: "HH",
+  Manhole: "MH",
+  "Brooks Enclosure": "BE",
+  Flowerpot: "FP",
+  Pedestal: "PED",
+  "Point of Intersection": "PI",
+  FBT: "FBT",
+  NTE: "NTE",
+  "FBT/NTE": "FBT/NTE",
+  PFP: "PFP",
+};
+export const undergroundAbbr = (type) => UNDERGROUND_ABBR[type] || String(type || "").slice(0, 3).toUpperCase();
+export const UNDERGROUND_TYPES = Object.keys(UNDERGROUND_ABBR);
+
+export const ugWithGps = (underground) =>
+  (underground || [])
+    .filter((u) => Number.isFinite(parseFloat(u.latitude)) && Number.isFinite(parseFloat(u.longitude)))
+    .map((u) => ({ ...u, pos: [parseFloat(u.latitude), parseFloat(u.longitude)] }));
+
 export const markerLabel = (p, i, showStops) =>
   showStops ? `${i + 1}\u00B7${p.pole_number || ""}` : String(p.pole_number || "");
 
@@ -55,10 +76,11 @@ export const computeRoute = (poles) => {
 
 // Fetch a single satellite image (via backend proxy) and draw the annotated
 // pole-route exhibit, then trigger a PNG download. Returns true on success.
-export const downloadPoleMapImage = async ({ poles, job, showStops = false }) => {
+export const downloadPoleMapImage = async ({ poles, job, showStops = false, underground = [] }) => {
   const { route, segments, totalFeet } = computeRoute(poles);
-  if (route.length === 0) {
-    toast.error("No poles with GPS coordinates to map");
+  const ug = ugWithGps(underground);
+  if (route.length === 0 && ug.length === 0) {
+    toast.error("No poles or underground items with GPS coordinates to map");
     return false;
   }
   try {
@@ -72,8 +94,9 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false }) =>
     const panelW = 340;
     const s = 2;
 
-    const xs = route.map((p) => mercX(p.pos[1]));
-    const ys = route.map((p) => mercY(p.pos[0]));
+    const allPts = [...route.map((p) => p.pos), ...ug.map((u) => u.pos)];
+    const xs = allPts.map((p) => mercX(p[1]));
+    const ys = allPts.map((p) => mercY(p[0]));
     let xmin = Math.min(...xs);
     let xmax = Math.max(...xs);
     let ymin = Math.min(...ys);
@@ -179,6 +202,29 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false }) =>
       ctx.fillText(label, x, y + 0.5 * s);
     });
 
+    // 3b) Underground items (amber square markers with abbreviation)
+    ug.forEach((u) => {
+      const [x, y] = pt(u.pos);
+      const abbr = undergroundAbbr(u.type);
+      ctx.font = `700 ${11 * s}px ui-monospace, monospace`;
+      const tw = ctx.measureText(abbr).width;
+      const h = 22 * s;
+      const w = Math.max(h, tw + 12 * s);
+      const rx = x - w / 2;
+      const ry = y - h / 2;
+      ctx.fillStyle = "#d97706";
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 2 * s;
+      ctx.beginPath();
+      ctx.rect(rx, ry, w, h);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "#ffffff";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(abbr, x, y + 0.5 * s);
+    });
+
     // 4) Footage labels LAST (on top), offset perpendicular to the line and
     //    alternating sides so they don't cover markers or each other when poles
     //    are close together; a thin leader line ties each label to its segment.
@@ -220,7 +266,8 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false }) =>
     });
 
     // 5) Title banner (top-left)
-    const title = `${job?.name || "Job"}  -  ${route.length} poles, ${fmtFeet(totalFeet)} total`;
+    const ugPart = ug.length ? `, ${ug.length} UG` : "";
+    const title = `${job?.name || "Job"}  -  ${route.length} poles${ugPart}, ${fmtFeet(totalFeet)} total`;
     ctx.font = `700 ${13 * s}px ui-monospace, monospace`;
     const bw = ctx.measureText(title).width + 20 * s;
     ctx.fillStyle = "rgba(255,255,255,0.92)";
