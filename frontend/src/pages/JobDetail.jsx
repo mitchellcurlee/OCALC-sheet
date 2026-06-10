@@ -30,6 +30,7 @@ import {
   ArrowLeft,
   Loader2,
   Folder,
+  Map as MapIcon,
 } from "lucide-react";
 
 const JobDetail = () => {
@@ -158,6 +159,16 @@ const JobDetail = () => {
               </div>
             </div>
             <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
+              <Link to={`/jobs/${jobId}/map`} className="flex-1 sm:flex-initial">
+                <Button
+                  variant="outline"
+                  className="w-full h-11 sm:h-10 bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900 text-sm"
+                  data-testid="map-btn"
+                >
+                  <MapIcon className="w-4 h-4 mr-2" />
+                  Map
+                </Button>
+              </Link>
               <Button
                 onClick={handleExport}
                 variant="outline"
