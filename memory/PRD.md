@@ -116,20 +116,82 @@ Build an app that collects power pole data including: size of the pole, type of 
   - Example path visualization: HH --95ft--> Pole 1 ==249ft==> EXPORT-TEST ==94ft--> HB (where -- is green dashed, == is blue solid)
   - Added computeUgConnectors() function to find nearest pole for each underground item and compute connector geometry
   - Verified: interactive map shows all color-coded elements; download generates correct PNG. Requires redeploy for production.
+- Backend refactoring (Jun 10, 2026): 
+  - Refactored ~1,350-line server.py into modular structure:
+    - `routes/` - auth.py, jobs.py, poles.py, underground.py, files.py, sync.py
+    - `models/` - user.py, job.py, pole.py, underground.py, options.py
+    - `services/` - auth.py, storage.py, helpers.py
+  - Main server.py now ~130 lines (imports + startup + CORS)
+  - All 19 pytest tests passing
+  - API v2.0.0 with new /api/sync/* endpoints for offline support
+- Offline PWA infrastructure (Jun 10, 2026):
+  - Added Service Worker for static asset caching + API response caching
+  - IndexedDB wrapper (offlineDb.js) for local storage of jobs, poles, underground
+  - Sync service (syncService.js) with action queue for offline CRUD operations
+  - React context (OfflineContext.jsx) for app-wide offline state
+  - OfflineIndicator component shows Online/Offline status + pending sync count
+  - OfflineBanner shows when offline with pending changes
+  - Sync API endpoints: POST /api/sync/push (batch actions), GET /api/sync/pull (full/incremental data)
+  - Manifest.json updated for PWA with white background
+  - Ready for production testing
 
 ## Tech Stack
-- Backend: FastAPI + MongoDB
+- Backend: FastAPI + MongoDB (modular: routes/, models/, services/)
 - Frontend: React + Tailwind CSS + shadcn/ui
 - Export: openpyxl for Excel generation
+- Offline: Service Worker + IndexedDB + Background Sync
+
+## Backend Architecture (Jun 10, 2026 refactor)
+```
+/app/backend/
+├── server.py          # Main FastAPI app entry point (~130 lines)
+├── routes/            # API endpoint handlers
+│   ├── auth.py        # /api/auth/* (login, register, me)
+│   ├── jobs.py        # /api/jobs/* (CRUD + Excel export)
+│   ├── poles.py       # /api/poles/* (CRUD + gallery + options)
+│   ├── underground.py # /api/underground/* + /api/jobs/{id}/underground
+│   ├── files.py       # /api/upload-photo, /api/files/*, /api/maps/static
+│   └── sync.py        # /api/sync/* (offline push/pull)
+├── models/            # Pydantic schemas
+│   ├── user.py, job.py, pole.py, underground.py
+│   └── options.py     # Dropdown options constants
+└── services/          # Business logic
+    ├── auth.py        # Password hashing, JWT, get_current_user
+    ├── storage.py     # Object storage (Emergent)
+    └── helpers.py     # format_height, pole_sort_key, pole_photo_items
+```
+
+## Offline PWA Architecture (Jun 10, 2026)
+```
+/app/frontend/
+├── public/
+│   ├── service-worker.js   # Caching + background sync
+│   └── manifest.json       # PWA manifest
+└── src/
+    ├── lib/
+    │   ├── offlineDb.js    # IndexedDB wrapper for local storage
+    │   ├── syncService.js  # Queue actions, push/pull sync
+    │   └── OfflineContext.jsx # React context for offline state
+    └── components/
+        └── OfflineIndicator.jsx # Online/offline badge + sync button
+```
+
+**Offline Capabilities:**
+- Jobs, poles, underground items cached locally in IndexedDB
+- CRUD operations work offline with queued sync
+- Background sync when back online
+- Conflict resolution: server wins, client retries
+- Service worker caches static assets + API responses
 
 ## Prioritized Backlog
 ### P0 (Critical) - COMPLETED
 - All core functionality implemented
+- Backend refactoring (routes/models/services) ✅
+- Offline PWA infrastructure ✅
 
 ### P1 (High Priority) - Future
 - Bulk import from Excel
-- Map view for poles with GPS coordinates
-- Offline mode for field use
+- Full offline CRUD testing in production
 
 ### P2 (Medium Priority) - Future
 - Multiple photos per pole
@@ -137,6 +199,6 @@ Build an app that collects power pole data including: size of the pole, type of 
 - Audit trail for changes
 
 ## Next Tasks
-1. Refactor server.py (~1,350 lines) into routes/, models/, services/ structure
+1. Test offline mode in production (requires deploy + testing on mobile device)
 2. Add bulk import capability from Excel
-3. Implement offline-first PWA features
+3. Add visual conflict indicator when sync fails

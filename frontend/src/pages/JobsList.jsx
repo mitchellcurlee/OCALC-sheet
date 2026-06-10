@@ -37,6 +37,7 @@ import {
   User,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { OfflineIndicator } from "@/components/OfflineIndicator";
 
 const JobsList = () => {
   const navigate = useNavigate();
@@ -150,6 +151,7 @@ const JobsList = () => {
               </div>
             </div>
             <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
+              <OfflineIndicator />
               {user && (
                 <div className="hidden sm:flex items-center gap-2">
                   {isAdmin && (

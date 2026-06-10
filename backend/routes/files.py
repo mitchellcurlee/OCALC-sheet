@@ -1,0 +1,81 @@
+from fastapi import APIRouter, HTTPException, UploadFile, File, Response
+from datetime import datetime, timezone
+import uuid
+import asyncio
+import re
+import logging
+import requests
+
+from services.storage import put_object, get_object, MIME_TYPES, APP_NAME
+
+router = APIRouter(tags=["files"])
+logger = logging.getLogger(__name__)
+
+_db = None
+
+
+def set_db(db):
+    global _db
+    _db = db
+
+
+@router.post("/upload-photo")
+async def upload_photo(file: UploadFile = File(...)):
+    """Upload a photo to object storage and return a servable URL."""
+    ext = (file.filename.rsplit(".", 1)[-1].lower() if file.filename and "." in file.filename else "jpg")
+    content_type = file.content_type or MIME_TYPES.get(ext, "application/octet-stream")
+    if not content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Only image files are allowed")
+    data = await file.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="Empty file")
+    path = f"{APP_NAME}/uploads/{uuid.uuid4()}.{ext}"
+    try:
+        result = await asyncio.to_thread(put_object, path, data, content_type)
+    except Exception as e:
+        logger.error(f"Photo upload failed: {e}")
+        raise HTTPException(status_code=502, detail="Photo upload failed")
+    stored_path = result.get("path", path)
+    await _db.files.insert_one({
+        "id": str(uuid.uuid4()),
+        "storage_path": stored_path,
+        "original_filename": file.filename,
+        "content_type": content_type,
+        "size": result.get("size"),
+        "is_deleted": False,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+    return {"url": f"/api/files/{stored_path}", "path": stored_path}
+
+
+@router.get("/files/{path:path}")
+async def serve_file(path: str):
+    """Publicly serve a stored file (no auth so <img> tags and Excel links work)."""
+    record = await _db.files.find_one({"storage_path": path, "is_deleted": False}, {"_id": 0})
+    try:
+        data, content_type = await asyncio.to_thread(get_object, path)
+        ct = (record or {}).get("content_type") or content_type
+        return Response(content=data, media_type=ct, headers={"Cache-Control": "public, max-age=31536000"})
+    except Exception:
+        raise HTTPException(status_code=404, detail="File not found")
+
+
+@router.get("/maps/static")
+async def maps_static(bbox: str, size: str = "1400,1050"):
+    """Proxy a single satellite image from the free Esri World Imagery export service."""
+    if not re.fullmatch(r"-?\d+(\.\d+)?(,-?\d+(\.\d+)?){3}", bbox or ""):
+        raise HTTPException(status_code=400, detail="Invalid bbox")
+    m = re.fullmatch(r"(\d{2,4}),(\d{2,4})", size or "")
+    if not m or int(m.group(1)) > 2048 or int(m.group(2)) > 2048:
+        raise HTTPException(status_code=400, detail="Invalid size")
+    url = (
+        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export"
+        f"?bbox={bbox}&bboxSR=3857&imageSR=3857&size={size}&format=png&transparent=false&f=image"
+    )
+    try:
+        resp = await asyncio.to_thread(lambda: requests.get(url, timeout=30))
+        resp.raise_for_status()
+    except Exception as e:
+        logger.error(f"Static map fetch failed: {e}")
+        raise HTTPException(status_code=502, detail="Map image fetch failed")
+    return Response(content=resp.content, media_type="image/png", headers={"Cache-Control": "public, max-age=3600"})

@@ -2,6 +2,8 @@ import "@/App.css";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/context/AuthContext";
+import { OfflineProvider } from "@/lib/OfflineContext";
+import { OfflineBanner } from "@/components/OfflineIndicator";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import JobsList from "@/pages/JobsList";
 import JobDetail from "@/pages/JobDetail";
@@ -17,7 +19,9 @@ import InstallPrompt from "@/components/InstallPrompt";
 function App() {
   return (
     <div className="min-h-screen bg-industrial-bg">
+      <OfflineProvider>
       <AuthProvider>
+        <OfflineBanner />
         <BrowserRouter>
           <Routes>
             {/* Auth Routes */}
@@ -36,6 +40,7 @@ function App() {
           </Routes>
         </BrowserRouter>
       </AuthProvider>
+      </OfflineProvider>
       <Toaster position="top-right" theme="dark" />
       <InstallPrompt />
     </div>
