@@ -8,6 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Camera, Loader2, Upload, Ruler, AlertCircle, CheckCircle2 } from "lucide-react";
 import axios from "axios";
@@ -126,6 +127,9 @@ export const PoleHeightAnalyzer = ({ onHeightsDetected, buttonVariant = "outline
             <Ruler className="w-5 h-5 text-blue-600" />
             AI Pole Height Analyzer
           </DialogTitle>
+          <DialogDescription className="text-sm text-zinc-500">
+            Upload a photo of a utility pole to estimate attachment heights using AI vision.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 mt-4">
