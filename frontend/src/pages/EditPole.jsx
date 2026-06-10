@@ -47,6 +47,9 @@ const EditPole = () => {
   }, [id, navigate, backUrl]);
 
   useEffect(() => {
+    // Reset state when navigating to a different pole
+    setFetching(true);
+    setPole(null);
     fetchPole();
     fetchPoles();
     window.scrollTo(0, 0);
@@ -138,6 +141,7 @@ const EditPole = () => {
         </div>
       )}
       <PoleForm
+        key={id}
         mode="edit"
         jobId={jobId}
         initialPole={pole}

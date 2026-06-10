@@ -112,6 +112,9 @@ const ViewPole = () => {
   }, [id, navigate, backUrl]);
 
   useEffect(() => {
+    // Reset state when navigating to a different pole
+    setLoading(true);
+    setPole(null);
     fetchPole();
     fetchPoles();
     window.scrollTo(0, 0);

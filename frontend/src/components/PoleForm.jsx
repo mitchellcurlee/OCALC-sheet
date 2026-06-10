@@ -140,8 +140,12 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
   }, [fetchOptions]);
 
   // When editing, populate the form from the loaded pole
+  // We wait for options to be loaded so Radix Select can match values to items
   useEffect(() => {
     if (!initialPole) return;
+    // Don't populate until options are loaded
+    if (!options.pole_owners || options.pole_owners.length === 0) return;
+    
     const p = initialPole;
     
     // Debug: Log what data is being loaded
@@ -171,7 +175,7 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
     setDownGuys(p.down_guys?.length > 0 ? p.down_guys.map(dg => ({ _key: rowKey(), ...dg, height: dg.height?.toString() || "" })) : [{ _key: rowKey(), owner: "", direction: "", size: "", type: "", condition: "", height: "", lead: "" }]);
     setKnuckles(p.knuckles?.length > 0 ? p.knuckles.map(k => ({ _key: rowKey(), ...k })) : [{ _key: rowKey(), size: "", total_eyes: "", direction: "", condition: "", photo: "" }]);
     setAttachments(p.attachments?.length > 0 ? p.attachments.map(a => ({ _key: rowKey(), ...a, height: a.height?.toString() || "", notes: a.notes || "" })) : [{ _key: rowKey(), height: "", owner: "", photo: "", notes: "" }]);
-  }, [initialPole]);
+  }, [initialPole, options.pole_owners]);
 
   // --- Autosave draft (create mode only) -----------------------------------
   // Keeps an in-progress new pole in localStorage so field crews don't lose
