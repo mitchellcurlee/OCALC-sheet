@@ -88,6 +88,7 @@ Build an app that collects power pole data including: size of the pole, type of 
   - Moved the HOA box to sit between "Birthmark & MGNV" and "OCALC Photos" on both Add and Edit (verified via header Y-order).
   - "Has Birthmark" changed from a toggle/Switch to a Yes/No dropdown (removed unused Switch import). 
   - Verified: anchor direction round-trips, export shows Direction/NE, both forms render with correct order, pytest 19/19. Requires redeploy for production.
+- Access options update (Jun 10, 2026): Access dropdown changed from Yes/No to: "Yes / Rear Access", "Yes / Front Access", "No / Rear Access" (plus blank), on both Add and Edit. Verified dropdown + save. Requires redeploy for production.
 
 ## Tech Stack
 - Backend: FastAPI + MongoDB

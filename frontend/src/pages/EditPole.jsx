@@ -294,11 +294,12 @@ const EditPole = () => {
               <div className="space-y-2">
                 <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Access</Label>
                 <Select value={formData.access} onValueChange={(v) => handleSelectChange("access", v)}>
-                  <SelectTrigger className="h-12 sm:h-10 bg-white border-zinc-300 text-zinc-900" data-testid="access-select"><SelectValue placeholder="Yes / No" /></SelectTrigger>
+                  <SelectTrigger className="h-12 sm:h-10 bg-white border-zinc-300 text-zinc-900" data-testid="access-select"><SelectValue placeholder="Access" /></SelectTrigger>
                   <SelectContent className="bg-zinc-50 border-zinc-300">
                     <SelectItem value={BLANK} className="text-zinc-500">—</SelectItem>
-                    <SelectItem value="Yes">Yes</SelectItem>
-                    <SelectItem value="No">No</SelectItem>
+                    <SelectItem value="Yes / Rear Access">Yes / Rear Access</SelectItem>
+                    <SelectItem value="Yes / Front Access">Yes / Front Access</SelectItem>
+                    <SelectItem value="No / Rear Access">No / Rear Access</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
