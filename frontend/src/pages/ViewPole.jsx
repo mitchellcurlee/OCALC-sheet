@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
@@ -30,6 +30,8 @@ import {
   ExternalLink,
   X,
   ZoomIn,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { MapContainer, TileLayer, Marker } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
@@ -79,15 +81,27 @@ const ViewPole = () => {
   const { jobId, id } = useParams();
   const navigate = useNavigate();
   const [pole, setPole] = useState(null);
+  const [poles, setPoles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [lightboxImage, setLightboxImage] = useState(null);
   
   const backUrl = jobId ? `/jobs/${jobId}` : "/";
 
+  // Fetch all poles in the job for navigation
+  const fetchPoles = useCallback(async () => {
+    if (!jobId) return;
+    try {
+      const response = await axios.get(`/jobs/${jobId}/poles?_t=${Date.now()}`);
+      setPoles(response.data);
+    } catch (error) {
+      console.error("Failed to fetch poles for navigation");
+    }
+  }, [jobId]);
+
   const fetchPole = useCallback(async () => {
     try {
-      const response = await axios.get(`/poles/${id}`);
+      const response = await axios.get(`/poles/${id}?_t=${Date.now()}`);
       setPole(response.data);
     } catch (error) {
       toast.error("Failed to fetch pole data");
@@ -99,7 +113,23 @@ const ViewPole = () => {
 
   useEffect(() => {
     fetchPole();
-  }, [fetchPole]);
+    fetchPoles();
+    window.scrollTo(0, 0);
+  }, [id, jobId]);
+
+  // Calculate previous and next poles
+  const { prevPole, nextPole, currentIndex, totalPoles } = useMemo(() => {
+    if (!poles.length || !id) {
+      return { prevPole: null, nextPole: null, currentIndex: -1, totalPoles: 0 };
+    }
+    const idx = poles.findIndex(p => p.id === id);
+    return {
+      prevPole: idx > 0 ? poles[idx - 1] : null,
+      nextPole: idx < poles.length - 1 ? poles[idx + 1] : null,
+      currentIndex: idx,
+      totalPoles: poles.length
+    };
+  }, [poles, id]);
 
   const handleDelete = async () => {
     try {
@@ -169,8 +199,54 @@ const ViewPole = () => {
   // Check if any attachment has data (array format)
   const hasAttachmentData = pole.attachments && pole.attachments.length > 0 && pole.attachments.some(a => a.height || a.owner || a.photo || a.notes);
 
+  // Should show navigation
+  const showNavigation = jobId && poles.length > 1;
+
   return (
     <div className="min-h-screen bg-industrial-bg" data-testid="view-pole-page">
+      {/* Pole Navigation */}
+      {showNavigation && (
+        <div className="flex items-center justify-between bg-white border-b border-zinc-200 px-4 py-2" data-testid="pole-navigation">
+          <Link 
+            to={prevPole ? `/jobs/${jobId}/view/${prevPole.id}` : '#'}
+            className={!prevPole ? 'pointer-events-none opacity-40' : ''}
+          >
+            <Button 
+              variant="outline" 
+              size="sm" 
+              disabled={!prevPole}
+              className="flex items-center gap-1 text-zinc-700"
+              data-testid="prev-pole-btn"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              <span className="hidden sm:inline">Previous</span>
+              {prevPole && <span className="font-mono text-xs ml-1">({prevPole.pole_number || 'No #'})</span>}
+            </Button>
+          </Link>
+          
+          <span className="text-sm text-zinc-500 font-mono" data-testid="pole-counter">
+            Pole {currentIndex + 1} of {totalPoles}
+          </span>
+          
+          <Link 
+            to={nextPole ? `/jobs/${jobId}/view/${nextPole.id}` : '#'}
+            className={!nextPole ? 'pointer-events-none opacity-40' : ''}
+          >
+            <Button 
+              variant="outline" 
+              size="sm" 
+              disabled={!nextPole}
+              className="flex items-center gap-1 text-zinc-700"
+              data-testid="next-pole-btn"
+            >
+              {nextPole && <span className="font-mono text-xs mr-1">({nextPole.pole_number || 'No #'})</span>}
+              <span className="hidden sm:inline">Next</span>
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </Link>
+        </div>
+      )}
+      
       {/* Header */}
       <header className="border-b border-zinc-200 bg-white backdrop-blur-sm sticky top-0 z-[1000]">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">

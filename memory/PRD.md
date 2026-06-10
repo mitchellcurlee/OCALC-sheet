@@ -202,3 +202,12 @@ Build an app that collects power pole data including: size of the pole, type of 
 1. Test offline mode in production (requires deploy + testing on mobile device)
 2. Add bulk import capability from Excel
 3. Add visual conflict indicator when sync fails
+
+## Session Update (Jun 10, 2026 continued)
+- Next/Previous pole navigation (Jun 10, 2026): Added navigation controls to both ViewPole and EditPole pages allowing users to quickly cycle through poles within a job without returning to the Job Detail page.
+  - Navigation bar appears at top when a job has 2+ poles
+  - Shows "Previous" button (with pole number), "Pole X of Y" counter, "Next" button (with pole number)
+  - Buttons disabled at ends (first/last pole)
+  - ViewPole navigates to /view/{id}, EditPole navigates to /edit/{id}
+  - Poles fetched via /jobs/{jobId}/poles?_t={timestamp} to ensure fresh data
+  - Verified: Navigation bar renders correctly on both pages, clicking Next/Previous works correctly, button states update appropriately. Requires redeploy for production.
