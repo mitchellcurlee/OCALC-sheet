@@ -6,7 +6,7 @@ import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap } from "react-
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ListOrdered, ChevronDown, FileImage, Files } from "lucide-react";
+import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ListOrdered, ChevronDown, FileImage, Files, Edit3, Save, X } from "lucide-react";
 import { computeRoute, fmtFeet, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, ugWithGps, undergroundAbbr, computeUgConnectors } from "@/lib/poleMapImage";
 import {
   DropdownMenu,
@@ -14,6 +14,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import EditableRoute from "@/components/EditableRoute";
 
 // Small red dot for pole marker with label on the side
 const poleIcon = (label, offsetDir = "right") => {
@@ -120,22 +121,34 @@ const JobMap = () => {
   const [job, setJob] = useState(null);
   const [poles, setPoles] = useState([]);
   const [underground, setUnderground] = useState([]);
+  const [customRoutes, setCustomRoutes] = useState({});
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
   const [showStops, setShowStops] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [saving, setSaving] = useState(false);
   const mapRef = useRef(null);
   const autoDownloadedRef = useRef(false);
 
   const fetchData = useCallback(async () => {
     try {
-      const [jobRes, polesRes, ugRes] = await Promise.all([
+      const [jobRes, polesRes, ugRes, routesRes] = await Promise.all([
         axios.get(`/jobs/${jobId}`),
         axios.get(`/jobs/${jobId}/poles`),
         axios.get(`/jobs/${jobId}/underground`),
+        axios.get(`/jobs/${jobId}/routes`),
       ]);
       setJob(jobRes.data);
       setPoles(polesRes.data);
       setUnderground(ugRes.data);
+      
+      // Convert routes array to a lookup object by segment key
+      const routesLookup = {};
+      routesRes.data.forEach(r => {
+        const key = `${r.from_pole_id}-${r.to_pole_id}`;
+        routesLookup[key] = r.waypoints || [];
+      });
+      setCustomRoutes(routesLookup);
     } catch (e) {
       toast.error("Failed to load job map data");
     } finally {
@@ -208,6 +221,50 @@ const JobMap = () => {
     if (allPoints.length === 1) m.setView(allPoints[0], 19);
     else m.fitBounds(allPoints, { padding: [60, 60], maxZoom: 20 });
   };
+
+  // Handle waypoint changes for a segment
+  const handleWaypointsChange = useCallback((segmentKey, waypoints) => {
+    setCustomRoutes(prev => ({
+      ...prev,
+      [segmentKey]: waypoints
+    }));
+  }, []);
+
+  // Save all route edits to the backend
+  const saveRouteEdits = useCallback(async () => {
+    setSaving(true);
+    try {
+      // Build route segments to save
+      const routesToSave = [];
+      for (let i = 0; i < route.length - 1; i++) {
+        const fromPole = route[i];
+        const toPole = route[i + 1];
+        const key = `${fromPole.id}-${toPole.id}`;
+        const waypoints = customRoutes[key] || [];
+        
+        routesToSave.push({
+          job_id: jobId,
+          from_pole_id: fromPole.id,
+          to_pole_id: toPole.id,
+          waypoints: waypoints
+        });
+      }
+      
+      await axios.post(`/jobs/${jobId}/routes/bulk`, routesToSave);
+      toast.success("Route edits saved");
+      setEditMode(false);
+    } catch (e) {
+      toast.error("Failed to save route edits");
+    } finally {
+      setSaving(false);
+    }
+  }, [route, customRoutes, jobId]);
+
+  // Cancel edit mode and revert changes
+  const cancelEditing = useCallback(() => {
+    setEditMode(false);
+    fetchData(); // Reload original data
+  }, [fetchData]);
 
   const downloadImage = useCallback(async () => {
     setDownloading(true);
@@ -302,6 +359,42 @@ const JobMap = () => {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            {/* Edit mode toggle */}
+            {!editMode ? (
+              <Button
+                onClick={() => setEditMode(true)}
+                disabled={route.length < 2}
+                variant="outline"
+                className="bg-blue-50 border-blue-300 hover:bg-blue-100 text-blue-700"
+                data-testid="edit-routes-btn"
+                title="Edit route lines"
+              >
+                <Edit3 className="w-4 h-4 mr-2" />
+                Edit Lines
+              </Button>
+            ) : (
+              <div className="flex gap-2">
+                <Button
+                  onClick={saveRouteEdits}
+                  disabled={saving}
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                  data-testid="save-routes-btn"
+                >
+                  {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                  Save
+                </Button>
+                <Button
+                  onClick={cancelEditing}
+                  disabled={saving}
+                  variant="outline"
+                  className="bg-zinc-100 border-zinc-300 hover:bg-zinc-200"
+                  data-testid="cancel-edit-btn"
+                >
+                  <X className="w-4 h-4 mr-2" />
+                  Cancel
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       </header>
@@ -323,13 +416,36 @@ const JobMap = () => {
           </div>
         ) : (
           <div className="h-[70vh] border border-zinc-300 overflow-hidden rounded relative">
+            {editMode && (
+              <div className="absolute top-2 left-2 z-[1000] bg-blue-600 text-white px-3 py-1.5 rounded text-sm font-medium shadow-lg">
+                Edit Mode: Click blue dots to add waypoints, drag to move, double-click to remove
+              </div>
+            )}
             <MapContainer center={center} zoom={18} minZoom={3} maxZoom={22} scrollWheelZoom={true} style={{ height: "100%", width: "100%" }} className="z-0">
               <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" attribution="&copy; Esri" maxNativeZoom={19} maxZoom={22} />
               <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}" maxNativeZoom={19} maxZoom={22} />
               <FitBounds points={allPoints} />
               <MapRefSetter mapRef={mapRef} />
-              {/* Aerial path (BLUE) */}
-              {route.length > 1 && <Polyline positions={linePoints} pathOptions={{ color: "#2563eb", weight: 3 }} />}
+              {/* Aerial path segments (BLUE) - editable */}
+              {route.length > 1 && route.slice(0, -1).map((fromPole, i) => {
+                const toPole = route[i + 1];
+                const segmentKey = `${fromPole.id}-${toPole.id}`;
+                const waypoints = customRoutes[segmentKey] || [];
+                return (
+                  <EditableRoute
+                    key={segmentKey}
+                    startPos={fromPole.pos}
+                    endPos={toPole.pos}
+                    waypoints={waypoints}
+                    segmentId={segmentKey}
+                    onWaypointsChange={handleWaypointsChange}
+                    editMode={editMode}
+                    color="#2563eb"
+                    weight={3}
+                    showDistance={true}
+                  />
+                );
+              })}
               {/* Underground connectors (GREEN dashed) */}
               {ugConnectors.map((c, i) => (
                 <Polyline key={`ug-conn-${i}`} positions={[c.from, c.to]} pathOptions={{ color: "#16a34a", weight: 2.5, dashArray: "6,4" }} />
@@ -366,11 +482,9 @@ const JobMap = () => {
                   </Marker>
                 );
               })}
-              {segLabels.map((s, i) => (
+              {/* Direction arrows (only in non-edit mode) */}
+              {!editMode && segLabels.map((s, i) => (
                 <Marker key={`arr-${i}`} position={s.mid} icon={arrowIcon(s.deg)} interactive={false} />
-              ))}
-              {segLabels.map((s, i) => (
-                <Marker key={`lbl-${i}`} position={s.mid} icon={labelIcon(fmtFeet(s.ft), s.ox, s.oy)} interactive={false} zIndexOffset={1000} />
               ))}
               {ug.map((u) => (
                 <Marker key={u.id} position={u.pos} icon={ugIcon(undergroundAbbr(u.type))}>
