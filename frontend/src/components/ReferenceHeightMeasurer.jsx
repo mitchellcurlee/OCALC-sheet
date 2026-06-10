@@ -23,6 +23,27 @@ import { toast } from "sonner";
 // Reference object height options (in feet)
 const REFERENCE_HEIGHT_OPTIONS = [4, 5, 6, 7, 8, 10, 12, 13, 14];
 
+// Helper function to convert decimal feet to feet'inches" format
+const formatFeetInches = (decimalFeet) => {
+  const feet = Math.floor(decimalFeet);
+  let inches = Math.round((decimalFeet - feet) * 12);
+  if (inches === 12) {
+    return `${feet + 1}' 0"`;
+  }
+  return `${feet}' ${inches}"`;
+};
+
+// Helper function to get decimal feet for storage
+const toDecimalFeet = (decimalFeet) => {
+  // Round to nearest inch for clean conversion
+  const feet = Math.floor(decimalFeet);
+  const inches = Math.round((decimalFeet - feet) * 12);
+  if (inches === 12) {
+    return feet + 1;
+  }
+  return Math.round((feet + inches / 12) * 10000) / 10000;
+};
+
 /**
  * ReferenceHeightMeasurer - Measure pole attachment heights using a reference object
  * 
@@ -141,9 +162,11 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
     markers.attachments.forEach((att, i) => {
       // Calculate height
       let heightFt = null;
+      let heightDisplay = null;
       if (pixelsPerFoot && markers.refBottom) {
         const pixelsFromGround = markers.refBottom.y - att.y;
-        heightFt = (pixelsFromGround / pixelsPerFoot).toFixed(1);
+        heightFt = pixelsFromGround / pixelsPerFoot;
+        heightDisplay = formatFeetInches(heightFt);
       }
 
       // Marker (smaller)
@@ -156,14 +179,14 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
       ctx.textAlign = "center";
       ctx.fillText(i + 1, att.x, att.y + 3);
 
-      // Height label (bigger)
-      if (heightFt !== null) {
+      // Height label (bigger) - now shows feet'inches"
+      if (heightDisplay !== null) {
         ctx.fillStyle = "#22c55e";
-        ctx.fillRect(att.x + 12, att.y - 14, 70, 28);
+        ctx.fillRect(att.x + 12, att.y - 14, 80, 28);
         ctx.fillStyle = "#ffffff";
-        ctx.font = "bold 18px Arial";
+        ctx.font = "bold 16px Arial";
         ctx.textAlign = "left";
-        ctx.fillText(`${heightFt}ft`, att.x + 18, att.y + 6);
+        ctx.fillText(heightDisplay, att.x + 18, att.y + 6);
       }
     });
   }, [markers, pixelsPerFoot, referenceHeight, imagePreview]);
@@ -264,10 +287,11 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
           const ay = att.y * scaleY;
           const by = markers.refBottom.y * scaleY;
 
-          // Calculate height
+          // Calculate height in feet and inches
           const pixelsFromGround = by - ay;
           const scaledPixelsPerFoot = pixelsPerFoot * scaleY;
-          const heightFt = (pixelsFromGround / scaledPixelsPerFoot).toFixed(1);
+          const rawHeight = pixelsFromGround / scaledPixelsPerFoot;
+          const heightDisplay = formatFeetInches(rawHeight);
 
           // Draw horizontal line to marker
           ctx.strokeStyle = "#22c55e";
@@ -287,13 +311,13 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
           ctx.textAlign = "center";
           ctx.fillText(i + 1, ax, ay + 4);
 
-          // Height label (bigger)
+          // Height label (bigger) - shows feet'inches"
           ctx.fillStyle = "#22c55e";
-          ctx.fillRect(ax + 15, ay - 20, 90, 40);
+          ctx.fillRect(ax + 15, ay - 20, 100, 40);
           ctx.fillStyle = "#ffffff";
-          ctx.font = "bold 24px Arial";
+          ctx.font = "bold 22px Arial";
           ctx.textAlign = "center";
-          ctx.fillText(`${heightFt}ft`, ax + 60, ay + 8);
+          ctx.fillText(heightDisplay, ax + 65, ay + 8);
         });
 
         // Title bar
@@ -331,14 +355,16 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
 
     setUploading(true);
     try {
-      // Calculate heights
+      // Calculate heights with proper feet/inches conversion
       const heights = markers.attachments.map((att, i) => {
         const pixelsFromGround = markers.refBottom.y - att.y;
-        const heightFt = parseFloat((pixelsFromGround / pixelsPerFoot).toFixed(1));
+        const rawHeight = pixelsFromGround / pixelsPerFoot;
+        const heightFt = toDecimalFeet(rawHeight); // Rounds to nearest inch
+        const displayHeight = formatFeetInches(rawHeight);
         return {
           height_ft: heightFt,
           type: `Attachment ${i + 1}`,
-          description: `Measured at ${heightFt}ft using ${referenceHeight}ft reference`,
+          description: `Measured at ${displayHeight} using ${referenceHeight}ft reference`,
           confidence: "high"
         };
       });
@@ -550,11 +576,12 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
                   </div>
                   {markers.attachments.map((att, i) => {
                     const pixelsFromGround = markers.refBottom.y - att.y;
-                    const heightFt = (pixelsFromGround / pixelsPerFoot).toFixed(1);
+                    const rawHeight = pixelsFromGround / pixelsPerFoot;
+                    const heightDisplay = formatFeetInches(rawHeight);
                     return (
                       <div key={i} className="p-2 flex justify-between items-center text-sm">
                         <span className="text-zinc-600">Attachment {i + 1}</span>
-                        <span className="font-bold text-green-700">{heightFt} ft</span>
+                        <span className="font-bold text-green-700">{heightDisplay}</span>
                       </div>
                     );
                   })}
