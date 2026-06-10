@@ -15,7 +15,8 @@ const EditPole = () => {
 
   const fetchPole = useCallback(async () => {
     try {
-      const response = await axios.get(`/poles/${id}`);
+      // Add cache-busting timestamp to ensure fresh data
+      const response = await axios.get(`/poles/${id}?_t=${Date.now()}`);
       setPole(response.data);
     } catch (error) {
       toast.error("Failed to fetch pole data");

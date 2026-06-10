@@ -6,10 +6,11 @@ Route handlers are organized in the routes/ directory.
 Models are in models/ and services in services/.
 """
 
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI, APIRouter, Request
 from fastapi.responses import Response
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
@@ -31,6 +32,21 @@ app = FastAPI(
     description="API for collecting and managing power pole inspection data",
     version="2.0.0"
 )
+
+
+# Middleware to prevent caching of API responses
+class NoCacheMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        # Add no-cache headers to all API responses (except file downloads)
+        if request.url.path.startswith("/api/") and "files/" not in request.url.path:
+            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
+        return response
+
+
+app.add_middleware(NoCacheMiddleware)
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")

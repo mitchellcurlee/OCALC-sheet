@@ -65,10 +65,12 @@ const JobDetail = () => {
 
   const fetchJobAndPoles = useCallback(async () => {
     try {
+      // Add cache-busting timestamp to ensure fresh data
+      const ts = Date.now();
       const [jobRes, polesRes, ugRes] = await Promise.all([
-        axios.get(`/jobs/${jobId}`),
-        axios.get(`/jobs/${jobId}/poles`),
-        axios.get(`/jobs/${jobId}/underground`),
+        axios.get(`/jobs/${jobId}?_t=${ts}`),
+        axios.get(`/jobs/${jobId}/poles?_t=${ts}`),
+        axios.get(`/jobs/${jobId}/underground?_t=${ts}`),
       ]);
       setJob(jobRes.data);
       setPoles(polesRes.data);
