@@ -467,9 +467,9 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
                   </SelectTrigger>
                   <SelectContent className="bg-zinc-50 border-zinc-300">
                     <SelectItem value={BLANK} className="text-zinc-500">—</SelectItem>
-                    <SelectItem value="Yes / Rear Access">Yes / Rear Access</SelectItem>
-                    <SelectItem value="Yes / Front Access">Yes / Front Access</SelectItem>
-                    <SelectItem value="No / Rear Access">No / Rear Access</SelectItem>
+                    <SelectItem value="Yes / Rear Easement">Yes / Rear Easement</SelectItem>
+                    <SelectItem value="Yes / Right of Way">Yes / Right of Way</SelectItem>
+                    <SelectItem value="No / Rear Easement">No / Rear Easement</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
