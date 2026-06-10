@@ -495,7 +495,7 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
                   ref={imageRef}
                   src={imagePreview}
                   alt="Pole"
-                  className="w-full max-h-96 object-contain"
+                  className="w-full max-h-[70vh] object-contain"
                   onLoad={drawCanvas}
                 />
                 <canvas
