@@ -99,12 +99,16 @@ const ugConnectorLabel = (text) =>
     iconAnchor: [32, 10],
   });
 
-const FitBounds = ({ points }) => {
+const FitBounds = ({ points, disabled = false }) => {
   const map = useMap();
+  const initialFitDone = useRef(false);
   useEffect(() => {
+    // Only fit bounds on initial load, not during edits
+    if (disabled || initialFitDone.current) return;
     if (points.length === 1) map.setView(points[0], 19);
     else if (points.length > 1) map.fitBounds(points, { padding: [60, 60], maxZoom: 20 });
-  }, [points, map]);
+    initialFitDone.current = true;
+  }, [points, map, disabled]);
   return null;
 };
 
@@ -317,7 +321,7 @@ const JobMap = () => {
   const downloadSegmented = useCallback(async () => {
     setDownloading(true);
     try {
-      await downloadSegmentedMapPages({ poles, job, showStops, underground, targetFeet: 600 });
+      await downloadSegmentedMapPages({ poles, job, showStops, underground, targetFeet: 800 });
     } finally {
       setDownloading(false);
     }
@@ -392,8 +396,8 @@ const JobMap = () => {
                 <DropdownMenuItem onClick={downloadSegmented} className="cursor-pointer" data-testid="download-segmented-btn">
                   <Files className="w-4 h-4 mr-2" />
                   <div>
-                    <div className="font-medium">600ft Segments (ZIP)</div>
-                    <div className="text-xs text-zinc-500">Numbered pages, ~600ft each</div>
+                    <div className="font-medium">800ft Segments (ZIP)</div>
+                    <div className="text-xs text-zinc-500">Numbered pages, ~800ft each</div>
                   </div>
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -495,7 +499,7 @@ const JobMap = () => {
             <MapContainer center={center} zoom={18} minZoom={3} maxZoom={22} scrollWheelZoom={true} style={{ height: "100%", width: "100%" }} className="z-0">
               <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" attribution="&copy; Esri" maxNativeZoom={19} maxZoom={22} />
               <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}" maxNativeZoom={19} maxZoom={22} />
-              <FitBounds points={allPoints} />
+              <FitBounds points={allPoints} disabled={editMode} />
               <MapRefSetter mapRef={mapRef} />
               {/* Aerial path segments (BLUE) - editable */}
               {route.length > 1 && route.slice(0, -1).map((fromPole, i) => {

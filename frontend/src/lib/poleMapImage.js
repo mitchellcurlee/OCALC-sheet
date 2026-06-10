@@ -609,8 +609,8 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
   }
 };
 
-// Split route into segments of approximately targetFeet (default 600ft)
-const splitRouteIntoSegments = (route, segments, targetFeet = 600) => {
+// Split route into segments of approximately targetFeet (default 800ft)
+const splitRouteIntoSegments = (route, segments, targetFeet = 800) => {
   if (route.length < 2) return [{ poles: route, segments: [], startIdx: 0, endIdx: route.length - 1, footage: 0 }];
   
   const pages = [];
@@ -960,7 +960,7 @@ const generateSegmentPage = async ({
 // Download segmented map pages as a ZIP file
 export const downloadSegmentedMapPages = async ({ 
   poles, job, showStops = false, underground = [], 
-  targetFeet = 600 
+  targetFeet = 800 
 }) => {
   const { route, segments, totalFeet } = computeRoute(poles);
   const ug = ugWithGps(underground);
@@ -974,7 +974,7 @@ export const downloadSegmentedMapPages = async ({
   try {
     toast.info("Generating map pages...");
     
-    // Split route into 600ft segments
+    // Split route into 800ft segments
     const pages = splitRouteIntoSegments(route, segments, targetFeet);
     const totalPages = pages.length;
     

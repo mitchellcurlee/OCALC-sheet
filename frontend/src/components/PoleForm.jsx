@@ -988,6 +988,7 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
                               <SelectItem value="Excellent" className="text-green-700">Excellent</SelectItem>
                               <SelectItem value="Good" className="text-yellow-700">Good</SelectItem>
                               <SelectItem value="Bad" className="text-red-600">Bad</SelectItem>
+                              <SelectItem value="Buried" className="text-blue-600">Buried</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
