@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Link } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
@@ -74,6 +74,24 @@ const ownerTriggerClass = (owner) => {
 // Sentinel value for a "blank/clear" option in dropdowns (Radix forbids empty-string values)
 const BLANK = "__none__";
 
+// Factories for the initial (empty) form state — reused by reset / "start fresh"
+const emptyFormData = () => ({
+  job_number: "", pole_number: "P-", pole_owner: "", access: "", pole_class: "",
+  pole_size: "", pole_size_type: "", pole_type: "", condition: "",
+  ocalc_left_photo: "", ocalc_middle_photo: "", ocalc_right_photo: "",
+  has_birthmark: true, birthmark_photo: "",
+  mgnv: "", mgnv_condition: "", mgnv_photo: "",
+  pole_terminal: "", risers: "",
+  span1_direction: "", span1_distance: "", span1_owner: "",
+  span2_direction: "", span2_distance: "", span2_owner: "",
+  span3_direction: "", span3_distance: "", span3_owner: "",
+  span4_direction: "", span4_distance: "", span4_owner: "",
+  latitude: "", longitude: "-", notes: "",
+});
+const emptyDownGuy = () => ({ _key: rowKey(), owner: "", direction: "", size: "", type: "", condition: "", height: "", lead: "" });
+const emptyKnuckle = () => ({ _key: rowKey(), size: "", total_eyes: "", direction: "", condition: "", photo: "" });
+const emptyAttachment = () => ({ _key: rowKey(), height: "", owner: "", photo: "", notes: "" });
+
 export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, onSubmit, submitting = false, backUrl = "/" }) => {
   const [gpsLoading, setGpsLoading] = useState(false);
   const [addressSearch, setAddressSearch] = useState("");
@@ -101,59 +119,12 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
   });
 
   // Basic form data
-  const [formData, setFormData] = useState({
-    job_number: "",
-    pole_number: "P-",
-    pole_owner: "",
-    access: "",
-    pole_class: "",
-    pole_size: "",
-    pole_size_type: "",
-    pole_type: "",
-    condition: "",
-    // OCALC Photos
-    ocalc_left_photo: "",
-    ocalc_middle_photo: "",
-    ocalc_right_photo: "",
-    // Birthmark
-    has_birthmark: true,
-    birthmark_photo: "",
-    // MGNV
-    mgnv: "",
-    mgnv_condition: "",
-    mgnv_photo: "",
-    // Pole Terminal & Risers (in Height of Attachments section)
-    pole_terminal: "",
-    risers: "",
-    // Spans (4 fixed)
-    span1_direction: "",
-    span1_distance: "",
-    span1_owner: "",
-    span2_direction: "",
-    span2_distance: "",
-    span2_owner: "",
-    span3_direction: "",
-    span3_distance: "",
-    span3_owner: "",
-    span4_direction: "",
-    span4_distance: "",
-    span4_owner: "",
-    // GPS
-    latitude: "",
-    longitude: "-",
-    notes: "",
-  });
+  const [formData, setFormData] = useState(emptyFormData);
 
   // Dynamic arrays - start with 1 row each
-  const [downGuys, setDownGuys] = useState([
-    { _key: rowKey(), owner: "", direction: "", size: "", type: "", condition: "", height: "", lead: "" }
-  ]);
-  const [knuckles, setKnuckles] = useState([
-    { _key: rowKey(), size: "", total_eyes: "", direction: "", condition: "", photo: "" }
-  ]);
-  const [attachments, setAttachments] = useState([
-    { _key: rowKey(), height: "", owner: "", photo: "", notes: "" }
-  ]);
+  const [downGuys, setDownGuys] = useState(() => [emptyDownGuy()]);
+  const [knuckles, setKnuckles] = useState(() => [emptyKnuckle()]);
+  const [attachments, setAttachments] = useState(() => [emptyAttachment()]);
 
   const fetchOptions = useCallback(async () => {
     try {
@@ -191,6 +162,75 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
     setAttachments(p.attachments?.length > 0 ? p.attachments.map(a => ({ _key: rowKey(), ...a, height: a.height?.toString() || "", notes: a.notes || "" })) : [{ _key: rowKey(), height: "", owner: "", photo: "", notes: "" }]);
   }, [initialPole]);
 
+  // --- Autosave draft (create mode only) -----------------------------------
+  // Keeps an in-progress new pole in localStorage so field crews don't lose
+  // data on a page reload or dropped connection.
+  const draftKey = mode === "create" ? `poleDraft:${jobId || "none"}` : null;
+  const [draftRestored, setDraftRestored] = useState(false);
+
+  // Capture any existing draft synchronously on the first render, BEFORE any
+  // effect (incl. React StrictMode's double-invoked save) can overwrite it.
+  const initialDraftRef = useRef(undefined);
+  if (initialDraftRef.current === undefined) {
+    let parsed = null;
+    if (draftKey) {
+      try {
+        const raw = window.localStorage.getItem(draftKey);
+        parsed = raw ? JSON.parse(raw) : null;
+      } catch (e) {
+        parsed = null;
+      }
+    }
+    initialDraftRef.current = parsed;
+  }
+
+  const draftLoadedRef = useRef(false);
+  const restoreDoneRef = useRef(false);
+
+  // Restore the captured draft once the dropdown options are loaded so Radix
+  // Selects can match the restored values to their items.
+  useEffect(() => {
+    if (!draftKey || draftLoadedRef.current) return;
+    if (!options.pole_owners || options.pole_owners.length === 0) return;
+    draftLoadedRef.current = true;
+    const d = initialDraftRef.current;
+    if (d) {
+      if (d.formData) setFormData(d.formData);
+      if (Array.isArray(d.downGuys) && d.downGuys.length) setDownGuys(d.downGuys);
+      if (Array.isArray(d.knuckles) && d.knuckles.length) setKnuckles(d.knuckles);
+      if (Array.isArray(d.attachments) && d.attachments.length) setAttachments(d.attachments);
+      setDraftRestored(true);
+    }
+    restoreDoneRef.current = true; // saves are allowed only after restore
+  }, [draftKey, options.pole_owners]);
+
+  // Persist the draft on change — but only after restore has run, so we never
+  // clobber a saved draft with the empty initial form on mount.
+  useEffect(() => {
+    if (!draftKey || !restoreDoneRef.current) return;
+    try {
+      window.localStorage.setItem(draftKey, JSON.stringify({ formData, downGuys, knuckles, attachments, ts: Date.now() }));
+    } catch (e) {
+      // ignore quota/unavailable storage
+    }
+  }, [draftKey, formData, downGuys, knuckles, attachments]);
+
+  const clearDraft = () => {
+    if (!draftKey) return;
+    try { window.localStorage.removeItem(draftKey); } catch (e) { /* ignore */ }
+  };
+
+  const startFresh = () => {
+    setFormData(emptyFormData());
+    setDownGuys([emptyDownGuy()]);
+    setKnuckles([emptyKnuckle()]);
+    setAttachments([emptyAttachment()]);
+    setDraftRestored(false);
+    // clear after the reset state flushes (the save effect re-writes on change)
+    setTimeout(clearDraft, 0);
+    toast.success("Started a fresh pole");
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -206,7 +246,7 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
 
   // Down Guys handlers
   const addDownGuy = () => {
-    setDownGuys([...downGuys, { _key: rowKey(), owner: "", direction: "", size: "", type: "", condition: "", height: "", lead: "" }]);
+    setDownGuys([...downGuys, emptyDownGuy()]);
   };
   const removeDownGuy = (index) => {
     if (downGuys.length > 1) {
@@ -221,7 +261,7 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
 
   // Knuckles handlers
   const addKnuckle = () => {
-    setKnuckles([...knuckles, { _key: rowKey(), size: "", total_eyes: "", direction: "", condition: "", photo: "" }]);
+    setKnuckles([...knuckles, emptyKnuckle()]);
   };
   const removeKnuckle = (index) => {
     if (knuckles.length > 1) {
@@ -236,7 +276,7 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
 
   // Attachments handlers
   const addAttachment = () => {
-    setAttachments([...attachments, { _key: rowKey(), height: "", owner: "", photo: "", notes: "" }]);
+    setAttachments([...attachments, emptyAttachment()]);
   };
   const removeAttachment = (index) => {
     if (attachments.length > 1) {
@@ -391,7 +431,11 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
       })),
     };
 
-    await onSubmit(submitData);
+    const ok = await onSubmit(submitData);
+    if (ok) {
+      clearDraft();
+      setDraftRestored(false);
+    }
   };
 
   const mapCenter = markerPosition || [29.7604, -95.3698]; // Houston, TX
@@ -431,6 +475,14 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
 
       <main className="max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
         <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+          {draftRestored && (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border border-amber-300 bg-amber-50 px-4 py-3 rounded" data-testid="draft-restored-banner">
+              <span className="text-sm text-amber-800">Restored your unsaved draft from this device.</span>
+              <Button type="button" variant="outline" size="sm" onClick={startFresh} className="bg-white border-amber-300 text-amber-800 hover:bg-amber-100" data-testid="start-fresh-btn">
+                Start fresh
+              </Button>
+            </div>
+          )}
           {/* Save Button - Top */}
           <div className="flex justify-end">
             <Button type="submit" disabled={submitting} className={`h-11 sm:h-10 ${submitBtnClass} text-white min-w-36`} data-testid="save-pole-top-btn">

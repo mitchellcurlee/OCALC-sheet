@@ -16,9 +16,11 @@ const AddPole = () => {
       await axios.post("/poles", payload);
       toast.success("Pole data saved successfully!");
       navigate(backUrl);
+      return true;
     } catch (error) {
       toast.error("Failed to save pole data");
       console.error(error);
+      return false;
     } finally {
       setSubmitting(false);
     }

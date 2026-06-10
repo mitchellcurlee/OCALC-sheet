@@ -35,9 +35,11 @@ const EditPole = () => {
       await axios.put(`/poles/${id}`, payload);
       toast.success("Pole updated successfully!");
       navigate(backUrl);
+      return true;
     } catch (error) {
       toast.error("Failed to update pole");
       console.error(error);
+      return false;
     } finally {
       setSubmitting(false);
     }
