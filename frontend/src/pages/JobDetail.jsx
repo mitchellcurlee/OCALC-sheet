@@ -341,25 +341,19 @@ const JobDetail = () => {
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-zinc-900">{pole.pole_number || "No #"}</span>
                         <Badge className={`${getConditionColor(pole.condition)} text-xs`}>
-                          {pole.condition}
+                          {pole.condition || "Not set"}
                         </Badge>
                       </div>
                       <div className="flex items-center gap-3 text-xs text-zinc-500 mt-1 flex-wrap">
-                        <span>{pole.pole_size ? `${pole.pole_size}'` : "—"}</span>
-                        {pole.pole_class && (
-                          <>
-                            <span>•</span>
-                            <span>Class {pole.pole_class}</span>
-                          </>
-                        )}
+                        <span>{pole.pole_size ? `${pole.pole_size}'` : "Size not set"}</span>
                         <span>•</span>
-                        <span>{pole.pole_owner || "—"}</span>
-                        {pole.pole_type && (
-                          <>
-                            <span>•</span>
-                            <span>{pole.pole_type}</span>
-                          </>
-                        )}
+                        <span>{pole.pole_class ? `Class ${pole.pole_class}` : <span className="text-zinc-400 italic">Class not set</span>}</span>
+                        <span>•</span>
+                        <span>{pole.pole_owner || <span className="text-zinc-400 italic">Owner not set</span>}</span>
+                        <span>•</span>
+                        <span>{pole.pole_type || <span className="text-zinc-400 italic">Type not set</span>}</span>
+                        <span>•</span>
+                        <span>{pole.access || <span className="text-zinc-400 italic">Access not set</span>}</span>
                         {pole.latitude && pole.longitude && (
                           <>
                             <span>•</span>
