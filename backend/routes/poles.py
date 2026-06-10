@@ -61,19 +61,17 @@ def bearing_to_direction(bearing):
     return directions[index]
 
 
-@router.post("/jobs/{job_id}/sync-map-distances")
-async def sync_map_distances_to_poles(job_id: str):
+async def _sync_job_distances(job_id: str):
     """
-    Sync GPS-calculated distances from the map to each pole's span fields.
-    Updates span1 with distance/direction to next pole,
-    Updates span2 with distance/direction to previous pole.
+    Internal helper to sync GPS-calculated distances for a job.
+    Returns dict with message, updated count, and pole details.
     """
     import math
     
     # Get all poles for this job
     poles = await _db.poles.find({"job_id": job_id}, {"_id": 0}).to_list(1000)
     if not poles:
-        raise HTTPException(status_code=404, detail="No poles found for this job")
+        return {"message": "No poles found for this job", "updated": 0, "poles": []}
     
     # Sort poles by natural order (same as map display)
     sorted_poles = sorted(poles, key=pole_sort_key)
@@ -90,7 +88,7 @@ async def sync_map_distances_to_poles(job_id: str):
             })
     
     if len(route_poles) < 2:
-        return {"message": "Need at least 2 poles with GPS to sync distances", "updated": 0}
+        return {"message": "Need at least 2 poles with GPS to sync distances", "updated": 0, "poles": []}
     
     updates = []
     
@@ -150,12 +148,30 @@ async def sync_map_distances_to_poles(job_id: str):
     }
 
 
+@router.post("/jobs/{job_id}/sync-map-distances")
+async def sync_map_distances_to_poles(job_id: str):
+    """
+    Sync GPS-calculated distances from the map to each pole's span fields.
+    Updates span1 with distance/direction to next pole,
+    Updates span2 with distance/direction to previous pole.
+    """
+    return await _sync_job_distances(job_id)
+
+
 @router.post("/poles", response_model=Pole, status_code=201)
 async def create_pole(pole_data: PoleCreate):
     """Create a new pole entry"""
     pole = Pole(**pole_data.model_dump())
     doc = pole.model_dump()
     await _db.poles.insert_one(doc)
+    
+    # Auto-sync distances if pole has GPS and belongs to a job
+    if pole.job_id and pole.latitude and pole.longitude:
+        try:
+            await _sync_job_distances(pole.job_id)
+        except Exception:
+            pass  # Don't fail pole creation if sync fails
+    
     return pole
 
 
@@ -209,6 +225,16 @@ async def update_pole(pole_id: str, pole_data: PoleUpdate):
     
     await _db.poles.update_one({"id": pole_id}, {"$set": update_data})
     updated = await _db.poles.find_one({"id": pole_id}, {"_id": 0})
+    
+    # Auto-sync distances if pole has GPS and belongs to a job
+    job_id = updated.get("job_id")
+    has_gps_coords = updated.get("latitude") and updated.get("longitude")
+    if job_id and has_gps_coords:
+        try:
+            await _sync_job_distances(job_id)
+        except Exception:
+            pass  # Don't fail pole update if sync fails
+    
     return updated
 
 

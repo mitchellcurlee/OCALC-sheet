@@ -35,6 +35,7 @@ import {
   ImageDown,
   Layers,
   ChevronDown,
+  RefreshCw,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -53,6 +54,7 @@ const JobDetail = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteId, setDeleteId] = useState(null);
   const [mapDownloading, setMapDownloading] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   const handleDownloadMap = async () => {
     setMapDownloading(true);
@@ -60,6 +62,23 @@ const JobDetail = () => {
       await downloadPoleMapImage({ poles, job, underground: undergroundItems });
     } finally {
       setMapDownloading(false);
+    }
+  };
+
+  const handleSyncDistances = async () => {
+    setSyncing(true);
+    try {
+      const response = await axios.post(`/jobs/${jobId}/sync-map-distances`);
+      if (response.data.updated > 0) {
+        toast.success(`Synced distances for ${response.data.updated} poles`);
+        fetchJobAndPoles(); // Refresh to show updated data
+      } else {
+        toast.info(response.data.message || "No poles to sync");
+      }
+    } catch (error) {
+      toast.error("Failed to sync distances");
+    } finally {
+      setSyncing(false);
     }
   };
 
@@ -222,6 +241,17 @@ const JobDetail = () => {
               >
                 <FileSpreadsheet className="w-4 h-4 mr-2" />
                 Export
+              </Button>
+              <Button
+                onClick={handleSyncDistances}
+                disabled={syncing || poles.length < 2}
+                variant="outline"
+                className="flex-1 sm:flex-initial h-11 sm:h-10 bg-blue-50 border-blue-300 hover:bg-blue-100 text-blue-700 text-sm"
+                data-testid="sync-distances-btn"
+                title="Update pole span distances from GPS coordinates"
+              >
+                {syncing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+                Sync Distances
               </Button>
               <Link to={`/jobs/${jobId}/add`} className="flex-1 sm:flex-initial">
                 <Button className="w-full h-11 sm:h-10 bg-red-600 hover:bg-red-700 text-white text-sm" data-testid="add-pole-btn">

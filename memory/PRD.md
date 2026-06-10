@@ -239,4 +239,6 @@ Build an app that collects power pole data including: size of the pole, type of 
     - Updates span2_distance/span2_direction with distance/bearing to PREVIOUS pole
   - Synced A050ABC job: Pole 1 now has span1=249ft S, Pole EXPORT-TEST has span2=249ft N
   - Excel export now shows these synced values in the SPANS section
+  - **Automatic sync**: Pole create/update now auto-syncs distances for all poles in the job
+  - **Manual sync button**: Added "Sync Distances" button (blue) in Job Detail page
   - Requires redeploy for production.
