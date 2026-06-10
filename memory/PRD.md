@@ -212,3 +212,12 @@ Build an app that collects power pole data including: size of the pole, type of 
   - Poles fetched via /jobs/{jobId}/poles?_t={timestamp} to ensure fresh data
   - Verified: Navigation bar renders correctly on both pages, clicking Next/Previous works correctly, button states update appropriately. Requires redeploy for production.
 - Fixed: Dropdown values not loading when navigating between poles (Jun 10, 2026): When using Next/Previous navigation to move between poles in edit mode, dropdown fields were showing placeholders instead of the pole's saved values. Root cause: The form data was being populated before the dropdown options were loaded from the API, causing Radix Select components to not match values to SelectItems. Fix: (1) Added `key={id}` to PoleForm in EditPole to force remount on navigation. (2) Modified PoleForm's initialPole useEffect to wait for options to load before populating form data. (3) Added state reset (setFetching(true), setPole(null)) in EditPole/ViewPole when id changes. Verified: Navigating between poles now correctly loads all dropdown values. Requires redeploy for production.
+- Excel export now includes GPS-calculated distances (Jun 10, 2026): Added GPS-calculated route distances to the Excel export to match what the map displays.
+  - New "GPS-CALCULATED ROUTE (Aerial Path)" section at the top of the export showing:
+    - From Pole → To Pole → Distance (ft) for each consecutive pole pair
+    - TOTAL footage of the entire route (highlighted in red)
+    - Note listing any poles missing GPS coordinates
+  - Each pole's "GPS LOCATION" section now includes "Distance to Next Pole (GPS)" showing the haversine-calculated footage to the next pole in the route
+  - Uses same haversine formula as the map for consistency
+  - Added helper functions to services/helpers.py: haversine_feet(), has_gps(), compute_route_segments()
+  - Verified: Excel export shows 248.9 ft matching map's 249 ft display. Requires redeploy for production.
