@@ -89,6 +89,9 @@ Build an app that collects power pole data including: size of the pole, type of 
   - "Has Birthmark" changed from a toggle/Switch to a Yes/No dropdown (removed unused Switch import). 
   - Verified: anchor direction round-trips, export shows Direction/NE, both forms render with correct order, pytest 19/19. Requires redeploy for production.
 - Access options update (Jun 10, 2026): Access dropdown changed from Yes/No to: "Yes / Rear Access", "Yes / Front Access", "No / Rear Access" (plus blank), on both Add and Edit. Verified dropdown + save. Requires redeploy for production.
+- PoleForm refactor + export revision (Jun 10, 2026):
+  - Merged AddPole and EditPole into a single shared component `/app/frontend/src/components/PoleForm.jsx` (~950 lines). AddPole.jsx and EditPole.jsx are now thin wrappers (~37 / ~67 lines): Add does POST /poles, Edit fetches the pole + does PUT /poles/{id}; PoleForm owns all form state/handlers/JSX and calls an `onSubmit(payload)` prop. Mode prop drives the button label ("Save Pole" vs "Update Pole") and color. data-testids preserved (add-pole-page / edit-pole-page). Verified end-to-end: create saves, edit loads existing data and updates (condition change persisted, access preserved). Future field changes are now ONE edit instead of two.
+  - Revised the job Excel export (GET /api/jobs/{id}/export/excel) to match the app's section order and field labels: BASIC INFORMATION (Pole Owner, Access, Class, Pole Size, Size Type, Type of Pole, Condition) -> SPANS -> GPS LOCATION -> BIRTHMARK & MGNV (Has Birthmark, MGNV Present, MGNV Condition) -> HOA (Height/Owner/Notes + Pole Terminal/Risers) -> DOWN GUYS -> ANCHOR -> NOTES -> PHOTOS (gallery link). Added section helper functions. Updated test assertion (CLASS->Class). Verified section order + pytest 19/19. Requires redeploy for production.
 
 ## Tech Stack
 - Backend: FastAPI + MongoDB

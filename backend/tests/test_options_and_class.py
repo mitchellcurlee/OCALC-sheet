@@ -108,7 +108,7 @@ def test_excel_export_has_class_cell_and_base_url(auth_headers):
                 if cell.value is not None:
                     s = str(cell.value)
                     all_text.append(s)
-                    if s == "CLASS":
+                    if s == "Class":
                         class_label_found = True
                     if s == "H2":
                         h2_found = True

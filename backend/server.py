@@ -583,9 +583,35 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
     ws.cell(row=1, column=6, value=len(poles))
     
     current_row = 3
-    
+    bold9 = Font(bold=True, size=9)
+
+    def section(title):
+        nonlocal current_row
+        cell = ws.cell(row=current_row, column=1, value=title)
+        cell.fill = header_fill
+        cell.font = header_font
+        current_row += 1
+
+    def label_value_row(pairs):
+        """Write a label row then a value row for a list of (label, value) tuples."""
+        nonlocal current_row
+        for ci, (label, _v) in enumerate(pairs, 1):
+            c = ws.cell(row=current_row, column=ci, value=label)
+            c.fill = section_fill
+            c.font = section_font
+        current_row += 1
+        for ci, (_l, value) in enumerate(pairs, 1):
+            ws.cell(row=current_row, column=ci, value=value)
+        current_row += 1
+
+    def table_header(headers):
+        nonlocal current_row
+        for ci, h in enumerate(headers, 1):
+            ws.cell(row=current_row, column=ci, value=h).font = bold9
+        current_row += 1
+
     for pole in poles:
-        # Row 1: Pole Header
+        # Pole Header
         ws.cell(row=current_row, column=1, value="POLE #").fill = header_fill
         ws.cell(row=current_row, column=1).font = header_font
         ws.cell(row=current_row, column=2, value=pole.get("pole_number", ""))
@@ -597,47 +623,22 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
         inspection_date = pole.get("inspection_date", "")
         ws.cell(row=current_row, column=6, value=str(inspection_date)[:10] if inspection_date else "")
         current_row += 1
-        
-        # Row 2: Basic Info
-        ws.cell(row=current_row, column=1, value="SIZE").fill = section_fill
-        ws.cell(row=current_row, column=1).font = section_font
-        size_with_type = pole.get("pole_size", "")
-        if pole.get("pole_size_type"):
-            size_with_type = f"{size_with_type} ({pole['pole_size_type']})"
-        ws.cell(row=current_row, column=2, value=size_with_type)
-        ws.cell(row=current_row, column=3, value="CONDITION").fill = section_fill
-        ws.cell(row=current_row, column=3).font = section_font
-        ws.cell(row=current_row, column=4, value=pole.get("condition", ""))
-        ws.cell(row=current_row, column=5, value="OWNER").fill = section_fill
-        ws.cell(row=current_row, column=5).font = section_font
-        ws.cell(row=current_row, column=6, value=pole.get("pole_owner", ""))
-        ws.cell(row=current_row, column=7, value="CLASS").fill = section_fill
-        ws.cell(row=current_row, column=7).font = section_font
-        ws.cell(row=current_row, column=8, value=pole.get("pole_class", ""))
-        ws.cell(row=current_row, column=9, value="ACCESS").fill = section_fill
-        ws.cell(row=current_row, column=9).font = section_font
-        ws.cell(row=current_row, column=10, value=pole.get("access", ""))
-        current_row += 1
-        
-        # Row 3: GPS & Terminal/Risers
-        ws.cell(row=current_row, column=1, value="LAT").fill = section_fill
-        ws.cell(row=current_row, column=1).font = section_font
-        ws.cell(row=current_row, column=2, value=pole.get("latitude", ""))
-        ws.cell(row=current_row, column=3, value="LONG").fill = section_fill
-        ws.cell(row=current_row, column=3).font = section_font
-        ws.cell(row=current_row, column=4, value=pole.get("longitude", ""))
-        ws.cell(row=current_row, column=5, value="TERMINAL").fill = section_fill
-        ws.cell(row=current_row, column=5).font = section_font
-        ws.cell(row=current_row, column=6, value=pole.get("pole_terminal", ""))
-        ws.cell(row=current_row, column=7, value="RISERS").fill = section_fill
-        ws.cell(row=current_row, column=7).font = section_font
-        ws.cell(row=current_row, column=8, value=pole.get("risers", ""))
-        current_row += 1
-        
-        # Spans
-        ws.cell(row=current_row, column=1, value="SPANS").fill = header_fill
-        ws.cell(row=current_row, column=1).font = header_font
-        current_row += 1
+
+        # 1. BASIC INFORMATION
+        section("BASIC INFORMATION")
+        label_value_row([
+            ("Pole Owner", pole.get("pole_owner", "")),
+            ("Access", pole.get("access", "")),
+            ("Class", pole.get("pole_class", "")),
+            ("Pole Size", f"{pole['pole_size']}'" if pole.get("pole_size") else ""),
+            ("Size Type", pole.get("pole_size_type", "")),
+            ("Type of Pole", pole.get("pole_type", "")),
+            ("Condition", pole.get("condition", "")),
+        ])
+
+        # 2. SPANS
+        section("SPANS")
+        table_header(["", "Direction", "Distance (ft)", "Owner"])
         for i in range(1, 5):
             dir_val = pole.get(f"span{i}_direction", "")
             dist_val = pole.get(f"span{i}_distance", "")
@@ -648,19 +649,43 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
                 ws.cell(row=current_row, column=3, value=dist_val)
                 ws.cell(row=current_row, column=4, value=owner_val)
                 current_row += 1
-        
-        # Down Guys
+
+        # 3. GPS LOCATION
+        section("GPS LOCATION")
+        label_value_row([
+            ("Latitude", pole.get("latitude", "")),
+            ("Longitude", pole.get("longitude", "")),
+        ])
+
+        # 4. BIRTHMARK & MGNV
+        section("BIRTHMARK & MGNV")
+        label_value_row([
+            ("Has Birthmark", "Yes" if pole.get("has_birthmark", True) else "No"),
+            ("MGNV Present", pole.get("mgnv", "")),
+            ("MGNV Condition", pole.get("mgnv_condition", "")),
+        ])
+
+        # 5. HOA
+        attachments = pole.get("attachments", [])
+        section("HOA")
+        table_header(["", "Height", "Owner", "Notes"])
+        if attachments:
+            for i, att in enumerate(attachments, 1):
+                ws.cell(row=current_row, column=1, value=f"HOA {i}")
+                ws.cell(row=current_row, column=2, value=format_height(att.get("height")))
+                ws.cell(row=current_row, column=3, value=att.get("owner", ""))
+                ws.cell(row=current_row, column=4, value=att.get("notes", ""))
+                current_row += 1
+        label_value_row([
+            ("Pole Terminal", pole.get("pole_terminal", "")),
+            ("Risers", pole.get("risers", "")),
+        ])
+
+        # 6. DOWN GUYS
         down_guys = pole.get("down_guys", [])
         if down_guys:
-            ws.cell(row=current_row, column=1, value="DOWN GUYS").fill = header_fill
-            ws.cell(row=current_row, column=1).font = header_font
-            current_row += 1
-            # Add column headers for down guys
-            headers = ["Guy #", "Owner", "Direction", "Size", "Type", "Condition", "Height", "Lead"]
-            for ci, h in enumerate(headers, 1):
-                ws.cell(row=current_row, column=ci, value=h)
-                ws.cell(row=current_row, column=ci).font = Font(bold=True, size=9)
-            current_row += 1
+            section("DOWN GUYS")
+            table_header(["", "Owner", "Direction", "Size", "Type", "Condition", "Height", "Lead"])
             for i, dg in enumerate(down_guys, 1):
                 ws.cell(row=current_row, column=1, value=f"Guy {i}")
                 ws.cell(row=current_row, column=2, value=dg.get("owner", ""))
@@ -671,18 +696,12 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
                 ws.cell(row=current_row, column=7, value=format_height(dg.get("height")))
                 ws.cell(row=current_row, column=8, value=format_height(dg.get("lead")))
                 current_row += 1
-        
-        # Anchor (formerly Knuckles)
+
+        # 7. ANCHOR
         knuckles = pole.get("knuckles", [])
         if knuckles:
-            ws.cell(row=current_row, column=1, value="ANCHOR").fill = header_fill
-            ws.cell(row=current_row, column=1).font = header_font
-            current_row += 1
-            headers = ["Anchor #", "Size", "Total Eyes", "Direction", "Condition"]
-            for ci, h in enumerate(headers, 1):
-                ws.cell(row=current_row, column=ci, value=h)
-                ws.cell(row=current_row, column=ci).font = Font(bold=True, size=9)
-            current_row += 1
+            section("ANCHOR")
+            table_header(["", "Size", "Total Eyes", "Direction", "Condition"])
             for i, kn in enumerate(knuckles, 1):
                 ws.cell(row=current_row, column=1, value=f"Anchor {i}")
                 ws.cell(row=current_row, column=2, value=kn.get("size", ""))
@@ -690,41 +709,17 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
                 ws.cell(row=current_row, column=4, value=kn.get("direction", ""))
                 ws.cell(row=current_row, column=5, value=kn.get("condition", ""))
                 current_row += 1
-        
-        # HOA (Height of Attachments)
-        attachments = pole.get("attachments", [])
-        if attachments:
-            ws.cell(row=current_row, column=1, value="HOA").fill = header_fill
-            ws.cell(row=current_row, column=1).font = header_font
+
+        # 8. NOTES
+        if pole.get("notes"):
+            section("NOTES")
+            ws.cell(row=current_row, column=1, value=pole.get("notes", ""))
             current_row += 1
-            # Add column headers for HOA
-            ws.cell(row=current_row, column=1, value="Att #")
-            ws.cell(row=current_row, column=2, value="Height")
-            ws.cell(row=current_row, column=3, value="Owner")
-            ws.cell(row=current_row, column=4, value="Notes")
-            for col in range(1, 5):
-                ws.cell(row=current_row, column=col).font = Font(bold=True, size=9)
-            current_row += 1
-            for i, att in enumerate(attachments, 1):
-                ws.cell(row=current_row, column=1, value=f"Att {i}")
-                ws.cell(row=current_row, column=2, value=format_height(att.get("height")))
-                ws.cell(row=current_row, column=3, value=att.get("owner", ""))
-                ws.cell(row=current_row, column=4, value=att.get("notes", ""))
-                current_row += 1
-        
-        # Birthmark & MGNV
-        ws.cell(row=current_row, column=1, value="BIRTHMARK").fill = section_fill
-        ws.cell(row=current_row, column=1).font = section_font
-        ws.cell(row=current_row, column=2, value="Yes" if pole.get("has_birthmark", True) else "No")
-        ws.cell(row=current_row, column=3, value="MGNV").fill = section_fill
-        ws.cell(row=current_row, column=3).font = section_font
-        ws.cell(row=current_row, column=4, value=pole.get("mgnv", ""))
-        current_row += 1
-        
-        # Photos - single link per pole to a gallery of all its photos
+
+        # 9. PHOTOS - single link per pole to a gallery of all its photos
         photo_items = _pole_photo_items(pole)
-        ws.cell(row=current_row, column=1, value="PHOTOS").fill = section_fill
-        ws.cell(row=current_row, column=1).font = section_font
+        ws.cell(row=current_row, column=1, value="PHOTOS").fill = header_fill
+        ws.cell(row=current_row, column=1).font = header_font
         if photo_items:
             gallery_url = f"{(base_url or str(request.base_url)).rstrip('/')}/api/poles/{pole.get('id')}/gallery"
             link_cell = ws.cell(row=current_row, column=2, value=f"View {len(photo_items)} photo(s)")
@@ -733,14 +728,7 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
         else:
             ws.cell(row=current_row, column=2, value="No photos")
         current_row += 1
-        
-        # Notes
-        if pole.get("notes"):
-            ws.cell(row=current_row, column=1, value="NOTES").fill = section_fill
-            ws.cell(row=current_row, column=1).font = section_font
-            ws.cell(row=current_row, column=2, value=pole.get("notes", ""))
-            current_row += 1
-        
+
         # Blank row separator
         current_row += 1
     
