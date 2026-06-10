@@ -892,6 +892,28 @@ function downloadAll(){{
 </body></html>"""
     return HTMLResponse(content=html)
 
+@api_router.get("/maps/static")
+async def maps_static(bbox: str, size: str = "1400,1050"):
+    """Proxy a single satellite image from the free Esri World Imagery export
+    service (Web Mercator / EPSG:3857 bbox). Used to build the downloadable
+    pole-map exhibit reliably (no API key, no tile stitching)."""
+    if not re.fullmatch(r"-?\d+(\.\d+)?(,-?\d+(\.\d+)?){3}", bbox or ""):
+        raise HTTPException(status_code=400, detail="Invalid bbox")
+    m = re.fullmatch(r"(\d{2,4}),(\d{2,4})", size or "")
+    if not m or int(m.group(1)) > 2048 or int(m.group(2)) > 2048:
+        raise HTTPException(status_code=400, detail="Invalid size")
+    url = (
+        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export"
+        f"?bbox={bbox}&bboxSR=3857&imageSR=3857&size={size}&format=png&transparent=false&f=image"
+    )
+    try:
+        resp = await asyncio.to_thread(lambda: requests.get(url, timeout=30))
+        resp.raise_for_status()
+    except Exception as e:
+        logger.error(f"Static map fetch failed: {e}")
+        raise HTTPException(status_code=502, detail="Map image fetch failed")
+    return Response(content=resp.content, media_type="image/png", headers={"Cache-Control": "public, max-age=3600"})
+
 @api_router.get("/poles/options")
 async def get_pole_options():
     """Get dropdown options for pole form"""

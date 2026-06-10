@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
-import leafletImage from "leaflet-image";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ListOrdered } from "lucide-react";
 
@@ -140,44 +139,67 @@ const JobMap = () => {
     else m.fitBounds(linePoints, { padding: [60, 60], maxZoom: 20 });
   };
 
-  const downloadImage = () => {
-    const liveMap = mapRef.current;
-    if (!liveMap) return;
+  const downloadImage = async () => {
     if (route.length === 0) {
       toast.error("No poles with GPS coordinates to render");
       return;
     }
     setDownloading(true);
+    try {
+      const R = 6378137;
+      const toMercX = (lng) => ((lng * Math.PI) / 180) * R;
+      const toMercY = (lat) => Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360)) * R;
+      const mercYtoLat = (my) => ((2 * Math.atan(Math.exp(my / R)) - Math.PI / 2) * 180) / Math.PI;
+      const mapW = 1400;
+      const mapH = 1050;
+      const scale = 2;
 
-    // leaflet-image cannot handle divIcon markers, so render from a temporary
-    // tiles-only map that matches the current view, then draw annotations.
-    const size = liveMap.getSize();
-    const container = document.createElement("div");
-    container.style.cssText = `width:${size.x}px;height:${size.y}px;position:absolute;left:-99999px;top:0;`;
-    document.body.appendChild(container);
+      const xs = route.map((p) => toMercX(p.pos[1]));
+      const ys = route.map((p) => toMercY(p.pos[0]));
+      let xmin = Math.min(...xs);
+      let xmax = Math.max(...xs);
+      let ymin = Math.min(...ys);
+      let ymax = Math.max(...ys);
+      const padX = Math.max((xmax - xmin) * 0.15, 120);
+      const padY = Math.max((ymax - ymin) * 0.15, 120);
+      xmin -= padX; xmax += padX; ymin -= padY; ymax += padY;
+      const targetAR = mapW / mapH;
+      if ((xmax - xmin) / (ymax - ymin) > targetAR) {
+        const nh = (xmax - xmin) / targetAR;
+        const cy = (ymin + ymax) / 2;
+        ymin = cy - nh / 2;
+        ymax = cy + nh / 2;
+      } else {
+        const nw = (ymax - ymin) * targetAR;
+        const cx = (xmin + xmax) / 2;
+        xmin = cx - nw / 2;
+        xmax = cx + nw / 2;
+      }
 
-    const tmp = L.map(container, { zoomControl: false, attributionControl: false, fadeAnimation: false });
-    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", { maxNativeZoom: 19, maxZoom: 22, crossOrigin: "anonymous" }).addTo(tmp);
-    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}", { maxNativeZoom: 19, maxZoom: 22, crossOrigin: "anonymous" }).addTo(tmp);
-    tmp.setView(liveMap.getCenter(), liveMap.getZoom(), { animate: false });
+      const res = await axios.get("/maps/static", {
+        params: { bbox: `${xmin},${ymin},${xmax},${ymax}`, size: `${mapW},${mapH}` },
+        responseType: "blob",
+      });
+      const imgUrl = URL.createObjectURL(res.data);
+      const img = new Image();
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+        img.src = imgUrl;
+      });
 
-    const cleanup = () => {
-      try { tmp.remove(); } catch (e) { /* ignore */ }
-      try { container.remove(); } catch (e) { /* ignore */ }
-      setDownloading(false);
-    };
+      const canvas = document.createElement("canvas");
+      canvas.width = mapW;
+      canvas.height = mapH;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, mapW, mapH);
+      URL.revokeObjectURL(imgUrl);
 
-    const render = () => {
-      leafletImage(tmp, (err, canvas) => {
-        try {
-          if (err) throw err;
-          const sz = tmp.getSize();
-          const scale = canvas.width / sz.x;
-          const ctx = canvas.getContext("2d");
-          const pt = (latlng) => {
-            const cp = tmp.latLngToContainerPoint(latlng);
-            return [cp.x * scale, cp.y * scale];
-          };
+      const pt = (latlng) => {
+        const mx = toMercX(latlng[1]);
+        const my = toMercY(latlng[0]);
+        return [((mx - xmin) / (xmax - xmin)) * mapW, ((ymax - my) / (ymax - ymin)) * mapH];
+      };
 
           if (route.length > 1) {
             ctx.strokeStyle = "#dc2626";
@@ -286,9 +308,8 @@ const JobMap = () => {
           ctx.fillText("N", nx, ny + 12 * scale);
 
           // Scale bar (bottom-left)
-          const latC = tmp.getCenter().lat;
-          const zoomC = tmp.getZoom();
-          const feetPerPxCss = (156543.03392 * Math.cos((latC * Math.PI) / 180) / Math.pow(2, zoomC)) * FEET_PER_METER;
+          const centerLat = mercYtoLat((ymin + ymax) / 2);
+          const feetPerPxCss = (((xmax - xmin) / mapW) * Math.cos((centerLat * Math.PI) / 180) * FEET_PER_METER) / scale;
           const targetFeet = feetPerPxCss * 110;
           const niceFeet = (t) => {
             const p = Math.pow(10, Math.floor(Math.log10(t)));
@@ -376,18 +397,12 @@ const JobMap = () => {
           a.click();
           a.remove();
           toast.success("Map image downloaded");
-        } catch (e) {
-          console.error(e);
-          toast.error("Could not generate image. Please try again once the map has fully loaded.");
-        } finally {
-          cleanup();
-        }
-      });
-    };
-
-    // give the temp map's tiles a moment to start loading; leaflet-image waits
-    // for the requested tiles to finish before invoking the callback.
-    tmp.whenReady(() => setTimeout(render, 600));
+    } catch (e) {
+      console.error(e);
+      toast.error("Could not generate image. Please try again.");
+    } finally {
+      setDownloading(false);
+    }
   };
 
   if (loading) {
@@ -429,7 +444,7 @@ const JobMap = () => {
             </Button>
             <Button onClick={() => setShowStops((v) => !v)} disabled={route.length === 0} variant="outline" aria-pressed={showStops} className={showStops ? "bg-red-600 border-red-600 hover:bg-red-700 text-white" : "bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900"} data-testid="toggle-stops-btn">
               <ListOrdered className="w-4 h-4 mr-2" />
-              Stop #'s
+              Stop #{"'"}s
             </Button>
             <Button onClick={downloadImage} disabled={downloading || route.length === 0} className="bg-red-600 hover:bg-red-700 text-white" data-testid="download-map-btn">
               {downloading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
