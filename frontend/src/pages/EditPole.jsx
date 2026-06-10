@@ -82,13 +82,13 @@ const EditPole = () => {
   const [addressSearch, setAddressSearch] = useState("");
   const [searchLoading, setSearchLoading] = useState(false);
   const [options, setOptions] = useState({
-    pole_owners: [], conditions: [], sizes: [], down_guy_owners: [], down_guy_directions: [], down_guy_sizes: [], knuckle_options: [], span_owners: [], span_directions: [], attachment_owners: [], riser_options: [], pole_types: [], pole_classes: [],
+    pole_owners: [], conditions: [], sizes: [], down_guy_owners: [], down_guy_directions: [], down_guy_sizes: [], down_guy_types: [], down_guy_conditions: [], knuckle_options: [], anchor_sizes: [], anchor_eyes: [], span_owners: [], span_directions: [], attachment_owners: [], riser_options: [], pole_types: [], pole_classes: [],
   });
 
   const backUrl = jobId ? `/jobs/${jobId}` : "/";
 
   const [formData, setFormData] = useState({
-    job_number: "", pole_number: "", pole_owner: "", pole_class: "", pole_size: "", pole_size_type: "", pole_type: "", condition: "",
+    job_number: "", pole_number: "", pole_owner: "", access: "", pole_class: "", pole_size: "", pole_size_type: "", pole_type: "", condition: "",
     ocalc_left_photo: "", ocalc_middle_photo: "", ocalc_right_photo: "",
     has_birthmark: true, birthmark_photo: "",
     mgnv: "", mgnv_condition: "", mgnv_photo: "",
@@ -100,8 +100,8 @@ const EditPole = () => {
     latitude: "", longitude: "", notes: "",
   });
 
-  const [downGuys, setDownGuys] = useState([{ _key: rowKey(), size: "", direction: "", owner: "", height: "", lead: "" }]);
-  const [knuckles, setKnuckles] = useState([{ _key: rowKey(), count: "", condition: "", photo: "" }]);
+  const [downGuys, setDownGuys] = useState([{ _key: rowKey(), owner: "", direction: "", size: "", type: "", condition: "", height: "", lead: "" }]);
+  const [knuckles, setKnuckles] = useState([{ _key: rowKey(), size: "", total_eyes: "", lead: "", condition: "", photo: "" }]);
   const [attachments, setAttachments] = useState([{ _key: rowKey(), height: "", owner: "", photo: "" }]);
 
   const fetchOptions = useCallback(async () => {
@@ -119,7 +119,7 @@ const EditPole = () => {
       const pole = response.data;
       setFormData({
         job_number: pole.job_number || "", pole_number: pole.pole_number || "",
-        pole_owner: pole.pole_owner || "", pole_class: pole.pole_class || "",
+        pole_owner: pole.pole_owner || "", access: pole.access || "", pole_class: pole.pole_class || "",
         pole_size: pole.pole_size || "", pole_size_type: pole.pole_size_type || "", pole_type: pole.pole_type || "", condition: pole.condition || "",
         ocalc_left_photo: pole.ocalc_left_photo || "", ocalc_middle_photo: pole.ocalc_middle_photo || "", ocalc_right_photo: pole.ocalc_right_photo || "",
         has_birthmark: pole.has_birthmark !== false, birthmark_photo: pole.birthmark_photo || "",
@@ -132,8 +132,8 @@ const EditPole = () => {
         latitude: pole.latitude?.toString() || "", longitude: pole.longitude?.toString() || "-", notes: pole.notes || "",
       });
       // Load dynamic arrays (attach a stable _key for React list rendering)
-      setDownGuys(pole.down_guys?.length > 0 ? pole.down_guys.map(dg => ({ _key: rowKey(), ...dg, height: dg.height?.toString() || "" })) : [{ _key: rowKey(), size: "", direction: "", owner: "", height: "", lead: "" }]);
-      setKnuckles(pole.knuckles?.length > 0 ? pole.knuckles.map(k => ({ _key: rowKey(), ...k })) : [{ _key: rowKey(), count: "", condition: "", photo: "" }]);
+      setDownGuys(pole.down_guys?.length > 0 ? pole.down_guys.map(dg => ({ _key: rowKey(), ...dg, height: dg.height?.toString() || "" })) : [{ _key: rowKey(), owner: "", direction: "", size: "", type: "", condition: "", height: "", lead: "" }]);
+      setKnuckles(pole.knuckles?.length > 0 ? pole.knuckles.map(k => ({ _key: rowKey(), ...k })) : [{ _key: rowKey(), size: "", total_eyes: "", lead: "", condition: "", photo: "" }]);
       setAttachments(pole.attachments?.length > 0 ? pole.attachments.map(a => ({ _key: rowKey(), ...a, height: a.height?.toString() || "", notes: a.notes || "" })) : [{ _key: rowKey(), height: "", owner: "", photo: "", notes: "" }]);
     } catch (error) {
       toast.error("Failed to fetch pole data");
@@ -152,11 +152,11 @@ const EditPole = () => {
   const handleSelectChange = (name, value) => { setFormData((prev) => ({ ...prev, [name]: value === BLANK ? "" : value })); };
   const handlePhotoChange = (field, value) => { setFormData((prev) => ({ ...prev, [field]: value })); };
 
-  const addDownGuy = () => { setDownGuys([...downGuys, { _key: rowKey(), size: "", direction: "", owner: "", height: "", lead: "" }]); };
+  const addDownGuy = () => { setDownGuys([...downGuys, { _key: rowKey(), owner: "", direction: "", size: "", type: "", condition: "", height: "", lead: "" }]); };
   const removeDownGuy = (index) => { if (downGuys.length > 1) setDownGuys(downGuys.filter((_, i) => i !== index)); };
   const updateDownGuy = (index, field, value) => { const updated = [...downGuys]; updated[index][field] = value === BLANK ? "" : value; setDownGuys(updated); };
 
-  const addKnuckle = () => { setKnuckles([...knuckles, { _key: rowKey(), count: "", condition: "", photo: "" }]); };
+  const addKnuckle = () => { setKnuckles([...knuckles, { _key: rowKey(), size: "", total_eyes: "", lead: "", condition: "", photo: "" }]); };
   const removeKnuckle = (index) => { if (knuckles.length > 1) setKnuckles(knuckles.filter((_, i) => i !== index)); };
   const updateKnuckle = (index, field, value) => { const updated = [...knuckles]; updated[index][field] = value === BLANK ? "" : value; setKnuckles(updated); };
 
@@ -233,8 +233,8 @@ const EditPole = () => {
         span4_distance: formData.span4_distance ? parseFloat(formData.span4_distance) : null,
         latitude: Number.isFinite(parseFloat(formData.latitude)) ? parseFloat(formData.latitude) : null,
         longitude: Number.isFinite(parseFloat(formData.longitude)) ? parseFloat(formData.longitude) : null,
-        down_guys: downGuys.filter(dg => dg.size || dg.direction || dg.owner || dg.height || dg.lead).map(({ _key, ...dg }) => ({ ...dg, height: dg.height ? parseFloat(dg.height) : null })),
-        knuckles: knuckles.filter(k => k.count || k.condition || k.photo).map(({ _key, ...k }) => k),
+        down_guys: downGuys.filter(dg => dg.owner || dg.direction || dg.size || dg.type || dg.condition || dg.height || dg.lead).map(({ _key, ...dg }) => ({ ...dg, height: dg.height ? parseFloat(dg.height) : null })),
+        knuckles: knuckles.filter(k => k.size || k.total_eyes || k.lead || k.condition || k.photo).map(({ _key, ...k }) => k),
         attachments: attachments.filter(a => a.height || a.owner || a.photo).map(({ _key, ...a }) => ({ ...a, height: a.height ? parseFloat(a.height) : null })),
       };
       await axios.put(`/poles/${id}`, submitData);
@@ -281,7 +281,7 @@ const EditPole = () => {
           {/* Basic Info */}
           <div className="industrial-card p-4 sm:p-5">
             <h2 className="font-heading text-base sm:text-lg font-bold text-zinc-900 mb-3 sm:mb-4 flex items-center gap-2"><div className="w-1 h-5 bg-red-500"></div>Basic Information</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 sm:gap-4">
               <div className="space-y-2">
                 <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Pole Owner</Label>
                 <Select value={formData.pole_owner} onValueChange={(v) => handleSelectChange("pole_owner", v)}>
@@ -289,6 +289,17 @@ const EditPole = () => {
                   <SelectContent className="bg-zinc-50 border-zinc-300">
                     <SelectItem value={BLANK} className="text-zinc-500">—</SelectItem>
                     {options.pole_owners.map((o) => (<SelectItem key={o} value={o} className={o === "Foreign Owned" ? "text-red-600" : "text-orange-600"}>{o}</SelectItem>))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Access</Label>
+                <Select value={formData.access} onValueChange={(v) => handleSelectChange("access", v)}>
+                  <SelectTrigger className="h-12 sm:h-10 bg-white border-zinc-300 text-zinc-900" data-testid="access-select"><SelectValue placeholder="Yes / No" /></SelectTrigger>
+                  <SelectContent className="bg-zinc-50 border-zinc-300">
+                    <SelectItem value={BLANK} className="text-zinc-500">—</SelectItem>
+                    <SelectItem value="Yes">Yes</SelectItem>
+                    <SelectItem value="No">No</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -462,22 +473,24 @@ const EditPole = () => {
                 <div key={guy._key} className="bg-zinc-50 p-3 border border-zinc-300">
                   <div className="flex items-center gap-2 sm:gap-4">
                     <span className="text-sm font-mono text-yellow-700 w-6">{index + 1}</span>
-                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3 flex-1">
-                      <div className="space-y-1"><Label className="text-xs font-mono text-zinc-500">Size</Label><Select value={guy.size} onValueChange={(v) => updateDownGuy(index, "size", v)}><SelectTrigger className="h-9 bg-white border-zinc-300 text-zinc-900 text-sm"><SelectValue placeholder="Size" /></SelectTrigger><SelectContent className="bg-zinc-50 border-zinc-300"><SelectItem value={BLANK} className="text-zinc-500">—</SelectItem>{options.down_guy_sizes.map((s) => (<SelectItem key={s} value={s}>{s}</SelectItem>))}</SelectContent></Select></div>
-                      <div className="space-y-1"><Label className="text-xs font-mono text-zinc-500">Direction</Label><Select value={guy.direction} onValueChange={(v) => updateDownGuy(index, "direction", v)}><SelectTrigger className="h-9 bg-white border-zinc-300 text-zinc-900 text-sm"><SelectValue placeholder="Dir" /></SelectTrigger><SelectContent className="bg-zinc-50 border-zinc-300"><SelectItem value={BLANK} className="text-zinc-500">—</SelectItem>{options.down_guy_directions.map((d) => (<SelectItem key={d} value={d}>{d}</SelectItem>))}</SelectContent></Select></div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 sm:gap-3 flex-1">
                       <div className="space-y-1"><Label className="text-xs font-mono text-zinc-500">Owner</Label><Select value={guy.owner} onValueChange={(v) => updateDownGuy(index, "owner", v)}><SelectTrigger className="h-9 bg-white border-zinc-300 text-zinc-900 text-sm"><SelectValue placeholder="Owner" /></SelectTrigger><SelectContent className="bg-zinc-50 border-zinc-300"><SelectItem value={BLANK} className="text-zinc-500">—</SelectItem>{options.down_guy_owners.map((o) => (<SelectItem key={o} value={o}>{o}</SelectItem>))}</SelectContent></Select></div>
+                      <div className="space-y-1"><Label className="text-xs font-mono text-zinc-500">Direction</Label><Select value={guy.direction} onValueChange={(v) => updateDownGuy(index, "direction", v)}><SelectTrigger className="h-9 bg-white border-zinc-300 text-zinc-900 text-sm"><SelectValue placeholder="Dir" /></SelectTrigger><SelectContent className="bg-zinc-50 border-zinc-300"><SelectItem value={BLANK} className="text-zinc-500">—</SelectItem>{options.down_guy_directions.map((d) => (<SelectItem key={d} value={d}>{d}</SelectItem>))}</SelectContent></Select></div>
+                      <div className="space-y-1"><Label className="text-xs font-mono text-zinc-500">Size</Label><Select value={guy.size} onValueChange={(v) => updateDownGuy(index, "size", v)}><SelectTrigger className="h-9 bg-white border-zinc-300 text-zinc-900 text-sm"><SelectValue placeholder="Size" /></SelectTrigger><SelectContent className="bg-zinc-50 border-zinc-300"><SelectItem value={BLANK} className="text-zinc-500">—</SelectItem>{options.down_guy_sizes.map((s) => (<SelectItem key={s} value={s}>{s}</SelectItem>))}</SelectContent></Select></div>
+                      <div className="space-y-1"><Label className="text-xs font-mono text-zinc-500">Type</Label><Select value={guy.type} onValueChange={(v) => updateDownGuy(index, "type", v)}><SelectTrigger className="h-9 bg-white border-zinc-300 text-zinc-900 text-sm"><SelectValue placeholder="Type" /></SelectTrigger><SelectContent className="bg-zinc-50 border-zinc-300"><SelectItem value={BLANK} className="text-zinc-500">—</SelectItem>{options.down_guy_types.map((t) => (<SelectItem key={t} value={t}>{t}</SelectItem>))}</SelectContent></Select></div>
+                      <div className="space-y-1"><Label className="text-xs font-mono text-zinc-500">Condition</Label><Select value={guy.condition} onValueChange={(v) => updateDownGuy(index, "condition", v)}><SelectTrigger className="h-9 bg-white border-zinc-300 text-zinc-900 text-sm"><SelectValue placeholder="Cond" /></SelectTrigger><SelectContent className="bg-zinc-50 border-zinc-300"><SelectItem value={BLANK} className="text-zinc-500">—</SelectItem>{options.down_guy_conditions.map((c) => (<SelectItem key={c} value={c}>{c}</SelectItem>))}</SelectContent></Select></div>
                       <HeightInput value={guy.height} onChange={(v) => updateDownGuy(index, "height", v)} label="Height" testId={`downguy${index}-height`} />
-                      <div className="space-y-1"><Label className="text-xs font-mono text-zinc-500">Lead</Label><Input value={guy.lead} onChange={(e) => updateDownGuy(index, "lead", e.target.value)} className="h-9 bg-white border-zinc-300 text-zinc-900 text-sm" /></div>
+                      <HeightInput value={guy.lead} onChange={(v) => updateDownGuy(index, "lead", v)} label="Lead" testId={`downguy${index}-lead`} />
                     </div>
                     {downGuys.length > 1 && <Button type="button" onClick={() => removeDownGuy(index)} size="icon" variant="ghost" className="text-red-600 hover:text-red-300 hover:bg-red-500/10 h-8 w-8"><Trash2 className="w-4 h-4" /></Button>}
                   </div>
                 </div>
               ))}
             </div>
-            {/* Knuckles */}
+            {/* Anchor */}
             <div className="mt-4 pt-4 border-t border-zinc-300">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-mono text-orange-600">KNUCKLES</h3>
+                <h3 className="text-sm font-mono text-orange-600">ANCHOR</h3>
                 <Button type="button" onClick={addKnuckle} size="sm" className="bg-orange-600 hover:bg-orange-700 text-white"><Plus className="w-4 h-4 mr-1" /> Add Row</Button>
               </div>
               <div className="space-y-3">
@@ -485,10 +498,12 @@ const EditPole = () => {
                   <div key={knuckle._key} className="bg-zinc-50 p-3 border border-zinc-300">
                     <div className="flex items-center gap-2 sm:gap-4">
                       <span className="text-sm font-mono text-orange-600 w-6">{index + 1}</span>
-                      <div className="grid grid-cols-3 gap-2 sm:gap-3 flex-1 items-end">
-                        <div className="space-y-1"><Label className="text-xs font-mono text-zinc-500">Knuckles Used</Label><Select value={knuckle.count} onValueChange={(v) => updateKnuckle(index, "count", v)}><SelectTrigger className="h-9 bg-white border-zinc-300 text-zinc-900 text-sm"><SelectValue placeholder="Count" /></SelectTrigger><SelectContent className="bg-zinc-50 border-zinc-300"><SelectItem value={BLANK} className="text-zinc-500">—</SelectItem>{options.knuckle_options.map((k) => (<SelectItem key={k} value={k}>{k}</SelectItem>))}</SelectContent></Select></div>
+                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3 flex-1 items-end">
+                        <div className="space-y-1"><Label className="text-xs font-mono text-zinc-500">Size</Label><Select value={knuckle.size} onValueChange={(v) => updateKnuckle(index, "size", v)}><SelectTrigger className="h-9 bg-white border-zinc-300 text-zinc-900 text-sm"><SelectValue placeholder="Size" /></SelectTrigger><SelectContent className="bg-zinc-50 border-zinc-300"><SelectItem value={BLANK} className="text-zinc-500">—</SelectItem>{options.anchor_sizes.map((s) => (<SelectItem key={s} value={s}>{s}{'"'}</SelectItem>))}</SelectContent></Select></div>
+                        <div className="space-y-1"><Label className="text-xs font-mono text-zinc-500">Total Eyes</Label><Select value={knuckle.total_eyes} onValueChange={(v) => updateKnuckle(index, "total_eyes", v)}><SelectTrigger className="h-9 bg-white border-zinc-300 text-zinc-900 text-sm"><SelectValue placeholder="Eyes" /></SelectTrigger><SelectContent className="bg-zinc-50 border-zinc-300"><SelectItem value={BLANK} className="text-zinc-500">—</SelectItem>{options.anchor_eyes.map((e) => (<SelectItem key={e} value={e}>{e}</SelectItem>))}</SelectContent></Select></div>
+                        <HeightInput value={knuckle.lead} onChange={(v) => updateKnuckle(index, "lead", v)} label="Lead" testId={`anchor${index}-lead`} />
                         <div className="space-y-1"><Label className="text-xs font-mono text-zinc-500">Condition</Label><Select value={knuckle.condition} onValueChange={(v) => updateKnuckle(index, "condition", v)}><SelectTrigger className="h-9 bg-white border-zinc-300 text-zinc-900 text-sm"><SelectValue placeholder="Condition" /></SelectTrigger><SelectContent className="bg-zinc-50 border-zinc-300"><SelectItem value={BLANK} className="text-zinc-500">—</SelectItem><SelectItem value="Excellent" className="text-green-700">Excellent</SelectItem><SelectItem value="Good" className="text-yellow-700">Good</SelectItem><SelectItem value="Bad" className="text-red-600">Bad</SelectItem></SelectContent></Select></div>
-                        <PhotoUpload label="Photo" value={knuckle.photo} onChange={(v) => updateKnuckle(index, "photo", v)} testId={`knuckle${index}`} compact />
+                        <PhotoUpload label="Photo" value={knuckle.photo} onChange={(v) => updateKnuckle(index, "photo", v)} testId={`anchor${index}`} compact />
                       </div>
                       {knuckles.length > 1 && <Button type="button" onClick={() => removeKnuckle(index)} size="icon" variant="ghost" className="text-red-600 hover:text-red-300 hover:bg-red-500/10 h-8 w-8"><Trash2 className="w-4 h-4" /></Button>}
                     </div>

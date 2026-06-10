@@ -161,10 +161,10 @@ const ViewPole = () => {
   );
 
   // Check if any down guy has data (array format)
-  const hasDownGuyData = pole.down_guys && pole.down_guys.length > 0 && pole.down_guys.some(g => g.size || g.direction || g.owner || g.height || g.lead);
+  const hasDownGuyData = pole.down_guys && pole.down_guys.length > 0 && pole.down_guys.some(g => g.owner || g.direction || g.size || g.type || g.condition || g.height || g.lead);
 
-  // Check if any knuckle has data (array format)
-  const hasKnuckleData = pole.knuckles && pole.knuckles.length > 0 && pole.knuckles.some(k => k.count || k.condition || k.photo);
+  // Check if any anchor (knuckle) has data (array format)
+  const hasKnuckleData = pole.knuckles && pole.knuckles.length > 0 && pole.knuckles.some(k => k.size || k.total_eyes || k.lead || k.condition || k.photo);
 
   // Check if any attachment has data (array format)
   const hasAttachmentData = pole.attachments && pole.attachments.length > 0 && pole.attachments.some(a => a.height || a.owner || a.photo || a.notes);
@@ -241,8 +241,9 @@ const ViewPole = () => {
             <h2 className="font-heading text-lg font-bold text-zinc-900 mb-4 flex items-center gap-2">
               <div className="w-1 h-5 bg-red-500"></div>Basic Information
             </h2>
-            <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-7 gap-4">
               <DataRow label="Pole Owner" value={pole.pole_owner} />
+              <DataRow label="Access" value={pole.access} />
               <DataRow label="Class" value={pole.pole_class} />
               <DataRow label="Pole Size" value={pole.pole_size ? `${pole.pole_size}'` : ""} />
               <DataRow label="Size Type" value={pole.pole_size_type} />
@@ -357,36 +358,40 @@ const ViewPole = () => {
               </h2>
               <div className="space-y-3">
                 {pole.down_guys && pole.down_guys.map((guy, index) => {
-                  if (!guy.size && !guy.direction && !guy.owner && !guy.height && !guy.lead) return null;
+                  if (!guy.size && !guy.direction && !guy.owner && !guy.type && !guy.condition && !guy.height && !guy.lead) return null;
                   return (
                     <div key={index} className="bg-zinc-50 p-3 border border-zinc-300">
                       <div className="flex items-center gap-4">
                         <span className="text-sm font-mono text-yellow-700 w-8">{index + 1}</span>
-                        <div className="grid grid-cols-5 gap-4 flex-1">
-                          <DataRow label="Size" value={guy.size} />
-                          <DataRow label="Direction" value={guy.direction} />
+                        <div className="grid grid-cols-3 md:grid-cols-7 gap-4 flex-1">
                           <DataRow label="Owner" value={guy.owner} />
+                          <DataRow label="Direction" value={guy.direction} />
+                          <DataRow label="Size" value={guy.size} />
+                          <DataRow label="Type" value={guy.type} />
+                          <DataRow label="Condition" value={guy.condition} />
                           <DataRow label="Height" value={guy.height ? formatHeight(guy.height) : null} mono />
-                          <DataRow label="Lead" value={guy.lead} />
+                          <DataRow label="Lead" value={guy.lead ? formatHeight(guy.lead) : null} mono />
                         </div>
                       </div>
                     </div>
                   );
                 })}
 
-                {/* Knuckles */}
+                {/* Anchor */}
                 {hasKnuckleData && (
                   <div className="mt-4 pt-4 border-t border-zinc-300">
-                    <h3 className="text-sm font-mono text-orange-600 mb-3">KNUCKLES</h3>
+                    <h3 className="text-sm font-mono text-orange-600 mb-3">ANCHOR</h3>
                     <div className="space-y-3">
                       {pole.knuckles && pole.knuckles.map((knuckle, index) => {
-                        if (!knuckle.count && !knuckle.condition && !knuckle.photo) return null;
+                        if (!knuckle.size && !knuckle.total_eyes && !knuckle.lead && !knuckle.condition && !knuckle.photo) return null;
                         return (
                           <div key={index} className="bg-zinc-50 p-3 border border-zinc-300">
                             <div className="flex items-center gap-4">
                               <span className="text-sm font-mono text-orange-600 w-8">{index + 1}</span>
-                              <div className="grid grid-cols-3 gap-4 flex-1">
-                                <DataRow label="Knuckles Used" value={knuckle.count} />
+                              <div className="grid grid-cols-2 md:grid-cols-5 gap-4 flex-1">
+                                <DataRow label="Size" value={knuckle.size ? `${knuckle.size}"` : null} />
+                                <DataRow label="Total Eyes" value={knuckle.total_eyes} />
+                                <DataRow label="Lead" value={knuckle.lead ? formatHeight(knuckle.lead) : null} mono />
                                 <DataRow label="Condition" value={knuckle.condition} />
                                 {renderPhoto("Photo", knuckle.photo)}
                               </div>

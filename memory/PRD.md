@@ -74,6 +74,15 @@ Build an app that collects power pole data including: size of the pole, type of 
 - Duplicate pole (Jun 9, 2026): new POST /api/poles/{id}/duplicate copies a pole (new id + timestamps, all other data incl. spans/down_guys/knuckles/attachments/photos copied). Added a Duplicate (Copy icon) action per pole row in JobDetail and a "Duplicate" button on ViewPole; both navigate to Edit the new copy. The copy clears GPS (latitude/longitude=None) and sets pole number to "P-". Verified via curl + UI. Requires redeploy for production.
 - Longitude default (Jun 9, 2026): AddPole longitude box defaults to "-" (US longitudes are negative); EditPole shows "-" when a pole has no longitude (e.g. a freshly duplicated pole). Submit conversion hardened with Number.isFinite so a lone "-" saves as null, not NaN. Verified via UI. Requires redeploy for production.
 - Natural pole ordering (Jun 9, 2026): _pole_sort_key upgraded to a natural alphanumeric sort so 'P-2' < 'P-12' and '1' < '2' < '10'. Applied to GET /jobs/{id}/poles (Job Detail / add-pole page now lists poles in numerical order) and both Excel exports. Verified order P-1,P-2,P-10,P-12; pytest 19/19. Requires redeploy for production.
+- Anchor + Down Guys + Access overhaul (Jun 10, 2026):
+  - Renamed Knuckles -> Anchor everywhere (UI labels, ViewPole, Excel header, gallery photo label). Internal DB key kept as `knuckles` for data compatibility.
+  - Anchor box fields: Size (1/2,3/4,1,1 1/4"), Total Eyes (1-4), Lead (ft/in via HeightInput), Condition (Excellent/Good/Bad), Photo. Dropped the old "Knuckles Used" count from UI. New Knuckle model fields: size, total_eyes, lead.
+  - Down Guys: added Type (Standard/Sidewalk/Pole Brace/Overhead) and Condition (Good/Slacked/Broken); Lead switched to ft/in dropdowns; reordered to Owner | Direction | Size | Type | Condition | Height | Lead. New DownGuy model fields: type, condition.
+  - Basic Information: added Access (Yes/No) dropdown between Pole Owner and Class (new `access` field). Row now: Owner | Access | Class | Size | Size Type | Type of Pole | Condition.
+  - Add Pole: added a top "Save Pole" button (mirrors EditPole's top Update button).
+  - Blank "—" clear option on all new dropdowns. New options endpoint lists: down_guy_types, down_guy_conditions, anchor_sizes, anchor_eyes.
+  - Excel exports updated (ANCHOR header + Size/Total Eyes/Lead/Condition; Down Guys columns Owner/Direction/Size/Type/Condition/Height/Lead with ft/in; ACCESS + CLASS in basic info).
+  - Verified: backend curl round-trip of all new fields, export contains ANCHOR/ACCESS/Total Eyes/Sidewalk (no KNUCKLES), pytest 19/19, UI render + a full top-button save. Requires redeploy for production.
 
 ## Tech Stack
 - Backend: FastAPI + MongoDB

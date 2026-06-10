@@ -196,7 +196,11 @@ POLE_SIZES = ["20", "25", "30", "35", "40", "45", "50", "55", "60", "65"]
 DOWN_GUY_OWNERS = ["Power", "ATT", "Comcast", "Lightwave", "Logix", "PS", "Overhead Guy"]
 DOWN_GUY_DIRECTIONS = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
 DOWN_GUY_SIZES = ["1/4", "3/8", "1/2", "5/8", "3/4"]
+DOWN_GUY_TYPES = ["Standard", "Sidewalk", "Pole Brace", "Overhead"]
+DOWN_GUY_CONDITIONS = ["Good", "Slacked", "Broken"]
 KNUCKLE_OPTIONS = ["0", "1", "2", "3", "4", "5", "6"]
+ANCHOR_SIZES = ["1/2", "3/4", "1", "1 1/4"]
+ANCHOR_EYES = ["1", "2", "3", "4"]
 YES_NO = ["Yes", "No"]
 GOOD_BROKEN = ["Good", "Broken"]
 SPAN_OWNERS = ["Power", "ATT", "Comcast", "Lightwave", "Logix", "PS"]
@@ -206,15 +210,21 @@ RISER_OPTIONS = ["0", "1", "2", "3", "4", "5", "6"]
 
 # Models for dynamic arrays
 class DownGuy(BaseModel):
-    size: Optional[str] = None
-    direction: Optional[str] = None
     owner: Optional[str] = None
+    direction: Optional[str] = None
+    size: Optional[str] = None
+    type: Optional[str] = None  # Standard, Sidewalk, Pole Brace, Overhead
+    condition: Optional[str] = None  # Good, Slacked, Broken
     height: Optional[float] = None
-    lead: Optional[str] = None
+    lead: Optional[str] = None  # decimal feet stored as string (ft/in selector)
 
 class Knuckle(BaseModel):
-    count: Optional[str] = None
-    condition: Optional[str] = None
+    # "Anchor" in the UI (kept key 'knuckles' for data compatibility)
+    count: Optional[str] = None  # legacy
+    size: Optional[str] = None  # 1/2, 3/4, 1, 1 1/4
+    total_eyes: Optional[str] = None  # 1-4
+    lead: Optional[str] = None  # decimal feet stored as string (ft/in selector)
+    condition: Optional[str] = None  # Excellent, Good, Bad
     photo: Optional[str] = None
 
 class Attachment(BaseModel):
@@ -232,13 +242,14 @@ class PoleBase(BaseModel):
     job_number: Optional[str] = None
     pole_number: Optional[str] = None
     
-    # Basic Info - Pole Owner moved to Height of Attachments section
+    # Basic Info
     pole_size: str
     pole_size_type: Optional[str] = None  # Actual, Estimate, Proposed
     pole_class: Optional[str] = None  # H1, H2, 1-6
     pole_type: Optional[str] = None  # Wood, Steel, Fiber Glass, Concrete
     condition: str
-    pole_owner: Optional[str] = None  # Now in Height of Attachments section
+    pole_owner: Optional[str] = None
+    access: Optional[str] = None  # Yes / No
     
     # OCALC Photos
     ocalc_left_photo: Optional[str] = None
@@ -291,6 +302,7 @@ class PoleUpdate(BaseModel):
     job_number: Optional[str] = None
     pole_number: Optional[str] = None
     pole_owner: Optional[str] = None
+    access: Optional[str] = None
     pole_size: Optional[str] = None
     pole_size_type: Optional[str] = None
     pole_class: Optional[str] = None
@@ -601,6 +613,9 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
         ws.cell(row=current_row, column=7, value="CLASS").fill = section_fill
         ws.cell(row=current_row, column=7).font = section_font
         ws.cell(row=current_row, column=8, value=pole.get("pole_class", ""))
+        ws.cell(row=current_row, column=9, value="ACCESS").fill = section_fill
+        ws.cell(row=current_row, column=9).font = section_font
+        ws.cell(row=current_row, column=10, value=pole.get("access", ""))
         current_row += 1
         
         # Row 3: GPS & Terminal/Risers
@@ -640,34 +655,39 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
             ws.cell(row=current_row, column=1).font = header_font
             current_row += 1
             # Add column headers for down guys
-            ws.cell(row=current_row, column=1, value="Guy #")
-            ws.cell(row=current_row, column=2, value="Size")
-            ws.cell(row=current_row, column=3, value="Direction")
-            ws.cell(row=current_row, column=4, value="Owner")
-            ws.cell(row=current_row, column=5, value="Height")
-            ws.cell(row=current_row, column=6, value="Lead")
-            for col in range(1, 7):
-                ws.cell(row=current_row, column=col).font = Font(bold=True, size=9)
+            headers = ["Guy #", "Owner", "Direction", "Size", "Type", "Condition", "Height", "Lead"]
+            for ci, h in enumerate(headers, 1):
+                ws.cell(row=current_row, column=ci, value=h)
+                ws.cell(row=current_row, column=ci).font = Font(bold=True, size=9)
             current_row += 1
             for i, dg in enumerate(down_guys, 1):
                 ws.cell(row=current_row, column=1, value=f"Guy {i}")
-                ws.cell(row=current_row, column=2, value=dg.get("size", ""))
+                ws.cell(row=current_row, column=2, value=dg.get("owner", ""))
                 ws.cell(row=current_row, column=3, value=dg.get("direction", ""))
-                ws.cell(row=current_row, column=4, value=dg.get("owner", ""))
-                ws.cell(row=current_row, column=5, value=format_height(dg.get("height")))
-                ws.cell(row=current_row, column=6, value=dg.get("lead", ""))
+                ws.cell(row=current_row, column=4, value=dg.get("size", ""))
+                ws.cell(row=current_row, column=5, value=dg.get("type", ""))
+                ws.cell(row=current_row, column=6, value=dg.get("condition", ""))
+                ws.cell(row=current_row, column=7, value=format_height(dg.get("height")))
+                ws.cell(row=current_row, column=8, value=format_height(dg.get("lead")))
                 current_row += 1
         
-        # Knuckles
+        # Anchor (formerly Knuckles)
         knuckles = pole.get("knuckles", [])
         if knuckles:
-            ws.cell(row=current_row, column=1, value="KNUCKLES").fill = header_fill
+            ws.cell(row=current_row, column=1, value="ANCHOR").fill = header_fill
             ws.cell(row=current_row, column=1).font = header_font
             current_row += 1
+            headers = ["Anchor #", "Size", "Total Eyes", "Lead", "Condition"]
+            for ci, h in enumerate(headers, 1):
+                ws.cell(row=current_row, column=ci, value=h)
+                ws.cell(row=current_row, column=ci).font = Font(bold=True, size=9)
+            current_row += 1
             for i, kn in enumerate(knuckles, 1):
-                ws.cell(row=current_row, column=1, value=f"Knuckle {i}")
-                ws.cell(row=current_row, column=2, value=kn.get("count", ""))
-                ws.cell(row=current_row, column=3, value=kn.get("condition", ""))
+                ws.cell(row=current_row, column=1, value=f"Anchor {i}")
+                ws.cell(row=current_row, column=2, value=kn.get("size", ""))
+                ws.cell(row=current_row, column=3, value=kn.get("total_eyes", ""))
+                ws.cell(row=current_row, column=4, value=format_height(kn.get("lead")))
+                ws.cell(row=current_row, column=5, value=kn.get("condition", ""))
                 current_row += 1
         
         # HOA (Height of Attachments)
@@ -798,7 +818,7 @@ def _pole_photo_items(pole: dict):
         ("MGNV", pole.get("mgnv_photo")),
     ]
     for i, kn in enumerate(pole.get("knuckles", []) or [], 1):
-        labeled.append((f"Knuckle {i}", kn.get("photo")))
+        labeled.append((f"Anchor {i}", kn.get("photo")))
     for i, att in enumerate(pole.get("attachments", []) or [], 1):
         labeled.append((f"HOA {i}", att.get("photo")))
     for label, val in labeled:
@@ -887,7 +907,11 @@ async def get_pole_options():
         "down_guy_owners": DOWN_GUY_OWNERS,
         "down_guy_directions": DOWN_GUY_DIRECTIONS,
         "down_guy_sizes": DOWN_GUY_SIZES,
+        "down_guy_types": DOWN_GUY_TYPES,
+        "down_guy_conditions": DOWN_GUY_CONDITIONS,
         "knuckle_options": KNUCKLE_OPTIONS,
+        "anchor_sizes": ANCHOR_SIZES,
+        "anchor_eyes": ANCHOR_EYES,
         "yes_no": YES_NO,
         "good_broken": GOOD_BROKEN,
         "span_owners": SPAN_OWNERS,
@@ -1014,6 +1038,9 @@ async def export_poles_excel(request: Request, base_url: Optional[str] = None):
         ws.cell(row=current_row, column=7, value="CLASS").fill = section_fill
         ws.cell(row=current_row, column=7).font = section_font
         ws.cell(row=current_row, column=8, value=pole.get("pole_class", ""))
+        ws.cell(row=current_row, column=9, value="ACCESS").fill = section_fill
+        ws.cell(row=current_row, column=9).font = section_font
+        ws.cell(row=current_row, column=10, value=pole.get("access", ""))
         current_row += 1
         
         # Row 3: GPS & Terminal/Risers
@@ -1053,16 +1080,11 @@ async def export_poles_excel(request: Request, base_url: Optional[str] = None):
         # Row 9: Down Guys Header
         ws.cell(row=current_row, column=1, value="DOWN GUYS").fill = header_fill
         ws.cell(row=current_row, column=1).font = header_font
-        ws.cell(row=current_row, column=2, value="Size").fill = section_fill
-        ws.cell(row=current_row, column=2).font = section_font
-        ws.cell(row=current_row, column=3, value="Direction").fill = section_fill
-        ws.cell(row=current_row, column=3).font = section_font
-        ws.cell(row=current_row, column=4, value="Owner").fill = section_fill
-        ws.cell(row=current_row, column=4).font = section_font
-        ws.cell(row=current_row, column=5, value="Height").fill = section_fill
-        ws.cell(row=current_row, column=5).font = section_font
-        ws.cell(row=current_row, column=6, value="Lead").fill = section_fill
-        ws.cell(row=current_row, column=6).font = section_font
+        dg_headers = ["", "Owner", "Direction", "Size", "Type", "Condition", "Height", "Lead"]
+        for ci, h in enumerate(dg_headers, 1):
+            if h:
+                ws.cell(row=current_row, column=ci, value=h).fill = section_fill
+                ws.cell(row=current_row, column=ci).font = section_font
         current_row += 1
         
         # Row 10: Down Guys Data (use available data, fill up to show rows)
@@ -1070,29 +1092,34 @@ async def export_poles_excel(request: Request, base_url: Optional[str] = None):
         for i in range(max(1, len(down_guys))):
             dg = down_guys[i] if i < len(down_guys) else {}
             ws.cell(row=current_row, column=1, value=f"Guy {i+1}")
-            ws.cell(row=current_row, column=2, value=dg.get("size", ""))
+            ws.cell(row=current_row, column=2, value=dg.get("owner", ""))
             ws.cell(row=current_row, column=3, value=dg.get("direction", ""))
-            ws.cell(row=current_row, column=4, value=dg.get("owner", ""))
-            ws.cell(row=current_row, column=5, value=format_height(dg.get("height")))
-            ws.cell(row=current_row, column=6, value=dg.get("lead", ""))
+            ws.cell(row=current_row, column=4, value=dg.get("size", ""))
+            ws.cell(row=current_row, column=5, value=dg.get("type", ""))
+            ws.cell(row=current_row, column=6, value=dg.get("condition", ""))
+            ws.cell(row=current_row, column=7, value=format_height(dg.get("height")))
+            ws.cell(row=current_row, column=8, value=format_height(dg.get("lead")))
             current_row += 1
         
-        # Row 11: Knuckles Header
-        ws.cell(row=current_row, column=1, value="KNUCKLES").fill = header_fill
+        # Row 11: Anchor Header
+        ws.cell(row=current_row, column=1, value="ANCHOR").fill = header_fill
         ws.cell(row=current_row, column=1).font = header_font
-        ws.cell(row=current_row, column=2, value="Count").fill = section_fill
-        ws.cell(row=current_row, column=2).font = section_font
-        ws.cell(row=current_row, column=3, value="Condition").fill = section_fill
-        ws.cell(row=current_row, column=3).font = section_font
+        an_headers = ["", "Size", "Total Eyes", "Lead", "Condition"]
+        for ci, h in enumerate(an_headers, 1):
+            if h:
+                ws.cell(row=current_row, column=ci, value=h).fill = section_fill
+                ws.cell(row=current_row, column=ci).font = section_font
         current_row += 1
         
-        # Row 12: Knuckles Data
+        # Row 12: Anchor Data
         knuckles = pole.get("knuckles", [])
         for i in range(max(1, len(knuckles))):
             kn = knuckles[i] if i < len(knuckles) else {}
-            ws.cell(row=current_row, column=1, value=f"Knuckle {i+1}")
-            ws.cell(row=current_row, column=2, value=kn.get("count", ""))
-            ws.cell(row=current_row, column=3, value=kn.get("condition", ""))
+            ws.cell(row=current_row, column=1, value=f"Anchor {i+1}")
+            ws.cell(row=current_row, column=2, value=kn.get("size", ""))
+            ws.cell(row=current_row, column=3, value=kn.get("total_eyes", ""))
+            ws.cell(row=current_row, column=4, value=format_height(kn.get("lead")))
+            ws.cell(row=current_row, column=5, value=kn.get("condition", ""))
             current_row += 1
         
         # Row 13: HOA Header
