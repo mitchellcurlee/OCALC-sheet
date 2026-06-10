@@ -253,9 +253,10 @@ Build an app that collects power pole data including: size of the pole, type of 
   - **New feature**: AI-powered estimation of pole attachment heights from photos
   - **Backend**: New `/api/pole-analysis/analyze-pole-heights` endpoint using OpenAI GPT-4o vision via emergentintegrations
   - **Frontend**: New `PoleHeightAnalyzer.jsx` component integrated into HOA section of PoleForm
-  - Features: Take Photo (camera capture) / Upload Photo, estimated pole height input (default 40ft), AI analysis with confidence levels
+  - Features: Take Photo (camera capture) / Upload Photo, pole height dropdown (20-65ft in 5ft increments, default 40ft), AI analysis with confidence levels
   - Returns: Attachment type, height in feet, confidence (high/medium/low), description for each detected item
   - Results can be applied to HOA attachment rows with one click
+  - **Recent Analyses History**: Successful analyses are saved locally with thumbnails; users can re-apply heights from previous analyses without re-uploading photos (up to 5 recent entries)
   - Requires: EMERGENT_LLM_KEY in backend/.env
   - Backend tests: `/app/backend/tests/test_pole_analysis.py` (5 tests passing)
   - Requires redeploy for production.

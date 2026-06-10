@@ -1,6 +1,5 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Dialog,
@@ -10,9 +9,23 @@ import {
   DialogTrigger,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Camera, Loader2, Upload, Ruler, AlertCircle, CheckCircle2 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Camera, Loader2, Upload, Ruler, AlertCircle, CheckCircle2, History, Trash2, Clock } from "lucide-react";
 import axios from "axios";
 import { toast } from "sonner";
+
+// Pole height options: 20-65ft in 5ft increments
+const POLE_HEIGHT_OPTIONS = [20, 25, 30, 35, 40, 45, 50, 55, 60, 65];
+
+// LocalStorage key for recent analyses
+const RECENT_ANALYSES_KEY = "poleHeightAnalyses";
+const MAX_RECENT_ANALYSES = 5;
 
 /**
  * PoleHeightAnalyzer - AI-powered pole attachment height estimation
@@ -29,8 +42,83 @@ export const PoleHeightAnalyzer = ({ onHeightsDetected, buttonVariant = "outline
   const [poleHeight, setPoleHeight] = useState("40");
   const [results, setResults] = useState(null);
   const [error, setError] = useState(null);
+  const [recentAnalyses, setRecentAnalyses] = useState([]);
+  const [showHistory, setShowHistory] = useState(false);
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
+
+  // Load recent analyses from localStorage on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(RECENT_ANALYSES_KEY);
+      if (stored) {
+        setRecentAnalyses(JSON.parse(stored));
+      }
+    } catch (e) {
+      // Ignore localStorage errors
+    }
+  }, []);
+
+  // Save analysis to recent history
+  const saveToHistory = (analysisResult, thumbnail) => {
+    const newEntry = {
+      id: Date.now(),
+      timestamp: new Date().toISOString(),
+      pole_height_ft: analysisResult.pole_height_ft,
+      attachments: analysisResult.attachments,
+      analysis_notes: analysisResult.analysis_notes,
+      thumbnail: thumbnail, // Small preview of the image
+    };
+
+    const updated = [newEntry, ...recentAnalyses].slice(0, MAX_RECENT_ANALYSES);
+    setRecentAnalyses(updated);
+    
+    try {
+      localStorage.setItem(RECENT_ANALYSES_KEY, JSON.stringify(updated));
+    } catch (e) {
+      // Ignore localStorage errors
+    }
+  };
+
+  // Create a small thumbnail from the image
+  const createThumbnail = (dataUrl) => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const maxSize = 80;
+        const ratio = Math.min(maxSize / img.width, maxSize / img.height);
+        canvas.width = img.width * ratio;
+        canvas.height = img.height * ratio;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", 0.6));
+      };
+      img.src = dataUrl;
+    });
+  };
+
+  // Clear all history
+  const clearHistory = () => {
+    setRecentAnalyses([]);
+    try {
+      localStorage.removeItem(RECENT_ANALYSES_KEY);
+    } catch (e) {
+      // Ignore
+    }
+    toast.success("History cleared");
+  };
+
+  // Apply heights from a historical analysis
+  const applyFromHistory = (analysis) => {
+    if (analysis.attachments && analysis.attachments.length > 0 && onHeightsDetected) {
+      onHeightsDetected(analysis.attachments);
+      toast.success(`Applied ${analysis.attachments.length} attachment(s) from history`);
+      setOpen(false);
+    } else {
+      toast.error("No attachments in this analysis");
+    }
+  };
 
   const handleFileSelect = (e) => {
     const file = e.target.files?.[0];
@@ -72,7 +160,11 @@ export const PoleHeightAnalyzer = ({ onHeightsDetected, buttonVariant = "outline
 
       if (response.data.success) {
         setResults(response.data);
+        
+        // Save to history with thumbnail
         if (response.data.attachments.length > 0) {
+          const thumbnail = await createThumbnail(imageBase64);
+          saveToHistory(response.data, thumbnail);
           toast.success(`Detected ${response.data.attachments.length} attachment(s)`);
         } else {
           toast.info("No attachments detected in the image");
@@ -102,6 +194,7 @@ export const PoleHeightAnalyzer = ({ onHeightsDetected, buttonVariant = "outline
     setImageBase64(null);
     setResults(null);
     setError(null);
+    setShowHistory(false);
   };
 
   const confidenceColor = (confidence) => {
@@ -200,17 +293,18 @@ export const PoleHeightAnalyzer = ({ onHeightsDetected, buttonVariant = "outline
           {/* Pole height estimate */}
           <div className="space-y-2">
             <Label htmlFor="pole-height">Estimated Pole Height (feet)</Label>
-            <Input
-              id="pole-height"
-              type="number"
-              value={poleHeight}
-              onChange={(e) => setPoleHeight(e.target.value)}
-              placeholder="40"
-              className="h-10"
-              data-testid="pole-height-input"
-            />
+            <Select value={poleHeight} onValueChange={setPoleHeight}>
+              <SelectTrigger className="h-10 bg-white border-zinc-300" data-testid="pole-height-input">
+                <SelectValue placeholder="Select height" />
+              </SelectTrigger>
+              <SelectContent className="bg-zinc-50 border-zinc-300">
+                {POLE_HEIGHT_OPTIONS.map((h) => (
+                  <SelectItem key={h} value={h.toString()}>{h} ft</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <p className="text-xs text-zinc-500">
-              Typical utility poles are 35-45 feet. Adjust based on pole class if known.
+              Utility poles typically range from 20-65 feet. Select based on pole class if known.
             </p>
           </div>
 
@@ -233,6 +327,88 @@ export const PoleHeightAnalyzer = ({ onHeightsDetected, buttonVariant = "outline
               </>
             )}
           </Button>
+
+          {/* Recent Analyses History */}
+          {recentAnalyses.length > 0 && (
+            <div className="border-t border-zinc-200 pt-4">
+              <div className="flex items-center justify-between mb-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowHistory(!showHistory)}
+                  className="text-zinc-600 hover:text-zinc-900 gap-2 px-2"
+                  data-testid="toggle-history-btn"
+                >
+                  <History className="w-4 h-4" />
+                  Recent Analyses ({recentAnalyses.length})
+                  <span className="text-xs">{showHistory ? "▲" : "▼"}</span>
+                </Button>
+                {showHistory && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearHistory}
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50 gap-1 px-2"
+                    data-testid="clear-history-btn"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    Clear
+                  </Button>
+                )}
+              </div>
+
+              {showHistory && (
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {recentAnalyses.map((analysis) => (
+                    <div
+                      key={analysis.id}
+                      className="flex items-center gap-3 p-2 border border-zinc-200 rounded-lg hover:bg-zinc-50 cursor-pointer"
+                      onClick={() => applyFromHistory(analysis)}
+                      data-testid={`history-item-${analysis.id}`}
+                    >
+                      {analysis.thumbnail && (
+                        <img
+                          src={analysis.thumbnail}
+                          alt="Analysis thumbnail"
+                          className="w-12 h-12 object-cover rounded"
+                        />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-zinc-900">
+                            {analysis.attachments.length} attachment{analysis.attachments.length !== 1 ? "s" : ""}
+                          </span>
+                          <span className="text-xs text-zinc-500">
+                            @ {analysis.pole_height_ft} ft pole
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1 text-xs text-zinc-500">
+                          <Clock className="w-3 h-3" />
+                          {new Date(analysis.timestamp).toLocaleDateString()} {new Date(analysis.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        </div>
+                        {analysis.attachments.length > 0 && (
+                          <p className="text-xs text-zinc-600 truncate">
+                            {analysis.attachments.map(a => `${a.type} (${a.height_ft}ft)`).join(", ")}
+                          </p>
+                        )}
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="shrink-0 text-green-600 border-green-300 hover:bg-green-50"
+                        onClick={(e) => { e.stopPropagation(); applyFromHistory(analysis); }}
+                      >
+                        Apply
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Error display */}
           {error && (

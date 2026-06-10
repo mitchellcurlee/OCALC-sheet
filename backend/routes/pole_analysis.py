@@ -67,8 +67,8 @@ async def analyze_pole_heights(request: HeightEstimationRequest):
 When analyzing a pole photo:
 1. Identify all visible attachments on the pole
 2. Estimate their heights based on:
-   - Typical utility pole proportions (most are 35-45 feet tall)
-   - Visual position relative to the total pole height
+   - Typical utility pole proportions (range from 20-65 feet, with 35-45 feet being most common)
+   - Visual position relative to the total pole height provided by the user
    - Standard attachment height regulations (power usually 25-40ft, telecom 18-25ft, cable TV 15-20ft)
 3. Provide confidence levels based on image clarity and visible references
 
