@@ -4,7 +4,7 @@ from typing import List, Optional
 from datetime import datetime, timezone
 import io
 from openpyxl import Workbook
-from openpyxl.styles import Font, PatternFill
+from openpyxl.styles import Font, PatternFill, Border, Side
 
 from models.job import Job, JobCreate, JobUpdate
 from models.pole import Pole
@@ -316,7 +316,18 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
         else:
             ws.cell(row=current_row, column=2, value="No photos")
         current_row += 1
+        
+        # Add distinctive separator line between poles
+        separator_border = Border(
+            bottom=Side(style='thick', color='dc2626')  # Red thick line
+        )
+        separator_fill = PatternFill(start_color="fef2f2", end_color="fef2f2", fill_type="solid")  # Light red background
+        for col in range(1, 13):  # Apply across 12 columns
+            cell = ws.cell(row=current_row, column=col, value="")
+            cell.border = separator_border
+            cell.fill = separator_fill
         current_row += 1
+        current_row += 1  # Extra blank row for spacing
     
     if underground:
         UG_ABBR = {
