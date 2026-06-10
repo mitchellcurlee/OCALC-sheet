@@ -344,10 +344,22 @@ const JobDetail = () => {
                           {pole.condition}
                         </Badge>
                       </div>
-                      <div className="flex items-center gap-3 text-xs text-zinc-500 mt-1">
-                        <span>{pole.pole_size}</span>
+                      <div className="flex items-center gap-3 text-xs text-zinc-500 mt-1 flex-wrap">
+                        <span>{pole.pole_size ? `${pole.pole_size}'` : "—"}</span>
+                        {pole.pole_class && (
+                          <>
+                            <span>•</span>
+                            <span>Class {pole.pole_class}</span>
+                          </>
+                        )}
                         <span>•</span>
-                        <span>{pole.pole_owner}</span>
+                        <span>{pole.pole_owner || "—"}</span>
+                        {pole.pole_type && (
+                          <>
+                            <span>•</span>
+                            <span>{pole.pole_type}</span>
+                          </>
+                        )}
                         {pole.latitude && pole.longitude && (
                           <>
                             <span>•</span>
