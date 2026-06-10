@@ -243,6 +243,7 @@ const JobMap = () => {
             ctx.fillText(label, x, y + 0.5 * scale);
           });
 
+          // Title banner (top-left)
           const title = `${job?.name || "Job"}  -  ${route.length} poles, ${fmtFeet(totalFeet)} total`;
           ctx.font = `700 ${13 * scale}px ui-monospace, monospace`;
           const bw = ctx.measureText(title).width + 20 * scale;
@@ -253,7 +254,110 @@ const JobMap = () => {
           ctx.textBaseline = "middle";
           ctx.fillText(title, 18 * scale, 8 * scale + 13 * scale);
 
-          const url = canvas.toDataURL("image/png");
+          // North arrow (top-right)
+          const nx = canvas.width - 34 * scale;
+          const ny = 30 * scale;
+          ctx.fillStyle = "rgba(255,255,255,0.92)";
+          ctx.beginPath();
+          ctx.arc(nx, ny, 20 * scale, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#dc2626";
+          ctx.beginPath();
+          ctx.moveTo(nx, ny - 12 * scale);
+          ctx.lineTo(nx - 6 * scale, ny + 4 * scale);
+          ctx.lineTo(nx + 6 * scale, ny + 4 * scale);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = "#18181b";
+          ctx.font = `700 ${10 * scale}px ui-monospace, monospace`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText("N", nx, ny + 12 * scale);
+
+          // Scale bar (bottom-left)
+          const latC = tmp.getCenter().lat;
+          const zoomC = tmp.getZoom();
+          const feetPerPxCss = (156543.03392 * Math.cos((latC * Math.PI) / 180) / Math.pow(2, zoomC)) * FEET_PER_METER;
+          const targetFeet = feetPerPxCss * 110;
+          const niceFeet = (t) => {
+            const p = Math.pow(10, Math.floor(Math.log10(t)));
+            const opts = [1, 2, 5, 10].map((m) => m * p);
+            let v = opts[0];
+            opts.forEach((o) => { if (o <= t) v = o; });
+            return v;
+          };
+          const barFeet = niceFeet(targetFeet);
+          const barPx = (barFeet / feetPerPxCss) * scale;
+          const sbx = 16 * scale;
+          const sby = canvas.height - 24 * scale;
+          ctx.fillStyle = "rgba(255,255,255,0.9)";
+          ctx.fillRect(sbx - 6 * scale, sby - 16 * scale, barPx + 12 * scale, 26 * scale);
+          ctx.strokeStyle = "#18181b";
+          ctx.lineWidth = 2 * scale;
+          ctx.beginPath();
+          ctx.moveTo(sbx, sby - 6 * scale);
+          ctx.lineTo(sbx, sby);
+          ctx.lineTo(sbx + barPx, sby);
+          ctx.lineTo(sbx + barPx, sby - 6 * scale);
+          ctx.stroke();
+          ctx.fillStyle = "#18181b";
+          ctx.font = `${10 * scale}px ui-monospace, monospace`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "bottom";
+          ctx.fillText(fmtFeet(barFeet), sbx + barPx / 2, sby - 7 * scale);
+
+          // Composite: map + right-side per-segment table panel
+          const panelW = 250 * scale;
+          const final = document.createElement("canvas");
+          final.width = canvas.width + panelW;
+          final.height = canvas.height;
+          const fctx = final.getContext("2d");
+          fctx.fillStyle = "#ffffff";
+          fctx.fillRect(0, 0, final.width, final.height);
+          fctx.drawImage(canvas, 0, 0);
+          const px0 = canvas.width;
+          fctx.fillStyle = "#f4f4f5";
+          fctx.fillRect(px0, 0, panelW, final.height);
+          fctx.fillStyle = "#dc2626";
+          fctx.fillRect(px0, 0, panelW, 30 * scale);
+          fctx.fillStyle = "#ffffff";
+          fctx.font = `700 ${13 * scale}px ui-monospace, monospace`;
+          fctx.textAlign = "left";
+          fctx.textBaseline = "middle";
+          fctx.fillText("ROUTE SEGMENTS", px0 + 14 * scale, 15 * scale);
+
+          let yy = 46 * scale;
+          const rowH = 19 * scale;
+          fctx.font = `${11 * scale}px ui-monospace, monospace`;
+          fctx.textBaseline = "middle";
+          const maxRows = Math.floor((final.height - 50 * scale - yy) / rowH);
+          for (let i = 0; i < segments.length; i++) {
+            if (segments.length > maxRows && i >= maxRows - 1) {
+              fctx.fillStyle = "#71717a";
+              fctx.fillText(`+ ${segments.length - i} more`, px0 + 14 * scale, yy);
+              break;
+            }
+            const from = String(route[i].pole_number || "?");
+            const to = String(route[i + 1].pole_number || "?");
+            fctx.fillStyle = "#18181b";
+            fctx.textAlign = "left";
+            fctx.fillText(`${from} -> ${to}`, px0 + 14 * scale, yy);
+            const ft = fmtFeet(segments[i].ft);
+            fctx.textAlign = "right";
+            fctx.fillText(ft, px0 + panelW - 14 * scale, yy);
+            yy += rowH;
+          }
+          // Total row at bottom of panel
+          fctx.fillStyle = "#dc2626";
+          fctx.fillRect(px0, final.height - 34 * scale, panelW, 34 * scale);
+          fctx.fillStyle = "#ffffff";
+          fctx.font = `700 ${12 * scale}px ui-monospace, monospace`;
+          fctx.textAlign = "left";
+          fctx.fillText("TOTAL", px0 + 14 * scale, final.height - 17 * scale);
+          fctx.textAlign = "right";
+          fctx.fillText(fmtFeet(totalFeet), px0 + panelW - 14 * scale, final.height - 17 * scale);
+
+          const url = final.toDataURL("image/png");
           const a = document.createElement("a");
           a.href = url;
           a.download = `${(job?.name || "job").replace(/[^a-z0-9-_]+/gi, "_")}_pole_map.png`;

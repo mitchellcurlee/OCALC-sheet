@@ -574,18 +574,22 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
     section_font = Font(bold=True, color="FFFFFF")
     
     # Job info at top
+    job_number = next((p.get("job_number") for p in poles if p.get("job_number")), "")
     ws.cell(row=1, column=1, value="JOB NAME").fill = header_fill
     ws.cell(row=1, column=1).font = header_font
     ws.cell(row=1, column=2, value=job.get("name", ""))
-    ws.cell(row=1, column=3, value="LOCATION").fill = header_fill
+    ws.cell(row=1, column=3, value="JOB #").fill = header_fill
     ws.cell(row=1, column=3).font = header_font
-    ws.cell(row=1, column=4, value=job.get("location", ""))
-    ws.cell(row=1, column=5, value="POLES").fill = header_fill
+    ws.cell(row=1, column=4, value=job_number)
+    ws.cell(row=1, column=5, value="LOCATION").fill = header_fill
     ws.cell(row=1, column=5).font = header_font
-    ws.cell(row=1, column=6, value=len(poles))
-    ws.cell(row=1, column=7, value="MAP").fill = header_fill
+    ws.cell(row=1, column=6, value=job.get("location", ""))
+    ws.cell(row=1, column=7, value="POLES").fill = header_fill
     ws.cell(row=1, column=7).font = header_font
-    map_cell = ws.cell(row=1, column=8, value="Open satellite overview")
+    ws.cell(row=1, column=8, value=len(poles))
+    ws.cell(row=1, column=9, value="MAP").fill = header_fill
+    ws.cell(row=1, column=9).font = header_font
+    map_cell = ws.cell(row=1, column=10, value="Open satellite overview")
     map_cell.hyperlink = f"{public_base}/jobs/{job_id}/map"
     map_cell.font = Font(color="2563EB", underline="single", bold=True)
     
@@ -622,13 +626,10 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
         ws.cell(row=current_row, column=1, value="POLE #").fill = header_fill
         ws.cell(row=current_row, column=1).font = header_font
         ws.cell(row=current_row, column=2, value=pole.get("pole_number", ""))
-        ws.cell(row=current_row, column=3, value="JOB #").fill = header_fill
+        ws.cell(row=current_row, column=3, value="DATE").fill = header_fill
         ws.cell(row=current_row, column=3).font = header_font
-        ws.cell(row=current_row, column=4, value=pole.get("job_number", ""))
-        ws.cell(row=current_row, column=5, value="DATE").fill = header_fill
-        ws.cell(row=current_row, column=5).font = header_font
         inspection_date = pole.get("inspection_date", "")
-        ws.cell(row=current_row, column=6, value=str(inspection_date)[:10] if inspection_date else "")
+        ws.cell(row=current_row, column=4, value=str(inspection_date)[:10] if inspection_date else "")
         current_row += 1
 
         # 1. BASIC INFORMATION
@@ -1009,13 +1010,10 @@ async def export_poles_excel(request: Request, base_url: Optional[str] = None):
         ws.cell(row=current_row, column=1, value="POLE #").fill = header_fill
         ws.cell(row=current_row, column=1).font = header_font
         ws.cell(row=current_row, column=2, value=pole.get("pole_number", ""))
-        ws.cell(row=current_row, column=3, value="JOB #").fill = header_fill
+        ws.cell(row=current_row, column=3, value="DATE").fill = header_fill
         ws.cell(row=current_row, column=3).font = header_font
-        ws.cell(row=current_row, column=4, value=pole.get("job_number", ""))
-        ws.cell(row=current_row, column=5, value="DATE").fill = header_fill
-        ws.cell(row=current_row, column=5).font = header_font
         inspection_date = pole.get("inspection_date", "")
-        ws.cell(row=current_row, column=6, value=str(inspection_date)[:10] if inspection_date else "")
+        ws.cell(row=current_row, column=4, value=str(inspection_date)[:10] if inspection_date else "")
         current_row += 1
         
         # Row 2: Basic Info
