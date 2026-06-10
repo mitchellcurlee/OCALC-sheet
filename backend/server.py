@@ -223,7 +223,8 @@ class Knuckle(BaseModel):
     count: Optional[str] = None  # legacy
     size: Optional[str] = None  # 1/2, 3/4, 1, 1 1/4
     total_eyes: Optional[str] = None  # 1-4
-    lead: Optional[str] = None  # decimal feet stored as string (ft/in selector)
+    direction: Optional[str] = None  # N, NE, E, SE, S, SW, W, NW
+    lead: Optional[str] = None  # legacy (replaced by direction)
     condition: Optional[str] = None  # Excellent, Good, Bad
     photo: Optional[str] = None
 
@@ -677,7 +678,7 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
             ws.cell(row=current_row, column=1, value="ANCHOR").fill = header_fill
             ws.cell(row=current_row, column=1).font = header_font
             current_row += 1
-            headers = ["Anchor #", "Size", "Total Eyes", "Lead", "Condition"]
+            headers = ["Anchor #", "Size", "Total Eyes", "Direction", "Condition"]
             for ci, h in enumerate(headers, 1):
                 ws.cell(row=current_row, column=ci, value=h)
                 ws.cell(row=current_row, column=ci).font = Font(bold=True, size=9)
@@ -686,7 +687,7 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
                 ws.cell(row=current_row, column=1, value=f"Anchor {i}")
                 ws.cell(row=current_row, column=2, value=kn.get("size", ""))
                 ws.cell(row=current_row, column=3, value=kn.get("total_eyes", ""))
-                ws.cell(row=current_row, column=4, value=format_height(kn.get("lead")))
+                ws.cell(row=current_row, column=4, value=kn.get("direction", ""))
                 ws.cell(row=current_row, column=5, value=kn.get("condition", ""))
                 current_row += 1
         
@@ -1104,7 +1105,7 @@ async def export_poles_excel(request: Request, base_url: Optional[str] = None):
         # Row 11: Anchor Header
         ws.cell(row=current_row, column=1, value="ANCHOR").fill = header_fill
         ws.cell(row=current_row, column=1).font = header_font
-        an_headers = ["", "Size", "Total Eyes", "Lead", "Condition"]
+        an_headers = ["", "Size", "Total Eyes", "Direction", "Condition"]
         for ci, h in enumerate(an_headers, 1):
             if h:
                 ws.cell(row=current_row, column=ci, value=h).fill = section_fill
@@ -1118,7 +1119,7 @@ async def export_poles_excel(request: Request, base_url: Optional[str] = None):
             ws.cell(row=current_row, column=1, value=f"Anchor {i+1}")
             ws.cell(row=current_row, column=2, value=kn.get("size", ""))
             ws.cell(row=current_row, column=3, value=kn.get("total_eyes", ""))
-            ws.cell(row=current_row, column=4, value=format_height(kn.get("lead")))
+            ws.cell(row=current_row, column=4, value=kn.get("direction", ""))
             ws.cell(row=current_row, column=5, value=kn.get("condition", ""))
             current_row += 1
         

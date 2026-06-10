@@ -164,7 +164,7 @@ const ViewPole = () => {
   const hasDownGuyData = pole.down_guys && pole.down_guys.length > 0 && pole.down_guys.some(g => g.owner || g.direction || g.size || g.type || g.condition || g.height || g.lead);
 
   // Check if any anchor (knuckle) has data (array format)
-  const hasKnuckleData = pole.knuckles && pole.knuckles.length > 0 && pole.knuckles.some(k => k.size || k.total_eyes || k.lead || k.condition || k.photo);
+  const hasKnuckleData = pole.knuckles && pole.knuckles.length > 0 && pole.knuckles.some(k => k.size || k.total_eyes || k.direction || k.condition || k.photo);
 
   // Check if any attachment has data (array format)
   const hasAttachmentData = pole.attachments && pole.attachments.length > 0 && pole.attachments.some(a => a.height || a.owner || a.photo || a.notes);
@@ -383,7 +383,7 @@ const ViewPole = () => {
                     <h3 className="text-sm font-mono text-orange-600 mb-3">ANCHOR</h3>
                     <div className="space-y-3">
                       {pole.knuckles && pole.knuckles.map((knuckle, index) => {
-                        if (!knuckle.size && !knuckle.total_eyes && !knuckle.lead && !knuckle.condition && !knuckle.photo) return null;
+                        if (!knuckle.size && !knuckle.total_eyes && !knuckle.direction && !knuckle.condition && !knuckle.photo) return null;
                         return (
                           <div key={index} className="bg-zinc-50 p-3 border border-zinc-300">
                             <div className="flex items-center gap-4">
@@ -391,7 +391,7 @@ const ViewPole = () => {
                               <div className="grid grid-cols-2 md:grid-cols-5 gap-4 flex-1">
                                 <DataRow label="Size" value={knuckle.size ? `${knuckle.size}"` : null} />
                                 <DataRow label="Total Eyes" value={knuckle.total_eyes} />
-                                <DataRow label="Lead" value={knuckle.lead ? formatHeight(knuckle.lead) : null} mono />
+                                <DataRow label="Direction" value={knuckle.direction} />
                                 <DataRow label="Condition" value={knuckle.condition} />
                                 {renderPhoto("Photo", knuckle.photo)}
                               </div>

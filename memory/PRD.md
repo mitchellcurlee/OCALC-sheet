@@ -83,6 +83,11 @@ Build an app that collects power pole data including: size of the pole, type of 
   - Blank "—" clear option on all new dropdowns. New options endpoint lists: down_guy_types, down_guy_conditions, anchor_sizes, anchor_eyes.
   - Excel exports updated (ANCHOR header + Size/Total Eyes/Lead/Condition; Down Guys columns Owner/Direction/Size/Type/Condition/Height/Lead with ft/in; ACCESS + CLASS in basic info).
   - Verified: backend curl round-trip of all new fields, export contains ANCHOR/ACCESS/Total Eyes/Sidewalk (no KNUCKLES), pytest 19/19, UI render + a full top-button save. Requires redeploy for production.
+- Anchor/HOA/Birthmark tweaks (Jun 10, 2026):
+  - Anchor "Lead" (ft/in) replaced with a "Direction" dropdown (N..NW, same options as other direction boxes). New Knuckle.direction field; Excel anchor column header changed Lead->Direction.
+  - Moved the HOA box to sit between "Birthmark & MGNV" and "OCALC Photos" on both Add and Edit (verified via header Y-order).
+  - "Has Birthmark" changed from a toggle/Switch to a Yes/No dropdown (removed unused Switch import). 
+  - Verified: anchor direction round-trips, export shows Direction/NE, both forms render with correct order, pytest 19/19. Requires redeploy for production.
 
 ## Tech Stack
 - Backend: FastAPI + MongoDB

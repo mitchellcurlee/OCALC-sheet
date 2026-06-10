@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -101,7 +100,7 @@ const EditPole = () => {
   });
 
   const [downGuys, setDownGuys] = useState([{ _key: rowKey(), owner: "", direction: "", size: "", type: "", condition: "", height: "", lead: "" }]);
-  const [knuckles, setKnuckles] = useState([{ _key: rowKey(), size: "", total_eyes: "", lead: "", condition: "", photo: "" }]);
+  const [knuckles, setKnuckles] = useState([{ _key: rowKey(), size: "", total_eyes: "", direction: "", condition: "", photo: "" }]);
   const [attachments, setAttachments] = useState([{ _key: rowKey(), height: "", owner: "", photo: "" }]);
 
   const fetchOptions = useCallback(async () => {
@@ -133,7 +132,7 @@ const EditPole = () => {
       });
       // Load dynamic arrays (attach a stable _key for React list rendering)
       setDownGuys(pole.down_guys?.length > 0 ? pole.down_guys.map(dg => ({ _key: rowKey(), ...dg, height: dg.height?.toString() || "" })) : [{ _key: rowKey(), owner: "", direction: "", size: "", type: "", condition: "", height: "", lead: "" }]);
-      setKnuckles(pole.knuckles?.length > 0 ? pole.knuckles.map(k => ({ _key: rowKey(), ...k })) : [{ _key: rowKey(), size: "", total_eyes: "", lead: "", condition: "", photo: "" }]);
+      setKnuckles(pole.knuckles?.length > 0 ? pole.knuckles.map(k => ({ _key: rowKey(), ...k })) : [{ _key: rowKey(), size: "", total_eyes: "", direction: "", condition: "", photo: "" }]);
       setAttachments(pole.attachments?.length > 0 ? pole.attachments.map(a => ({ _key: rowKey(), ...a, height: a.height?.toString() || "", notes: a.notes || "" })) : [{ _key: rowKey(), height: "", owner: "", photo: "", notes: "" }]);
     } catch (error) {
       toast.error("Failed to fetch pole data");
@@ -156,7 +155,7 @@ const EditPole = () => {
   const removeDownGuy = (index) => { if (downGuys.length > 1) setDownGuys(downGuys.filter((_, i) => i !== index)); };
   const updateDownGuy = (index, field, value) => { const updated = [...downGuys]; updated[index][field] = value === BLANK ? "" : value; setDownGuys(updated); };
 
-  const addKnuckle = () => { setKnuckles([...knuckles, { _key: rowKey(), size: "", total_eyes: "", lead: "", condition: "", photo: "" }]); };
+  const addKnuckle = () => { setKnuckles([...knuckles, { _key: rowKey(), size: "", total_eyes: "", direction: "", condition: "", photo: "" }]); };
   const removeKnuckle = (index) => { if (knuckles.length > 1) setKnuckles(knuckles.filter((_, i) => i !== index)); };
   const updateKnuckle = (index, field, value) => { const updated = [...knuckles]; updated[index][field] = value === BLANK ? "" : value; setKnuckles(updated); };
 
@@ -234,7 +233,7 @@ const EditPole = () => {
         latitude: Number.isFinite(parseFloat(formData.latitude)) ? parseFloat(formData.latitude) : null,
         longitude: Number.isFinite(parseFloat(formData.longitude)) ? parseFloat(formData.longitude) : null,
         down_guys: downGuys.filter(dg => dg.owner || dg.direction || dg.size || dg.type || dg.condition || dg.height || dg.lead).map(({ _key, ...dg }) => ({ ...dg, height: dg.height ? parseFloat(dg.height) : null })),
-        knuckles: knuckles.filter(k => k.size || k.total_eyes || k.lead || k.condition || k.photo).map(({ _key, ...k }) => k),
+        knuckles: knuckles.filter(k => k.size || k.total_eyes || k.direction || k.condition || k.photo).map(({ _key, ...k }) => k),
         attachments: attachments.filter(a => a.height || a.owner || a.photo).map(({ _key, ...a }) => ({ ...a, height: a.height ? parseFloat(a.height) : null })),
       };
       await axios.put(`/poles/${id}`, submitData);
@@ -438,7 +437,7 @@ const EditPole = () => {
             <h2 className="font-heading text-base sm:text-lg font-bold text-zinc-900 mb-3 sm:mb-4 flex items-center gap-2"><div className="w-1 h-5 bg-purple-500"></div>Birthmark & MGNV</h2>
             <div className="space-y-4">
               <div className="flex flex-col sm:flex-row items-start gap-6">
-                <div className="flex items-center gap-3"><Switch checked={formData.has_birthmark} onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, has_birthmark: checked }))} /><Label className="text-sm text-zinc-700">{formData.has_birthmark ? "Has Birthmark" : "No Birthmark"}</Label></div>
+                <div className="space-y-2 w-full sm:w-48"><Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Has Birthmark</Label><Select value={formData.has_birthmark ? "Yes" : "No"} onValueChange={(v) => setFormData((prev) => ({ ...prev, has_birthmark: v === "Yes", birthmark_photo: v === "Yes" ? prev.birthmark_photo : "" }))}><SelectTrigger className="h-10 bg-white border-zinc-300 text-zinc-900" data-testid="has-birthmark-select"><SelectValue placeholder="Yes / No" /></SelectTrigger><SelectContent className="bg-zinc-50 border-zinc-300"><SelectItem value="Yes">Yes</SelectItem><SelectItem value="No">No</SelectItem></SelectContent></Select></div>
                 {formData.has_birthmark && <PhotoUpload label="Birthmark Photo" value={formData.birthmark_photo} onChange={(v) => handlePhotoChange("birthmark_photo", v)} testId="birthmark" />}
               </div>
               <div className="pt-4 border-t border-zinc-300">
@@ -447,6 +446,36 @@ const EditPole = () => {
                   <div className="space-y-2"><Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">MGNV Present</Label><Select value={formData.mgnv} onValueChange={(v) => handleSelectChange("mgnv", v)}><SelectTrigger className="h-10 bg-white border-zinc-300 text-zinc-900"><SelectValue placeholder="Yes / No" /></SelectTrigger><SelectContent className="bg-zinc-50 border-zinc-300"><SelectItem value={BLANK} className="text-zinc-500">—</SelectItem><SelectItem value="Yes">Yes</SelectItem><SelectItem value="No">No</SelectItem></SelectContent></Select></div>
                   <div className="space-y-2"><Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Condition</Label><Select value={formData.mgnv_condition} onValueChange={(v) => handleSelectChange("mgnv_condition", v)}><SelectTrigger className="h-10 bg-white border-zinc-300 text-zinc-900"><SelectValue placeholder="Good / Broken" /></SelectTrigger><SelectContent className="bg-zinc-50 border-zinc-300"><SelectItem value={BLANK} className="text-zinc-500">—</SelectItem><SelectItem value="Good" className="text-green-700">Good</SelectItem><SelectItem value="Broken" className="text-red-600">Broken</SelectItem></SelectContent></Select></div>
                   <PhotoUpload label="MGNV Photo" value={formData.mgnv_photo} onChange={(v) => handlePhotoChange("mgnv_photo", v)} testId="mgnv" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* HOA - Dynamic */}
+          <div className="industrial-card p-4 sm:p-5">
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
+              <h2 className="font-heading text-base sm:text-lg font-bold text-zinc-900 flex items-center gap-2"><div className="w-1 h-5 bg-green-500"></div>HOA</h2>
+              <Button type="button" onClick={addAttachment} size="sm" className="bg-green-600 hover:bg-green-700 text-white"><Plus className="w-4 h-4 mr-1" /> Add Row</Button>
+            </div>
+            <div className="space-y-3">
+              {attachments.map((att, index) => (
+                <div key={att._key} className="bg-zinc-50 p-3 border border-zinc-300">
+                  <div className="flex items-center gap-2 sm:gap-4">
+                    <span className="text-sm font-mono text-green-700 w-6">{index + 1}</span>
+                    <div className="grid grid-cols-4 gap-2 sm:gap-3 flex-1 items-end">
+                      <HeightInput value={att.height} onChange={(v) => updateAttachment(index, "height", v)} label="Height" testId={`attachment${index}-height`} />
+                      <div className="space-y-1"><Label className="text-xs font-mono text-zinc-500">Owner</Label><Select value={att.owner} onValueChange={(v) => updateAttachment(index, "owner", v)}><SelectTrigger className="h-9 bg-white border-zinc-300 text-zinc-900 text-sm"><SelectValue placeholder="Owner" /></SelectTrigger><SelectContent className="bg-zinc-50 border-zinc-300"><SelectItem value={BLANK} className="text-zinc-500">—</SelectItem>{options.attachment_owners.map((o) => (<SelectItem key={o} value={o}>{o}</SelectItem>))}</SelectContent></Select></div>
+                      <div className="space-y-1"><Label className="text-xs font-mono text-zinc-500">Notes</Label><Input type="text" value={att.notes || ""} onChange={(e) => updateAttachment(index, "notes", e.target.value)} placeholder="Enter notes" className="h-9 bg-white border-zinc-300 text-zinc-900 text-sm" /></div>
+                      <PhotoUpload label="Photo" value={att.photo} onChange={(v) => updateAttachment(index, "photo", v)} testId={`attachment${index}`} compact />
+                    </div>
+                    {attachments.length > 1 && <Button type="button" onClick={() => removeAttachment(index)} size="icon" variant="ghost" className="text-red-600 hover:text-red-300 hover:bg-red-500/10 h-8 w-8"><Trash2 className="w-4 h-4" /></Button>}
+                  </div>
+                </div>
+              ))}
+              <div className="mt-4 pt-4 border-t border-zinc-300">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2"><Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Pole Terminal</Label><Select value={formData.pole_terminal} onValueChange={(v) => handleSelectChange("pole_terminal", v)}><SelectTrigger className="h-10 bg-white border-zinc-300 text-zinc-900"><SelectValue placeholder="Yes / No" /></SelectTrigger><SelectContent className="bg-zinc-50 border-zinc-300"><SelectItem value={BLANK} className="text-zinc-500">—</SelectItem><SelectItem value="Yes">Yes</SelectItem><SelectItem value="No">No</SelectItem></SelectContent></Select></div>
+                  <div className="space-y-2"><Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Risers</Label><Select value={formData.risers} onValueChange={(v) => handleSelectChange("risers", v)}><SelectTrigger className="h-10 bg-white border-zinc-300 text-zinc-900"><SelectValue placeholder="Select #" /></SelectTrigger><SelectContent className="bg-zinc-50 border-zinc-300"><SelectItem value={BLANK} className="text-zinc-500">—</SelectItem>{options.riser_options.map((r) => (<SelectItem key={r} value={r}>{r}</SelectItem>))}</SelectContent></Select></div>
                 </div>
               </div>
             </div>
@@ -501,7 +530,7 @@ const EditPole = () => {
                       <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3 flex-1 items-end">
                         <div className="space-y-1"><Label className="text-xs font-mono text-zinc-500">Size</Label><Select value={knuckle.size} onValueChange={(v) => updateKnuckle(index, "size", v)}><SelectTrigger className="h-9 bg-white border-zinc-300 text-zinc-900 text-sm"><SelectValue placeholder="Size" /></SelectTrigger><SelectContent className="bg-zinc-50 border-zinc-300"><SelectItem value={BLANK} className="text-zinc-500">—</SelectItem>{options.anchor_sizes.map((s) => (<SelectItem key={s} value={s}>{s}{'"'}</SelectItem>))}</SelectContent></Select></div>
                         <div className="space-y-1"><Label className="text-xs font-mono text-zinc-500">Total Eyes</Label><Select value={knuckle.total_eyes} onValueChange={(v) => updateKnuckle(index, "total_eyes", v)}><SelectTrigger className="h-9 bg-white border-zinc-300 text-zinc-900 text-sm"><SelectValue placeholder="Eyes" /></SelectTrigger><SelectContent className="bg-zinc-50 border-zinc-300"><SelectItem value={BLANK} className="text-zinc-500">—</SelectItem>{options.anchor_eyes.map((e) => (<SelectItem key={e} value={e}>{e}</SelectItem>))}</SelectContent></Select></div>
-                        <HeightInput value={knuckle.lead} onChange={(v) => updateKnuckle(index, "lead", v)} label="Lead" testId={`anchor${index}-lead`} />
+                        <div className="space-y-1"><Label className="text-xs font-mono text-zinc-500">Direction</Label><Select value={knuckle.direction} onValueChange={(v) => updateKnuckle(index, "direction", v)}><SelectTrigger className="h-9 bg-white border-zinc-300 text-zinc-900 text-sm"><SelectValue placeholder="Dir" /></SelectTrigger><SelectContent className="bg-zinc-50 border-zinc-300"><SelectItem value={BLANK} className="text-zinc-500">—</SelectItem>{options.down_guy_directions.map((d) => (<SelectItem key={d} value={d}>{d}</SelectItem>))}</SelectContent></Select></div>
                         <div className="space-y-1"><Label className="text-xs font-mono text-zinc-500">Condition</Label><Select value={knuckle.condition} onValueChange={(v) => updateKnuckle(index, "condition", v)}><SelectTrigger className="h-9 bg-white border-zinc-300 text-zinc-900 text-sm"><SelectValue placeholder="Condition" /></SelectTrigger><SelectContent className="bg-zinc-50 border-zinc-300"><SelectItem value={BLANK} className="text-zinc-500">—</SelectItem><SelectItem value="Excellent" className="text-green-700">Excellent</SelectItem><SelectItem value="Good" className="text-yellow-700">Good</SelectItem><SelectItem value="Bad" className="text-red-600">Bad</SelectItem></SelectContent></Select></div>
                         <PhotoUpload label="Photo" value={knuckle.photo} onChange={(v) => updateKnuckle(index, "photo", v)} testId={`anchor${index}`} compact />
                       </div>
@@ -509,36 +538,6 @@ const EditPole = () => {
                     </div>
                   </div>
                 ))}
-              </div>
-            </div>
-          </div>
-
-          {/* HOA - Dynamic + Pole Owner */}
-          <div className="industrial-card p-4 sm:p-5">
-            <div className="flex items-center justify-between mb-3 sm:mb-4">
-              <h2 className="font-heading text-base sm:text-lg font-bold text-zinc-900 flex items-center gap-2"><div className="w-1 h-5 bg-green-500"></div>HOA</h2>
-              <Button type="button" onClick={addAttachment} size="sm" className="bg-green-600 hover:bg-green-700 text-white"><Plus className="w-4 h-4 mr-1" /> Add Row</Button>
-            </div>
-            <div className="space-y-3">
-              {attachments.map((att, index) => (
-                <div key={att._key} className="bg-zinc-50 p-3 border border-zinc-300">
-                  <div className="flex items-center gap-2 sm:gap-4">
-                    <span className="text-sm font-mono text-green-700 w-6">{index + 1}</span>
-                    <div className="grid grid-cols-4 gap-2 sm:gap-3 flex-1 items-end">
-                      <HeightInput value={att.height} onChange={(v) => updateAttachment(index, "height", v)} label="Height" testId={`attachment${index}-height`} />
-                      <div className="space-y-1"><Label className="text-xs font-mono text-zinc-500">Owner</Label><Select value={att.owner} onValueChange={(v) => updateAttachment(index, "owner", v)}><SelectTrigger className="h-9 bg-white border-zinc-300 text-zinc-900 text-sm"><SelectValue placeholder="Owner" /></SelectTrigger><SelectContent className="bg-zinc-50 border-zinc-300"><SelectItem value={BLANK} className="text-zinc-500">—</SelectItem>{options.attachment_owners.map((o) => (<SelectItem key={o} value={o}>{o}</SelectItem>))}</SelectContent></Select></div>
-                      <div className="space-y-1"><Label className="text-xs font-mono text-zinc-500">Notes</Label><Input type="text" value={att.notes || ""} onChange={(e) => updateAttachment(index, "notes", e.target.value)} placeholder="Enter notes" className="h-9 bg-white border-zinc-300 text-zinc-900 text-sm" /></div>
-                      <PhotoUpload label="Photo" value={att.photo} onChange={(v) => updateAttachment(index, "photo", v)} testId={`attachment${index}`} compact />
-                    </div>
-                    {attachments.length > 1 && <Button type="button" onClick={() => removeAttachment(index)} size="icon" variant="ghost" className="text-red-600 hover:text-red-300 hover:bg-red-500/10 h-8 w-8"><Trash2 className="w-4 h-4" /></Button>}
-                  </div>
-                </div>
-              ))}
-              <div className="mt-4 pt-4 border-t border-zinc-300">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2"><Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Pole Terminal</Label><Select value={formData.pole_terminal} onValueChange={(v) => handleSelectChange("pole_terminal", v)}><SelectTrigger className="h-10 bg-white border-zinc-300 text-zinc-900"><SelectValue placeholder="Yes / No" /></SelectTrigger><SelectContent className="bg-zinc-50 border-zinc-300"><SelectItem value={BLANK} className="text-zinc-500">—</SelectItem><SelectItem value="Yes">Yes</SelectItem><SelectItem value="No">No</SelectItem></SelectContent></Select></div>
-                  <div className="space-y-2"><Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Risers</Label><Select value={formData.risers} onValueChange={(v) => handleSelectChange("risers", v)}><SelectTrigger className="h-10 bg-white border-zinc-300 text-zinc-900"><SelectValue placeholder="Select #" /></SelectTrigger><SelectContent className="bg-zinc-50 border-zinc-300"><SelectItem value={BLANK} className="text-zinc-500">—</SelectItem>{options.riser_options.map((r) => (<SelectItem key={r} value={r}>{r}</SelectItem>))}</SelectContent></Select></div>
-                </div>
               </div>
             </div>
           </div>
