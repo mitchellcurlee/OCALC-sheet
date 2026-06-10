@@ -100,23 +100,23 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
     if (markers.refBottom) {
       ctx.fillStyle = "#3b82f6";
       ctx.beginPath();
-      ctx.arc(markers.refBottom.x, markers.refBottom.y, 8, 0, Math.PI * 2);
+      ctx.arc(markers.refBottom.x, markers.refBottom.y, 5, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = "#ffffff";
-      ctx.font = "bold 10px Arial";
+      ctx.font = "bold 8px Arial";
       ctx.textAlign = "center";
-      ctx.fillText("B", markers.refBottom.x, markers.refBottom.y + 4);
+      ctx.fillText("B", markers.refBottom.x, markers.refBottom.y + 3);
     }
 
     if (markers.refTop) {
       ctx.fillStyle = "#3b82f6";
       ctx.beginPath();
-      ctx.arc(markers.refTop.x, markers.refTop.y, 8, 0, Math.PI * 2);
+      ctx.arc(markers.refTop.x, markers.refTop.y, 5, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = "#ffffff";
-      ctx.font = "bold 10px Arial";
+      ctx.font = "bold 8px Arial";
       ctx.textAlign = "center";
-      ctx.fillText("T", markers.refTop.x, markers.refTop.y + 4);
+      ctx.fillText("T", markers.refTop.x, markers.refTop.y + 3);
     }
 
     // Draw reference line
@@ -133,7 +133,7 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
       // Label
       const midY = (markers.refBottom.y + markers.refTop.y) / 2;
       ctx.fillStyle = "#3b82f6";
-      ctx.font = "bold 12px Arial";
+      ctx.font = "bold 16px Arial";
       ctx.fillText(`${referenceHeight}ft ref`, markers.refBottom.x + 15, midY);
     }
 
@@ -146,24 +146,24 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
         heightFt = (pixelsFromGround / pixelsPerFoot).toFixed(1);
       }
 
-      // Marker
+      // Marker (smaller)
       ctx.fillStyle = "#22c55e";
       ctx.beginPath();
-      ctx.arc(att.x, att.y, 10, 0, Math.PI * 2);
+      ctx.arc(att.x, att.y, 6, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = "#ffffff";
-      ctx.font = "bold 10px Arial";
+      ctx.font = "bold 8px Arial";
       ctx.textAlign = "center";
-      ctx.fillText(i + 1, att.x, att.y + 4);
+      ctx.fillText(i + 1, att.x, att.y + 3);
 
-      // Height label
+      // Height label (bigger)
       if (heightFt !== null) {
         ctx.fillStyle = "#22c55e";
-        ctx.fillRect(att.x + 15, att.y - 10, 50, 20);
+        ctx.fillRect(att.x + 12, att.y - 14, 70, 28);
         ctx.fillStyle = "#ffffff";
-        ctx.font = "bold 12px Arial";
+        ctx.font = "bold 18px Arial";
         ctx.textAlign = "left";
-        ctx.fillText(`${heightFt}ft`, att.x + 20, att.y + 4);
+        ctx.fillText(`${heightFt}ft`, att.x + 18, att.y + 6);
       }
     });
   }, [markers, pixelsPerFoot, referenceHeight, imagePreview]);
@@ -274,26 +274,26 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
           ctx.lineWidth = 3;
           ctx.beginPath();
           ctx.moveTo(0, ay);
-          ctx.lineTo(ax - 20, ay);
+          ctx.lineTo(ax - 15, ay);
           ctx.stroke();
 
-          // Marker circle
+          // Marker circle (smaller)
           ctx.fillStyle = "#22c55e";
           ctx.beginPath();
-          ctx.arc(ax, ay, 15, 0, Math.PI * 2);
+          ctx.arc(ax, ay, 10, 0, Math.PI * 2);
           ctx.fill();
           ctx.fillStyle = "#ffffff";
-          ctx.font = "bold 14px Arial";
+          ctx.font = "bold 12px Arial";
           ctx.textAlign = "center";
-          ctx.fillText(i + 1, ax, ay + 5);
+          ctx.fillText(i + 1, ax, ay + 4);
 
-          // Height label
+          // Height label (bigger)
           ctx.fillStyle = "#22c55e";
-          ctx.fillRect(ax + 20, ay - 15, 70, 30);
+          ctx.fillRect(ax + 15, ay - 20, 90, 40);
           ctx.fillStyle = "#ffffff";
-          ctx.font = "bold 16px Arial";
+          ctx.font = "bold 24px Arial";
           ctx.textAlign = "center";
-          ctx.fillText(`${heightFt}ft`, ax + 55, ay + 5);
+          ctx.fillText(`${heightFt}ft`, ax + 60, ay + 8);
         });
 
         // Title bar
