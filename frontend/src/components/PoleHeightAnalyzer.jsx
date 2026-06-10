@@ -287,14 +287,72 @@ export const PoleHeightAnalyzer = ({ onHeightsDetected, buttonVariant = "outline
             </div>
           </div>
 
-          {/* Image preview */}
+          {/* Image preview with height annotations */}
           {imagePreview && (
-            <div className="border border-zinc-200 rounded-lg overflow-hidden">
-              <img
-                src={imagePreview}
-                alt="Pole preview"
-                className="w-full max-h-64 object-contain bg-zinc-100"
-              />
+            <div className="border border-zinc-200 rounded-lg overflow-hidden bg-zinc-100">
+              <div className="relative">
+                <img
+                  src={imagePreview}
+                  alt="Pole preview"
+                  className="w-full max-h-72 object-contain"
+                />
+                {/* Overlay height markers when results are available */}
+                {results && results.attachments.length > 0 && (
+                  <div className="absolute inset-0 pointer-events-none">
+                    {/* Height scale on the left side */}
+                    <div className="absolute left-2 top-4 bottom-4 w-8 flex flex-col justify-between text-xs font-mono">
+                      <span className="bg-black/70 text-white px-1 rounded">{results.pole_height_ft}ft</span>
+                      <span className="bg-black/70 text-white px-1 rounded">0ft</span>
+                    </div>
+                    
+                    {/* Attachment markers */}
+                    {results.attachments.map((att, i) => {
+                      // Calculate position: height as percentage of pole height
+                      // Inverted because CSS top is from top of container
+                      const percentage = (att.height_ft / results.pole_height_ft) * 100;
+                      const topPosition = Math.max(5, Math.min(90, 100 - percentage));
+                      
+                      return (
+                        <div
+                          key={i}
+                          className="absolute right-2 transform -translate-y-1/2 flex items-center gap-1"
+                          style={{ top: `${topPosition}%` }}
+                        >
+                          {/* Horizontal line pointing to pole */}
+                          <div className="w-8 h-0.5 bg-red-500"></div>
+                          {/* Height label */}
+                          <div className={`px-2 py-1 rounded text-xs font-bold shadow-lg ${
+                            att.confidence === 'high' ? 'bg-green-500 text-white' :
+                            att.confidence === 'medium' ? 'bg-amber-500 text-white' :
+                            'bg-red-500 text-white'
+                          }`}>
+                            {att.height_ft}ft
+                            <span className="ml-1 font-normal opacity-80">{att.type.split(' ')[0]}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+              
+              {/* Legend when results shown */}
+              {results && results.attachments.length > 0 && (
+                <div className="bg-zinc-800 text-white px-3 py-2 text-xs flex items-center justify-between">
+                  <span className="font-medium">Detected Heights</span>
+                  <div className="flex items-center gap-3">
+                    <span className="flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-green-500"></span> High
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-amber-500"></span> Medium
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-red-500"></span> Low
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
