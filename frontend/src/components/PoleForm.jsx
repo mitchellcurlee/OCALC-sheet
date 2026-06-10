@@ -789,7 +789,7 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
                       _key: rowKey(),
                       height: h.height_ft?.toString() || "",
                       owner: "",
-                      photo: "",
+                      photo: h.photo || "", // Include annotated photo if provided
                       notes: `${h.type} - ${h.description} (${h.confidence} confidence)`
                     }));
                     setAttachments(prev => [...prev.filter(a => a.height || a.owner || a.photo || a.notes), ...newAttachments]);

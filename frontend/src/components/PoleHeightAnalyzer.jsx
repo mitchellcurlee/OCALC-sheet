@@ -98,6 +98,126 @@ export const PoleHeightAnalyzer = ({ onHeightsDetected, buttonVariant = "outline
     });
   };
 
+  // Create an annotated image with height measurements drawn on it
+  const createAnnotatedImage = (dataUrl, analysisResult) => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext("2d");
+        
+        // Draw original image
+        ctx.drawImage(img, 0, 0);
+        
+        const poleHeight = analysisResult.pole_height_ft;
+        const attachments = analysisResult.attachments;
+        
+        if (attachments.length === 0) {
+          resolve(dataUrl);
+          return;
+        }
+        
+        // Calculate scaling
+        const margin = 20;
+        const labelWidth = 120;
+        const scaleHeight = img.height - (margin * 2);
+        
+        // Draw semi-transparent overlay on right side for labels
+        ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
+        ctx.fillRect(img.width - labelWidth - margin, margin, labelWidth + margin, scaleHeight);
+        
+        // Draw height scale line on right
+        const scaleX = img.width - labelWidth - margin + 10;
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(scaleX, margin);
+        ctx.lineTo(scaleX, margin + scaleHeight);
+        ctx.stroke();
+        
+        // Draw scale markers
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "bold 14px Arial";
+        ctx.textAlign = "left";
+        ctx.fillText(`${poleHeight}ft`, scaleX + 5, margin + 15);
+        ctx.fillText("0ft", scaleX + 5, margin + scaleHeight - 5);
+        
+        // Draw attachment markers
+        attachments.forEach((att, i) => {
+          const percentage = att.height_ft / poleHeight;
+          const yPos = margin + scaleHeight - (percentage * scaleHeight);
+          
+          // Color based on confidence
+          let color;
+          if (att.confidence === "high") color = "#22c55e";
+          else if (att.confidence === "medium") color = "#f59e0b";
+          else color = "#ef4444";
+          
+          // Draw horizontal line
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(0, yPos);
+          ctx.lineTo(scaleX - 5, yPos);
+          ctx.stroke();
+          
+          // Draw marker dot
+          ctx.fillStyle = color;
+          ctx.beginPath();
+          ctx.arc(scaleX, yPos, 6, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // Draw label background
+          ctx.fillStyle = color;
+          const labelText = `${att.height_ft}ft - ${att.type.split(" ")[0]}`;
+          const textWidth = ctx.measureText(labelText).width;
+          ctx.fillRect(scaleX + 10, yPos - 12, textWidth + 10, 24);
+          
+          // Draw label text
+          ctx.fillStyle = "#ffffff";
+          ctx.font = "bold 12px Arial";
+          ctx.fillText(labelText, scaleX + 15, yPos + 4);
+        });
+        
+        // Draw title bar at top
+        ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+        ctx.fillRect(0, 0, img.width, 35);
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "bold 16px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText(`AI Analysis: ${attachments.length} attachment(s) detected on ${poleHeight}ft pole`, img.width / 2, 24);
+        
+        resolve(canvas.toDataURL("image/jpeg", 0.85));
+      };
+      img.src = dataUrl;
+    });
+  };
+
+  // Upload the annotated image to storage
+  const uploadAnnotatedImage = async (annotatedDataUrl) => {
+    try {
+      // Convert data URL to blob
+      const response = await fetch(annotatedDataUrl);
+      const blob = await response.blob();
+      
+      // Create form data
+      const formData = new FormData();
+      formData.append("file", blob, `pole-analysis-${Date.now()}.jpg`);
+      
+      // Upload to storage
+      const uploadResponse = await axios.post("/upload-photo", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      
+      return uploadResponse.data.url;
+    } catch (err) {
+      console.error("Failed to upload annotated image:", err);
+      return null;
+    }
+  };
+
   // Clear all history
   const clearHistory = () => {
     setRecentAnalyses([]);
@@ -166,12 +286,30 @@ export const PoleHeightAnalyzer = ({ onHeightsDetected, buttonVariant = "outline
           const thumbnail = await createThumbnail(imageBase64);
           saveToHistory(response.data, thumbnail);
           
-          // Automatically apply heights to the form
+          // Create annotated image with measurements and upload it
+          let annotatedPhotoUrl = null;
+          try {
+            toast.info("Creating annotated image...");
+            const annotatedImage = await createAnnotatedImage(imageBase64, response.data);
+            annotatedPhotoUrl = await uploadAnnotatedImage(annotatedImage);
+            if (annotatedPhotoUrl) {
+              toast.success("Annotated image uploaded!");
+            }
+          } catch (e) {
+            console.error("Failed to create/upload annotated image:", e);
+          }
+          
+          // Automatically apply heights to the form with photo attached to first entry
           if (onHeightsDetected) {
-            onHeightsDetected(response.data.attachments);
+            const attachmentsWithPhoto = response.data.attachments.map((att, idx) => ({
+              ...att,
+              // Attach the annotated photo to the first attachment
+              photo: idx === 0 && annotatedPhotoUrl ? annotatedPhotoUrl : ""
+            }));
+            onHeightsDetected(attachmentsWithPhoto);
             toast.success(`Detected and applied ${response.data.attachments.length} attachment(s) to form`);
             // Close dialog after short delay to show results briefly
-            setTimeout(() => setOpen(false), 1500);
+            setTimeout(() => setOpen(false), 2000);
           } else {
             toast.success(`Detected ${response.data.attachments.length} attachment(s)`);
           }
