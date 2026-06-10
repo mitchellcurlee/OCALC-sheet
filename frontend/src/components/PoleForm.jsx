@@ -29,6 +29,7 @@ import L from "leaflet";
 import { PhotoUpload } from "@/components/PhotoUpload";
 import { HeightInput } from "@/components/HeightInput";
 import { SpanDistance } from "@/components/SpanDistance";
+import { PoleHeightAnalyzer } from "@/components/PoleHeightAnalyzer";
 
 // Fix Leaflet marker icon issue
 delete L.Icon.Default.prototype._getIconUrl;
@@ -780,9 +781,25 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
                 <div className="w-1 h-5 bg-green-500"></div>
                 HOA
               </h2>
-              <Button type="button" onClick={addAttachment} size="sm" className="bg-green-600 hover:bg-green-700 text-white">
-                <Plus className="w-4 h-4 mr-1" /> Add Row
-              </Button>
+              <div className="flex items-center gap-2">
+                <PoleHeightAnalyzer 
+                  onHeightsDetected={(heights) => {
+                    // Add detected heights as new attachment rows
+                    const newAttachments = heights.map(h => ({
+                      _key: rowKey(),
+                      height: h.height_ft?.toString() || "",
+                      owner: "",
+                      photo: "",
+                      notes: `${h.type} - ${h.description} (${h.confidence} confidence)`
+                    }));
+                    setAttachments(prev => [...prev.filter(a => a.height || a.owner || a.photo || a.notes), ...newAttachments]);
+                  }}
+                  buttonVariant="outline"
+                />
+                <Button type="button" onClick={addAttachment} size="sm" className="bg-green-600 hover:bg-green-700 text-white">
+                  <Plus className="w-4 h-4 mr-1" /> Add Row
+                </Button>
+              </div>
             </div>
             <div className="space-y-3">
               {attachments.map((att, index) => (
