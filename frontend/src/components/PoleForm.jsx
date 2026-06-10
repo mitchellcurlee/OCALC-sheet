@@ -29,7 +29,7 @@ import L from "leaflet";
 import { PhotoUpload } from "@/components/PhotoUpload";
 import { HeightInput } from "@/components/HeightInput";
 import { SpanDistance } from "@/components/SpanDistance";
-import { PoleHeightAnalyzer } from "@/components/PoleHeightAnalyzer";
+import { ReferenceHeightMeasurer } from "@/components/ReferenceHeightMeasurer";
 
 // Fix Leaflet marker icon issue
 delete L.Icon.Default.prototype._getIconUrl;
@@ -782,15 +782,15 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
                 HOA
               </h2>
               <div className="flex items-center gap-2">
-                <PoleHeightAnalyzer 
+                <ReferenceHeightMeasurer 
                   onHeightsDetected={(heights) => {
-                    // Add detected heights as new attachment rows
+                    // Add measured heights as new attachment rows
                     const newAttachments = heights.map(h => ({
                       _key: rowKey(),
                       height: h.height_ft?.toString() || "",
                       owner: "",
                       photo: h.photo || "", // Include annotated photo if provided
-                      notes: `${h.type} - ${h.description} (${h.confidence} confidence)`
+                      notes: h.description || ""
                     }));
                     setAttachments(prev => [...prev.filter(a => a.height || a.owner || a.photo || a.notes), ...newAttachments]);
                   }}

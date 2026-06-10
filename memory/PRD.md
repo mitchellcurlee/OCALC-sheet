@@ -249,17 +249,13 @@ Build an app that collects power pole data including: size of the pole, type of 
   - **Non-clustered poles**: Labels alternate left/right to avoid overlap
   - Applied same styling to downloadable map images (single and segmented)
   - Requires redeploy for production.
-- AI Pole Height Analyzer (Jun 10, 2026):
-  - **New feature**: AI-powered estimation of pole attachment heights from photos
-  - **Backend**: New `/api/pole-analysis/analyze-pole-heights` endpoint using OpenAI GPT-4o vision via emergentintegrations
-  - **Frontend**: New `PoleHeightAnalyzer.jsx` component integrated into HOA section of PoleForm
-  - Features: Take Photo (camera capture) / Upload Photo, pole height dropdown (20-65ft in 5ft increments, default 40ft), AI analysis with confidence levels
-  - **Auto-apply**: Detected heights are automatically added to HOA attachment rows when analysis completes - no extra "Apply" step needed
-  - **Visual annotations**: After analysis, the pole image shows height markers overlaid at detected attachment positions with color-coded confidence levels (green=high, amber=medium, red=low), height scale, and legend
-  - **Annotated photo upload**: Creates an annotated image with all height measurements drawn on it and automatically uploads it to the first HOA entry's photo field
-  - Returns: Attachment type, height in feet, confidence (high/medium/low), description for each detected item
-  - **Recent Analyses History**: Successful analyses are saved locally with thumbnails; users can re-apply heights from previous analyses without re-uploading photos (up to 5 recent entries)
-  - Requires: EMERGENT_LLM_KEY in backend/.env
-  - Backend tests: `/app/backend/tests/test_pole_analysis.py` (5 tests passing)
+- Reference Height Measurement Tool (Jun 10, 2026):
+  - **Replaced AI analyzer** with simpler, more accurate reference object method
+  - **How it works**: User places a known-height object (measuring stick, 6ft pole, etc.) at pole base
+  - User takes photo, then taps: 1) bottom of reference, 2) top of reference, 3) each attachment
+  - App calculates pixel-to-foot ratio from reference object and measures all marked attachments
+  - **Features**: Reference height selection (4-12ft), interactive canvas for marking, real-time height calculations
+  - **Output**: Creates annotated image with all measurements drawn and uploads to first HOA entry's photo field
+  - Works on any phone with camera - no AI/internet required for calculations
   - Requires redeploy for production.
 
