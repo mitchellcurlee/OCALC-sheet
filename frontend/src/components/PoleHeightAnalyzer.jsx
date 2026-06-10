@@ -161,11 +161,20 @@ export const PoleHeightAnalyzer = ({ onHeightsDetected, buttonVariant = "outline
       if (response.data.success) {
         setResults(response.data);
         
-        // Save to history with thumbnail
+        // Save to history with thumbnail and auto-apply heights
         if (response.data.attachments.length > 0) {
           const thumbnail = await createThumbnail(imageBase64);
           saveToHistory(response.data, thumbnail);
-          toast.success(`Detected ${response.data.attachments.length} attachment(s)`);
+          
+          // Automatically apply heights to the form
+          if (onHeightsDetected) {
+            onHeightsDetected(response.data.attachments);
+            toast.success(`Detected and applied ${response.data.attachments.length} attachment(s) to form`);
+            // Close dialog after short delay to show results briefly
+            setTimeout(() => setOpen(false), 1500);
+          } else {
+            toast.success(`Detected ${response.data.attachments.length} attachment(s)`);
+          }
         } else {
           toast.info("No attachments detected in the image");
         }
@@ -231,9 +240,8 @@ export const PoleHeightAnalyzer = ({ onHeightsDetected, buttonVariant = "outline
             <p className="font-medium mb-1">How to use:</p>
             <ol className="list-decimal list-inside space-y-1 text-blue-700">
               <li>Take a photo of the pole showing all attachments</li>
-              <li>Enter the estimated pole height (default 40ft)</li>
-              <li>Click &quot;Analyze&quot; to detect attachment heights</li>
-              <li>Review and apply detected heights to your form</li>
+              <li>Select the estimated pole height (20-65ft)</li>
+              <li>Click &quot;Analyze&quot; - heights are automatically added to HOA</li>
             </ol>
           </div>
 
@@ -427,11 +435,18 @@ export const PoleHeightAnalyzer = ({ onHeightsDetected, buttonVariant = "outline
               <div className="bg-green-50 border border-green-200 rounded-lg p-3">
                 <div className="flex items-center gap-2 mb-2">
                   <CheckCircle2 className="w-5 h-5 text-green-600" />
-                  <span className="font-medium text-green-800">Analysis Complete</span>
+                  <span className="font-medium text-green-800">
+                    {results.attachments.length > 0 ? "Heights Applied to Form!" : "Analysis Complete"}
+                  </span>
                 </div>
                 <p className="text-sm text-green-700">
                   Estimated pole height: <strong>{results.pole_height_ft} ft</strong>
                 </p>
+                {results.attachments.length > 0 && (
+                  <p className="text-xs text-green-600 mt-1">
+                    {results.attachments.length} attachment{results.attachments.length !== 1 ? "s" : ""} automatically added to HOA section
+                  </p>
+                )}
                 {results.analysis_notes && (
                   <p className="text-xs text-green-600 mt-1">{results.analysis_notes}</p>
                 )}
@@ -457,16 +472,26 @@ export const PoleHeightAnalyzer = ({ onHeightsDetected, buttonVariant = "outline
                     ))}
                   </div>
 
-                  {onHeightsDetected && (
+                  <div className="flex gap-2">
+                    {onHeightsDetected && (
+                      <Button
+                        onClick={handleApplyHeights}
+                        variant="outline"
+                        className="flex-1 h-10 border-green-300 text-green-700 hover:bg-green-50"
+                        data-testid="apply-heights-btn"
+                      >
+                        <CheckCircle2 className="w-4 h-4 mr-2" />
+                        Apply Again
+                      </Button>
+                    )}
                     <Button
-                      onClick={handleApplyHeights}
-                      className="w-full h-10 bg-green-600 hover:bg-green-700"
-                      data-testid="apply-heights-btn"
+                      onClick={() => setOpen(false)}
+                      className="flex-1 h-10 bg-green-600 hover:bg-green-700"
+                      data-testid="close-analyzer-btn"
                     >
-                      <CheckCircle2 className="w-4 h-4 mr-2" />
-                      Apply Heights to Form
+                      Done
                     </Button>
-                  )}
+                  </div>
                 </div>
               ) : (
                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-amber-800 text-sm">
