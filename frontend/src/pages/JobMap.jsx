@@ -7,7 +7,7 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import leafletImage from "leaflet-image";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Download, Loader2, Zap, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ListOrdered } from "lucide-react";
 
 const FEET_PER_METER = 3.28084;
 const toRad = (d) => (d * Math.PI) / 180;
@@ -87,6 +87,7 @@ const JobMap = () => {
   const [poles, setPoles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
+  const [showStops, setShowStops] = useState(false);
   const mapRef = useRef(null);
 
   const fetchData = useCallback(async () => {
@@ -128,6 +129,16 @@ const JobMap = () => {
   }, [poles]);
 
   const linePoints = route.map((p) => p.pos);
+
+  // Marker label: pole number, optionally prefixed with the route stop sequence
+  const markerLabel = (p, i) => (showStops ? `${i + 1}\u00B7${p.pole_number || ""}` : String(p.pole_number || ""));
+
+  const recenter = () => {
+    const m = mapRef.current;
+    if (!m || linePoints.length === 0) return;
+    if (linePoints.length === 1) m.setView(linePoints[0], 19);
+    else m.fitBounds(linePoints, { padding: [60, 60], maxZoom: 20 });
+  };
 
   const downloadImage = () => {
     const liveMap = mapRef.current;
@@ -216,9 +227,9 @@ const JobMap = () => {
             ctx.fillText(text, mx - tw / 2, py + ph / 2);
           });
 
-          route.forEach((p) => {
+          route.forEach((p, i) => {
             const [x, y] = pt(p.pos);
-            const label = String(p.pole_number || "");
+            const label = markerLabel(p, i);
             ctx.font = `700 ${11 * scale}px ui-monospace, monospace`;
             const tw = ctx.measureText(label).width;
             const r = 13 * scale;
@@ -411,10 +422,20 @@ const JobMap = () => {
               </p>
             </div>
           </div>
-          <Button onClick={downloadImage} disabled={downloading || route.length === 0} className="bg-red-600 hover:bg-red-700 text-white" data-testid="download-map-btn">
-            {downloading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
-            Download image
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button onClick={recenter} disabled={route.length === 0} variant="outline" className="bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900" data-testid="recenter-btn">
+              <Crosshair className="w-4 h-4 mr-2" />
+              Fit all
+            </Button>
+            <Button onClick={() => setShowStops((v) => !v)} disabled={route.length === 0} variant="outline" aria-pressed={showStops} className={showStops ? "bg-red-600 border-red-600 hover:bg-red-700 text-white" : "bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900"} data-testid="toggle-stops-btn">
+              <ListOrdered className="w-4 h-4 mr-2" />
+              Stop #'s
+            </Button>
+            <Button onClick={downloadImage} disabled={downloading || route.length === 0} className="bg-red-600 hover:bg-red-700 text-white" data-testid="download-map-btn">
+              {downloading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+              Download image
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -441,8 +462,8 @@ const JobMap = () => {
               <FitBounds points={linePoints} />
               <MapRefSetter mapRef={mapRef} />
               {route.length > 1 && <Polyline positions={linePoints} pathOptions={{ color: "#dc2626", weight: 3 }} />}
-              {route.map((p) => (
-                <Marker key={p.id} position={p.pos} icon={poleIcon(String(p.pole_number || ""))}>
+              {route.map((p, i) => (
+                <Marker key={p.id} position={p.pos} icon={poleIcon(markerLabel(p, i))}>
                   <Popup>
                     <div className="min-w-[180px] font-mono" data-testid={`pole-popup-${p.id}`}>
                       <div className="text-base font-bold text-zinc-900">{p.pole_number || "(unnumbered)"}</div>
