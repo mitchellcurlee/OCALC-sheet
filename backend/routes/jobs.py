@@ -41,17 +41,34 @@ async def get_jobs(current_user: dict = Depends(get_current_user)):
     """Get all jobs - admin sees all jobs, regular users see only their own"""
     if is_admin_user(current_user):
         jobs = await _db.jobs.find({}, {"_id": 0}).sort("created_at", -1).to_list(10000)
-        for job in jobs:
-            count = await _db.poles.count_documents({"job_id": job["id"]})
-            job["pole_count"] = count
-            if not job.get("user_email"):
-                owner = await _db.users.find_one({"id": job["user_id"]}, {"_id": 0, "email": 1})
-                job["user_email"] = owner.get("email", "Unknown") if owner else "Unknown"
     else:
         jobs = await _db.jobs.find({"user_id": current_user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(1000)
-        for job in jobs:
-            count = await _db.poles.count_documents({"job_id": job["id"]})
-            job["pole_count"] = count
+    
+    if not jobs:
+        return jobs
+    
+    # Bulk fetch pole counts using aggregation (avoids N+1 queries)
+    job_ids = [j["id"] for j in jobs]
+    pole_counts_cursor = _db.poles.aggregate([
+        {"$match": {"job_id": {"$in": job_ids}}},
+        {"$group": {"_id": "$job_id", "count": {"$sum": 1}}}
+    ])
+    pole_counts = {doc["_id"]: doc["count"] async for doc in pole_counts_cursor}
+    
+    # Bulk fetch user emails for admin view (avoids N+1 queries)
+    user_emails = {}
+    if is_admin_user(current_user):
+        user_ids = list(set(j["user_id"] for j in jobs if not j.get("user_email")))
+        if user_ids:
+            users_cursor = _db.users.find({"id": {"$in": user_ids}}, {"_id": 0, "id": 1, "email": 1})
+            user_emails = {u["id"]: u.get("email", "Unknown") async for u in users_cursor}
+    
+    # Apply counts and emails to jobs
+    for job in jobs:
+        job["pole_count"] = pole_counts.get(job["id"], 0)
+        if is_admin_user(current_user) and not job.get("user_email"):
+            job["user_email"] = user_emails.get(job["user_id"], "Unknown")
+    
     return jobs
 
 
