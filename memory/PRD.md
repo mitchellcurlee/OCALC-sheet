@@ -242,3 +242,10 @@ Build an app that collects power pole data including: size of the pole, type of 
   - **Automatic sync**: Pole create/update now auto-syncs distances for all poles in the job
   - **Manual sync button**: Added "Sync Distances" button (blue) in Job Detail page
   - Requires redeploy for production.
+- Simplified pole display and map markers (Jun 10, 2026):
+  - **Job Detail page**: Pole list now only shows Size, Class, and GPS indicator (removed Owner, Type, Access)
+  - **Map poles**: Changed from large pill-shaped markers to small red dots (12px) with labels on the side
+  - **Clustered poles**: When poles are within 100ft of each other, labels are moved away with red arrows pointing to their dots
+  - **Non-clustered poles**: Labels alternate left/right to avoid overlap
+  - Applied same styling to downloadable map images (single and segmented)
+  - Requires redeploy for production.

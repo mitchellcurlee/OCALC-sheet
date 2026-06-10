@@ -15,13 +15,51 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-const poleIcon = (label) =>
-  L.divIcon({
+// Small red dot for pole marker with label on the side
+const poleIcon = (label, offsetDir = "right") => {
+  // offsetDir: "right", "left", "top", "bottom" for label placement
+  const dotSize = 12;
+  const labelOffset = offsetDir === "right" ? "left: 16px;" : 
+                      offsetDir === "left" ? "right: 16px;" :
+                      offsetDir === "top" ? "bottom: 16px; left: 50%; transform: translateX(-50%);" :
+                      "top: 16px; left: 50%; transform: translateX(-50%);";
+  
+  return L.divIcon({
     className: "pole-route-marker",
-    html: `<div style="background:#dc2626;color:#fff;border:2px solid #fff;border-radius:13px;min-width:26px;height:26px;padding:0 6px;display:flex;align-items:center;justify-content:center;font:700 11px/1 ui-monospace,monospace;box-shadow:0 1px 4px rgba(0,0,0,.5);white-space:nowrap;">${label}</div>`,
-    iconSize: [26, 26],
-    iconAnchor: [13, 13],
+    html: `
+      <div style="position:relative;">
+        <div style="background:#dc2626;border:2px solid #fff;border-radius:50%;width:${dotSize}px;height:${dotSize}px;box-shadow:0 1px 4px rgba(0,0,0,.5);"></div>
+        <div style="position:absolute;${labelOffset}top:50%;transform:translateY(-50%);background:#dc2626;color:#fff;border:1.5px solid #fff;border-radius:8px;padding:1px 6px;font:700 10px/1.2 ui-monospace,monospace;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.4);">${label}</div>
+      </div>
+    `,
+    iconSize: [dotSize, dotSize],
+    iconAnchor: [dotSize / 2, dotSize / 2],
   });
+};
+
+// Pole marker with arrow pointing to the dot (for clustered poles)
+const poleIconWithArrow = (label, arrowAngle, distance = 40) => {
+  const dotSize = 12;
+  const rad = (arrowAngle * Math.PI) / 180;
+  const labelX = Math.cos(rad) * distance;
+  const labelY = Math.sin(rad) * distance;
+  
+  return L.divIcon({
+    className: "pole-route-marker-arrow",
+    html: `
+      <div style="position:relative;">
+        <div style="background:#dc2626;border:2px solid #fff;border-radius:50%;width:${dotSize}px;height:${dotSize}px;box-shadow:0 1px 4px rgba(0,0,0,.5);"></div>
+        <svg style="position:absolute;left:${dotSize/2}px;top:${dotSize/2}px;overflow:visible;pointer-events:none;" width="1" height="1">
+          <line x1="0" y1="0" x2="${labelX}" y2="${labelY}" stroke="#dc2626" stroke-width="1.5"/>
+          <polygon points="${labelX},${labelY} ${labelX - 4 * Math.cos(rad - 0.5)},${labelY - 4 * Math.sin(rad - 0.5)} ${labelX - 4 * Math.cos(rad + 0.5)},${labelY - 4 * Math.sin(rad + 0.5)}" fill="#dc2626"/>
+        </svg>
+        <div style="position:absolute;left:${labelX + dotSize/2 - 20}px;top:${labelY + dotSize/2 - 10}px;background:#dc2626;color:#fff;border:1.5px solid #fff;border-radius:8px;padding:2px 7px;font:700 10px/1.2 ui-monospace,monospace;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.4);">${label}</div>
+      </div>
+    `,
+    iconSize: [dotSize, dotSize],
+    iconAnchor: [dotSize / 2, dotSize / 2],
+  });
+};
 
 // Small direction arrow centered on the segment midpoint (BLUE for aerial)
 const arrowIcon = (deg) =>
@@ -128,6 +166,41 @@ const JobMap = () => {
       }),
     [segments]
   );
+
+  // Detect clustered poles and compute label offsets
+  // A pole is "clustered" if another pole is within 100ft
+  const poleDisplayInfo = useMemo(() => {
+    const CLUSTER_THRESHOLD_FT = 100; // feet
+    const info = route.map((p, i) => {
+      // Check if any other pole is within threshold
+      let isCluster = false;
+      let nearbyCount = 0;
+      
+      route.forEach((other, j) => {
+        if (i !== j) {
+          const dist = Math.sqrt(
+            Math.pow((p.pos[0] - other.pos[0]) * 364000, 2) + // rough ft conversion for lat
+            Math.pow((p.pos[1] - other.pos[1]) * 288200, 2)   // rough ft conversion for lng at mid-latitudes
+          );
+          if (dist < CLUSTER_THRESHOLD_FT) {
+            isCluster = true;
+            nearbyCount++;
+          }
+        }
+      });
+      
+      // Calculate arrow angle to spread labels around the cluster
+      // Use index-based angle distribution for clustered poles
+      const baseAngle = (i * 137.5) % 360; // golden angle for good distribution
+      const labelAngle = isCluster ? baseAngle : null;
+      
+      // Determine simple label direction for non-clustered poles
+      const labelDir = !isCluster ? (i % 2 === 0 ? "right" : "left") : null;
+      
+      return { ...p, isCluster, labelAngle, labelDir, nearbyCount };
+    });
+    return info;
+  }, [route]);
 
   const recenter = () => {
     const m = mapRef.current;
@@ -265,28 +338,34 @@ const JobMap = () => {
               {ugConnectors.map((c, i) => (
                 <Marker key={`ug-lbl-${i}`} position={c.mid} icon={ugConnectorLabel(fmtFeet(c.ft))} interactive={false} zIndexOffset={900} />
               ))}
-              {route.map((p, i) => (
-                <Marker key={p.id} position={p.pos} icon={poleIcon(markerLabel(p, i, showStops))}>
-                  <Popup>
-                    <div className="min-w-[180px] font-mono" data-testid={`pole-popup-${p.id}`}>
-                      <div className="text-base font-bold text-zinc-900">{p.pole_number || "(unnumbered)"}</div>
-                      <div className="mt-1 text-xs text-zinc-600 space-y-0.5">
-                        <div><span className="text-zinc-400">Owner:</span> {p.pole_owner || "—"}</div>
-                        <div><span className="text-zinc-400">Condition:</span> {p.condition || "—"}</div>
-                        <div><span className="text-zinc-400">Size:</span> {p.pole_size ? `${p.pole_size}'` : "—"}</div>
+              {poleDisplayInfo.map((p, i) => {
+                const label = markerLabel(p, i, showStops);
+                const icon = p.isCluster 
+                  ? poleIconWithArrow(label, p.labelAngle, 45)
+                  : poleIcon(label, p.labelDir);
+                return (
+                  <Marker key={p.id} position={p.pos} icon={icon}>
+                    <Popup>
+                      <div className="min-w-[180px] font-mono" data-testid={`pole-popup-${p.id}`}>
+                        <div className="text-base font-bold text-zinc-900">{p.pole_number || "(unnumbered)"}</div>
+                        <div className="mt-1 text-xs text-zinc-600 space-y-0.5">
+                          <div><span className="text-zinc-400">Size:</span> {p.pole_size ? `${p.pole_size}'` : "—"}</div>
+                          <div><span className="text-zinc-400">Class:</span> {p.pole_class || "—"}</div>
+                          <div><span className="text-zinc-400">Condition:</span> {p.condition || "—"}</div>
+                        </div>
+                        <div className="mt-2 flex gap-2">
+                          <Link to={`/jobs/${jobId}/view/${p.id}`} className="flex-1">
+                            <Button size="sm" className="w-full h-8 bg-red-600 hover:bg-red-700 text-white" data-testid={`popup-view-${p.id}`}>Open</Button>
+                          </Link>
+                          <Link to={`/jobs/${jobId}/edit/${p.id}`} className="flex-1">
+                            <Button size="sm" variant="outline" className="w-full h-8 bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900" data-testid={`popup-edit-${p.id}`}>Edit</Button>
+                          </Link>
+                        </div>
                       </div>
-                      <div className="mt-2 flex gap-2">
-                        <Link to={`/jobs/${jobId}/view/${p.id}`} className="flex-1">
-                          <Button size="sm" className="w-full h-8 bg-red-600 hover:bg-red-700 text-white" data-testid={`popup-view-${p.id}`}>Open</Button>
-                        </Link>
-                        <Link to={`/jobs/${jobId}/edit/${p.id}`} className="flex-1">
-                          <Button size="sm" variant="outline" className="w-full h-8 bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900" data-testid={`popup-edit-${p.id}`}>Edit</Button>
-                        </Link>
-                      </div>
-                    </div>
-                  </Popup>
-                </Marker>
-              ))}
+                    </Popup>
+                  </Marker>
+                );
+              })}
               {segLabels.map((s, i) => (
                 <Marker key={`arr-${i}`} position={s.mid} icon={arrowIcon(s.deg)} interactive={false} />
               ))}

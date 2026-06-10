@@ -267,32 +267,92 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
       ctx.fill();
     });
 
-    // 3) Pole markers (numbered)
-    route.forEach((p, i) => {
+    // Helper to detect clustered poles
+    const CLUSTER_THRESHOLD_FT = 100;
+    const poleClusterInfo = route.map((p, i) => {
+      let isCluster = false;
+      route.forEach((other, j) => {
+        if (i !== j) {
+          const dist = distanceFeet(p.pos, other.pos);
+          if (dist < CLUSTER_THRESHOLD_FT) {
+            isCluster = true;
+          }
+        }
+      });
+      const labelAngle = (i * 137.5) % 360; // golden angle distribution
+      return { ...p, isCluster, labelAngle };
+    });
+
+    // 3) Pole markers (small dots with side labels)
+    poleClusterInfo.forEach((p, i) => {
       const [x, y] = pt(p.pos);
       const label = markerLabel(p, i, showStops);
-      ctx.font = `700 ${11 * s}px ui-monospace, monospace`;
-      const tw = ctx.measureText(label).width;
-      const r = 13 * s;
-      const w = Math.max(2 * r, tw + 12 * s);
-      const rx = x - w / 2;
-      const ry = y - r;
+      const dotR = 6 * s; // smaller dot radius
+      
+      // Draw small red dot
       ctx.fillStyle = "#dc2626";
       ctx.strokeStyle = "#ffffff";
       ctx.lineWidth = 2 * s;
       ctx.beginPath();
-      ctx.moveTo(rx + r, ry);
-      ctx.arcTo(rx + w, ry, rx + w, ry + 2 * r, r);
-      ctx.arcTo(rx + w, ry + 2 * r, rx, ry + 2 * r, r);
-      ctx.arcTo(rx, ry + 2 * r, rx, ry, r);
-      ctx.arcTo(rx, ry, rx + w, ry, r);
-      ctx.closePath();
+      ctx.arc(x, y, dotR, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
+      
+      // Draw label with arrow if clustered, otherwise side label
+      ctx.font = `700 ${10 * s}px ui-monospace, monospace`;
+      const tw = ctx.measureText(label).width;
+      const labelPadX = 6 * s;
+      const labelH = 18 * s;
+      const labelW = tw + labelPadX * 2;
+      
+      let labelX, labelY;
+      
+      if (p.isCluster) {
+        // Clustered: draw arrow pointing to dot
+        const arrowDist = 45 * s;
+        const rad = (p.labelAngle * Math.PI) / 180;
+        labelX = x + Math.cos(rad) * arrowDist;
+        labelY = y + Math.sin(rad) * arrowDist;
+        
+        // Draw arrow line
+        ctx.strokeStyle = "#dc2626";
+        ctx.lineWidth = 1.5 * s;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(labelX, labelY);
+        ctx.stroke();
+        
+        // Draw arrowhead pointing to dot
+        const headLen = 6 * s;
+        const headAngle = Math.atan2(y - labelY, x - labelX);
+        ctx.fillStyle = "#dc2626";
+        ctx.beginPath();
+        ctx.moveTo(x - Math.cos(headAngle) * dotR, y - Math.sin(headAngle) * dotR);
+        ctx.lineTo(x - Math.cos(headAngle) * dotR - headLen * Math.cos(headAngle - 0.4), y - Math.sin(headAngle) * dotR - headLen * Math.sin(headAngle - 0.4));
+        ctx.lineTo(x - Math.cos(headAngle) * dotR - headLen * Math.cos(headAngle + 0.4), y - Math.sin(headAngle) * dotR - headLen * Math.sin(headAngle + 0.4));
+        ctx.closePath();
+        ctx.fill();
+      } else {
+        // Non-clustered: label to the side (alternating left/right)
+        const offset = 16 * s;
+        labelX = i % 2 === 0 ? x + offset + labelW / 2 : x - offset - labelW / 2;
+        labelY = y;
+      }
+      
+      // Draw label background
+      ctx.fillStyle = "#dc2626";
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 1.5 * s;
+      ctx.beginPath();
+      ctx.roundRect(labelX - labelW / 2, labelY - labelH / 2, labelW, labelH, 6 * s);
+      ctx.fill();
+      ctx.stroke();
+      
+      // Draw label text
       ctx.fillStyle = "#ffffff";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(label, x, y + 0.5 * s);
+      ctx.fillText(label, labelX, labelY);
     });
 
     // 3b) Underground items (GREEN square markers with abbreviation)
@@ -773,32 +833,87 @@ const generateSegmentPage = async ({
     ctx.fillText(text, lx, ly);
   });
 
-  // Draw pole markers (RED circles with labels)
-  pagePoles.forEach((p, i) => {
+  // Draw pole markers (small RED dots with side labels)
+  // Detect clustered poles
+  const CLUSTER_THRESHOLD_FT = 100;
+  const pageClusterInfo = pagePoles.map((p, i) => {
+    let isCluster = false;
+    pagePoles.forEach((other, j) => {
+      if (i !== j) {
+        const dist = distanceFeet(p.pos, other.pos);
+        if (dist < CLUSTER_THRESHOLD_FT) {
+          isCluster = true;
+        }
+      }
+    });
+    const labelAngle = (i * 137.5) % 360;
+    return { ...p, isCluster, labelAngle };
+  });
+
+  pageClusterInfo.forEach((p, i) => {
     const [x, y] = pt(p.pos);
     const label = p.pole_number || `${i + 1}`;
-    ctx.font = `bold ${12 * s}px ui-monospace, monospace`;
-    const tw = ctx.measureText(label).width;
-    const r = 14 * s;
-    const w = Math.max(2 * r, tw + 14 * s);
-    const rx = x - w / 2;
-    const ry = y - r;
+    const dotR = 6 * s;
+    
+    // Draw small red dot
     ctx.fillStyle = "#dc2626";
     ctx.strokeStyle = "#ffffff";
-    ctx.lineWidth = 3 * s;
+    ctx.lineWidth = 2 * s;
     ctx.beginPath();
-    ctx.moveTo(rx + r, ry);
-    ctx.arcTo(rx + w, ry, rx + w, ry + 2 * r, r);
-    ctx.arcTo(rx + w, ry + 2 * r, rx, ry + 2 * r, r);
-    ctx.arcTo(rx, ry + 2 * r, rx, ry, r);
-    ctx.arcTo(rx, ry, rx + w, ry, r);
-    ctx.closePath();
+    ctx.arc(x, y, dotR, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
+    
+    // Draw label
+    ctx.font = `bold ${10 * s}px ui-monospace, monospace`;
+    const tw = ctx.measureText(label).width;
+    const labelPadX = 6 * s;
+    const labelH = 18 * s;
+    const labelW = tw + labelPadX * 2;
+    
+    let labelX, labelY;
+    
+    if (p.isCluster) {
+      // Clustered: draw arrow
+      const arrowDist = 45 * s;
+      const rad = (p.labelAngle * Math.PI) / 180;
+      labelX = x + Math.cos(rad) * arrowDist;
+      labelY = y + Math.sin(rad) * arrowDist;
+      
+      ctx.strokeStyle = "#dc2626";
+      ctx.lineWidth = 1.5 * s;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(labelX, labelY);
+      ctx.stroke();
+      
+      const headLen = 6 * s;
+      const headAngle = Math.atan2(y - labelY, x - labelX);
+      ctx.fillStyle = "#dc2626";
+      ctx.beginPath();
+      ctx.moveTo(x - Math.cos(headAngle) * dotR, y - Math.sin(headAngle) * dotR);
+      ctx.lineTo(x - Math.cos(headAngle) * dotR - headLen * Math.cos(headAngle - 0.4), y - Math.sin(headAngle) * dotR - headLen * Math.sin(headAngle - 0.4));
+      ctx.lineTo(x - Math.cos(headAngle) * dotR - headLen * Math.cos(headAngle + 0.4), y - Math.sin(headAngle) * dotR - headLen * Math.sin(headAngle + 0.4));
+      ctx.closePath();
+      ctx.fill();
+    } else {
+      const offset = 16 * s;
+      labelX = i % 2 === 0 ? x + offset + labelW / 2 : x - offset - labelW / 2;
+      labelY = y;
+    }
+    
+    ctx.fillStyle = "#dc2626";
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 1.5 * s;
+    ctx.beginPath();
+    ctx.roundRect(labelX - labelW / 2, labelY - labelH / 2, labelW, labelH, 6 * s);
+    ctx.fill();
+    ctx.stroke();
+    
     ctx.fillStyle = "#ffffff";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(label, x, y + 1 * s);
+    ctx.fillText(label, labelX, labelY);
   });
 
   // Draw underground items (GREEN squares)

@@ -375,19 +375,13 @@ const JobDetail = () => {
                         </Badge>
                       </div>
                       <div className="flex items-center gap-3 text-xs text-zinc-500 mt-1 flex-wrap">
-                        <span>{pole.pole_size ? `${pole.pole_size}'` : "Size not set"}</span>
+                        <span>{pole.pole_size ? `${pole.pole_size}'` : <span className="text-zinc-400 italic">Size not set</span>}</span>
                         <span>•</span>
                         <span>{pole.pole_class ? `Class ${pole.pole_class}` : <span className="text-zinc-400 italic">Class not set</span>}</span>
-                        <span>•</span>
-                        <span>{pole.pole_owner || <span className="text-zinc-400 italic">Owner not set</span>}</span>
-                        <span>•</span>
-                        <span>{pole.pole_type || <span className="text-zinc-400 italic">Type not set</span>}</span>
-                        <span>•</span>
-                        <span>{pole.access || <span className="text-zinc-400 italic">Access not set</span>}</span>
                         {pole.latitude && pole.longitude && (
                           <>
                             <span>•</span>
-                            <span className="flex items-center gap-1">
+                            <span className="flex items-center gap-1 text-green-600">
                               <MapPin className="w-3 h-3" />
                               GPS
                             </span>
