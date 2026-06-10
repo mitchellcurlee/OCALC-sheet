@@ -31,7 +31,17 @@ export const hasGps = (p) => Number.isFinite(parseFloat(p.latitude)) && Number.i
 export const naturalCompare = (a, b) =>
   String(a.pole_number || "").localeCompare(String(b.pole_number || ""), undefined, { numeric: true, sensitivity: "base" });
 
-export const fmtFeet = (ft) => `${Math.round(ft).toLocaleString()} ft`;
+export const fmtFeet = (ft) => {
+  // Show decimal for more precision - no rounding
+  if (ft < 10) {
+    return `${ft.toFixed(1)} ft`;
+  } else if (ft < 100) {
+    return `${ft.toFixed(1)} ft`;
+  } else {
+    // For larger distances, show whole number
+    return `${Math.round(ft).toLocaleString()} ft`;
+  }
+};
 
 // Underground attribute abbreviations for map labels
 export const UNDERGROUND_ABBR = {

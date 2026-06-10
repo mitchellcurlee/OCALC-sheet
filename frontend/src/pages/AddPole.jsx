@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
@@ -9,6 +9,11 @@ const AddPole = () => {
   const { jobId } = useParams();
   const [submitting, setSubmitting] = useState(false);
   const backUrl = jobId ? `/jobs/${jobId}` : "/";
+
+  // Scroll to top when starting a new pole entry
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   const handleSubmit = async (payload) => {
     setSubmitting(true);

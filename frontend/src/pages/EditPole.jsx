@@ -36,6 +36,8 @@ const EditPole = () => {
 
   useEffect(() => {
     fetchPole();
+    // Scroll to top when editing a pole
+    window.scrollTo(0, 0);
   }, [fetchPole]);
 
   const handleSubmit = async (payload) => {
