@@ -39,6 +39,7 @@ export const UNDERGROUND_ABBR = {
   Manhole: "MH",
   "Brooks Enclosure": "BE",
   Flowerpot: "FP",
+  "Hoffman Box": "HB",
   Pedestal: "PED",
   "Point of Intersection": "PI",
   FBT: "FBT",
@@ -327,6 +328,63 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
     ctx.textAlign = "center";
     ctx.textBaseline = "bottom";
     ctx.fillText(fmtFeet(barFeet), sbx + barPx / 2, sby - 7 * s);
+
+    // 7b) Legend (bottom-right of map): red = pole, amber = underground + key
+    const presentUg = [...new Set(ug.map((u) => u.type))];
+    const legendLines = [];
+    if (route.length) legendLines.push({ kind: "pole", text: "Pole" });
+    if (ug.length) legendLines.push({ kind: "ug", text: "Underground" });
+    presentUg.forEach((t) => legendLines.push({ kind: "key", abbr: undergroundAbbr(t), text: t }));
+    if (legendLines.length) {
+      ctx.font = `${11 * s}px ui-monospace, monospace`;
+      let maxW = ctx.measureText("LEGEND").width;
+      legendLines.forEach((ln) => {
+        const t = ln.kind === "key" ? `${ln.abbr}  ${ln.text}` : ln.text;
+        maxW = Math.max(maxW, ctx.measureText(t).width + (ln.kind === "key" ? 0 : 22 * s));
+      });
+      const rowH = 18 * s;
+      const boxW = maxW + 24 * s;
+      const boxH = (legendLines.length + 1) * rowH + 12 * s;
+      const bx = mapW - boxW - 16 * s;
+      const by = mapH - boxH - 16 * s;
+      ctx.fillStyle = "rgba(255,255,255,0.92)";
+      ctx.fillRect(bx, by, boxW, boxH);
+      ctx.strokeStyle = "#d4d4d8";
+      ctx.lineWidth = 1 * s;
+      ctx.strokeRect(bx, by, boxW, boxH);
+      ctx.fillStyle = "#18181b";
+      ctx.font = `700 ${11 * s}px ui-monospace, monospace`;
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      let ly = by + 6 * s + rowH / 2;
+      ctx.fillText("LEGEND", bx + 12 * s, ly);
+      ly += rowH;
+      legendLines.forEach((ln) => {
+        const sx = bx + 12 * s;
+        if (ln.kind === "pole") {
+          ctx.fillStyle = "#dc2626";
+          ctx.beginPath();
+          ctx.arc(sx + 7 * s, ly, 7 * s, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = "#ffffff";
+          ctx.lineWidth = 1.5 * s;
+          ctx.stroke();
+        } else if (ln.kind === "ug") {
+          ctx.fillStyle = "#d97706";
+          ctx.fillRect(sx, ly - 7 * s, 14 * s, 14 * s);
+          ctx.strokeStyle = "#ffffff";
+          ctx.lineWidth = 1.5 * s;
+          ctx.strokeRect(sx, ly - 7 * s, 14 * s, 14 * s);
+        }
+        ctx.fillStyle = ln.kind === "key" ? "#52525b" : "#18181b";
+        ctx.font = `${ln.kind === "key" ? "" : "700 "}${11 * s}px ui-monospace, monospace`;
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+        const txt = ln.kind === "key" ? `${ln.abbr}  ${ln.text}` : ln.text;
+        ctx.fillText(txt, ln.kind === "key" ? sx : sx + 22 * s, ly);
+        ly += rowH;
+      });
+    }
 
     // 8) Composite: map + right-side segment table panel
     const final = document.createElement("canvas");

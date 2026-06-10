@@ -96,6 +96,7 @@ const JobMap = () => {
 
   const { route, missing, segments, totalFeet } = useMemo(() => computeRoute(poles), [poles]);
   const ug = useMemo(() => ugWithGps(underground), [underground]);
+  const presentUg = useMemo(() => [...new Set(ug.map((u) => u.type))], [ug]);
   const linePoints = route.map((p) => p.pos);
   const allPoints = useMemo(() => [...linePoints, ...ug.map((u) => u.pos)], [linePoints, ug]);
 
@@ -202,7 +203,7 @@ const JobMap = () => {
             No poles or underground items with GPS coordinates yet. Add coordinates to see them on the map.
           </div>
         ) : (
-          <div className="h-[70vh] border border-zinc-300 overflow-hidden rounded">
+          <div className="h-[70vh] border border-zinc-300 overflow-hidden rounded relative">
             <MapContainer center={center} zoom={18} minZoom={3} maxZoom={22} scrollWheelZoom={true} style={{ height: "100%", width: "100%" }} className="z-0">
               <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" attribution="&copy; Esri" maxNativeZoom={19} maxZoom={22} />
               <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}" maxNativeZoom={19} maxZoom={22} />
@@ -252,6 +253,18 @@ const JobMap = () => {
                 </Marker>
               ))}
             </MapContainer>
+            <div className="absolute bottom-3 right-3 z-[500] bg-white/90 border border-zinc-200 rounded px-3 py-2 text-xs font-mono shadow pointer-events-none max-w-[220px]" data-testid="map-legend">
+              <div className="font-bold text-zinc-700 mb-1">LEGEND</div>
+              {route.length > 0 && (
+                <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-red-600 border border-white inline-block flex-shrink-0"></span>Pole</div>
+              )}
+              {ug.length > 0 && (
+                <div className="flex items-center gap-2 mt-0.5"><span className="w-3 h-3 bg-amber-600 border border-white inline-block flex-shrink-0"></span>Underground</div>
+              )}
+              {presentUg.map((t) => (
+                <div key={t} className="text-zinc-500 mt-0.5 ml-1"><span className="text-amber-700 font-semibold">{undergroundAbbr(t)}</span> {t}</div>
+              ))}
+            </div>
           </div>
         )}
       </main>

@@ -209,7 +209,7 @@ ATTACHMENT_OWNERS = ["Power", "ATT", "Comcast", "Lightwave", "Logix", "PS", "Neu
 RISER_OPTIONS = ["0", "1", "2", "3", "4", "5", "6"]
 # Underground attributes (separate map features, each with its own coordinates)
 UNDERGROUND_TYPES = [
-    "Handhole", "Manhole", "Brooks Enclosure", "Flowerpot", "Pedestal",
+    "Handhole", "Manhole", "Brooks Enclosure", "Flowerpot", "Hoffman Box", "Pedestal",
     "Point of Intersection", "FBT", "NTE", "FBT/NTE", "PFP",
 ]
 
@@ -782,8 +782,8 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
     if underground:
         UG_ABBR = {
             "Handhole": "HH", "Manhole": "MH", "Brooks Enclosure": "BE", "Flowerpot": "FP",
-            "Pedestal": "PED", "Point of Intersection": "PI", "FBT": "FBT", "NTE": "NTE",
-            "FBT/NTE": "FBT/NTE", "PFP": "PFP",
+            "Hoffman Box": "HB", "Pedestal": "PED", "Point of Intersection": "PI", "FBT": "FBT",
+            "NTE": "NTE", "FBT/NTE": "FBT/NTE", "PFP": "PFP",
         }
         ws.cell(row=current_row, column=1, value="UNDERGROUND").fill = header_fill
         ws.cell(row=current_row, column=1).font = header_font
