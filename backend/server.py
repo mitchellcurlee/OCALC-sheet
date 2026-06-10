@@ -560,7 +560,9 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
     
     poles = await db.poles.find({"job_id": job_id}, {"_id": 0}).sort("created_at", -1).to_list(10000)
     poles.sort(key=_pole_sort_key)
-    
+
+    public_base = (base_url or str(request.base_url)).rstrip("/")
+
     wb = Workbook()
     ws = wb.active
     ws.title = "Pole Data"
@@ -581,6 +583,11 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
     ws.cell(row=1, column=5, value="POLES").fill = header_fill
     ws.cell(row=1, column=5).font = header_font
     ws.cell(row=1, column=6, value=len(poles))
+    ws.cell(row=1, column=7, value="MAP").fill = header_fill
+    ws.cell(row=1, column=7).font = header_font
+    map_cell = ws.cell(row=1, column=8, value="Open satellite overview")
+    map_cell.hyperlink = f"{public_base}/jobs/{job_id}/map"
+    map_cell.font = Font(color="2563EB", underline="single", bold=True)
     
     current_row = 3
     bold9 = Font(bold=True, size=9)
