@@ -7,7 +7,7 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ListOrdered } from "lucide-react";
-import { computeRoute, fmtFeet, markerLabel, downloadPoleMapImage, ugWithGps, undergroundAbbr } from "@/lib/poleMapImage";
+import { computeRoute, fmtFeet, markerLabel, downloadPoleMapImage, ugWithGps, undergroundAbbr, computeUgConnectors } from "@/lib/poleMapImage";
 
 const poleIcon = (label) =>
   L.divIcon({
@@ -17,31 +17,40 @@ const poleIcon = (label) =>
     iconAnchor: [13, 13],
   });
 
-// Small direction arrow centered on the segment midpoint (on the line)
+// Small direction arrow centered on the segment midpoint (BLUE for aerial)
 const arrowIcon = (deg) =>
   L.divIcon({
     className: "seg-arrow",
-    html: `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#dc2626;font-size:16px;line-height:1;transform:rotate(${deg}deg);">&#8593;</div>`,
+    html: `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#2563eb;font-size:16px;line-height:1;transform:rotate(${deg}deg);">&#8593;</div>`,
     iconSize: [16, 16],
     iconAnchor: [8, 8],
   });
 
-// Footage pill, offset perpendicular from the line so it never covers markers
+// Aerial footage pill (BLUE), offset perpendicular from the line
 const labelIcon = (text, ox, oy) =>
   L.divIcon({
     className: "seg-label",
-    html: `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;"><span style="background:#fff;border:1.5px solid #dc2626;border-radius:11px;padding:1px 7px;font-family:ui-monospace,monospace;font-weight:700;font-size:11px;color:#18181b;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,.35);">${text}</span></div>`,
+    html: `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;"><span style="background:#fff;border:1.5px solid #2563eb;border-radius:11px;padding:1px 7px;font-family:ui-monospace,monospace;font-weight:700;font-size:11px;color:#1e40af;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,.35);">${text}</span></div>`,
     iconSize: [64, 22],
     iconAnchor: [32 - ox, 11 - oy],
   });
 
-// Underground item marker (amber square with abbreviation)
+// Underground item marker (GREEN square with abbreviation)
 const ugIcon = (abbr) =>
   L.divIcon({
     className: "ug-marker",
-    html: `<div style="background:#d97706;color:#fff;border:2px solid #fff;border-radius:4px;min-width:24px;height:24px;padding:0 5px;display:flex;align-items:center;justify-content:center;font:700 11px/1 ui-monospace,monospace;box-shadow:0 1px 4px rgba(0,0,0,.5);white-space:nowrap;">${abbr}</div>`,
+    html: `<div style="background:#16a34a;color:#fff;border:2px solid #fff;border-radius:4px;min-width:24px;height:24px;padding:0 5px;display:flex;align-items:center;justify-content:center;font:700 11px/1 ui-monospace,monospace;box-shadow:0 1px 4px rgba(0,0,0,.5);white-space:nowrap;">${abbr}</div>`,
     iconSize: [24, 24],
     iconAnchor: [12, 12],
+  });
+
+// Underground connector distance label (GREEN pill)
+const ugConnectorLabel = (text) =>
+  L.divIcon({
+    className: "ug-connector-label",
+    html: `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;"><span style="background:#fff;border:1.5px solid #16a34a;border-radius:11px;padding:1px 7px;font-family:ui-monospace,monospace;font-weight:700;font-size:10px;color:#166534;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,.35);">${text}</span></div>`,
+    iconSize: [64, 20],
+    iconAnchor: [32, 10],
   });
 
 const FitBounds = ({ points }) => {
@@ -96,6 +105,7 @@ const JobMap = () => {
 
   const { route, missing, segments, totalFeet } = useMemo(() => computeRoute(poles), [poles]);
   const ug = useMemo(() => ugWithGps(underground), [underground]);
+  const ugConnectors = useMemo(() => computeUgConnectors(route, ug), [route, ug]);
   const presentUg = useMemo(() => [...new Set(ug.map((u) => u.type))], [ug]);
   const linePoints = route.map((p) => p.pos);
   const allPoints = useMemo(() => [...linePoints, ...ug.map((u) => u.pos)], [linePoints, ug]);
@@ -209,7 +219,16 @@ const JobMap = () => {
               <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}" maxNativeZoom={19} maxZoom={22} />
               <FitBounds points={allPoints} />
               <MapRefSetter mapRef={mapRef} />
-              {route.length > 1 && <Polyline positions={linePoints} pathOptions={{ color: "#dc2626", weight: 3 }} />}
+              {/* Aerial path (BLUE) */}
+              {route.length > 1 && <Polyline positions={linePoints} pathOptions={{ color: "#2563eb", weight: 3 }} />}
+              {/* Underground connectors (GREEN dashed) */}
+              {ugConnectors.map((c, i) => (
+                <Polyline key={`ug-conn-${i}`} positions={[c.from, c.to]} pathOptions={{ color: "#16a34a", weight: 2.5, dashArray: "6,4" }} />
+              ))}
+              {/* Underground connector distance labels */}
+              {ugConnectors.map((c, i) => (
+                <Marker key={`ug-lbl-${i}`} position={c.mid} icon={ugConnectorLabel(fmtFeet(c.ft))} interactive={false} zIndexOffset={900} />
+              ))}
               {route.map((p, i) => (
                 <Marker key={p.id} position={p.pos} icon={poleIcon(markerLabel(p, i, showStops))}>
                   <Popup>
@@ -242,11 +261,11 @@ const JobMap = () => {
                 <Marker key={u.id} position={u.pos} icon={ugIcon(undergroundAbbr(u.type))}>
                   <Popup>
                     <div className="min-w-[170px] font-mono" data-testid={`ug-popup-${u.id}`}>
-                      <div className="text-sm font-bold text-amber-700">{undergroundAbbr(u.type)} · {u.type}</div>
+                      <div className="text-sm font-bold text-green-700">{undergroundAbbr(u.type)} · {u.type}</div>
                       {u.label && <div className="text-xs text-zinc-600 mt-1">{u.label}</div>}
                       {u.notes && <div className="text-xs text-zinc-500 mt-1">{u.notes}</div>}
                       <Link to={`/jobs/${jobId}/underground/edit/${u.id}`}>
-                        <Button size="sm" className="w-full h-8 mt-2 bg-amber-600 hover:bg-amber-700 text-white" data-testid={`ug-edit-${u.id}`}>Edit</Button>
+                        <Button size="sm" className="w-full h-8 mt-2 bg-green-600 hover:bg-green-700 text-white" data-testid={`ug-edit-${u.id}`}>Edit</Button>
                       </Link>
                     </div>
                   </Popup>
@@ -256,13 +275,16 @@ const JobMap = () => {
             <div className="absolute bottom-3 right-3 z-[500] bg-white/90 border border-zinc-200 rounded px-3 py-2 text-xs font-mono shadow pointer-events-none max-w-[220px]" data-testid="map-legend">
               <div className="font-bold text-zinc-700 mb-1">LEGEND</div>
               {route.length > 0 && (
-                <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-red-600 border border-white inline-block flex-shrink-0"></span>Pole</div>
+                <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-red-600 border border-white inline-block flex-shrink-0"></span>Pole (Red)</div>
+              )}
+              {route.length > 1 && (
+                <div className="flex items-center gap-2 mt-0.5"><span className="w-4 h-0.5 bg-blue-600 inline-block flex-shrink-0"></span>Aerial Path (Blue)</div>
               )}
               {ug.length > 0 && (
-                <div className="flex items-center gap-2 mt-0.5"><span className="w-3 h-3 bg-amber-600 border border-white inline-block flex-shrink-0"></span>Underground</div>
+                <div className="flex items-center gap-2 mt-0.5"><span className="w-3 h-3 bg-green-600 border border-white inline-block flex-shrink-0"></span>Underground (Green)</div>
               )}
               {presentUg.map((t) => (
-                <div key={t} className="text-zinc-500 mt-0.5 ml-1"><span className="text-amber-700 font-semibold">{undergroundAbbr(t)}</span> {t}</div>
+                <div key={t} className="text-zinc-500 mt-0.5 ml-1"><span className="text-green-700 font-semibold">{undergroundAbbr(t)}</span> {t}</div>
               ))}
             </div>
           </div>

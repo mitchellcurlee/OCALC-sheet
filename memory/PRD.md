@@ -106,6 +106,16 @@ Build an app that collects power pole data including: size of the pole, type of 
   - Verified end-to-end: CRUD via curl; Add-Underground menu + form (type preselected, save) + list + edit/delete; amber HH/PI/MH markers on interactive map and in the PNG (image analysis confirms "2 UG" + amber markers); Excel has both map links + UNDERGROUND section; pytest 19/19. Requires redeploy for production.
 - Map legend + Hoffman Box (Jun 10, 2026): added "Hoffman Box" (abbr HB) to UNDERGROUND_TYPES / UNDERGROUND_ABBR / Excel UG_ABBR (appears in the Add Underground dropdown). Added a LEGEND to both the interactive map (overlay, bottom-right) and the downloadable PNG (bottom-right box) showing red dot = Pole, amber square = Underground, and an abbreviation key for the underground types present in the job (e.g. "HB Hoffman Box", "HH Handhole"). Verified: menu shows HB; legend present on interactive map and confirmed in PNG via image analysis; pytest 19/19. Requires redeploy for production.
 - Map PNG exhibit + export job# cleanup (Jun 10, 2026): (a) Downloadable pole-map PNG now includes a north arrow (top-right), a dynamic scale bar (bottom-left, nice-rounded feet), and a right-side "ROUTE SEGMENTS" table panel listing each segment (PoleA -> PoleB : ft) with a red TOTAL row — verified via image analysis. (b) Removed per-pole "JOB #" from both Excel exports; the job number now appears once in the top header row (sourced from the poles' shared job_number), alongside JOB NAME / LOCATION / POLES / MAP. Verified JOB # appears exactly once at top; pytest 19/19. Requires redeploy for production.
+- Map color scheme + underground connectors (Jun 10, 2026): implemented color-differentiated map paths per user request:
+  - **Poles**: RED markers (unchanged)
+  - **Aerial path (pole-to-pole)**: BLUE lines with blue distance labels (was red)
+  - **Underground items**: GREEN square markers (was amber)
+  - **Underground connectors**: GREEN dashed lines from each underground item to its nearest pole, with green distance labels showing the footage (new feature)
+  - Updated Legend to reflect the new colors: "Pole (Red)", "Aerial Path (Blue)", "Underground (Green)" + abbreviation key
+  - Applied to both interactive Leaflet map (JobMap.jsx) and downloadable PNG (poleMapImage.js)
+  - Example path visualization: HH --95ft--> Pole 1 ==249ft==> EXPORT-TEST ==94ft--> HB (where -- is green dashed, == is blue solid)
+  - Added computeUgConnectors() function to find nearest pole for each underground item and compute connector geometry
+  - Verified: interactive map shows all color-coded elements; download generates correct PNG. Requires redeploy for production.
 
 ## Tech Stack
 - Backend: FastAPI + MongoDB
@@ -127,6 +137,6 @@ Build an app that collects power pole data including: size of the pole, type of 
 - Audit trail for changes
 
 ## Next Tasks
-1. Consider adding map visualization for poles
-2. Add bulk import capability
+1. Refactor server.py (~1,350 lines) into routes/, models/, services/ structure
+2. Add bulk import capability from Excel
 3. Implement offline-first PWA features

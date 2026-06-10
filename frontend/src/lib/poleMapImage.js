@@ -75,11 +75,37 @@ export const computeRoute = (poles) => {
   return { route, segments, missing, totalFeet };
 };
 
+// For each underground item, find its nearest pole and the connector geometry
+export const computeUgConnectors = (route, ug) => {
+  if (!route.length || !ug.length) return [];
+  return ug.map((u) => {
+    let best = route[0];
+    let bestD = Infinity;
+    route.forEach((p) => {
+      const d = distanceFeet(u.pos, p.pos);
+      if (d < bestD) {
+        bestD = d;
+        best = p;
+      }
+    });
+    return {
+      from: u.pos,
+      to: best.pos,
+      ft: bestD,
+      deg: bearingDeg(u.pos, best.pos),
+      mid: [(u.pos[0] + best.pos[0]) / 2, (u.pos[1] + best.pos[1]) / 2],
+      pole: best.pole_number,
+      abbr: undergroundAbbr(u.type),
+    };
+  });
+};
+
 // Fetch a single satellite image (via backend proxy) and draw the annotated
 // pole-route exhibit, then trigger a PNG download. Returns true on success.
 export const downloadPoleMapImage = async ({ poles, job, showStops = false, underground = [] }) => {
   const { route, segments, totalFeet } = computeRoute(poles);
   const ug = ugWithGps(underground);
+  const connectors = computeUgConnectors(route, ug);
   if (route.length === 0 && ug.length === 0) {
     toast.error("No poles or underground items with GPS coordinates to map");
     return false;
@@ -143,9 +169,9 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
       return [((mx - xmin) / (xmax - xmin)) * mapW, ((ymax - my) / (ymax - ymin)) * mapH];
     };
 
-    // 1) Route line
+    // 1) Aerial Route line (BLUE)
     if (route.length > 1) {
-      ctx.strokeStyle = "#dc2626";
+      ctx.strokeStyle = "#2563eb";
       ctx.lineWidth = 3 * s;
       ctx.lineJoin = "round";
       ctx.beginPath();
@@ -157,7 +183,62 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
       ctx.stroke();
     }
 
-    // 2) Direction arrows at segment midpoints (on the line)
+    // 1b) Underground connectors (GREEN dashed) from each UG item to its nearest pole
+    if (connectors.length) {
+      ctx.save();
+      ctx.setLineDash([6 * s, 4 * s]);
+      ctx.strokeStyle = "#16a34a";
+      ctx.lineWidth = 2.5 * s;
+      connectors.forEach((c) => {
+        const [x1, y1] = pt(c.from);
+        const [x2, y2] = pt(c.to);
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+      });
+      ctx.restore();
+    }
+
+    // 1c) Underground connector distance labels (GREEN pills)
+    connectors.forEach((c, i) => {
+      const [mx, my] = pt(c.mid);
+      const ang = toRad(c.deg - 90);
+      const perp = ang + Math.PI / 2;
+      const side = i % 2 === 0 ? 1 : -1;
+      const off = 22 * s * side;
+      const lx = mx + Math.cos(perp) * off;
+      const ly = my + Math.sin(perp) * off;
+      // leader line
+      ctx.strokeStyle = "rgba(22,163,74,0.7)";
+      ctx.lineWidth = 1.2 * s;
+      ctx.beginPath();
+      ctx.moveTo(mx, my);
+      ctx.lineTo(lx, ly);
+      ctx.stroke();
+      // pill
+      const text = fmtFeet(c.ft);
+      ctx.font = `700 ${11 * s}px ui-monospace, monospace`;
+      const tw = ctx.measureText(text).width;
+      const padX2 = 5 * s;
+      const ph = 18 * s;
+      const pw = tw + padX2 * 2;
+      const px = lx - pw / 2;
+      const py = ly - ph / 2;
+      ctx.fillStyle = "#ffffff";
+      ctx.strokeStyle = "#16a34a";
+      ctx.lineWidth = 1.5 * s;
+      ctx.beginPath();
+      ctx.rect(px, py, pw, ph);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "#166534";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(text, lx, ly);
+    });
+
+    // 2) Direction arrows at segment midpoints (on the line - BLUE)
     segments.forEach((seg) => {
       const [mx, my] = pt(seg.mid);
       const ang = toRad(seg.deg - 90);
@@ -166,7 +247,7 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
       const ay = my + Math.sin(ang) * len;
       const left = ang + toRad(150);
       const right = ang - toRad(150);
-      ctx.fillStyle = "#dc2626";
+      ctx.fillStyle = "#2563eb";
       ctx.beginPath();
       ctx.moveTo(ax, ay);
       ctx.lineTo(ax + Math.cos(left) * len, ay + Math.sin(left) * len);
@@ -203,7 +284,7 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
       ctx.fillText(label, x, y + 0.5 * s);
     });
 
-    // 3b) Underground items (amber square markers with abbreviation)
+    // 3b) Underground items (GREEN square markers with abbreviation)
     ug.forEach((u) => {
       const [x, y] = pt(u.pos);
       const abbr = undergroundAbbr(u.type);
@@ -213,7 +294,7 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
       const w = Math.max(h, tw + 12 * s);
       const rx = x - w / 2;
       const ry = y - h / 2;
-      ctx.fillStyle = "#d97706";
+      ctx.fillStyle = "#16a34a";
       ctx.strokeStyle = "#ffffff";
       ctx.lineWidth = 2 * s;
       ctx.beginPath();
@@ -226,9 +307,8 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
       ctx.fillText(abbr, x, y + 0.5 * s);
     });
 
-    // 4) Footage labels LAST (on top), offset perpendicular to the line and
-    //    alternating sides so they don't cover markers or each other when poles
-    //    are close together; a thin leader line ties each label to its segment.
+    // 4) Aerial footage labels (BLUE pills), offset perpendicular to the line
+    //    alternating sides so they don't cover markers or each other
     segments.forEach((seg, i) => {
       const [mx, my] = pt(seg.mid);
       const ang = toRad(seg.deg - 90);
@@ -238,7 +318,7 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
       const lx = mx + Math.cos(perp) * off;
       const ly = my + Math.sin(perp) * off;
       // leader line
-      ctx.strokeStyle = "rgba(220,38,38,0.7)";
+      ctx.strokeStyle = "rgba(37,99,235,0.7)";
       ctx.lineWidth = 1.2 * s;
       ctx.beginPath();
       ctx.moveTo(mx, my);
@@ -254,13 +334,13 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
       const px = lx - pw / 2;
       const py = ly - ph / 2;
       ctx.fillStyle = "#ffffff";
-      ctx.strokeStyle = "#dc2626";
+      ctx.strokeStyle = "#2563eb";
       ctx.lineWidth = 1.5 * s;
       ctx.beginPath();
       ctx.rect(px, py, pw, ph);
       ctx.fill();
       ctx.stroke();
-      ctx.fillStyle = "#18181b";
+      ctx.fillStyle = "#1e40af";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(text, lx, ly);
@@ -329,11 +409,12 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
     ctx.textBaseline = "bottom";
     ctx.fillText(fmtFeet(barFeet), sbx + barPx / 2, sby - 7 * s);
 
-    // 7b) Legend (bottom-right of map): red = pole, amber = underground + key
+    // 7b) Legend (bottom-right of map): red pole, blue aerial, green underground
     const presentUg = [...new Set(ug.map((u) => u.type))];
     const legendLines = [];
-    if (route.length) legendLines.push({ kind: "pole", text: "Pole" });
-    if (ug.length) legendLines.push({ kind: "ug", text: "Underground" });
+    if (route.length) legendLines.push({ kind: "pole", text: "Pole (Red)" });
+    if (route.length > 1) legendLines.push({ kind: "aerial", text: "Aerial Path (Blue)" });
+    if (ug.length) legendLines.push({ kind: "ug", text: "Underground (Green)" });
     presentUg.forEach((t) => legendLines.push({ kind: "key", abbr: undergroundAbbr(t), text: t }));
     if (legendLines.length) {
       ctx.font = `${11 * s}px ui-monospace, monospace`;
@@ -369,8 +450,15 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
           ctx.strokeStyle = "#ffffff";
           ctx.lineWidth = 1.5 * s;
           ctx.stroke();
+        } else if (ln.kind === "aerial") {
+          ctx.strokeStyle = "#2563eb";
+          ctx.lineWidth = 3 * s;
+          ctx.beginPath();
+          ctx.moveTo(sx, ly);
+          ctx.lineTo(sx + 14 * s, ly);
+          ctx.stroke();
         } else if (ln.kind === "ug") {
-          ctx.fillStyle = "#d97706";
+          ctx.fillStyle = "#16a34a";
           ctx.fillRect(sx, ly - 7 * s, 14 * s, 14 * s);
           ctx.strokeStyle = "#ffffff";
           ctx.lineWidth = 1.5 * s;
