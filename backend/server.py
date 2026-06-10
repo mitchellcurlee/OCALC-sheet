@@ -72,6 +72,7 @@ from routes import underground as underground_routes
 from routes import files as files_routes
 from routes import sync as sync_routes
 from routes import routes as routes_routes
+from routes import annotations as annotations_routes
 
 auth_routes.set_db(db)
 jobs_routes.set_db(db)
@@ -80,6 +81,7 @@ underground_routes.set_db(db)
 files_routes.set_db(db)
 sync_routes.set_db(db)
 routes_routes.set_db(db)
+annotations_routes.set_db(db)
 
 # Include all routers
 api_router.include_router(auth_routes.router)
@@ -89,6 +91,7 @@ api_router.include_router(underground_routes.router)
 api_router.include_router(files_routes.router)
 api_router.include_router(sync_routes.router)
 api_router.include_router(routes_routes.router)
+api_router.include_router(annotations_routes.router)
 
 
 # Root endpoint

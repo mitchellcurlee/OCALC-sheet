@@ -57,6 +57,9 @@ export const UNDERGROUND_ABBR = {
   NTE: "NTE",
   "FBT/NTE": "FBT/NTE",
   PFP: "PFP",
+  "SOC Start": "SOC-S",
+  "SOC End": "SOC-E",
+  Riser: "RSR",
 };
 export const undergroundAbbr = (type) => UNDERGROUND_ABBR[type] || String(type || "").slice(0, 3).toUpperCase();
 export const UNDERGROUND_TYPES = Object.keys(UNDERGROUND_ABBR);

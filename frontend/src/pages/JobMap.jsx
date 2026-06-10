@@ -6,7 +6,7 @@ import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap } from "react-
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ListOrdered, ChevronDown, FileImage, Files, Edit3, Save, X } from "lucide-react";
+import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ListOrdered, ChevronDown, FileImage, Files, Edit3, Save, X, StickyNote, Ruler } from "lucide-react";
 import { computeRoute, fmtFeet, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, ugWithGps, undergroundAbbr, computeUgConnectors } from "@/lib/poleMapImage";
 import {
   DropdownMenu,
@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import EditableRoute from "@/components/EditableRoute";
+import MapAnnotations from "@/components/MapAnnotations";
 
 // Small red dot for pole marker with label on the side
 const poleIcon = (label, offsetDir = "right") => {
@@ -122,25 +123,29 @@ const JobMap = () => {
   const [poles, setPoles] = useState([]);
   const [underground, setUnderground] = useState([]);
   const [customRoutes, setCustomRoutes] = useState({});
+  const [annotations, setAnnotations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
   const [showStops, setShowStops] = useState(false);
   const [editMode, setEditMode] = useState(false);
+  const [addingType, setAddingType] = useState(null); // "note" or "measurement"
   const [saving, setSaving] = useState(false);
   const mapRef = useRef(null);
   const autoDownloadedRef = useRef(false);
 
   const fetchData = useCallback(async () => {
     try {
-      const [jobRes, polesRes, ugRes, routesRes] = await Promise.all([
+      const [jobRes, polesRes, ugRes, routesRes, annotationsRes] = await Promise.all([
         axios.get(`/jobs/${jobId}`),
         axios.get(`/jobs/${jobId}/poles`),
         axios.get(`/jobs/${jobId}/underground`),
         axios.get(`/jobs/${jobId}/routes`),
+        axios.get(`/jobs/${jobId}/annotations`),
       ]);
       setJob(jobRes.data);
       setPoles(polesRes.data);
       setUnderground(ugRes.data);
+      setAnnotations(annotationsRes.data);
       
       // Convert routes array to a lookup object by segment key
       const routesLookup = {};
@@ -263,8 +268,42 @@ const JobMap = () => {
   // Cancel edit mode and revert changes
   const cancelEditing = useCallback(() => {
     setEditMode(false);
+    setAddingType(null);
     fetchData(); // Reload original data
   }, [fetchData]);
+
+  // Annotation handlers
+  const handleAnnotationAdd = useCallback(async (data) => {
+    try {
+      const response = await axios.post(`/jobs/${jobId}/annotations`, {
+        ...data,
+        job_id: jobId,
+      });
+      setAnnotations(prev => [...prev, response.data]);
+      toast.success(data.type === "note" ? "Note added" : "Measurement added");
+    } catch (e) {
+      toast.error("Failed to add annotation");
+    }
+  }, [jobId]);
+
+  const handleAnnotationUpdate = useCallback(async (annotationId, data) => {
+    try {
+      const response = await axios.put(`/jobs/${jobId}/annotations/${annotationId}`, data);
+      setAnnotations(prev => prev.map(a => a.id === annotationId ? response.data : a));
+    } catch (e) {
+      toast.error("Failed to update annotation");
+    }
+  }, [jobId]);
+
+  const handleAnnotationDelete = useCallback(async (annotationId) => {
+    try {
+      await axios.delete(`/jobs/${jobId}/annotations/${annotationId}`);
+      setAnnotations(prev => prev.filter(a => a.id !== annotationId));
+      toast.success("Annotation deleted");
+    } catch (e) {
+      toast.error("Failed to delete annotation");
+    }
+  }, [jobId]);
 
   const downloadImage = useCallback(async () => {
     setDownloading(true);
@@ -361,19 +400,51 @@ const JobMap = () => {
             </DropdownMenu>
             {/* Edit mode toggle */}
             {!editMode ? (
-              <Button
-                onClick={() => setEditMode(true)}
-                disabled={route.length < 2}
-                variant="outline"
-                className="bg-blue-50 border-blue-300 hover:bg-blue-100 text-blue-700"
-                data-testid="edit-routes-btn"
-                title="Edit route lines"
-              >
-                <Edit3 className="w-4 h-4 mr-2" />
-                Edit Lines
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => setEditMode(true)}
+                  disabled={route.length < 2}
+                  variant="outline"
+                  className="bg-blue-50 border-blue-300 hover:bg-blue-100 text-blue-700"
+                  data-testid="edit-routes-btn"
+                  title="Edit route lines"
+                >
+                  <Edit3 className="w-4 h-4 mr-2" />
+                  Edit Lines
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="bg-amber-50 border-amber-300 hover:bg-amber-100 text-amber-700" data-testid="add-annotation-btn">
+                      <StickyNote className="w-4 h-4 mr-2" />
+                      Add
+                      <ChevronDown className="w-4 h-4 ml-1" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => { setEditMode(true); setAddingType("note"); }} className="cursor-pointer">
+                      <StickyNote className="w-4 h-4 mr-2" />
+                      <div>
+                        <div className="font-medium">Add Note</div>
+                        <div className="text-xs text-zinc-500">Click map to place</div>
+                      </div>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => { setEditMode(true); setAddingType("measurement"); }} className="cursor-pointer">
+                      <Ruler className="w-4 h-4 mr-2" />
+                      <div>
+                        <div className="font-medium">Add Measurement</div>
+                        <div className="text-xs text-zinc-500">Click start & end points</div>
+                      </div>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             ) : (
               <div className="flex gap-2">
+                {addingType && (
+                  <span className="flex items-center px-3 py-1 bg-amber-100 text-amber-800 rounded text-sm font-medium">
+                    {addingType === "note" ? "Click map to add note" : "Click start point, then end point"}
+                  </span>
+                )}
                 <Button
                   onClick={saveRouteEdits}
                   disabled={saving}
@@ -500,6 +571,15 @@ const JobMap = () => {
                   </Popup>
                 </Marker>
               ))}
+              {/* Map annotations (notes and measurements) */}
+              <MapAnnotations
+                annotations={annotations}
+                editMode={editMode}
+                addingType={addingType}
+                onAnnotationAdd={handleAnnotationAdd}
+                onAnnotationUpdate={handleAnnotationUpdate}
+                onAnnotationDelete={handleAnnotationDelete}
+              />
             </MapContainer>
             <div className="absolute bottom-3 right-3 z-[500] bg-white/90 border border-zinc-200 rounded px-3 py-2 text-xs font-mono shadow pointer-events-none max-w-[220px]" data-testid="map-legend">
               <div className="font-bold text-zinc-700 mb-1">LEGEND</div>
@@ -511,6 +591,12 @@ const JobMap = () => {
               )}
               {ug.length > 0 && (
                 <div className="flex items-center gap-2 mt-0.5"><span className="w-3 h-3 bg-green-600 border border-white inline-block flex-shrink-0"></span>Underground (Green)</div>
+              )}
+              {annotations.filter(a => a.type === "note").length > 0 && (
+                <div className="flex items-center gap-2 mt-0.5"><span className="w-3 h-3 bg-amber-500 border border-white rounded inline-block flex-shrink-0"></span>Note (Amber)</div>
+              )}
+              {annotations.filter(a => a.type === "measurement").length > 0 && (
+                <div className="flex items-center gap-2 mt-0.5"><span className="w-4 h-0.5 bg-amber-500 inline-block flex-shrink-0" style={{borderStyle: 'dashed'}}></span>Measurement (Amber)</div>
               )}
               {presentUg.map((t) => (
                 <div key={t} className="text-zinc-500 mt-0.5 ml-1"><span className="text-green-700 font-semibold">{undergroundAbbr(t)}</span> {t}</div>
