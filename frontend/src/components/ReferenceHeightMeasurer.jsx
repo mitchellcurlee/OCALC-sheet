@@ -21,7 +21,7 @@ import axios from "axios";
 import { toast } from "sonner";
 
 // Reference object height options (in feet)
-const REFERENCE_HEIGHT_OPTIONS = [4, 5, 6, 7, 8, 10, 12];
+const REFERENCE_HEIGHT_OPTIONS = [4, 5, 6, 7, 8, 10, 12, 14];
 
 /**
  * ReferenceHeightMeasurer - Measure pole attachment heights using a reference object
