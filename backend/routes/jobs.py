@@ -9,7 +9,7 @@ from openpyxl.styles import Font, PatternFill
 from models.job import Job, JobCreate, JobUpdate
 from models.pole import Pole
 from services.auth import get_current_user, is_admin_user
-from services.helpers import pole_sort_key, format_height, pole_photo_items, compute_route_segments
+from services.helpers import pole_sort_key, format_height, pole_photo_items
 
 router = APIRouter(tags=["jobs"])
 
@@ -186,47 +186,6 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
     
     current_row = 3
     bold9 = Font(bold=True, size=9)
-    route_fill = PatternFill(start_color="1e40af", end_color="1e40af", fill_type="solid")  # Blue for route
-    route_font = Font(bold=True, color="FFFFFF")
-    total_fill = PatternFill(start_color="dc2626", end_color="dc2626", fill_type="solid")  # Red for total
-    total_font = Font(bold=True, color="FFFFFF")
-
-    # Add GPS-CALCULATED ROUTE SEGMENTS section (same as map display)
-    segments, total_feet, missing_gps = compute_route_segments(poles)
-    
-    if segments:
-        cell = ws.cell(row=current_row, column=1, value="GPS-CALCULATED ROUTE (Aerial Path)")
-        cell.fill = route_fill
-        cell.font = route_font
-        ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=4)
-        current_row += 1
-        
-        # Table header
-        for ci, h in enumerate(["From Pole", "To Pole", "Distance (ft)", ""], 1):
-            c = ws.cell(row=current_row, column=ci, value=h)
-            c.font = bold9
-        current_row += 1
-        
-        # Segment rows
-        for seg in segments:
-            ws.cell(row=current_row, column=1, value=seg["from_pole"])
-            ws.cell(row=current_row, column=2, value=seg["to_pole"])
-            ws.cell(row=current_row, column=3, value=seg["distance_ft"])
-            current_row += 1
-        
-        # Total row
-        ws.cell(row=current_row, column=1, value="TOTAL").fill = total_fill
-        ws.cell(row=current_row, column=1).font = total_font
-        ws.cell(row=current_row, column=2, value="").fill = total_fill
-        ws.cell(row=current_row, column=3, value=total_feet).fill = total_fill
-        ws.cell(row=current_row, column=3).font = total_font
-        current_row += 2
-    
-    # Note missing GPS poles
-    if missing_gps:
-        ws.cell(row=current_row, column=1, value=f"Poles missing GPS: {', '.join(missing_gps)}")
-        ws.cell(row=current_row, column=1).font = Font(italic=True, color="b45309")
-        current_row += 2
 
     def section(title):
         nonlocal current_row
@@ -251,11 +210,6 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
         for ci, h in enumerate(headers, 1):
             ws.cell(row=current_row, column=ci, value=h).font = bold9
         current_row += 1
-
-    # Create a lookup for GPS-calculated distance to next pole
-    distance_to_next = {}
-    for seg in segments:
-        distance_to_next[seg["from_pole"]] = seg["distance_ft"]
 
     for pole in poles:
         ws.cell(row=current_row, column=1, value="POLE #").fill = header_fill
@@ -292,12 +246,9 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
                 current_row += 1
 
         section("GPS LOCATION")
-        pole_num = pole.get("pole_number", "")
-        gps_dist = distance_to_next.get(pole_num, "")
         label_value_row([
             ("Latitude", pole.get("latitude", "")),
             ("Longitude", pole.get("longitude", "")),
-            ("Distance to Next Pole (GPS)", f"{gps_dist} ft" if gps_dist else ""),
         ])
 
         section("BIRTHMARK & MGNV")

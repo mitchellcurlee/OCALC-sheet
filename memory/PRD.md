@@ -230,3 +230,13 @@ Build an app that collects power pole data including: size of the pole, type of 
   - Added downloadSegmentedMapPages() function in poleMapImage.js
   - Added dropdown menu UI in JobMap.jsx
   - Requires redeploy for production.
+- Fixed Excel export and synced map distances to pole spans (Jun 10, 2026):
+  - Removed GPS-CALCULATED ROUTE section from Excel export (user requested)
+  - Removed "Distance to Next Pole (GPS)" from GPS LOCATION section
+  - Created new endpoint POST /api/jobs/{job_id}/sync-map-distances that:
+    - Calculates GPS distances between consecutive poles (same as map)
+    - Updates span1_distance/span1_direction with distance/bearing to NEXT pole
+    - Updates span2_distance/span2_direction with distance/bearing to PREVIOUS pole
+  - Synced A050ABC job: Pole 1 now has span1=249ft S, Pole EXPORT-TEST has span2=249ft N
+  - Excel export now shows these synced values in the SPANS section
+  - Requires redeploy for production.

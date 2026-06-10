@@ -8,8 +8,8 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
 
 from models.pole import Pole, PoleCreate, PoleUpdate
-from models.options import POLE_CONDITIONS, UNDERGROUND_TYPES
-from services.helpers import pole_sort_key, format_height, pole_photo_items
+from models.options import POLE_CONDITIONS
+from services.helpers import pole_sort_key, format_height, pole_photo_items, haversine_feet, has_gps
 
 router = APIRouter(tags=["poles"])
 
@@ -51,6 +51,102 @@ async def get_pole_options():
         "span_directions": SPAN_DIRECTIONS,
         "attachment_owners": ATTACHMENT_OWNERS,
         "riser_options": RISER_OPTIONS
+    }
+
+
+def bearing_to_direction(bearing):
+    """Convert bearing degrees to compass direction (N, NE, E, SE, S, SW, W, NW)"""
+    directions = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
+    index = round(bearing / 45) % 8
+    return directions[index]
+
+
+@router.post("/jobs/{job_id}/sync-map-distances")
+async def sync_map_distances_to_poles(job_id: str):
+    """
+    Sync GPS-calculated distances from the map to each pole's span fields.
+    Updates span1 with distance/direction to next pole,
+    Updates span2 with distance/direction to previous pole.
+    """
+    import math
+    
+    # Get all poles for this job
+    poles = await _db.poles.find({"job_id": job_id}, {"_id": 0}).to_list(1000)
+    if not poles:
+        raise HTTPException(status_code=404, detail="No poles found for this job")
+    
+    # Sort poles by natural order (same as map display)
+    sorted_poles = sorted(poles, key=pole_sort_key)
+    
+    # Filter to only poles with valid GPS
+    route_poles = []
+    for p in sorted_poles:
+        if has_gps(p):
+            route_poles.append({
+                "id": p["id"],
+                "pole_number": p.get("pole_number", ""),
+                "lat": float(p.get("latitude")),
+                "lon": float(p.get("longitude")),
+            })
+    
+    if len(route_poles) < 2:
+        return {"message": "Need at least 2 poles with GPS to sync distances", "updated": 0}
+    
+    updates = []
+    
+    for i, pole in enumerate(route_poles):
+        update_data = {}
+        
+        # Calculate distance/direction to NEXT pole (span1)
+        if i < len(route_poles) - 1:
+            next_pole = route_poles[i + 1]
+            dist_to_next = haversine_feet(pole["lat"], pole["lon"], next_pole["lat"], next_pole["lon"])
+            
+            # Calculate bearing to next pole
+            lat1 = math.radians(pole["lat"])
+            lat2 = math.radians(next_pole["lat"])
+            dlon = math.radians(next_pole["lon"] - pole["lon"])
+            y = math.sin(dlon) * math.cos(lat2)
+            x = math.cos(lat1) * math.sin(lat2) - math.sin(lat1) * math.cos(lat2) * math.cos(dlon)
+            bearing = (math.degrees(math.atan2(y, x)) + 360) % 360
+            
+            update_data["span1_distance"] = str(round(dist_to_next))
+            update_data["span1_direction"] = bearing_to_direction(bearing)
+        
+        # Calculate distance/direction to PREVIOUS pole (span2)
+        if i > 0:
+            prev_pole = route_poles[i - 1]
+            dist_to_prev = haversine_feet(pole["lat"], pole["lon"], prev_pole["lat"], prev_pole["lon"])
+            
+            # Calculate bearing to previous pole
+            lat1 = math.radians(pole["lat"])
+            lat2 = math.radians(prev_pole["lat"])
+            dlon = math.radians(prev_pole["lon"] - pole["lon"])
+            y = math.sin(dlon) * math.cos(lat2)
+            x = math.cos(lat1) * math.sin(lat2) - math.sin(lat1) * math.cos(lat2) * math.cos(dlon)
+            bearing = (math.degrees(math.atan2(y, x)) + 360) % 360
+            
+            update_data["span2_distance"] = str(round(dist_to_prev))
+            update_data["span2_direction"] = bearing_to_direction(bearing)
+        
+        if update_data:
+            update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+            await _db.poles.update_one(
+                {"id": pole["id"]},
+                {"$set": update_data}
+            )
+            updates.append({
+                "pole_number": pole["pole_number"],
+                "span1_distance": update_data.get("span1_distance"),
+                "span1_direction": update_data.get("span1_direction"),
+                "span2_distance": update_data.get("span2_distance"),
+                "span2_direction": update_data.get("span2_direction"),
+            })
+    
+    return {
+        "message": f"Updated {len(updates)} poles with GPS-calculated distances",
+        "updated": len(updates),
+        "poles": updates
     }
 
 
