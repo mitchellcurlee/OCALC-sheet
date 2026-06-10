@@ -1,8 +1,9 @@
 /* eslint-disable no-restricted-globals */
 
-const CACHE_NAME = 'poledata-v1';
-const STATIC_CACHE = 'poledata-static-v1';
-const API_CACHE = 'poledata-api-v1';
+// Service Worker v2 - Simplified to avoid caching issues
+// Only caches static assets, NEVER caches API responses
+
+const STATIC_CACHE = 'poledata-static-v2';
 
 // Static assets to cache on install
 const STATIC_ASSETS = [
@@ -11,38 +12,43 @@ const STATIC_ASSETS = [
   '/manifest.json',
 ];
 
-// API routes to cache for offline use
-const CACHEABLE_API_ROUTES = [
-  '/api/poles/options',
-  '/api/jobs',
-];
-
-// Install event - cache static assets
+// Install event - cache static assets and clear old caches
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(STATIC_CACHE).then((cache) => {
-      console.log('[SW] Caching static assets');
-      return cache.addAll(STATIC_ASSETS);
-    })
+    (async () => {
+      // Clear ALL old caches first
+      const cacheNames = await caches.keys();
+      await Promise.all(
+        cacheNames.map((name) => caches.delete(name))
+      );
+      // Then cache static assets
+      const cache = await caches.open(STATIC_CACHE);
+      console.log('[SW v2] Caching static assets');
+      await cache.addAll(STATIC_ASSETS);
+    })()
   );
   self.skipWaiting();
 });
 
-// Activate event - clean up old caches
+// Activate event - claim clients immediately
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
+    (async () => {
+      // Clear any remaining old caches
+      const cacheNames = await caches.keys();
+      await Promise.all(
         cacheNames
-          .filter((name) => name !== STATIC_CACHE && name !== API_CACHE)
+          .filter((name) => name !== STATIC_CACHE)
           .map((name) => caches.delete(name))
       );
-    })
+      // Take control of all clients
+      await self.clients.claim();
+      console.log('[SW v2] Activated and claimed clients');
+    })()
   );
-  self.clients.claim();
 });
 
-// Fetch event - serve from cache, fallback to network
+// Fetch event - ALWAYS go to network for API, cache fallback for static only
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
@@ -52,17 +58,15 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Handle API requests
+  // NEVER intercept API requests - let them go directly to network
   if (url.pathname.startsWith('/api/')) {
-    event.respondWith(handleApiRequest(request));
-    return;
+    return; // Don't call event.respondWith, let browser handle normally
   }
 
-  // Handle static assets - network first, cache fallback
+  // For static assets: network first, cache fallback
   event.respondWith(
     fetch(request)
       .then((response) => {
-        // Cache successful responses
         if (response.ok) {
           const responseClone = response.clone();
           caches.open(STATIC_CACHE).then((cache) => {
@@ -72,12 +76,10 @@ self.addEventListener('fetch', (event) => {
         return response;
       })
       .catch(() => {
-        // Fallback to cache
         return caches.match(request).then((cachedResponse) => {
           if (cachedResponse) {
             return cachedResponse;
           }
-          // For navigation requests, return index.html
           if (request.mode === 'navigate') {
             return caches.match('/index.html');
           }
@@ -87,95 +89,22 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// Handle API requests - network first with cache fallback
-async function handleApiRequest(request) {
-  const url = new URL(request.url);
-  
-  try {
-    const response = await fetch(request);
-    
-    // Cache successful GET responses for specific routes
-    if (response.ok && isCacheableRoute(url.pathname)) {
-      const responseClone = response.clone();
-      const cache = await caches.open(API_CACHE);
-      await cache.put(request, responseClone);
-    }
-    
-    return response;
-  } catch (error) {
-    // Offline - try to return cached response
-    const cachedResponse = await caches.match(request);
-    if (cachedResponse) {
-      // Add header to indicate this is a cached response
-      const headers = new Headers(cachedResponse.headers);
-      headers.set('X-From-Cache', 'true');
-      return new Response(cachedResponse.body, {
-        status: cachedResponse.status,
-        statusText: cachedResponse.statusText,
-        headers
-      });
-    }
-    
-    // Return offline error for API calls
-    return new Response(
-      JSON.stringify({ 
-        error: 'offline', 
-        message: 'You are offline. This request has been queued.' 
-      }),
-      {
-        status: 503,
-        headers: { 'Content-Type': 'application/json' }
-      }
-    );
-  }
-}
-
-function isCacheableRoute(pathname) {
-  return CACHEABLE_API_ROUTES.some(route => pathname.startsWith(route));
-}
-
-// Handle background sync
+// Handle background sync (simplified)
 self.addEventListener('sync', (event) => {
   if (event.tag === 'sync-pending-changes') {
-    event.waitUntil(syncPendingChanges());
+    event.waitUntil(
+      self.clients.matchAll().then(clients => {
+        clients.forEach(client => {
+          client.postMessage({ type: 'SYNC_REQUESTED' });
+        });
+      })
+    );
   }
 });
-
-async function syncPendingChanges() {
-  // This will be handled by the frontend's sync service
-  // The service worker just triggers the sync
-  const clients = await self.clients.matchAll();
-  clients.forEach(client => {
-    client.postMessage({ type: 'SYNC_REQUESTED' });
-  });
-}
 
 // Handle messages from the main thread
 self.addEventListener('message', (event) => {
   if (event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
-  }
-  
-  if (event.data.type === 'CACHE_API_RESPONSE') {
-    const { url, response } = event.data;
-    caches.open(API_CACHE).then((cache) => {
-      cache.put(url, new Response(JSON.stringify(response)));
-    });
-  }
-});
-
-// Push notification support (for future use)
-self.addEventListener('push', (event) => {
-  if (event.data) {
-    const data = event.data.json();
-    const options = {
-      body: data.body || 'New update available',
-      icon: '/logo192.png',
-      badge: '/logo192.png',
-      tag: data.tag || 'poledata-notification'
-    };
-    event.waitUntil(
-      self.registration.showNotification(data.title || 'Pole Data Sheet', options)
-    );
   }
 });
