@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
-import { MapContainer, TileLayer, Marker, Polyline, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import leafletImage from "leaflet-image";
@@ -442,7 +442,26 @@ const JobMap = () => {
               <MapRefSetter mapRef={mapRef} />
               {route.length > 1 && <Polyline positions={linePoints} pathOptions={{ color: "#dc2626", weight: 3 }} />}
               {route.map((p) => (
-                <Marker key={p.id} position={p.pos} icon={poleIcon(String(p.pole_number || ""))} />
+                <Marker key={p.id} position={p.pos} icon={poleIcon(String(p.pole_number || ""))}>
+                  <Popup>
+                    <div className="min-w-[180px] font-mono" data-testid={`pole-popup-${p.id}`}>
+                      <div className="text-base font-bold text-zinc-900">{p.pole_number || "(unnumbered)"}</div>
+                      <div className="mt-1 text-xs text-zinc-600 space-y-0.5">
+                        <div><span className="text-zinc-400">Owner:</span> {p.pole_owner || "—"}</div>
+                        <div><span className="text-zinc-400">Condition:</span> {p.condition || "—"}</div>
+                        <div><span className="text-zinc-400">Size:</span> {p.pole_size ? `${p.pole_size}'` : "—"}</div>
+                      </div>
+                      <div className="mt-2 flex gap-2">
+                        <Link to={`/jobs/${jobId}/view/${p.id}`} className="flex-1">
+                          <Button size="sm" className="w-full h-8 bg-red-600 hover:bg-red-700 text-white" data-testid={`popup-view-${p.id}`}>Open</Button>
+                        </Link>
+                        <Link to={`/jobs/${jobId}/edit/${p.id}`} className="flex-1">
+                          <Button size="sm" variant="outline" className="w-full h-8 bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900" data-testid={`popup-edit-${p.id}`}>Edit</Button>
+                        </Link>
+                      </div>
+                    </div>
+                  </Popup>
+                </Marker>
               ))}
               {segments.map((s, i) => (
                 <Marker key={`seg-${i}`} position={s.mid} icon={segIcon(fmtFeet(s.ft), s.deg)} interactive={false} />
