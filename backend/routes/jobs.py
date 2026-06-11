@@ -324,10 +324,24 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
         ws.cell(row=current_row, column=1, value="PHOTOS").fill = header_fill
         ws.cell(row=current_row, column=1).font = header_font
         if photo_items:
-            gallery_url = f"{(base_url or str(request.base_url)).rstrip('/')}/api/poles/{pole.get('id')}/gallery"
-            link_cell = ws.cell(row=current_row, column=2, value=f"View {len(photo_items)} photo(s)")
-            link_cell.hyperlink = gallery_url
-            link_cell.font = Font(color="2563EB", underline="single", bold=True)
+            # Create direct links to each photo file
+            col = 2
+            for label, photo_url in photo_items:
+                # Ensure photo URL is absolute
+                if photo_url.startswith("/"):
+                    full_url = f"{public_base}{photo_url}"
+                elif photo_url.startswith("http"):
+                    full_url = photo_url
+                else:
+                    full_url = f"{public_base}/api/files/{photo_url}"
+                
+                link_cell = ws.cell(row=current_row, column=col, value=label)
+                link_cell.hyperlink = full_url
+                link_cell.font = Font(color="2563EB", underline="single", bold=True)
+                col += 1
+                if col > 12:  # Don't exceed column limit, wrap to next row
+                    current_row += 1
+                    col = 2
         else:
             ws.cell(row=current_row, column=2, value="No photos")
         current_row += 1
