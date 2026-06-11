@@ -55,7 +55,14 @@ async def serve_file(path: str):
     try:
         data, content_type = await asyncio.to_thread(get_object, path)
         ct = (record or {}).get("content_type") or content_type
-        return Response(content=data, media_type=ct, headers={"Cache-Control": "public, max-age=31536000"})
+        return Response(
+            content=data, 
+            media_type=ct, 
+            headers={
+                "Cache-Control": "public, max-age=31536000",
+                "Access-Control-Allow-Origin": "*"
+            }
+        )
     except Exception:
         raise HTTPException(status_code=404, detail="File not found")
 
