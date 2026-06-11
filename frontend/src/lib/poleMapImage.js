@@ -79,6 +79,8 @@ export const computeRoute = (poles) => {
   const missing = sorted.filter((p) => !hasGps(p)).map((p) => p.pole_number || "(unnumbered)");
   const segments = [];
   let totalFeet = 0;
+  let totalRiserFeet = 0;
+  
   for (let i = 0; i < route.length - 1; i++) {
     const ft = distanceFeet(route[i].pos, route[i + 1].pos);
     const deg = bearingDeg(route[i].pos, route[i + 1].pos);
@@ -86,7 +88,17 @@ export const computeRoute = (poles) => {
     segments.push({ ft, deg, mid, a: route[i].pole_number, b: route[i + 1].pole_number });
     totalFeet += ft;
   }
-  return { route, segments, missing, totalFeet };
+  
+  // Calculate total riser footage
+  for (const p of route) {
+    if (p.riser_height && p.risers) {
+      const riserCount = parseInt(p.risers) || 0;
+      const riserHeight = parseFloat(p.riser_height) || 0;
+      totalRiserFeet += riserCount * riserHeight;
+    }
+  }
+  
+  return { route, segments, missing, totalFeet, totalRiserFeet, grandTotalFeet: totalFeet + totalRiserFeet };
 };
 
 // For each underground item, find its nearest pole and the connector geometry
@@ -117,7 +129,7 @@ export const computeUgConnectors = (route, ug) => {
 // Fetch a single satellite image (via backend proxy) and draw the annotated
 // pole-route exhibit, then trigger a PNG download. Returns true on success.
 export const downloadPoleMapImage = async ({ poles, job, showStops = false, underground = [] }) => {
-  const { route, segments, totalFeet } = computeRoute(poles);
+  const { route, segments, totalFeet, totalRiserFeet, grandTotalFeet } = computeRoute(poles);
   const ug = ugWithGps(underground);
   const connectors = computeUgConnectors(route, ug);
   if (route.length === 0 && ug.length === 0) {
@@ -422,7 +434,8 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
 
     // 5) Title banner (top-left)
     const ugPart = ug.length ? `, ${ug.length} UG` : "";
-    const title = `${job?.name || "Job"}  -  ${route.length} poles${ugPart}, ${fmtFeet(totalFeet)} total`;
+    const riserPart = totalRiserFeet > 0 ? ` + ${fmtFeet(totalRiserFeet)} risers = ${fmtFeet(grandTotalFeet)}` : "";
+    const title = `${job?.name || "Job"}  -  ${route.length} poles${ugPart}, ${fmtFeet(totalFeet)} span${riserPart}${!riserPart ? " total" : ""}`;
     ctx.font = `700 ${13 * s}px ui-monospace, monospace`;
     const bw = ctx.measureText(title).width + 20 * s;
     ctx.fillStyle = "rgba(255,255,255,0.92)";
@@ -569,21 +582,63 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
     let yy = 46 * s;
     const rowH = 19 * s;
     fctx.font = `${11 * s}px ui-monospace, monospace`;
-    const maxRows = Math.floor((final.height - 50 * s - yy) / rowH);
+    
+    // Calculate how much space we need at the bottom
+    const hasRisers = totalRiserFeet > 0;
+    const bottomSection = hasRisers ? 68 * s : 34 * s; // Extra space for riser row
+    
+    // Build display rows: interleave segments with riser info
+    const displayRows = [];
     for (let i = 0; i < segments.length; i++) {
-      if (segments.length > maxRows && i >= maxRows - 1) {
+      // Add segment
+      displayRows.push({ type: "segment", text: `${segments[i].a || "?"} -> ${segments[i].b || "?"}`, ft: segments[i].ft });
+      
+      // Check if pole B has risers (show after the span that leads to it)
+      const poleB = route.find(p => p.pole_number === segments[i].b);
+      if (poleB?.risers && poleB?.riser_height) {
+        const riserCount = parseInt(poleB.risers) || 0;
+        const riserHeight = parseFloat(poleB.riser_height) || 0;
+        if (riserCount > 0 && riserHeight > 0) {
+          displayRows.push({ 
+            type: "riser", 
+            text: `  ↳ ${poleB.pole_number} Riser${riserCount > 1 ? ` x${riserCount}` : ""}`, 
+            ft: riserCount * riserHeight 
+          });
+        }
+      }
+    }
+    
+    const maxRows = Math.floor((final.height - bottomSection - yy) / rowH);
+    
+    for (let i = 0; i < displayRows.length; i++) {
+      if (displayRows.length > maxRows && i >= maxRows - 1) {
         fctx.fillStyle = "#71717a";
         fctx.textAlign = "left";
-        fctx.fillText(`+ ${segments.length - i} more`, mapW + 14 * s, yy);
+        fctx.fillText(`+ ${displayRows.length - i} more`, mapW + 14 * s, yy);
         break;
       }
-      fctx.fillStyle = "#18181b";
+      const row = displayRows[i];
+      fctx.fillStyle = row.type === "riser" ? "#f97316" : "#18181b";
       fctx.textAlign = "left";
-      fctx.fillText(`${segments[i].a || "?"} -> ${segments[i].b || "?"}`, mapW + 14 * s, yy);
+      fctx.fillText(row.text, mapW + 14 * s, yy);
       fctx.textAlign = "right";
-      fctx.fillText(fmtFeet(segments[i].ft), mapW + panelW - 14 * s, yy);
+      fctx.fillText(row.type === "riser" ? `+${fmtFeet(row.ft)}` : fmtFeet(row.ft), mapW + panelW - 14 * s, yy);
       yy += rowH;
     }
+    
+    // Add riser row if there are risers
+    if (hasRisers) {
+      fctx.fillStyle = "#f97316"; // Orange background for risers
+      fctx.fillRect(mapW, final.height - 68 * s, panelW, 34 * s);
+      fctx.fillStyle = "#ffffff";
+      fctx.font = `700 ${11 * s}px ui-monospace, monospace`;
+      fctx.textAlign = "left";
+      fctx.fillText("RISERS", mapW + 14 * s, final.height - 51 * s);
+      fctx.textAlign = "right";
+      fctx.fillText(`+ ${fmtFeet(totalRiserFeet)}`, mapW + panelW - 14 * s, final.height - 51 * s);
+    }
+    
+    // Total row
     fctx.fillStyle = "#dc2626";
     fctx.fillRect(mapW, final.height - 34 * s, panelW, 34 * s);
     fctx.fillStyle = "#ffffff";
@@ -591,7 +646,7 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
     fctx.textAlign = "left";
     fctx.fillText("TOTAL", mapW + 14 * s, final.height - 17 * s);
     fctx.textAlign = "right";
-    fctx.fillText(fmtFeet(totalFeet), mapW + panelW - 14 * s, final.height - 17 * s);
+    fctx.fillText(fmtFeet(grandTotalFeet), mapW + panelW - 14 * s, final.height - 17 * s);
 
     const url = final.toDataURL("image/png");
     const a = document.createElement("a");
@@ -962,7 +1017,7 @@ export const downloadSegmentedMapPages = async ({
   poles, job, showStops = false, underground = [], 
   targetFeet = 800 
 }) => {
-  const { route, segments, totalFeet } = computeRoute(poles);
+  const { route, segments, totalFeet, totalRiserFeet, grandTotalFeet } = computeRoute(poles);
   const ug = ugWithGps(underground);
   const connectors = computeUgConnectors(route, ug);
   
