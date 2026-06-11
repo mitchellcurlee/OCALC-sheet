@@ -149,7 +149,22 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
     poles.sort(key=pole_sort_key)
     underground = await _db.underground.find({"job_id": job_id}, {"_id": 0}).sort("created_at", 1).to_list(10000)
 
-    public_base = (base_url or str(request.base_url)).rstrip("/")
+    # Determine the public base URL for links
+    # Priority: explicit base_url param > X-Forwarded headers > request.base_url
+    if base_url:
+        public_base = base_url.rstrip("/")
+    else:
+        # Check for forwarded headers (common in proxies/load balancers)
+        forwarded_proto = request.headers.get("x-forwarded-proto", "https")
+        forwarded_host = request.headers.get("x-forwarded-host") or request.headers.get("host")
+        if forwarded_host:
+            public_base = f"{forwarded_proto}://{forwarded_host}"
+        else:
+            public_base = str(request.base_url).rstrip("/")
+    
+    # Ensure https for production domains
+    if "poledatasheet.info" in public_base or "emergentagent.com" in public_base:
+        public_base = public_base.replace("http://", "https://")
 
     wb = Workbook()
     ws = wb.active
