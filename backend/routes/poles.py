@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Depends
 from fastapi.responses import StreamingResponse, HTMLResponse
 from typing import List, Optional
 from datetime import datetime, timezone
@@ -10,6 +10,7 @@ from openpyxl.styles import Font, PatternFill
 from models.pole import Pole, PoleCreate, PoleUpdate
 from models.options import POLE_CONDITIONS
 from services.helpers import pole_sort_key, format_height, pole_photo_items, haversine_feet, has_gps
+from services.auth import get_current_user
 
 router = APIRouter(tags=["poles"])
 
@@ -210,6 +211,26 @@ async def get_poles(pole_owner: Optional[str] = None, condition: Optional[str] =
         query["condition"] = condition
     poles = await _db.poles.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
     return poles
+
+
+@router.put("/poles/reorder")
+async def reorder_poles(pole_orders: List[dict], current_user: dict = Depends(get_current_user)):
+    """
+    Update the order of poles by setting their sort_order field.
+    Expects: [{"id": "pole-id-1", "sort_order": 0}, {"id": "pole-id-2", "sort_order": 1}, ...]
+    """
+    updated = 0
+    for item in pole_orders:
+        pole_id = item.get("id")
+        sort_order = item.get("sort_order")
+        if pole_id is not None and sort_order is not None:
+            result = await _db.poles.update_one(
+                {"id": pole_id},
+                {"$set": {"sort_order": sort_order, "updated_at": datetime.now(timezone.utc).isoformat()}}
+            )
+            if result.modified_count > 0:
+                updated += 1
+    return {"message": f"Updated order for {updated} poles", "updated": updated}
 
 
 @router.get("/poles/{pole_id}", response_model=Pole)
@@ -483,25 +504,11 @@ async def export_poles_excel(request: Request, base_url: Optional[str] = None):
         ws.cell(row=current_row, column=1, value="PHOTOS").fill = section_fill
         ws.cell(row=current_row, column=1).font = section_font
         if photo_items:
-            # Create direct links to each photo file
             public_base = (base_url or str(request.base_url)).rstrip("/")
-            col = 2
-            for label, photo_url in photo_items:
-                # Ensure photo URL is absolute
-                if photo_url.startswith("/"):
-                    full_url = f"{public_base}{photo_url}"
-                elif photo_url.startswith("http"):
-                    full_url = photo_url
-                else:
-                    full_url = f"{public_base}/api/files/{photo_url}"
-                
-                link_cell = ws.cell(row=current_row, column=col, value=label)
-                link_cell.hyperlink = full_url
-                link_cell.font = Font(color="2563EB", underline="single", bold=True)
-                col += 1
-                if col > 12:  # Don't exceed column limit, wrap to next row
-                    current_row += 1
-                    col = 2
+            gallery_url = f"{public_base}/api/poles/{pole.get('id')}/gallery"
+            link_cell = ws.cell(row=current_row, column=2, value=f"View {len(photo_items)} photo(s)")
+            link_cell.hyperlink = gallery_url
+            link_cell.font = Font(color="2563EB", underline="single", bold=True)
         else:
             ws.cell(row=current_row, column=2, value="No photos")
         current_row += 1

@@ -72,6 +72,7 @@ class PoleBase(BaseModel):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     notes: Optional[str] = None
+    sort_order: Optional[int] = None  # Custom sort order for manual reordering
 
 
 class PoleCreate(PoleBase):
@@ -119,6 +120,7 @@ class PoleUpdate(BaseModel):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     notes: Optional[str] = None
+    sort_order: Optional[int] = None
 
 
 class Pole(PoleBase):

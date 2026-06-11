@@ -72,9 +72,30 @@ export const ugWithGps = (underground) =>
 export const markerLabel = (p, i, showStops) =>
   showStops ? `${i + 1}\u00B7${p.pole_number || ""}` : String(p.pole_number || "");
 
+// Sort with respect to sort_order if set, otherwise natural sort
+export const poleSortKey = (p) => {
+  if (p.sort_order !== null && p.sort_order !== undefined) {
+    return [0, p.sort_order, ""];
+  }
+  return [1, 0, String(p.pole_number || "")];
+};
+
+export const sortPoles = (poles) => {
+  return [...poles].sort((a, b) => {
+    const keyA = poleSortKey(a);
+    const keyB = poleSortKey(b);
+    for (let i = 0; i < keyA.length; i++) {
+      if (keyA[i] < keyB[i]) return -1;
+      if (keyA[i] > keyB[i]) return 1;
+    }
+    // If sort_order priority is the same, use natural compare for pole_number
+    return naturalCompare(a, b);
+  });
+};
+
 // Build the ordered route, segments (with footage + bearing), missing-GPS list
 export const computeRoute = (poles) => {
-  const sorted = [...poles].sort(naturalCompare);
+  const sorted = sortPoles(poles);
   const route = sorted.filter(hasGps).map((p) => ({ ...p, pos: [parseFloat(p.latitude), parseFloat(p.longitude)] }));
   const missing = sorted.filter((p) => !hasGps(p)).map((p) => p.pole_number || "(unnumbered)");
   const segments = [];
@@ -581,38 +602,16 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
     }
 
     // 8) Composite: map + right-side segment table panel
-    const final = document.createElement("canvas");
-    final.width = mapW + panelW;
-    final.height = mapH;
-    const fctx = final.getContext("2d");
-    fctx.fillStyle = "#ffffff";
-    fctx.fillRect(0, 0, final.width, final.height);
-    fctx.drawImage(canvas, 0, 0);
-    fctx.fillStyle = "#f4f4f5";
-    fctx.fillRect(mapW, 0, panelW, final.height);
-    fctx.fillStyle = "#dc2626";
-    fctx.fillRect(mapW, 0, panelW, 30 * s);
-    fctx.fillStyle = "#ffffff";
-    fctx.font = `700 ${13 * s}px ui-monospace, monospace`;
-    fctx.textAlign = "left";
-    fctx.textBaseline = "middle";
-    fctx.fillText("ROUTE SEGMENTS", mapW + 14 * s, 15 * s);
-
-    let yy = 46 * s;
+    // Calculate required panel height to show ALL measurements
     const rowH = 19 * s;
-    fctx.font = `${11 * s}px ui-monospace, monospace`;
-    
-    // Calculate how much space we need at the bottom
+    const headerH = 46 * s;
     const hasRisers = totalRiserFeet > 0;
-    const bottomSection = hasRisers ? 68 * s : 34 * s; // Extra space for riser row
+    const bottomSection = hasRisers ? 68 * s : 34 * s;
     
     // Build display rows: interleave segments with riser info
     const displayRows = [];
     for (let i = 0; i < segments.length; i++) {
-      // Add segment
       displayRows.push({ type: "segment", text: `${segments[i].a || "?"} -> ${segments[i].b || "?"}`, ft: segments[i].ft });
-      
-      // Check if pole B has risers (show after the span that leads to it)
       const poleB = route.find(p => p.pole_number === segments[i].b);
       if (poleB?.risers && poleB?.riser_height) {
         const riserCount = parseInt(poleB.risers) || 0;
@@ -627,15 +626,32 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
       }
     }
     
-    const maxRows = Math.floor((final.height - bottomSection - yy) / rowH);
+    // Calculate required height to show all measurements
+    const requiredPanelHeight = headerH + (displayRows.length * rowH) + bottomSection + 20 * s;
+    const finalHeight = Math.max(mapH, requiredPanelHeight);
     
+    const final = document.createElement("canvas");
+    final.width = mapW + panelW;
+    final.height = finalHeight;
+    const fctx = final.getContext("2d");
+    fctx.fillStyle = "#ffffff";
+    fctx.fillRect(0, 0, final.width, final.height);
+    fctx.drawImage(canvas, 0, 0);
+    fctx.fillStyle = "#f4f4f5";
+    fctx.fillRect(mapW, 0, panelW, final.height);
+    fctx.fillStyle = "#dc2626";
+    fctx.fillRect(mapW, 0, panelW, 30 * s);
+    fctx.fillStyle = "#ffffff";
+    fctx.font = `700 ${13 * s}px ui-monospace, monospace`;
+    fctx.textAlign = "left";
+    fctx.textBaseline = "middle";
+    fctx.fillText("ROUTE SEGMENTS", mapW + 14 * s, 15 * s);
+
+    let yy = headerH;
+    fctx.font = `${11 * s}px ui-monospace, monospace`;
+    
+    // Draw ALL measurements - no truncation
     for (let i = 0; i < displayRows.length; i++) {
-      if (displayRows.length > maxRows && i >= maxRows - 1) {
-        fctx.fillStyle = "#71717a";
-        fctx.textAlign = "left";
-        fctx.fillText(`+ ${displayRows.length - i} more`, mapW + 14 * s, yy);
-        break;
-      }
       const row = displayRows[i];
       fctx.fillStyle = row.type === "riser" ? "#f97316" : "#18181b";
       fctx.textAlign = "left";
@@ -1031,7 +1047,99 @@ const generateSegmentPage = async ({
   return canvas.toDataURL("image/png");
 };
 
-// Download segmented map pages as a ZIP file
+// Generate a separate measurement list image showing all span measurements
+const generateMeasurementListImage = ({ route, segments, totalFeet, totalRiserFeet, grandTotalFeet, job }) => {
+  const s = 2;
+  const panelW = 500 * s;
+  const rowH = 22 * s;
+  const headerH = 50 * s;
+  const hasRisers = totalRiserFeet > 0;
+  const bottomSection = hasRisers ? 80 * s : 44 * s;
+  
+  // Build display rows: interleave segments with riser info
+  const displayRows = [];
+  for (let i = 0; i < segments.length; i++) {
+    displayRows.push({ type: "segment", text: `${segments[i].a || "?"} → ${segments[i].b || "?"}`, ft: segments[i].ft });
+    const poleB = route.find(p => p.pole_number === segments[i].b);
+    if (poleB?.risers && poleB?.riser_height) {
+      const riserCount = parseInt(poleB.risers) || 0;
+      const riserHeight = parseFloat(poleB.riser_height) || 0;
+      if (riserCount > 0 && riserHeight > 0) {
+        displayRows.push({ 
+          type: "riser", 
+          text: `  ↳ ${poleB.pole_number} Riser${riserCount > 1 ? ` x${riserCount}` : ""}`, 
+          ft: riserCount * riserHeight 
+        });
+      }
+    }
+  }
+  
+  const requiredHeight = headerH + (displayRows.length * rowH) + bottomSection + 30 * s;
+  
+  const canvas = document.createElement("canvas");
+  canvas.width = panelW;
+  canvas.height = requiredHeight;
+  const ctx = canvas.getContext("2d");
+  
+  // Background
+  ctx.fillStyle = "#f4f4f5";
+  ctx.fillRect(0, 0, panelW, requiredHeight);
+  
+  // Header
+  ctx.fillStyle = "#dc2626";
+  ctx.fillRect(0, 0, panelW, headerH);
+  ctx.fillStyle = "#ffffff";
+  ctx.font = `700 ${16 * s}px ui-monospace, monospace`;
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  ctx.fillText("ROUTE MEASUREMENTS", 16 * s, headerH / 2);
+  
+  // Job name
+  ctx.font = `${11 * s}px ui-monospace, monospace`;
+  ctx.textAlign = "right";
+  ctx.fillText(job?.name || "Job", panelW - 16 * s, headerH / 2);
+  
+  // All measurements
+  let yy = headerH + 16 * s;
+  ctx.font = `${12 * s}px ui-monospace, monospace`;
+  
+  for (const row of displayRows) {
+    ctx.fillStyle = row.type === "riser" ? "#f97316" : "#18181b";
+    ctx.textAlign = "left";
+    ctx.fillText(row.text, 16 * s, yy);
+    ctx.textAlign = "right";
+    ctx.fillText(row.type === "riser" ? `+${fmtFeet(row.ft)}` : fmtFeet(row.ft), panelW - 16 * s, yy);
+    yy += rowH;
+  }
+  
+  // Riser total row if applicable
+  if (hasRisers) {
+    const riserY = requiredHeight - bottomSection;
+    ctx.fillStyle = "#f97316";
+    ctx.fillRect(0, riserY, panelW, 36 * s);
+    ctx.fillStyle = "#ffffff";
+    ctx.font = `700 ${12 * s}px ui-monospace, monospace`;
+    ctx.textAlign = "left";
+    ctx.fillText("TOTAL RISERS", 16 * s, riserY + 18 * s);
+    ctx.textAlign = "right";
+    ctx.fillText(`+ ${fmtFeet(totalRiserFeet)}`, panelW - 16 * s, riserY + 18 * s);
+  }
+  
+  // Grand total row
+  const totalY = requiredHeight - 44 * s;
+  ctx.fillStyle = "#dc2626";
+  ctx.fillRect(0, totalY, panelW, 44 * s);
+  ctx.fillStyle = "#ffffff";
+  ctx.font = `700 ${14 * s}px ui-monospace, monospace`;
+  ctx.textAlign = "left";
+  ctx.fillText("GRAND TOTAL", 16 * s, totalY + 22 * s);
+  ctx.textAlign = "right";
+  ctx.fillText(fmtFeet(grandTotalFeet), panelW - 16 * s, totalY + 22 * s);
+  
+  return canvas.toDataURL("image/png");
+};
+
+// Download segmented map pages as a ZIP file with separate measurement list
 export const downloadSegmentedMapPages = async ({ 
   poles, job, showStops = false, underground = [], 
   targetFeet = 800 
@@ -1059,6 +1167,7 @@ export const downloadSegmentedMapPages = async ({
 
     const zip = new JSZip();
     
+    // Generate map pages
     for (let i = 0; i < pages.length; i++) {
       const page = pages[i];
       const pageNum = i + 1;
@@ -1083,11 +1192,18 @@ export const downloadSegmentedMapPages = async ({
       });
       
       if (dataUrl) {
-        // Convert data URL to blob for ZIP
         const base64 = dataUrl.split(",")[1];
         zip.file(`page_${String(pageNum).padStart(2, "0")}_${startPole}_to_${endPole}.png`.replace(/[^a-z0-9_.-]/gi, "_"), base64, { base64: true });
       }
     }
+    
+    // Generate separate measurement list image
+    toast.info("Generating measurement list...");
+    const measurementDataUrl = generateMeasurementListImage({
+      route, segments, totalFeet, totalRiserFeet, grandTotalFeet, job
+    });
+    const measurementBase64 = measurementDataUrl.split(",")[1];
+    zip.file("00_measurement_list.png", measurementBase64, { base64: true });
     
     // Generate and download ZIP
     const zipBlob = await zip.generateAsync({ type: "blob" });
@@ -1100,7 +1216,7 @@ export const downloadSegmentedMapPages = async ({
     a.remove();
     URL.revokeObjectURL(url);
     
-    toast.success(`Downloaded ${totalPages} map pages as ZIP`);
+    toast.success(`Downloaded ${totalPages} map pages + measurement list as ZIP`);
     return true;
   } catch (e) {
     console.error(e);

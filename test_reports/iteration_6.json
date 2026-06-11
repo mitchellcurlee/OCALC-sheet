@@ -1,0 +1,53 @@
+{
+  "summary": "Tested new features: pole reordering, Photos ZIP, Map ZIP (with measurement list), Excel export, Map Image. Backend pytest: 8/8 passed. Frontend integration: Reorder UI works (chevron up/down + Save Order persists sort_order via PUT /api/poles/reorder), Photos ZIP downloads valid .zip, Excel downloads .xlsx, Map Image downloads .png. FOUND BUG: Map ZIP on a short route (OCALC seed has only 2 poles within 800ft) short-circuits to downloadPoleMapImage() returning a single PNG INSTEAD of a ZIP - which means the '00_measurement_list.png' (a stated feature) is NEVER produced for small jobs. The user explicitly asked for a ZIP containing segmented map pages PLUS a separate measurement list image; the current implementation only delivers the measurement list when totalPages > 1.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {
+        "flow": "Map ZIP download (downloadSegmentedMapPages)",
+        "issue": "When the route fits in a single 800ft page (totalPages === 1), poleMapImage.js line 1163-1166 returns downloadPoleMapImage() directly, producing only a single PNG named '<job>_pole_map.png'. NO ZIP is created, and the '00_measurement_list.png' measurement list image is NEVER generated for short routes. This violates the PRD which states the Map ZIP must always contain segmented map pages + a separate measurement list image. Repro: open OCALC job (2 poles), click 'Map ZIP' -> downloads A050ABC_pole_map.png (2.85MB single PNG) instead of A050ABC_map_pages.zip. Fix: remove the early-return, or wrap the single page + measurement list image together in a ZIP regardless of page count.",
+        "affected_selectors": ["[data-testid='map-zip-btn']"]
+      }
+    ],
+    "design_issues": []
+  },
+  "passed_tests": [
+    "Backend pytest 8/8: PUT /api/poles/reorder persists sort_order (verified via GET /api/poles/{id}), requires auth (401), does NOT collide with /poles/{pole_id} route (405 returned for GET)",
+    "Backend pytest: GET /api/jobs/{job_id}/export/photos-zip returns valid application/zip with proper Content-Disposition; requires auth; returns 404 for unknown job",
+    "Backend pytest: GET /api/jobs/{job_id}/export/excel returns XLSX (PK magic bytes)",
+    "Backend pytest: GET /api/jobs/{job_id}/poles includes sort_order field reflecting persisted values",
+    "Frontend: Login as Master Admin succeeds, A050ABC OCALC job visible",
+    "Frontend: All toolbar buttons present and visible - export-btn, photos-zip-btn, map-zip-btn, download-map-btn, map-btn",
+    "Frontend: Reorder button enters reorder mode, ChevronDown swaps pole order, Save Order returns to normal mode (verified Reorder button reappears)",
+    "Frontend: Photos ZIP button -> downloads A050ABC_photos_*.zip via /api/jobs/{id}/export/photos-zip",
+    "Frontend: Export button -> downloads A050ABC_*.xlsx via /api/jobs/{id}/export/excel",
+    "Frontend: Map Image button -> downloads A050ABC_pole_map.png (single map render, 2.85MB) via downloadPoleMapImage()",
+    "Frontend: Map ZIP button click DOES fire downloadSegmentedMapPages() (no JS errors)"
+  ],
+  "test_report_links": [
+    "/app/backend/tests/test_reorder_and_zips.py",
+    "/app/test_reports/pytest/pytest_reorder_zips.xml"
+  ],
+  "action_items": [
+    "HIGH: Fix /app/frontend/src/lib/poleMapImage.js line 1163-1166 - the early-return when totalPages === 1 breaks the Map ZIP promise. Either (a) remove the short-circuit so every Map ZIP click produces a JSZip containing 1+ page PNGs + 00_measurement_list.png, OR (b) keep the short-circuit but ALSO bundle the measurement list image into a 2-file ZIP. Recommended: remove the short-circuit entirely so behaviour is consistent.",
+    "MEDIUM: Add an automated playwright assertion that confirms Map ZIP downloads a file ending with .zip and contains '00_measurement_list.png' (after fix lands)."
+  ],
+  "critical_code_review_comments": [
+    "poleMapImage.js downloadSegmentedMapPages() lines 1163-1166: the 'totalPages === 1' early-return causes silent feature regression for short routes - users get a single PNG with no measurement list, contradicting the PRD. The function name 'downloadSegmentedMapPages' implies a ZIP is always returned. Either rename the function or remove the short-circuit.",
+    "routes/poles.py PUT /poles/reorder: route declared BEFORE /poles/{pole_id} (line 216 vs 236) - correct order, good. However reorder_poles is a plain dict-list payload (List[dict]) rather than a typed Pydantic model - consider PoleReorderItem(BaseModel) for input validation (currently a malformed payload of {} silently no-ops with updated=0).",
+    "JobDetail.jsx handleDownloadMapZip line 78-85: uses setMapZipDownloading state but the disabled condition includes poles.length < 2 - good. However there is no try/catch displaying user feedback when downloadSegmentedMapPages throws; the lib handles its own toast so this is acceptable but inconsistent with handleDownloadPhotosZip which has explicit try/catch.",
+    "JobDetail.jsx line 5: imports from '@/lib/poleMapImage' which contains 1227 lines of code - this file is well above the 700-line threshold and should be split into renderer/route/segment/measurement-list modules for maintainability and testability.",
+    "Backend test_reorder_route_does_not_collide_with_pole_id passes (returns 405 for GET), confirming the route ordering fix from the previous iteration is still intact."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_reorder_and_zips.py (NEW - 8 pytest cases covering reorder + photos-zip + excel export + sort_order persistence)"
+  ],
+  "success_rate": {"backend": "100% (8/8 pytest)", "frontend": "80% (4/5 features fully working - Map ZIP regresses to single PNG for short routes, missing measurement list image)"},
+  "test_credentials": "Admin tim.gables@byers.com / Byers@13430 (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "None - tests use seeded OCALC job e5dc0bae-96bb-4cef-8001-7baf4e41d80a (A050ABC) which has 2 poles. The reorder test restores original order at end. The photos-zip test creates no data. NOTE: because OCALC has only 2 poles ~within 800ft, the Map ZIP feature short-circuits to a single PNG - to fully exercise the ZIP branch, a longer multi-pole route (>800ft total span) would be needed.",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend reorder route is fixed and order-correct (/poles/reorder declared before /poles/{pole_id}). Pytest file /app/backend/tests/test_reorder_and_zips.py is reusable as regression. The only outstanding issue is poleMapImage.js short-circuit at line 1163-1166. After the fix, retest: click 'Map ZIP' on OCALC job and confirm download is a .zip containing at least '00_measurement_list.png' + 1+ map page PNG. Use playwright expect_download + zipfile inspection (sample script in this iteration). Note the file downloaded for a single-page route was named '<job>_pole_map.png' (2.85MB), confirming downloadPoleMapImage was invoked instead of the ZIP branch.",
+  "rca of the issue": "RCA for Map ZIP missing measurement list: downloadSegmentedMapPages() in /app/frontend/src/lib/poleMapImage.js calls splitRouteIntoSegments(route, segments, 800) which returns 1 page for the OCALC seed (2 poles spanning <800ft). The function then hits line 1163 'if (totalPages === 1) { return downloadPoleMapImage({...}); }' and immediately downloads a single PNG via the regular map renderer - completely skipping the JSZip block AND skipping the generateMeasurementListImage() call at line 1202. Result: the user clicks 'Map ZIP' expecting a ZIP with measurement list, but receives only the map PNG and no measurement list image. Reproduction: login -> open OCALC job (e5dc0bae-...) -> click 'Map ZIP' button -> download is 'A050ABC_pole_map.png' (single PNG), NOT a .zip. Mitigation: remove the early-return at lines 1163-1166 (let the ZIP branch run even for 1-page routes), OR construct a 2-file ZIP (single map page + measurement list) when totalPages === 1."
+}

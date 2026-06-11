@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
-import { downloadPoleMapImage, UNDERGROUND_TYPES, undergroundAbbr } from "@/lib/poleMapImage";
+import { downloadPoleMapImage, downloadSegmentedMapPages, UNDERGROUND_TYPES, undergroundAbbr } from "@/lib/poleMapImage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -36,6 +36,13 @@ import {
   Layers,
   ChevronDown,
   RefreshCw,
+  ArrowUp,
+  ArrowDown,
+  GripVertical,
+  Check,
+  X,
+  Image,
+  Package,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -55,6 +62,9 @@ const JobDetail = () => {
   const [deleteId, setDeleteId] = useState(null);
   const [mapDownloading, setMapDownloading] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [reorderMode, setReorderMode] = useState(false);
+  const [reorderedPoles, setReorderedPoles] = useState([]);
+  const [mapZipDownloading, setMapZipDownloading] = useState(false);
 
   const handleDownloadMap = async () => {
     setMapDownloading(true);
@@ -62,6 +72,47 @@ const JobDetail = () => {
       await downloadPoleMapImage({ poles, job, underground: undergroundItems });
     } finally {
       setMapDownloading(false);
+    }
+  };
+
+  const handleDownloadMapZip = async () => {
+    setMapZipDownloading(true);
+    try {
+      await downloadSegmentedMapPages({ poles, job, underground: undergroundItems });
+    } finally {
+      setMapZipDownloading(false);
+    }
+  };
+
+  // Pole reorder handlers
+  const startReorder = () => {
+    setReorderedPoles([...poles]);
+    setReorderMode(true);
+  };
+
+  const cancelReorder = () => {
+    setReorderedPoles([]);
+    setReorderMode(false);
+  };
+
+  const movePole = (index, direction) => {
+    const newOrder = [...reorderedPoles];
+    const newIndex = direction === "up" ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= newOrder.length) return;
+    [newOrder[index], newOrder[newIndex]] = [newOrder[newIndex], newOrder[index]];
+    setReorderedPoles(newOrder);
+  };
+
+  const saveReorder = async () => {
+    try {
+      const poleOrders = reorderedPoles.map((p, i) => ({ id: p.id, sort_order: i }));
+      await axios.put("/poles/reorder", poleOrders);
+      toast.success("Pole order updated!");
+      setReorderMode(false);
+      setReorderedPoles([]);
+      fetchJobAndPoles();
+    } catch (e) {
+      toast.error("Failed to save pole order");
     }
   };
 
@@ -133,6 +184,26 @@ const JobDetail = () => {
       toast.success("Excel file downloaded!");
     } catch (error) {
       toast.error("Failed to export data");
+    }
+  };
+
+  const handleDownloadPhotosZip = async () => {
+    try {
+      toast.info("Preparing photo archive...");
+      const response = await axios.get(`/jobs/${jobId}/export/photos-zip`, {
+        responseType: "blob"
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      const filename = response.headers["content-disposition"]?.split("filename=")[1] || `${job?.name || "job"}_photos.zip`;
+      link.setAttribute("download", filename.replace(/"/g, ""));
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      toast.success("Photos ZIP downloaded!");
+    } catch (error) {
+      toast.error("Failed to download photos");
     }
   };
 
@@ -243,6 +314,27 @@ const JobDetail = () => {
                 Export
               </Button>
               <Button
+                onClick={handleDownloadPhotosZip}
+                variant="outline"
+                className="flex-1 sm:flex-initial h-11 sm:h-10 bg-purple-50 border-purple-300 hover:bg-purple-100 text-purple-700 text-sm"
+                data-testid="photos-zip-btn"
+                title="Download all photos as ZIP"
+              >
+                <Image className="w-4 h-4 mr-2" />
+                Photos ZIP
+              </Button>
+              <Button
+                onClick={handleDownloadMapZip}
+                disabled={mapZipDownloading || poles.length < 2}
+                variant="outline"
+                className="flex-1 sm:flex-initial h-11 sm:h-10 bg-green-50 border-green-300 hover:bg-green-100 text-green-700 text-sm"
+                data-testid="map-zip-btn"
+                title="Download segmented map pages as ZIP with measurement list"
+              >
+                {mapZipDownloading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Package className="w-4 h-4 mr-2" />}
+                Map ZIP
+              </Button>
+              <Button
                 onClick={handleSyncDistances}
                 disabled={syncing || poles.length < 2}
                 variant="outline"
@@ -335,8 +427,67 @@ const JobDetail = () => {
           </div>
         </div>
 
+        {/* Poles List Header */}
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-heading text-lg font-bold text-zinc-900">Poles</h2>
+          <div className="flex items-center gap-2">
+            {reorderMode ? (
+              <>
+                <Button variant="outline" size="sm" onClick={cancelReorder} className="gap-1">
+                  <X className="w-4 h-4" /> Cancel
+                </Button>
+                <Button size="sm" onClick={saveReorder} className="bg-green-600 hover:bg-green-700 gap-1">
+                  <Check className="w-4 h-4" /> Save Order
+                </Button>
+              </>
+            ) : (
+              <Button variant="outline" size="sm" onClick={startReorder} className="gap-1" disabled={poles.length < 2}>
+                <GripVertical className="w-4 h-4" /> Reorder
+              </Button>
+            )}
+          </div>
+        </div>
+
         {/* Poles List */}
-        {filteredPoles.length === 0 ? (
+        {reorderMode ? (
+          <div className="space-y-2 bg-amber-50 p-4 rounded-lg border-2 border-amber-300">
+            <p className="text-sm text-amber-700 mb-3">Use the arrows to change pole order, then click Save.</p>
+            {reorderedPoles.map((pole, index) => (
+              <div
+                key={pole.id}
+                className="industrial-card p-3 flex items-center justify-between bg-white"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-mono text-zinc-500 w-6">{index + 1}</span>
+                  <span className="font-bold text-zinc-900">{pole.pole_number || "No #"}</span>
+                  <Badge className={`${getConditionColor(pole.condition)} text-xs`}>
+                    {pole.condition || "Not set"}
+                  </Badge>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => movePole(index, "up")}
+                    disabled={index === 0}
+                    className="h-8 w-8 p-0"
+                  >
+                    <ArrowUp className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => movePole(index, "down")}
+                    disabled={index === reorderedPoles.length - 1}
+                    className="h-8 w-8 p-0"
+                  >
+                    <ArrowDown className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : filteredPoles.length === 0 ? (
           <div className="industrial-card p-12 text-center">
             <Radio className="w-16 h-16 text-zinc-600 mx-auto mb-4" />
             <h2 className="text-xl font-bold text-zinc-900 mb-2">

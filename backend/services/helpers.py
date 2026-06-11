@@ -19,10 +19,16 @@ def format_height(value):
 
 
 def pole_sort_key(pole):
-    """Natural sort by pole_number so numbers compare numerically regardless of
-    prefix: '1' < '2' < '10', and 'P-2' < 'P-12'."""
+    """Sort by sort_order if set, otherwise natural sort by pole_number."""
+    # If sort_order is explicitly set, use it as primary sort
+    sort_order = pole.get("sort_order")
+    if sort_order is not None:
+        return (0, sort_order, [])
+    
+    # Fall back to natural sort by pole_number
     pn = str(pole.get("pole_number") or "").strip().lower()
-    return [(0, int(t)) if t.isdigit() else (1, t) for t in re.split(r"(\d+)", pn) if t]
+    natural_key = [(0, int(t)) if t.isdigit() else (1, t) for t in re.split(r"(\d+)", pn) if t]
+    return (1, 0, natural_key)
 
 
 def haversine_feet(lat1, lon1, lat2, lon2):

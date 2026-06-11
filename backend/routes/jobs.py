@@ -324,24 +324,10 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
         ws.cell(row=current_row, column=1, value="PHOTOS").fill = header_fill
         ws.cell(row=current_row, column=1).font = header_font
         if photo_items:
-            # Create direct links to each photo file
-            col = 2
-            for label, photo_url in photo_items:
-                # Ensure photo URL is absolute
-                if photo_url.startswith("/"):
-                    full_url = f"{public_base}{photo_url}"
-                elif photo_url.startswith("http"):
-                    full_url = photo_url
-                else:
-                    full_url = f"{public_base}/api/files/{photo_url}"
-                
-                link_cell = ws.cell(row=current_row, column=col, value=label)
-                link_cell.hyperlink = full_url
-                link_cell.font = Font(color="2563EB", underline="single", bold=True)
-                col += 1
-                if col > 12:  # Don't exceed column limit, wrap to next row
-                    current_row += 1
-                    col = 2
+            gallery_url = f"{public_base}/api/poles/{pole.get('id')}/gallery"
+            link_cell = ws.cell(row=current_row, column=2, value=f"View {len(photo_items)} photo(s)")
+            link_cell.hyperlink = gallery_url
+            link_cell.font = Font(color="2563EB", underline="single", bold=True)
         else:
             ws.cell(row=current_row, column=2, value="No photos")
         current_row += 1
@@ -400,5 +386,70 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
     return StreamingResponse(
         buffer,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+
+@router.get("/jobs/{job_id}/export/photos-zip")
+async def export_job_photos_zip(job_id: str, current_user: dict = Depends(get_current_user)):
+    """Export all photos from a job as a ZIP file, organized by pole with labels"""
+    import zipfile
+    import httpx
+    from services.storage import get_object
+    
+    if is_admin_user(current_user):
+        job = await _db.jobs.find_one({"id": job_id}, {"_id": 0})
+    else:
+        job = await _db.jobs.find_one({"id": job_id, "user_id": current_user["id"]}, {"_id": 0})
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    poles = await _db.poles.find({"job_id": job_id}, {"_id": 0}).to_list(10000)
+    poles.sort(key=pole_sort_key)
+    
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for pole in poles:
+            pole_number = pole.get("pole_number", "unknown")
+            safe_pole_name = "".join(c for c in pole_number if c.isalnum() or c in (' ', '-', '_')).strip()
+            
+            photo_items = pole_photo_items(pole)
+            for label, photo_url in photo_items:
+                try:
+                    # Get the file path from URL
+                    if photo_url.startswith("/api/files/"):
+                        file_path = photo_url.replace("/api/files/", "")
+                    elif photo_url.startswith("http"):
+                        # External URL - skip or fetch
+                        continue
+                    else:
+                        file_path = photo_url
+                    
+                    # Get file data from storage
+                    data, content_type = get_object(file_path)
+                    
+                    # Determine extension
+                    ext = ".jpg"
+                    if "png" in content_type:
+                        ext = ".png"
+                    elif "webp" in content_type:
+                        ext = ".webp"
+                    
+                    # Create safe filename with label
+                    safe_label = "".join(c for c in label if c.isalnum() or c in (' ', '-', '_')).strip()
+                    filename = f"{safe_pole_name}/{safe_label}{ext}"
+                    
+                    zf.writestr(filename, data)
+                except Exception as e:
+                    # Skip failed photos
+                    continue
+    
+    buffer.seek(0)
+    safe_name = "".join(c for c in job.get("name", "job") if c.isalnum() or c in (' ', '-', '_')).strip()
+    filename = f"{safe_name}_photos_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip"
+    
+    return StreamingResponse(
+        buffer,
+        media_type="application/zip",
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
