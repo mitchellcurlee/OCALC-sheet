@@ -55,6 +55,7 @@ class PoleBase(BaseModel):
     attachments: Optional[List[Attachment]] = []
     pole_terminal: Optional[str] = None
     risers: Optional[str] = None
+    riser_height: Optional[float] = None
     span1_direction: Optional[str] = None
     span1_distance: Optional[float] = None
     span1_owner: Optional[str] = None
@@ -100,6 +101,7 @@ class PoleUpdate(BaseModel):
     attachments: Optional[List[Attachment]] = None
     pole_terminal: Optional[str] = None
     risers: Optional[str] = None
+    riser_height: Optional[float] = None
     span1_direction: Optional[str] = None
     span1_distance: Optional[float] = None
     span1_owner: Optional[str] = None

@@ -429,6 +429,7 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
       ...formData,
       job_id: jobId || (initialPole && initialPole.job_id) || null,
       // Convert numeric fields
+      riser_height: formData.riser_height ? parseFloat(formData.riser_height) : null,
       span1_distance: formData.span1_distance ? parseFloat(formData.span1_distance) : null,
       span2_distance: formData.span2_distance ? parseFloat(formData.span2_distance) : null,
       span3_distance: formData.span3_distance ? parseFloat(formData.span3_distance) : null,
