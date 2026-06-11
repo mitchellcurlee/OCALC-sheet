@@ -136,12 +136,9 @@ async def get_job_poles(job_id: str, current_user: dict = Depends(get_current_us
 
 
 @router.get("/jobs/{job_id}/export/excel")
-async def export_job_excel(job_id: str, request: Request, base_url: Optional[str] = None, current_user: dict = Depends(get_current_user)):
-    """Export all poles from a job to Excel"""
-    if is_admin_user(current_user):
-        job = await _db.jobs.find_one({"id": job_id}, {"_id": 0})
-    else:
-        job = await _db.jobs.find_one({"id": job_id, "user_id": current_user["id"]}, {"_id": 0})
+async def export_job_excel(job_id: str, request: Request, base_url: Optional[str] = None):
+    """Export all poles from a job to Excel - publicly accessible for sharing"""
+    job = await _db.jobs.find_one({"id": job_id}, {"_id": 0})
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
     
