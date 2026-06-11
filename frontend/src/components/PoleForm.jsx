@@ -82,7 +82,7 @@ const emptyFormData = () => ({
   ocalc_left_photo: "", ocalc_middle_photo: "", ocalc_right_photo: "",
   has_birthmark: true, birthmark_photo: "",
   mgnv: "", mgnv_condition: "", mgnv_photo: "",
-  pole_terminal: "", risers: "",
+  pole_terminal: "", risers: "", riser_height: "",
   span1_direction: "", span1_distance: "", span1_owner: "",
   span2_direction: "", span2_distance: "", span2_owner: "",
   span3_direction: "", span3_distance: "", span3_owner: "",
@@ -166,7 +166,7 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
       ocalc_left_photo: p.ocalc_left_photo || "", ocalc_middle_photo: p.ocalc_middle_photo || "", ocalc_right_photo: p.ocalc_right_photo || "",
       has_birthmark: p.has_birthmark !== false, birthmark_photo: p.birthmark_photo || "",
       mgnv: p.mgnv || "", mgnv_condition: p.mgnv_condition || "", mgnv_photo: p.mgnv_photo || "",
-      pole_terminal: p.pole_terminal || "", risers: p.risers || "",
+      pole_terminal: p.pole_terminal || "", risers: p.risers || "", riser_height: p.riser_height?.toString() || "",
       span1_direction: p.span1_direction || "", span1_distance: p.span1_distance?.toString() || "", span1_owner: p.span1_owner || "",
       span2_direction: p.span2_direction || "", span2_distance: p.span2_distance?.toString() || "", span2_owner: p.span2_owner || "",
       span3_direction: p.span3_direction || "", span3_distance: p.span3_distance?.toString() || "", span3_owner: p.span3_owner || "",
@@ -850,16 +850,24 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Risers</Label>
-                    <Select value={formData.risers} onValueChange={(v) => handleSelectChange("risers", v)}>
-                      <SelectTrigger className="h-10 bg-white border-zinc-300 text-zinc-900" data-testid="risers-select">
-                        <SelectValue placeholder="Select #" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-zinc-50 border-zinc-300">
-                        <SelectItem value={BLANK} className="text-zinc-500">—</SelectItem>
-                        {options.riser_options.map((r) => (<SelectItem key={r} value={r}>{r}</SelectItem>))}
-                      </SelectContent>
-                    </Select>
+                    <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">How Many Risers</Label>
+                    <div className="flex gap-2">
+                      <Select value={formData.risers} onValueChange={(v) => handleSelectChange("risers", v)}>
+                        <SelectTrigger className="h-10 bg-white border-zinc-300 text-zinc-900 flex-1" data-testid="risers-select">
+                          <SelectValue placeholder="Select #" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-zinc-50 border-zinc-300">
+                          <SelectItem value={BLANK} className="text-zinc-500">—</SelectItem>
+                          {options.riser_options.map((r) => (<SelectItem key={r} value={r}>{r}</SelectItem>))}
+                        </SelectContent>
+                      </Select>
+                      <HeightInput 
+                        value={formData.riser_height} 
+                        onChange={(v) => setFormData(prev => ({ ...prev, riser_height: v }))} 
+                        label="" 
+                        testId="riser-height" 
+                      />
+                    </div>
                   </div>
                 </div>
               </div>

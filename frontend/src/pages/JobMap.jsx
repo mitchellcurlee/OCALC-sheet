@@ -17,21 +17,32 @@ import {
 import EditableRoute from "@/components/EditableRoute";
 import MapAnnotations from "@/components/MapAnnotations";
 
+// Format riser height from decimal feet to feet'inches"
+const formatRiserHeight = (value) => {
+  if (!value || value === "") return "";
+  const v = parseFloat(value);
+  if (Number.isNaN(v)) return String(value);
+  let feet = Math.floor(v);
+  let inches = Math.round((v - feet) * 12);
+  if (inches === 12) { feet += 1; inches = 0; }
+  return `${feet}' ${inches}"`;
+};
+
 // Small red dot for pole marker with label on the side
 const poleIcon = (label, offsetDir = "right") => {
   // offsetDir: "right", "left", "top", "bottom" for label placement
-  const dotSize = 12;
-  const labelOffset = offsetDir === "right" ? "left: 16px;" : 
-                      offsetDir === "left" ? "right: 16px;" :
-                      offsetDir === "top" ? "bottom: 16px; left: 50%; transform: translateX(-50%);" :
-                      "top: 16px; left: 50%; transform: translateX(-50%);";
+  const dotSize = 8; // Smaller dot
+  const labelOffset = offsetDir === "right" ? "left: 12px;" : 
+                      offsetDir === "left" ? "right: 12px;" :
+                      offsetDir === "top" ? "bottom: 12px; left: 50%; transform: translateX(-50%);" :
+                      "top: 12px; left: 50%; transform: translateX(-50%);";
   
   return L.divIcon({
     className: "pole-route-marker",
     html: `
       <div style="position:relative;">
-        <div style="background:#dc2626;border:2px solid #fff;border-radius:50%;width:${dotSize}px;height:${dotSize}px;box-shadow:0 1px 4px rgba(0,0,0,.5);"></div>
-        <div style="position:absolute;${labelOffset}top:50%;transform:translateY(-50%);background:#dc2626;color:#fff;border:1.5px solid #fff;border-radius:8px;padding:1px 6px;font:700 10px/1.2 ui-monospace,monospace;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.4);">${label}</div>
+        <div style="background:#dc2626;border:1.5px solid #fff;border-radius:50%;width:${dotSize}px;height:${dotSize}px;box-shadow:0 1px 3px rgba(0,0,0,.4);"></div>
+        <div style="position:absolute;${labelOffset}top:50%;transform:translateY(-50%);background:#dc2626;color:#fff;border:1px solid #fff;border-radius:5px;padding:1px 4px;font:600 8px/1.2 ui-monospace,monospace;white-space:nowrap;box-shadow:0 1px 2px rgba(0,0,0,.3);">${label}</div>
       </div>
     `,
     iconSize: [dotSize, dotSize],
@@ -40,8 +51,8 @@ const poleIcon = (label, offsetDir = "right") => {
 };
 
 // Pole marker with arrow pointing to the dot (for clustered poles)
-const poleIconWithArrow = (label, arrowAngle, distance = 40) => {
-  const dotSize = 12;
+const poleIconWithArrow = (label, arrowAngle, distance = 30) => {
+  const dotSize = 8; // Smaller dot
   const rad = (arrowAngle * Math.PI) / 180;
   const labelX = Math.cos(rad) * distance;
   const labelY = Math.sin(rad) * distance;
@@ -50,12 +61,12 @@ const poleIconWithArrow = (label, arrowAngle, distance = 40) => {
     className: "pole-route-marker-arrow",
     html: `
       <div style="position:relative;">
-        <div style="background:#dc2626;border:2px solid #fff;border-radius:50%;width:${dotSize}px;height:${dotSize}px;box-shadow:0 1px 4px rgba(0,0,0,.5);"></div>
+        <div style="background:#dc2626;border:1.5px solid #fff;border-radius:50%;width:${dotSize}px;height:${dotSize}px;box-shadow:0 1px 3px rgba(0,0,0,.4);"></div>
         <svg style="position:absolute;left:${dotSize/2}px;top:${dotSize/2}px;overflow:visible;pointer-events:none;" width="1" height="1">
-          <line x1="0" y1="0" x2="${labelX}" y2="${labelY}" stroke="#dc2626" stroke-width="1.5"/>
-          <polygon points="${labelX},${labelY} ${labelX - 4 * Math.cos(rad - 0.5)},${labelY - 4 * Math.sin(rad - 0.5)} ${labelX - 4 * Math.cos(rad + 0.5)},${labelY - 4 * Math.sin(rad + 0.5)}" fill="#dc2626"/>
+          <line x1="0" y1="0" x2="${labelX}" y2="${labelY}" stroke="#dc2626" stroke-width="1"/>
+          <polygon points="${labelX},${labelY} ${labelX - 3 * Math.cos(rad - 0.5)},${labelY - 3 * Math.sin(rad - 0.5)} ${labelX - 3 * Math.cos(rad + 0.5)},${labelY - 3 * Math.sin(rad + 0.5)}" fill="#dc2626"/>
         </svg>
-        <div style="position:absolute;left:${labelX + dotSize/2 - 20}px;top:${labelY + dotSize/2 - 10}px;background:#dc2626;color:#fff;border:1.5px solid #fff;border-radius:8px;padding:2px 7px;font:700 10px/1.2 ui-monospace,monospace;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.4);">${label}</div>
+        <div style="position:absolute;left:${labelX + dotSize/2 - 16}px;top:${labelY + dotSize/2 - 8}px;background:#dc2626;color:#fff;border:1px solid #fff;border-radius:5px;padding:1px 4px;font:600 8px/1.2 ui-monospace,monospace;white-space:nowrap;box-shadow:0 1px 2px rgba(0,0,0,.3);">${label}</div>
       </div>
     `,
     iconSize: [dotSize, dotSize],
@@ -81,13 +92,13 @@ const labelIcon = (text, ox, oy) =>
     iconAnchor: [32 - ox, 11 - oy],
   });
 
-// Underground item marker (GREEN square with abbreviation)
+// Underground item marker (GREEN square with abbreviation) - smaller
 const ugIcon = (abbr) =>
   L.divIcon({
     className: "ug-marker",
-    html: `<div style="background:#16a34a;color:#fff;border:2px solid #fff;border-radius:4px;min-width:24px;height:24px;padding:0 5px;display:flex;align-items:center;justify-content:center;font:700 11px/1 ui-monospace,monospace;box-shadow:0 1px 4px rgba(0,0,0,.5);white-space:nowrap;">${abbr}</div>`,
-    iconSize: [24, 24],
-    iconAnchor: [12, 12],
+    html: `<div style="background:#16a34a;color:#fff;border:1.5px solid #fff;border-radius:3px;min-width:18px;height:18px;padding:0 3px;display:flex;align-items:center;justify-content:center;font:600 9px/1 ui-monospace,monospace;box-shadow:0 1px 3px rgba(0,0,0,.4);white-space:nowrap;">${abbr}</div>`,
+    iconSize: [18, 18],
+    iconAnchor: [9, 9],
   });
 
 // Underground connector distance label (GREEN pill)
@@ -543,6 +554,7 @@ const JobMap = () => {
                           <div><span className="text-zinc-400">Size:</span> {p.pole_size ? `${p.pole_size}'` : "—"}</div>
                           <div><span className="text-zinc-400">Class:</span> {p.pole_class || "—"}</div>
                           <div><span className="text-zinc-400">Condition:</span> {p.condition || "—"}</div>
+                          {p.risers && <div><span className="text-zinc-400">Risers:</span> {p.risers}{p.riser_height ? ` @ ${formatRiserHeight(p.riser_height)}` : ""}</div>}
                         </div>
                         <div className="mt-2 flex gap-2">
                           <Link to={`/jobs/${jobId}/view/${p.id}`} className="flex-1">
