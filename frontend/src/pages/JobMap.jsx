@@ -180,7 +180,7 @@ const JobMap = () => {
     fetchData();
   }, [fetchData]);
 
-  const { route, missing, segments, totalFeet, totalRiserFeet, grandTotalFeet } = useMemo(() => computeRoute(poles), [poles]);
+  const { route, missing, segments, totalFeet, totalRiserFeet, grandTotalFeet, usingManualSpans } = useMemo(() => computeRoute(poles), [poles]);
   const ug = useMemo(() => ugWithGps(underground), [underground]);
   const ugConnectors = useMemo(() => computeUgConnectors(route, ug), [route, ug]);
   const presentUg = useMemo(() => [...new Set(ug.map((u) => u.type))], [ug]);
@@ -376,6 +376,7 @@ const JobMap = () => {
               </h1>
               <p className="text-xs font-mono text-zinc-500">
                 {route.length} pole(s){ug.length ? ` · ${ug.length} underground` : ""} · {fmtFeet(totalFeet)} span{totalRiserFeet > 0 ? ` + ${fmtFeet(totalRiserFeet)} risers = ${fmtFeet(grandTotalFeet)} total` : " total"}
+                {usingManualSpans && <span className="ml-2 text-indigo-600">(Manual)</span>}
               </p>
             </div>
           </div>

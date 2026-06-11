@@ -83,6 +83,7 @@ const emptyFormData = () => ({
   has_birthmark: true, birthmark_photo: "",
   mgnv: "", mgnv_condition: "", mgnv_photo: "",
   pole_terminal: "", risers: "", riser_height: "",
+  use_manual_spans: false,
   span1_direction: "", span1_distance: "", span1_owner: "",
   span2_direction: "", span2_distance: "", span2_owner: "",
   span3_direction: "", span3_distance: "", span3_owner: "",
@@ -167,6 +168,7 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
       has_birthmark: p.has_birthmark !== false, birthmark_photo: p.birthmark_photo || "",
       mgnv: p.mgnv || "", mgnv_condition: p.mgnv_condition || "", mgnv_photo: p.mgnv_photo || "",
       pole_terminal: p.pole_terminal || "", risers: p.risers || "", riser_height: p.riser_height?.toString() || "",
+      use_manual_spans: p.use_manual_spans === true,
       span1_direction: p.span1_direction || "", span1_distance: p.span1_distance?.toString() || "", span1_owner: p.span1_owner || "",
       span2_direction: p.span2_direction || "", span2_distance: p.span2_distance?.toString() || "", span2_owner: p.span2_owner || "",
       span3_direction: p.span3_direction || "", span3_distance: p.span3_distance?.toString() || "", span3_owner: p.span3_owner || "",
@@ -622,10 +624,46 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
 
           {/* Spans - 4 Rows */}
           <div className="industrial-card p-4 sm:p-5">
-            <h2 className="font-heading text-base sm:text-lg font-bold text-zinc-900 mb-3 sm:mb-4 flex items-center gap-2">
-              <div className="w-1 h-5 bg-indigo-500"></div>
-              Spans
-            </h2>
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
+              <h2 className="font-heading text-base sm:text-lg font-bold text-zinc-900 flex items-center gap-2">
+                <div className="w-1 h-5 bg-indigo-500"></div>
+                Spans
+              </h2>
+              <div className="flex items-center gap-2">
+                <Label className="text-xs font-mono text-zinc-500">Use for Map:</Label>
+                <div className="flex rounded-md border border-zinc-300 overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, use_manual_spans: false }))}
+                    className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                      !formData.use_manual_spans 
+                        ? "bg-indigo-600 text-white" 
+                        : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
+                    }`}
+                    data-testid="use-gps-spans-btn"
+                  >
+                    GPS Auto
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, use_manual_spans: true }))}
+                    className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                      formData.use_manual_spans 
+                        ? "bg-indigo-600 text-white" 
+                        : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
+                    }`}
+                    data-testid="use-manual-spans-btn"
+                  >
+                    Manual
+                  </button>
+                </div>
+              </div>
+            </div>
+            {formData.use_manual_spans && (
+              <p className="text-xs text-indigo-600 mb-3 bg-indigo-50 p-2 rounded border border-indigo-200">
+                ✓ Manual measurements will be used in the interactive map instead of GPS-calculated distances.
+              </p>
+            )}
             <div className="space-y-3">
               {[1, 2, 3, 4].map((num) => (
                 <div key={num} className="bg-zinc-50 p-3 border border-zinc-300">

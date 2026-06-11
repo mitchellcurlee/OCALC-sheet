@@ -56,6 +56,7 @@ class PoleBase(BaseModel):
     pole_terminal: Optional[str] = None
     risers: Optional[str] = None
     riser_height: Optional[float] = None
+    use_manual_spans: Optional[bool] = False
     span1_direction: Optional[str] = None
     span1_distance: Optional[float] = None
     span1_owner: Optional[str] = None
@@ -102,6 +103,7 @@ class PoleUpdate(BaseModel):
     pole_terminal: Optional[str] = None
     risers: Optional[str] = None
     riser_height: Optional[float] = None
+    use_manual_spans: Optional[bool] = None
     span1_direction: Optional[str] = None
     span1_distance: Optional[float] = None
     span1_owner: Optional[str] = None

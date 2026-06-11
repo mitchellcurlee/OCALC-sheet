@@ -80,12 +80,27 @@ export const computeRoute = (poles) => {
   const segments = [];
   let totalFeet = 0;
   let totalRiserFeet = 0;
+  let usingManualSpans = false;
   
   for (let i = 0; i < route.length - 1; i++) {
-    const ft = distanceFeet(route[i].pos, route[i + 1].pos);
-    const deg = bearingDeg(route[i].pos, route[i + 1].pos);
-    const mid = [(route[i].pos[0] + route[i + 1].pos[0]) / 2, (route[i].pos[1] + route[i + 1].pos[1]) / 2];
-    segments.push({ ft, deg, mid, a: route[i].pole_number, b: route[i + 1].pole_number });
+    const poleA = route[i];
+    const poleB = route[i + 1];
+    const gpsFt = distanceFeet(poleA.pos, poleB.pos);
+    const deg = bearingDeg(poleA.pos, poleB.pos);
+    const mid = [(poleA.pos[0] + poleB.pos[0]) / 2, (poleA.pos[1] + poleB.pos[1]) / 2];
+    
+    // Check if poleA has use_manual_spans enabled and has a manual span1_distance
+    // The span from pole A goes TO pole B, so we use poleA's span distances
+    let ft = gpsFt;
+    let isManual = false;
+    
+    if (poleA.use_manual_spans && poleA.span1_distance) {
+      ft = parseFloat(poleA.span1_distance) || gpsFt;
+      isManual = true;
+      usingManualSpans = true;
+    }
+    
+    segments.push({ ft, gpsFt, deg, mid, a: poleA.pole_number, b: poleB.pole_number, isManual });
     totalFeet += ft;
   }
   
@@ -98,7 +113,7 @@ export const computeRoute = (poles) => {
     }
   }
   
-  return { route, segments, missing, totalFeet, totalRiserFeet, grandTotalFeet: totalFeet + totalRiserFeet };
+  return { route, segments, missing, totalFeet, totalRiserFeet, grandTotalFeet: totalFeet + totalRiserFeet, usingManualSpans };
 };
 
 // For each underground item, find its nearest pole and the connector geometry
