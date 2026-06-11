@@ -65,6 +65,7 @@ async def _sync_job_distances(job_id: str):
     """
     Internal helper to sync GPS-calculated distances for a job.
     Returns dict with message, updated count, and pole details.
+    Skips poles that have use_manual_spans enabled.
     """
     import math
     
@@ -72,6 +73,9 @@ async def _sync_job_distances(job_id: str):
     poles = await _db.poles.find({"job_id": job_id}, {"_id": 0}).to_list(1000)
     if not poles:
         return {"message": "No poles found for this job", "updated": 0, "poles": []}
+    
+    # Create a lookup for manual spans setting
+    manual_spans_lookup = {p["id"]: p.get("use_manual_spans", False) for p in poles}
     
     # Sort poles by natural order (same as map display)
     sorted_poles = sorted(poles, key=pole_sort_key)
@@ -93,6 +97,10 @@ async def _sync_job_distances(job_id: str):
     updates = []
     
     for i, pole in enumerate(route_poles):
+        # Skip if this pole has manual spans enabled
+        if manual_spans_lookup.get(pole["id"], False):
+            continue
+            
         update_data = {}
         
         # Calculate distance/direction to NEXT pole (span1)

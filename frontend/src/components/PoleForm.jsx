@@ -430,6 +430,8 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
     const submitData = {
       ...formData,
       job_id: jobId || (initialPole && initialPole.job_id) || null,
+      // Convert boolean field
+      use_manual_spans: formData.use_manual_spans === true,
       // Convert numeric fields
       riser_height: formData.riser_height ? parseFloat(formData.riser_height) : null,
       span1_distance: formData.span1_distance ? parseFloat(formData.span1_distance) : null,

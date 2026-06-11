@@ -94,8 +94,12 @@ export const computeRoute = (poles) => {
     let ft = gpsFt;
     let isManual = false;
     
-    if (poleA.use_manual_spans && poleA.span1_distance) {
-      ft = parseFloat(poleA.span1_distance) || gpsFt;
+    // Check for manual spans - handle boolean, string "true", or truthy value
+    const useManual = poleA.use_manual_spans === true || poleA.use_manual_spans === "true";
+    const manualDist = parseFloat(poleA.span1_distance);
+    
+    if (useManual && manualDist > 0) {
+      ft = manualDist;
       isManual = true;
       usingManualSpans = true;
     }
