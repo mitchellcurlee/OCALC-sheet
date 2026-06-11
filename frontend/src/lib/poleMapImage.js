@@ -1159,11 +1159,6 @@ export const downloadSegmentedMapPages = async ({
     // Split route into 800ft segments
     const pages = splitRouteIntoSegments(route, segments, targetFeet);
     const totalPages = pages.length;
-    
-    if (totalPages === 1) {
-      // If only one page needed, just download single image
-      return downloadPoleMapImage({ poles, job, showStops, underground });
-    }
 
     const zip = new JSZip();
     

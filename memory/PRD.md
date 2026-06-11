@@ -201,7 +201,8 @@ Build an app that collects power pole data including: size of the pole, type of 
 ## Next Tasks
 1. Test offline mode in production (requires deploy + testing on mobile device)
 2. Add bulk import capability from Excel
-3. Add visual conflict indicator when sync fails
+3. Verify offline sync with new sort_order field
+4. Add visual conflict indicator when sync fails
 
 ## Session Update (Jun 10, 2026 continued)
 - Next/Previous pole navigation (Jun 10, 2026): Added navigation controls to both ViewPole and EditPole pages allowing users to quickly cycle through poles within a job without returning to the Job Detail page.
@@ -257,5 +258,43 @@ Build an app that collects power pole data including: size of the pole, type of 
   - **Features**: Reference height selection (4-12ft), interactive canvas for marking, real-time height calculations
   - **Output**: Creates annotated image with all measurements drawn and uploads to first HOA entry's photo field
   - Works on any phone with camera - no AI/internet required for calculations
+  - Requires redeploy for production.
+
+## Session Update (Jun 11, 2026)
+- Pole Reordering Feature (Jun 11, 2026):
+  - Added `sort_order` field to Pole model for custom ordering
+  - New PUT /api/poles/reorder endpoint to batch update sort_order values
+  - JobDetail page now has "Reorder" button that enters reorder mode
+  - Reorder mode shows up/down arrows for each pole, Cancel and Save Order buttons
+  - Save Order calls backend API to persist the custom order
+  - Frontend `sortPoles()` function respects sort_order when set, falls back to natural pole_number sort
+  - Both map routes and Excel exports use the custom order when set
+  - Requires redeploy for production.
+
+- Photos ZIP Download (Jun 11, 2026):
+  - New GET /api/jobs/{job_id}/export/photos-zip endpoint
+  - Downloads all photos from a job as a ZIP file organized by pole
+  - Each photo is labeled with pole number and photo type (e.g., Pole_P-1_OCALC_Left.jpg)
+  - Photos ZIP button added to JobDetail page toolbar (purple styling)
+  - Requires authentication
+  - Requires redeploy for production.
+
+- Map ZIP Download with Measurement List (Jun 11, 2026):
+  - Updated downloadSegmentedMapPages() to always generate a ZIP file (no single-image fallback)
+  - ZIP contains: map segment pages (800ft chunks) + separate measurement list image
+  - New generateMeasurementListImage() function creates a standalone PNG with:
+    - All route segments listed (From Pole → To Pole: distance)
+    - Riser measurements interspersed
+    - Total risers row (if applicable)
+    - Grand total row
+  - Measurement list image named "00_measurement_list.png" for sorting first in ZIP
+  - Map ZIP button added to JobDetail page toolbar (green styling)
+  - Works consistently regardless of route length (no more single-image shortcut)
+  - Requires redeploy for production.
+
+- Bug Fixes (Jun 11, 2026):
+  - Fixed backend crash: Added missing Depends and get_current_user imports to poles.py
+  - Fixed route shadowing: Moved /poles/reorder endpoint before parameterized /poles/{pole_id} routes
+  - Added sort_order to PoleUpdate model to allow persistence
   - Requires redeploy for production.
 
