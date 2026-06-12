@@ -306,6 +306,8 @@ async def get_poles(pole_owner: Optional[str] = None, condition: Optional[str] =
     if condition:
         query["condition"] = condition
     poles = await _db.poles.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    # Convert any legacy single photo fields to array format
+    poles = [convert_legacy_photos(p) for p in poles]
     return poles
 
 
@@ -329,12 +331,56 @@ async def reorder_poles(pole_orders: List[dict], current_user: dict = Depends(ge
     return {"message": f"Updated order for {updated} poles", "updated": updated}
 
 
+def convert_legacy_photos(pole_doc: dict) -> dict:
+    """Convert legacy single photo fields to array format for backward compatibility.
+    This ensures old data with 'photo' fields gets transformed to 'photos' arrays.
+    """
+    if not pole_doc:
+        return pole_doc
+    
+    # Convert birthmark_photo to birthmark_photos if needed
+    if not pole_doc.get("birthmark_photos") and pole_doc.get("birthmark_photo"):
+        pole_doc["birthmark_photos"] = [pole_doc["birthmark_photo"]]
+    
+    # Convert mgnv_photo to mgnv_photos if needed
+    if not pole_doc.get("mgnv_photos") and pole_doc.get("mgnv_photo"):
+        pole_doc["mgnv_photos"] = [pole_doc["mgnv_photo"]]
+    
+    # Convert legacy anchor_photo to anchor_photos if it exists (old single-photo field)
+    if not pole_doc.get("anchor_photos") and pole_doc.get("anchor_photo"):
+        pole_doc["anchor_photos"] = [pole_doc["anchor_photo"]]
+    
+    # Convert legacy hoa_photo to hoa_photos if it exists
+    if not pole_doc.get("hoa_photos") and pole_doc.get("hoa_photo"):
+        pole_doc["hoa_photos"] = [pole_doc["hoa_photo"]]
+    
+    # Convert knuckle photo -> photos for each knuckle
+    knuckles = pole_doc.get("knuckles", []) or []
+    for k in knuckles:
+        if isinstance(k, dict):
+            # If photos is empty/missing but photo exists, convert
+            if (not k.get("photos") or len(k.get("photos", [])) == 0) and k.get("photo"):
+                k["photos"] = [k["photo"]]
+    
+    # Convert attachment photo -> photos for each attachment (HOA)
+    attachments = pole_doc.get("attachments", []) or []
+    for a in attachments:
+        if isinstance(a, dict):
+            # If photos is empty/missing but photo exists, convert
+            if (not a.get("photos") or len(a.get("photos", [])) == 0) and a.get("photo"):
+                a["photos"] = [a["photo"]]
+    
+    return pole_doc
+
+
 @router.get("/poles/{pole_id}", response_model=Pole)
 async def get_pole(pole_id: str):
     """Get a single pole by ID"""
     pole = await _db.poles.find_one({"id": pole_id}, {"_id": 0})
     if not pole:
         raise HTTPException(status_code=404, detail="Pole not found")
+    # Convert any legacy single photo fields to array format
+    pole = convert_legacy_photos(pole)
     return pole
 
 

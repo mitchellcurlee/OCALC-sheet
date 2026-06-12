@@ -185,6 +185,8 @@ async def delete_job(job_id: str, current_user: dict = Depends(get_current_user)
 @router.get("/jobs/{job_id}/poles", response_model=List[Pole])
 async def get_job_poles(job_id: str, current_user: dict = Depends(get_current_user)):
     """Get all poles for a specific job"""
+    from routes.poles import convert_legacy_photos
+    
     if is_admin_user(current_user):
         job = await _db.jobs.find_one({"id": job_id})
     else:
@@ -193,6 +195,8 @@ async def get_job_poles(job_id: str, current_user: dict = Depends(get_current_us
         raise HTTPException(status_code=404, detail="Job not found")
     
     poles = await _db.poles.find({"job_id": job_id}, {"_id": 0}).sort("created_at", -1).to_list(10000)
+    # Convert any legacy single photo fields to array format
+    poles = [convert_legacy_photos(p) for p in poles]
     poles.sort(key=pole_sort_key)
     return poles
 

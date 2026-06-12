@@ -75,7 +75,8 @@ export const EditableRoute = ({
   editMode = false,
   color = "#2563eb",
   weight = 4,
-  showDistance = true
+  showDistance = true,
+  isAfterMPOE = false
 }) => {
   const [localWaypoints, setLocalWaypoints] = useState(waypoints);
   const [isDragging, setIsDragging] = useState(false);
@@ -164,15 +165,23 @@ export const EditableRoute = ({
         }}
       />
 
-      {/* Distance label - positioned offset from line to avoid pole markers */}
+      {/* Distance label - positioned offset from line with orange dotted arrow to span */}
       {showDistance && totalDistance > 0 && (
         <Marker
           position={labelPosition}
           icon={L.divIcon({
             className: "distance-label",
-            html: `<div style="background:rgba(255,255,255,0.95);border:2px solid ${color};border-radius:12px;padding:3px 10px;font:700 12px/1.2 ui-monospace,monospace;color:#1e40af;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,.25);pointer-events:none;">${Math.round(totalDistance)} ft</div>`,
-            iconSize: [70, 24],
-            iconAnchor: [35, 12],
+            html: `
+              <div style="position:relative;">
+                <svg style="position:absolute;left:-10px;top:-5px;width:80px;height:40px;overflow:visible;pointer-events:none;">
+                  <line x1="40" y1="20" x2="40" y2="35" stroke="#f97316" stroke-width="2" stroke-dasharray="3,2"/>
+                  <circle cx="40" cy="35" r="3" fill="#f97316"/>
+                </svg>
+                <div style="background:rgba(255,255,255,0.95);border:2px solid ${isAfterMPOE ? '#dc2626' : color};border-radius:12px;padding:3px 10px;font:700 12px/1.2 ui-monospace,monospace;color:${isAfterMPOE ? '#991b1b' : '#1e40af'};white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,.25);pointer-events:none;">${Math.round(totalDistance)} ft</div>
+              </div>
+            `,
+            iconSize: [80, 40],
+            iconAnchor: [40, 10],
           })}
           interactive={false}
           zIndexOffset={800}
