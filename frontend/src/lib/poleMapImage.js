@@ -60,6 +60,7 @@ export const UNDERGROUND_ABBR = {
   "SOC Start": "SOC-S",
   "SOC End": "SOC-E",
   Riser: "RSR",
+  MPOE: "MPOE",
 };
 export const undergroundAbbr = (type) => UNDERGROUND_ABBR[type] || String(type || "").slice(0, 3).toUpperCase();
 export const UNDERGROUND_TYPES = Object.keys(UNDERGROUND_ABBR);

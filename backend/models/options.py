@@ -21,5 +21,5 @@ ATTACHMENT_OWNERS = ["Power", "ATT", "Comcast", "Lightwave", "Logix", "PS", "Neu
 RISER_OPTIONS = ["0", "1", "2", "3", "4", "5", "6"]
 UNDERGROUND_TYPES = [
     "Handhole", "Manhole", "Brooks Enclosure", "Flowerpot", "Hoffman Box", "Pedestal",
-    "Point of Intersection", "FBT", "NTE", "FBT/NTE", "PFP", "SOC Start", "SOC End", "Riser",
+    "Point of Intersection", "FBT", "NTE", "FBT/NTE", "PFP", "SOC Start", "SOC End", "Riser", "MPOE",
 ]

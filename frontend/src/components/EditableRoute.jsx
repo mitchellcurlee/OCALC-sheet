@@ -21,6 +21,28 @@ const midpointIcon = L.divIcon({
 // Calculate midpoint between two coordinates
 const getMidpoint = (p1, p2) => [(p1[0] + p2[0]) / 2, (p1[1] + p2[1]) / 2];
 
+// Calculate bearing/angle between two points (in degrees)
+const getBearing = (p1, p2) => {
+  const dLng = (p2[1] - p1[1]) * Math.PI / 180;
+  const lat1 = p1[0] * Math.PI / 180;
+  const lat2 = p2[0] * Math.PI / 180;
+  const y = Math.sin(dLng) * Math.cos(lat2);
+  const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+  return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+};
+
+// Get offset position perpendicular to the line for smart label placement
+const getOffsetMidpoint = (p1, p2, offsetPixels = 20) => {
+  const mid = getMidpoint(p1, p2);
+  const bearing = getBearing(p1, p2);
+  // Offset perpendicular to the line (90 degrees)
+  const perpAngle = (bearing + 90) * Math.PI / 180;
+  // Convert pixel offset to approximate lat/lng offset
+  const latOffset = Math.cos(perpAngle) * offsetPixels * 0.000008;
+  const lngOffset = Math.sin(perpAngle) * offsetPixels * 0.00001;
+  return [mid[0] + latOffset, mid[1] + lngOffset];
+};
+
 // Calculate distance in feet between two latlngs
 const distanceFeet = (p1, p2) => {
   const R = 6371000;
@@ -116,11 +138,18 @@ export const EditableRoute = ({
     }
   }, [localWaypoints, onWaypointsChange, segmentId]);
 
-  // Calculate midpoint label position
+  // Calculate midpoint label position - offset from line to avoid pole markers
   const midpoint = getMidpoint(startPos, endPos);
   const midpointWithWaypoints = localWaypoints.length > 0 
     ? getMidpoint(fullPath[Math.floor(fullPath.length / 2)], fullPath[Math.floor(fullPath.length / 2) + 1] || fullPath[Math.floor(fullPath.length / 2)])
     : midpoint;
+  
+  // Use offset midpoint to avoid overlapping with pole markers
+  const labelPosition = getOffsetMidpoint(
+    localWaypoints.length > 0 ? fullPath[Math.floor(fullPath.length / 2)] : startPos,
+    localWaypoints.length > 0 ? (fullPath[Math.floor(fullPath.length / 2) + 1] || fullPath[Math.floor(fullPath.length / 2)]) : endPos,
+    15 // offset in pixels
+  );
 
   return (
     <>
@@ -135,15 +164,15 @@ export const EditableRoute = ({
         }}
       />
 
-      {/* Distance label */}
+      {/* Distance label - positioned offset from line to avoid pole markers */}
       {showDistance && totalDistance > 0 && (
         <Marker
-          position={midpointWithWaypoints}
+          position={labelPosition}
           icon={L.divIcon({
             className: "distance-label",
-            html: `<div style="background:#fff;border:2px solid ${color};border-radius:10px;padding:2px 8px;font:700 11px/1.2 ui-monospace,monospace;color:#1e40af;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.3);">${Math.round(totalDistance)} ft</div>`,
-            iconSize: [60, 20],
-            iconAnchor: [30, 10],
+            html: `<div style="background:rgba(255,255,255,0.95);border:2px solid ${color};border-radius:12px;padding:3px 10px;font:700 12px/1.2 ui-monospace,monospace;color:#1e40af;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,.25);pointer-events:none;">${Math.round(totalDistance)} ft</div>`,
+            iconSize: [70, 24],
+            iconAnchor: [35, 12],
           })}
           interactive={false}
           zIndexOffset={800}

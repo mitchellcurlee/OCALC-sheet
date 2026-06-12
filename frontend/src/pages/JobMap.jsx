@@ -33,17 +33,17 @@ const formatRiserHeight = (value) => {
 const poleIcon = (label, offsetDir = "right") => {
   // offsetDir: "right", "left", "top", "bottom" for label placement
   const dotSize = 8; // Smaller dot
-  const labelOffset = offsetDir === "right" ? "left: 12px;" : 
-                      offsetDir === "left" ? "right: 12px;" :
-                      offsetDir === "top" ? "bottom: 12px; left: 50%; transform: translateX(-50%);" :
-                      "top: 12px; left: 50%; transform: translateX(-50%);";
+  const labelOffset = offsetDir === "right" ? "left: 18px;" : 
+                      offsetDir === "left" ? "right: 18px;" :
+                      offsetDir === "top" ? "bottom: 16px; left: 50%; transform: translateX(-50%);" :
+                      "top: 16px; left: 50%; transform: translateX(-50%);";
   
   return L.divIcon({
     className: "pole-route-marker",
     html: `
       <div style="position:relative;">
         <div style="background:#dc2626;border:1.5px solid #fff;border-radius:50%;width:${dotSize}px;height:${dotSize}px;box-shadow:0 1px 3px rgba(0,0,0,.4);"></div>
-        <div style="position:absolute;${labelOffset}top:50%;transform:translateY(-50%);background:#dc2626;color:#fff;border:1px solid #fff;border-radius:5px;padding:1px 4px;font:600 8px/1.2 ui-monospace,monospace;white-space:nowrap;box-shadow:0 1px 2px rgba(0,0,0,.3);">${label}</div>
+        <div style="position:absolute;${labelOffset}top:50%;transform:translateY(-50%);background:#dc2626;color:#fff;border:1px solid #fff;border-radius:5px;padding:2px 5px;font:600 9px/1.2 ui-monospace,monospace;white-space:nowrap;box-shadow:0 1px 2px rgba(0,0,0,.3);">${label}</div>
       </div>
     `,
     iconSize: [dotSize, dotSize],
@@ -52,7 +52,7 @@ const poleIcon = (label, offsetDir = "right") => {
 };
 
 // Pole marker with arrow pointing to the dot (for clustered poles)
-const poleIconWithArrow = (label, arrowAngle, distance = 30) => {
+const poleIconWithArrow = (label, arrowAngle, distance = 45) => {
   const dotSize = 8; // Smaller dot
   const rad = (arrowAngle * Math.PI) / 180;
   const labelX = Math.cos(rad) * distance;
@@ -64,10 +64,9 @@ const poleIconWithArrow = (label, arrowAngle, distance = 30) => {
       <div style="position:relative;">
         <div style="background:#dc2626;border:1.5px solid #fff;border-radius:50%;width:${dotSize}px;height:${dotSize}px;box-shadow:0 1px 3px rgba(0,0,0,.4);"></div>
         <svg style="position:absolute;left:${dotSize/2}px;top:${dotSize/2}px;overflow:visible;pointer-events:none;" width="1" height="1">
-          <line x1="0" y1="0" x2="${labelX}" y2="${labelY}" stroke="#dc2626" stroke-width="1"/>
-          <polygon points="${labelX},${labelY} ${labelX - 3 * Math.cos(rad - 0.5)},${labelY - 3 * Math.sin(rad - 0.5)} ${labelX - 3 * Math.cos(rad + 0.5)},${labelY - 3 * Math.sin(rad + 0.5)}" fill="#dc2626"/>
+          <line x1="0" y1="0" x2="${labelX}" y2="${labelY}" stroke="#dc2626" stroke-width="1.5" stroke-dasharray="3,2"/>
         </svg>
-        <div style="position:absolute;left:${labelX + dotSize/2 - 16}px;top:${labelY + dotSize/2 - 8}px;background:#dc2626;color:#fff;border:1px solid #fff;border-radius:5px;padding:1px 4px;font:600 8px/1.2 ui-monospace,monospace;white-space:nowrap;box-shadow:0 1px 2px rgba(0,0,0,.3);">${label}</div>
+        <div style="position:absolute;left:${labelX + dotSize/2 - 20}px;top:${labelY + dotSize/2 - 10}px;background:#dc2626;color:#fff;border:1px solid #fff;border-radius:5px;padding:2px 5px;font:600 9px/1.2 ui-monospace,monospace;white-space:nowrap;box-shadow:0 1px 2px rgba(0,0,0,.3);">${label}</div>
       </div>
     `,
     iconSize: [dotSize, dotSize],

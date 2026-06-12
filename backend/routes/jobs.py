@@ -443,7 +443,8 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
         UG_ABBR = {
             "Handhole": "HH", "Manhole": "MH", "Brooks Enclosure": "BE", "Flowerpot": "FP",
             "Hoffman Box": "HB", "Pedestal": "PED", "Point of Intersection": "PI", "FBT": "FBT",
-            "NTE": "NTE", "FBT/NTE": "FBT/NTE", "PFP": "PFP",
+            "NTE": "NTE", "FBT/NTE": "FBT/NTE", "PFP": "PFP", "SOC Start": "SOC-S", 
+            "SOC End": "SOC-E", "Riser": "RSR", "MPOE": "MPOE",
         }
         ws.cell(row=current_row, column=1, value="UNDERGROUND").fill = header_fill
         ws.cell(row=current_row, column=1).font = header_font
