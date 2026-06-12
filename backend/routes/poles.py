@@ -157,6 +157,102 @@ async def _sync_job_distances(job_id: str):
     }
 
 
+async def _sync_single_pole_distances(pole_id: str):
+    """
+    Sync GPS-calculated distances for a single pole based on its neighbors in the job.
+    Returns dict with message and updated flag.
+    """
+    import math
+    
+    # Get the pole
+    pole = await _db.poles.find_one({"id": pole_id}, {"_id": 0})
+    if not pole:
+        return {"message": "Pole not found", "updated": False}
+    
+    job_id = pole.get("job_id")
+    if not job_id:
+        return {"message": "Pole not associated with a job", "updated": False}
+    
+    if not has_gps(pole):
+        return {"message": "Pole has no GPS coordinates", "updated": False}
+    
+    if pole.get("use_manual_spans"):
+        return {"message": "Pole uses manual spans (skipped)", "updated": False}
+    
+    # Get all poles for this job with GPS
+    all_poles = await _db.poles.find({"job_id": job_id}, {"_id": 0}).to_list(1000)
+    sorted_poles = sorted(all_poles, key=pole_sort_key)
+    
+    route_poles = []
+    target_index = -1
+    for i, p in enumerate(sorted_poles):
+        if has_gps(p):
+            if p["id"] == pole_id:
+                target_index = len(route_poles)
+            route_poles.append({
+                "id": p["id"],
+                "pole_number": p.get("pole_number", ""),
+                "lat": float(p.get("latitude")),
+                "lon": float(p.get("longitude")),
+            })
+    
+    if target_index == -1:
+        return {"message": "Pole not found in route", "updated": False}
+    
+    if len(route_poles) < 2:
+        return {"message": "Need at least 2 poles with GPS to calculate distances", "updated": False}
+    
+    target = route_poles[target_index]
+    update_data = {}
+    
+    # Calculate distance/direction to NEXT pole (span1)
+    if target_index < len(route_poles) - 1:
+        next_pole = route_poles[target_index + 1]
+        dist_to_next = haversine_feet(target["lat"], target["lon"], next_pole["lat"], next_pole["lon"])
+        
+        lat1 = math.radians(target["lat"])
+        lat2 = math.radians(next_pole["lat"])
+        dlon = math.radians(next_pole["lon"] - target["lon"])
+        y = math.sin(dlon) * math.cos(lat2)
+        x = math.cos(lat1) * math.sin(lat2) - math.sin(lat1) * math.cos(lat2) * math.cos(dlon)
+        bearing = (math.degrees(math.atan2(y, x)) + 360) % 360
+        
+        update_data["span1_distance"] = str(round(dist_to_next))
+        update_data["span1_direction"] = bearing_to_direction(bearing)
+    
+    # Calculate distance/direction to PREVIOUS pole (span2)
+    if target_index > 0:
+        prev_pole = route_poles[target_index - 1]
+        dist_to_prev = haversine_feet(target["lat"], target["lon"], prev_pole["lat"], prev_pole["lon"])
+        
+        lat1 = math.radians(target["lat"])
+        lat2 = math.radians(prev_pole["lat"])
+        dlon = math.radians(prev_pole["lon"] - target["lon"])
+        y = math.sin(dlon) * math.cos(lat2)
+        x = math.cos(lat1) * math.sin(lat2) - math.sin(lat1) * math.cos(lat2) * math.cos(dlon)
+        bearing = (math.degrees(math.atan2(y, x)) + 360) % 360
+        
+        update_data["span2_distance"] = str(round(dist_to_prev))
+        update_data["span2_direction"] = bearing_to_direction(bearing)
+    
+    if update_data:
+        update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+        await _db.poles.update_one({"id": pole_id}, {"$set": update_data})
+        return {"message": "Distances synced", "updated": True, "span1": update_data.get("span1_distance"), "span2": update_data.get("span2_distance")}
+    
+    return {"message": "No updates needed", "updated": False}
+
+
+@router.post("/poles/{pole_id}/sync-distances")
+async def sync_single_pole_distances(pole_id: str, current_user: dict = Depends(get_current_user)):
+    """
+    Sync GPS-calculated distances for a single pole.
+    Updates span1 with distance/direction to next pole,
+    Updates span2 with distance/direction to previous pole.
+    """
+    return await _sync_single_pole_distances(pole_id)
+
+
 @router.post("/jobs/{job_id}/sync-map-distances")
 async def sync_map_distances_to_poles(job_id: str):
     """

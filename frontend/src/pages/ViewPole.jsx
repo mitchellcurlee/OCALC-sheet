@@ -32,6 +32,7 @@ import {
   ZoomIn,
   ChevronLeft,
   ChevronRight,
+  RefreshCw,
 } from "lucide-react";
 import { MapContainer, TileLayer, Marker } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
@@ -85,6 +86,7 @@ const ViewPole = () => {
   const [loading, setLoading] = useState(true);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [lightboxImage, setLightboxImage] = useState(null);
+  const [syncing, setSyncing] = useState(false);
   
   const backUrl = jobId ? `/jobs/${jobId}` : "/";
 
@@ -151,6 +153,23 @@ const ViewPole = () => {
       navigate(jobId ? `/jobs/${jobId}/edit/${res.data.id}` : `/edit/${res.data.id}`);
     } catch (error) {
       toast.error("Failed to duplicate pole");
+    }
+  };
+
+  const handleSyncDistances = async () => {
+    setSyncing(true);
+    try {
+      const response = await axios.post(`/poles/${id}/sync-distances`);
+      if (response.data.updated) {
+        toast.success(`Synced: Span 1 = ${response.data.span1 || 'N/A'}ft, Span 2 = ${response.data.span2 || 'N/A'}ft`);
+        fetchPole(); // Refresh pole data
+      } else {
+        toast.info(response.data.message || "No changes needed");
+      }
+    } catch (error) {
+      toast.error("Failed to sync distances");
+    } finally {
+      setSyncing(false);
     }
   };
 
@@ -282,6 +301,17 @@ const ViewPole = () => {
                   <Pencil className="w-4 h-4 mr-2" />Edit
                 </Button>
               </Link>
+              <Button 
+                variant="outline" 
+                onClick={handleSyncDistances}
+                disabled={syncing || !pole.latitude || !pole.longitude}
+                className="bg-blue-50 border-blue-300 hover:bg-blue-100 text-blue-700" 
+                data-testid="sync-distances-btn"
+                title="Sync GPS distances for this pole"
+              >
+                {syncing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+                Sync Dist
+              </Button>
               <Button variant="outline" onClick={handleDuplicate} className="bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900" data-testid="duplicate-btn">
                 <Copy className="w-4 h-4 mr-2" />Duplicate
               </Button>

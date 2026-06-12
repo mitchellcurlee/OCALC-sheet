@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
-import { downloadPoleMapImage, downloadSegmentedMapPages, UNDERGROUND_TYPES, undergroundAbbr } from "@/lib/poleMapImage";
+import { UNDERGROUND_TYPES, undergroundAbbr } from "@/lib/poleMapImage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -32,17 +32,12 @@ import {
   Loader2,
   Folder,
   Map as MapIcon,
-  ImageDown,
   Layers,
   ChevronDown,
   RefreshCw,
-  ArrowUp,
-  ArrowDown,
   GripVertical,
   Check,
   X,
-  Image,
-  Package,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -50,6 +45,63 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+
+// Sortable pole item component for drag-and-drop
+const SortablePoleItem = ({ pole, index, getConditionColor }) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: pole.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="industrial-card p-3 flex items-center justify-between bg-white cursor-grab active:cursor-grabbing"
+    >
+      <div className="flex items-center gap-3">
+        <div
+          {...attributes}
+          {...listeners}
+          className="text-zinc-400 hover:text-zinc-600 cursor-grab"
+        >
+          <GripVertical className="w-5 h-5" />
+        </div>
+        <span className="text-sm font-mono text-zinc-500 w-6">{index + 1}</span>
+        <span className="font-bold text-zinc-900">{pole.pole_number || "No #"}</span>
+        <Badge className={`${getConditionColor(pole.condition)} text-xs`}>
+          {pole.condition || "Not set"}
+        </Badge>
+      </div>
+    </div>
+  );
+};
 
 const JobDetail = () => {
   const { jobId } = useParams();
@@ -60,29 +112,17 @@ const JobDetail = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteId, setDeleteId] = useState(null);
-  const [mapDownloading, setMapDownloading] = useState(false);
-  const [syncing, setSyncing] = useState(false);
   const [reorderMode, setReorderMode] = useState(false);
   const [reorderedPoles, setReorderedPoles] = useState([]);
-  const [mapZipDownloading, setMapZipDownloading] = useState(false);
+  const [syncingPoleId, setSyncingPoleId] = useState(null);
 
-  const handleDownloadMap = async () => {
-    setMapDownloading(true);
-    try {
-      await downloadPoleMapImage({ poles, job, underground: undergroundItems });
-    } finally {
-      setMapDownloading(false);
-    }
-  };
-
-  const handleDownloadMapZip = async () => {
-    setMapZipDownloading(true);
-    try {
-      await downloadSegmentedMapPages({ poles, job, underground: undergroundItems });
-    } finally {
-      setMapZipDownloading(false);
-    }
-  };
+  // Drag-and-drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   // Pole reorder handlers
   const startReorder = () => {
@@ -95,12 +135,15 @@ const JobDetail = () => {
     setReorderMode(false);
   };
 
-  const movePole = (index, direction) => {
-    const newOrder = [...reorderedPoles];
-    const newIndex = direction === "up" ? index - 1 : index + 1;
-    if (newIndex < 0 || newIndex >= newOrder.length) return;
-    [newOrder[index], newOrder[newIndex]] = [newOrder[newIndex], newOrder[index]];
-    setReorderedPoles(newOrder);
+  const handleDragEnd = (event) => {
+    const { active, over } = event;
+    if (active.id !== over?.id) {
+      setReorderedPoles((items) => {
+        const oldIndex = items.findIndex((p) => p.id === active.id);
+        const newIndex = items.findIndex((p) => p.id === over.id);
+        return arrayMove(items, oldIndex, newIndex);
+      });
+    }
   };
 
   const saveReorder = async () => {
@@ -116,26 +159,26 @@ const JobDetail = () => {
     }
   };
 
-  const handleSyncDistances = async () => {
-    setSyncing(true);
+  // Sync distances for a single pole
+  const handleSyncPoleDist = async (poleId) => {
+    setSyncingPoleId(poleId);
     try {
-      const response = await axios.post(`/jobs/${jobId}/sync-map-distances`);
-      if (response.data.updated > 0) {
-        toast.success(`Synced distances for ${response.data.updated} poles`);
-        fetchJobAndPoles(); // Refresh to show updated data
+      const response = await axios.post(`/poles/${poleId}/sync-distances`);
+      if (response.data.updated) {
+        toast.success(`Synced distances for pole`);
+        fetchJobAndPoles();
       } else {
-        toast.info(response.data.message || "No poles to sync");
+        toast.info(response.data.message || "No changes needed");
       }
     } catch (error) {
       toast.error("Failed to sync distances");
     } finally {
-      setSyncing(false);
+      setSyncingPoleId(null);
     }
   };
 
   const fetchJobAndPoles = useCallback(async () => {
     try {
-      // Add cache-busting timestamp to ensure fresh data
       const ts = Date.now();
       const [jobRes, polesRes, ugRes] = await Promise.all([
         axios.get(`/jobs/${jobId}?_t=${ts}`),
@@ -184,26 +227,6 @@ const JobDetail = () => {
       toast.success("Excel file downloaded!");
     } catch (error) {
       toast.error("Failed to export data");
-    }
-  };
-
-  const handleDownloadPhotosZip = async () => {
-    try {
-      toast.info("Preparing photo archive...");
-      const response = await axios.get(`/jobs/${jobId}/export/photos-zip`, {
-        responseType: "blob"
-      });
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement("a");
-      link.href = url;
-      const filename = response.headers["content-disposition"]?.split("filename=")[1] || `${job?.name || "job"}_photos.zip`;
-      link.setAttribute("download", filename.replace(/"/g, ""));
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      toast.success("Photos ZIP downloaded!");
-    } catch (error) {
-      toast.error("Failed to download photos");
     }
   };
 
@@ -295,16 +318,6 @@ const JobDetail = () => {
                 </Button>
               </Link>
               <Button
-                onClick={handleDownloadMap}
-                disabled={mapDownloading}
-                variant="outline"
-                className="flex-1 sm:flex-initial h-11 sm:h-10 bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900 text-sm"
-                data-testid="download-map-btn"
-              >
-                {mapDownloading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <ImageDown className="w-4 h-4 mr-2" />}
-                Map Image
-              </Button>
-              <Button
                 onClick={handleExport}
                 variant="outline"
                 className="flex-1 sm:flex-initial h-11 sm:h-10 bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900 text-sm"
@@ -312,38 +325,6 @@ const JobDetail = () => {
               >
                 <FileSpreadsheet className="w-4 h-4 mr-2" />
                 Export
-              </Button>
-              <Button
-                onClick={handleDownloadPhotosZip}
-                variant="outline"
-                className="flex-1 sm:flex-initial h-11 sm:h-10 bg-purple-50 border-purple-300 hover:bg-purple-100 text-purple-700 text-sm"
-                data-testid="photos-zip-btn"
-                title="Download all photos as ZIP"
-              >
-                <Image className="w-4 h-4 mr-2" />
-                Photos ZIP
-              </Button>
-              <Button
-                onClick={handleDownloadMapZip}
-                disabled={mapZipDownloading || poles.length < 2}
-                variant="outline"
-                className="flex-1 sm:flex-initial h-11 sm:h-10 bg-green-50 border-green-300 hover:bg-green-100 text-green-700 text-sm"
-                data-testid="map-zip-btn"
-                title="Download segmented map pages as ZIP with measurement list"
-              >
-                {mapZipDownloading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Package className="w-4 h-4 mr-2" />}
-                Map ZIP
-              </Button>
-              <Button
-                onClick={handleSyncDistances}
-                disabled={syncing || poles.length < 2}
-                variant="outline"
-                className="flex-1 sm:flex-initial h-11 sm:h-10 bg-blue-50 border-blue-300 hover:bg-blue-100 text-blue-700 text-sm"
-                data-testid="sync-distances-btn"
-                title="Update pole span distances from GPS coordinates"
-              >
-                {syncing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
-                Sync Distances
               </Button>
               <Link to={`/jobs/${jobId}/add`} className="flex-1 sm:flex-initial">
                 <Button className="w-full h-11 sm:h-10 bg-red-600 hover:bg-red-700 text-white text-sm" data-testid="add-pole-btn">
@@ -451,41 +432,26 @@ const JobDetail = () => {
         {/* Poles List */}
         {reorderMode ? (
           <div className="space-y-2 bg-amber-50 p-4 rounded-lg border-2 border-amber-300">
-            <p className="text-sm text-amber-700 mb-3">Use the arrows to change pole order, then click Save.</p>
-            {reorderedPoles.map((pole, index) => (
-              <div
-                key={pole.id}
-                className="industrial-card p-3 flex items-center justify-between bg-white"
+            <p className="text-sm text-amber-700 mb-3">Drag poles to reorder, then click Save.</p>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={reorderedPoles.map((p) => p.id)}
+                strategy={verticalListSortingStrategy}
               >
-                <div className="flex items-center gap-3">
-                  <span className="text-sm font-mono text-zinc-500 w-6">{index + 1}</span>
-                  <span className="font-bold text-zinc-900">{pole.pole_number || "No #"}</span>
-                  <Badge className={`${getConditionColor(pole.condition)} text-xs`}>
-                    {pole.condition || "Not set"}
-                  </Badge>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => movePole(index, "up")}
-                    disabled={index === 0}
-                    className="h-8 w-8 p-0"
-                  >
-                    <ArrowUp className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => movePole(index, "down")}
-                    disabled={index === reorderedPoles.length - 1}
-                    className="h-8 w-8 p-0"
-                  >
-                    <ArrowDown className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
+                {reorderedPoles.map((pole, index) => (
+                  <SortablePoleItem
+                    key={pole.id}
+                    pole={pole}
+                    index={index}
+                    getConditionColor={getConditionColor}
+                  />
+                ))}
+              </SortableContext>
+            </DndContext>
           </div>
         ) : filteredPoles.length === 0 ? (
           <div className="industrial-card p-12 text-center">
@@ -547,6 +513,21 @@ const JobDetail = () => {
                       <Calendar className="w-3 h-3" />
                       {new Date(pole.inspection_date).toLocaleDateString()}
                     </div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                      onClick={() => handleSyncPoleDist(pole.id)}
+                      disabled={syncingPoleId === pole.id || !pole.latitude || !pole.longitude}
+                      title="Sync GPS distances for this pole"
+                      data-testid={`sync-pole-${pole.id}`}
+                    >
+                      {syncingPoleId === pole.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="w-4 h-4" />
+                      )}
+                    </Button>
                     <Link to={`/jobs/${jobId}/view/${pole.id}`}>
                       <Button size="sm" variant="ghost" className="text-zinc-600 hover:text-zinc-900">
                         <Eye className="w-4 h-4" />

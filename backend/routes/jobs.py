@@ -328,8 +328,23 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
             link_cell = ws.cell(row=current_row, column=2, value=f"View {len(photo_items)} photo(s)")
             link_cell.hyperlink = gallery_url
             link_cell.font = Font(color="2563EB", underline="single", bold=True)
+            
+            # Add Photos ZIP link
+            photos_zip_url = f"{public_base}/api/poles/{pole.get('id')}/photos-zip"
+            zip_cell = ws.cell(row=current_row, column=3, value="Photos ZIP")
+            zip_cell.hyperlink = photos_zip_url
+            zip_cell.font = Font(color="7C3AED", underline="single", bold=True)
         else:
             ws.cell(row=current_row, column=2, value="No photos")
+        current_row += 1
+        
+        # Add Map ZIP link for each pole
+        ws.cell(row=current_row, column=1, value="MAP").fill = header_fill
+        ws.cell(row=current_row, column=1).font = header_font
+        map_zip_url = f"{public_base}/jobs/{job_id}/map"
+        map_link = ws.cell(row=current_row, column=2, value="View Map")
+        map_link.hyperlink = map_zip_url
+        map_link.font = Font(color="2563EB", underline="single", bold=True)
         current_row += 1
         
         # Add distinctive separator line between poles
@@ -353,7 +368,7 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
         ws.cell(row=current_row, column=1, value="UNDERGROUND").fill = header_fill
         ws.cell(row=current_row, column=1).font = header_font
         current_row += 1
-        for h_i, h in enumerate(["Abbr", "Type", "Label", "Latitude", "Longitude", "Notes"], 1):
+        for h_i, h in enumerate(["Abbr", "Type", "Label", "Latitude", "Longitude", "Notes", "Map"], 1):
             ws.cell(row=current_row, column=h_i, value=h).font = Font(bold=True, size=9)
         current_row += 1
         for u in underground:
@@ -363,6 +378,11 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
             ws.cell(row=current_row, column=4, value=u.get("latitude", ""))
             ws.cell(row=current_row, column=5, value=u.get("longitude", ""))
             ws.cell(row=current_row, column=6, value=u.get("notes", ""))
+            # Add Map link for each underground item
+            map_url = f"{public_base}/jobs/{job_id}/map"
+            map_cell = ws.cell(row=current_row, column=7, value="View Map")
+            map_cell.hyperlink = map_url
+            map_cell.font = Font(color="2563EB", underline="single", bold=True)
             current_row += 1
     
     for col in ws.columns:
@@ -440,13 +460,76 @@ async def export_job_photos_zip(job_id: str, current_user: dict = Depends(get_cu
                     filename = f"{safe_pole_name}/{safe_label}{ext}"
                     
                     zf.writestr(filename, data)
-                except Exception as e:
+                except Exception:
                     # Skip failed photos
                     continue
     
     buffer.seek(0)
     safe_name = "".join(c for c in job.get("name", "job") if c.isalnum() or c in (' ', '-', '_')).strip()
     filename = f"{safe_name}_photos_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip"
+    
+    return StreamingResponse(
+        buffer,
+        media_type="application/zip",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+
+@router.get("/poles/{pole_id}/photos-zip")
+async def export_pole_photos_zip(pole_id: str, current_user: dict = Depends(get_current_user)):
+    """Export all photos from a single pole as a ZIP file"""
+    import zipfile
+    from services.storage import get_object
+    
+    pole = await _db.poles.find_one({"id": pole_id}, {"_id": 0})
+    if not pole:
+        raise HTTPException(status_code=404, detail="Pole not found")
+    
+    # Verify user has access to this pole's job
+    job_id = pole.get("job_id")
+    if job_id:
+        if is_admin_user(current_user):
+            job = await _db.jobs.find_one({"id": job_id}, {"_id": 0})
+        else:
+            job = await _db.jobs.find_one({"id": job_id, "user_id": current_user["id"]}, {"_id": 0})
+        if not job:
+            raise HTTPException(status_code=403, detail="Access denied")
+    
+    pole_number = pole.get("pole_number", "unknown")
+    safe_pole_name = "".join(c for c in pole_number if c.isalnum() or c in (' ', '-', '_')).strip()
+    
+    photo_items = pole_photo_items(pole)
+    if not photo_items:
+        raise HTTPException(status_code=404, detail="No photos found for this pole")
+    
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for label, photo_url in photo_items:
+            try:
+                if photo_url.startswith("/api/files/"):
+                    file_path = photo_url.replace("/api/files/", "")
+                elif photo_url.startswith("http"):
+                    continue
+                else:
+                    file_path = photo_url
+                
+                data, content_type = get_object(file_path)
+                
+                ext = ".jpg"
+                if "png" in content_type:
+                    ext = ".png"
+                elif "webp" in content_type:
+                    ext = ".webp"
+                
+                safe_label = "".join(c for c in label if c.isalnum() or c in (' ', '-', '_')).strip()
+                filename = f"{safe_label}{ext}"
+                
+                zf.writestr(filename, data)
+            except Exception:
+                continue
+    
+    buffer.seek(0)
+    filename = f"Pole_{safe_pole_name}_photos.zip"
     
     return StreamingResponse(
         buffer,

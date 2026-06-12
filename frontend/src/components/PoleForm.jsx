@@ -22,6 +22,7 @@ import {
   Plus,
   Trash2,
   Search,
+  RefreshCw,
 } from "lucide-react";
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
@@ -127,6 +128,31 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
   const [downGuys, setDownGuys] = useState(() => [emptyDownGuy()]);
   const [knuckles, setKnuckles] = useState(() => [emptyKnuckle()]);
   const [attachments, setAttachments] = useState(() => [emptyAttachment()]);
+  const [syncingDistances, setSyncingDistances] = useState(false);
+
+  // Sync distances for this pole (edit mode only)
+  const handleSyncDistances = async () => {
+    if (!initialPole?.id) return;
+    setSyncingDistances(true);
+    try {
+      const response = await axios.post(`/poles/${initialPole.id}/sync-distances`);
+      if (response.data.updated) {
+        toast.success(`Synced: Span 1 = ${response.data.span1 || 'N/A'}ft, Span 2 = ${response.data.span2 || 'N/A'}ft`);
+        // Update the form data with the new values
+        setFormData((prev) => ({
+          ...prev,
+          span1_distance: response.data.span1 || prev.span1_distance,
+          span2_distance: response.data.span2 || prev.span2_distance,
+        }));
+      } else {
+        toast.info(response.data.message || "No changes needed");
+      }
+    } catch (error) {
+      toast.error("Failed to sync distances");
+    } finally {
+      setSyncingDistances(false);
+    }
+  };
 
   const fetchOptions = useCallback(async () => {
     try {
@@ -495,6 +521,20 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
               </div>
             </div>
             <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto">
+              {mode === "edit" && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleSyncDistances}
+                  disabled={syncingDistances || !formData.latitude || !formData.longitude}
+                  className="h-9 sm:h-8 bg-blue-50 border-blue-300 hover:bg-blue-100 text-blue-700 text-sm"
+                  data-testid="sync-distances-btn"
+                  title="Sync GPS distances for this pole"
+                >
+                  {syncingDistances ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-1" />}
+                  <span className="hidden sm:inline">Sync Dist</span>
+                </Button>
+              )}
               <div className="flex items-center gap-1 sm:gap-2 flex-1 sm:flex-initial">
                 <Label className="text-xs font-mono text-zinc-500 whitespace-nowrap">POLE:</Label>
                 <Input name="pole_number" value={formData.pole_number} onChange={handleInputChange} placeholder="Pole #" className="w-full sm:w-28 h-9 sm:h-8 bg-white border-zinc-300 text-zinc-900 text-sm" data-testid="pole-number-input" />

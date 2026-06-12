@@ -5,8 +5,9 @@ import { toast } from "sonner";
 import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
+import html2canvas from "html2canvas";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ListOrdered, ChevronDown, FileImage, Files, Edit3, Save, X, StickyNote, Ruler } from "lucide-react";
+import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ListOrdered, ChevronDown, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera } from "lucide-react";
 import { computeRoute, fmtFeet, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, ugWithGps, undergroundAbbr, computeUgConnectors } from "@/lib/poleMapImage";
 import {
   DropdownMenu,
@@ -145,6 +146,7 @@ const JobMap = () => {
   const [editMode, setEditMode] = useState(false);
   const [addingType, setAddingType] = useState(null); // "note" or "measurement"
   const [saving, setSaving] = useState(false);
+  const [screenshotting, setScreenshotting] = useState(false);
   const mapRef = useRef(null);
   const autoDownloadedRef = useRef(false);
 
@@ -338,6 +340,45 @@ const JobMap = () => {
     }
   }, [poles, job, showStops, underground]);
 
+  // Screenshot the visible map frame
+  const captureMapScreenshot = useCallback(async () => {
+    setScreenshotting(true);
+    try {
+      // Find the map container element
+      const mapContainer = document.querySelector(".leaflet-container");
+      if (!mapContainer) {
+        toast.error("Map container not found");
+        return;
+      }
+
+      toast.info("Capturing screenshot...");
+      
+      // Use html2canvas to capture the map
+      const canvas = await html2canvas(mapContainer, {
+        useCORS: true,
+        allowTaint: true,
+        scale: 2, // Higher resolution
+        logging: false,
+      });
+
+      // Convert to PNG and download
+      const dataUrl = canvas.toDataURL("image/png");
+      const link = document.createElement("a");
+      link.href = dataUrl;
+      link.download = `${(job?.name || "map").replace(/[^a-z0-9-_]+/gi, "_")}_screenshot.png`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      toast.success("Screenshot saved!");
+    } catch (e) {
+      console.error("Screenshot error:", e);
+      toast.error("Failed to capture screenshot");
+    } finally {
+      setScreenshotting(false);
+    }
+  }, [job]);
+
   // Auto-download when opened with ?download=1 (e.g. from the Excel "Map Image" link)
   useEffect(() => {
     if (loading || autoDownloadedRef.current) return;
@@ -388,6 +429,17 @@ const JobMap = () => {
             <Button onClick={() => setShowStops((v) => !v)} disabled={route.length === 0} aria-pressed={showStops} variant="outline" className={showStops ? "bg-red-600 border-red-600 hover:bg-red-700 text-white" : "bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900"} data-testid="toggle-stops-btn">
               <ListOrdered className="w-4 h-4 mr-2" />
               Stop #{"'"}s
+            </Button>
+            <Button
+              onClick={captureMapScreenshot}
+              disabled={screenshotting || allPoints.length === 0}
+              variant="outline"
+              className="bg-purple-50 border-purple-300 hover:bg-purple-100 text-purple-700"
+              data-testid="screenshot-btn"
+              title="Capture visible map area"
+            >
+              {screenshotting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Camera className="w-4 h-4 mr-2" />}
+              Screenshot
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

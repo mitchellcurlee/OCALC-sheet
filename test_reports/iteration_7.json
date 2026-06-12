@@ -1,0 +1,46 @@
+{
+  "summary": "End-to-end verification of 5 new features: (1) drag-and-drop pole reordering with grip handles via @dnd-kit, (2) simplified JobDetail title bar with only Map/Export/Add Pole/Add Underground, (3) per-pole Sync Distances buttons, (4) Sync Dist buttons in ViewPole + EditPole headers, (5) JobMap Screenshot button using html2canvas, plus Excel export with per-pole Photos ZIP + View Map hyperlinks. Backend pytest 6/6 PASS - including XLSX content inspection confirming 'Photos ZIP'+'View Map' text and /api/poles/{id}/photos-zip + /jobs/{id}/map hyperlinks are embedded per pole. Frontend Playwright PASS - all data-testids resolve, title bar contains only the 4 expected buttons (no Photos ZIP/Map ZIP/Map Image/Sync Distances), 2 per-pole sync buttons render for OCALC (2 poles), per-pole sync POST returns 200, reorder opens DnD UI with 'Drag poles to reorder' instructions + 2 sortable items + 2 grip-vertical icons, ViewPole + EditPole headers each render [data-testid='sync-distances-btn'], JobMap renders [data-testid='screenshot-btn'] which on click downloads 'A050ABC_screenshot.png', and Export button downloads a valid 'A050ABC_20260612_002500.xlsx'.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "passed_tests": [
+    "Backend pytest TestSyncSinglePole: unauth -> 401, unknown pole -> 200/404 (no 500), valid pole -> 200 with {message, updated:bool} shape",
+    "Backend pytest TestExcelExportLinks::test_excel_downloads_xlsx: PK magic bytes verified, Content-Type xlsx",
+    "Backend pytest TestExcelExportLinks::test_excel_contains_photos_zip_and_map_links: XLSX inner XML contains 'Photos ZIP' + 'View Map' literal text AND hyperlinks matching /api/poles/{id}/photos-zip + /jobs/{id}/map",
+    "Backend pytest TestPolePhotosZipEndpoint: photos-zip endpoint returns 200 ZIP or 404 (no 500)",
+    "Frontend: Admin login -> /jobs list -> open OCALC (e5dc0bae-...) -> data-testid='job-detail' visible",
+    "Frontend: Title bar contains map-btn, export-btn, add-pole-btn, add-underground-btn only; Photos ZIP / Map ZIP / Map Image / Sync Distances buttons + label text are ALL absent from <header>",
+    "Frontend: 2 per-pole sync buttons render (one per OCALC pole) - [data-testid^='sync-pole-']",
+    "Frontend: Clicking per-pole sync triggers POST /api/poles/{id}/sync-distances -> 200",
+    "Frontend: Reorder button toggles DnD mode showing 'Drag poles to reorder' banner + 2 sortable items + 2 GripVertical icons (no chevron up/down arrows)",
+    "Frontend: ViewPole header renders [data-testid='sync-distances-btn']",
+    "Frontend: EditPole (PoleForm mode='edit') header renders [data-testid='sync-distances-btn']",
+    "Frontend: JobMap renders [data-testid='screenshot-btn']; clicking it downloads 'A050ABC_screenshot.png' via html2canvas",
+    "Frontend: Export button downloads 'A050ABC_20260612_002500.xlsx' (XLSX confirmed by backend test to contain Photos ZIP + Map links per pole)"
+  ],
+  "test_report_links": [
+    "/app/backend/tests/test_sync_and_export_links.py",
+    "/app/test_reports/pytest/pytest_sync_export.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "routes/poles.py PUT /poles/reorder still uses untyped List[dict] payload (line 313). Consider a Pydantic PoleReorderItem model for stronger validation; malformed payload silently no-ops with updated=0 - not blocking but degrades API contract clarity.",
+    "JobMap.jsx captureMapScreenshot uses html2canvas with useCORS:true and a 2s defer for tile rendering - works for the OCALC test job. For routes with a large viewport or slow tile sources the 2s wait might be insufficient; consider waiting for an explicit 'tile-loaded' event from Leaflet rather than a fixed timeout.",
+    "JobDetail.jsx is now 633 lines (above the 700-line recommended threshold once dnd-kit boilerplate is added). Consider extracting SortablePoleItem into its own file under /components.",
+    "routes/jobs.py builds the Map hyperlink as '{public_base}/jobs/{job_id}/map' (without /api) - correct because /jobs is a frontend route - but the 'View Map' label is identical for every pole, so users opening the XLSX will click the same link from any pole row. If the intent was per-pole map links (e.g., '/jobs/{job_id}/map?pole={pole_id}'), the current implementation is just a job-level link. Worth confirming product intent.",
+    "Backend sync-distances endpoint (poles.py L246) returns 200 with updated=False for unknown pole rather than 404 - acceptable but inconsistent with REST conventions; consider raising 404 when pole doesn't exist."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_sync_and_export_links.py (NEW - 6 pytest cases)"
+  ],
+  "success_rate": {"backend": "100% (6/6 pytest)", "frontend": "100% (13/13 UI assertions)"},
+  "test_credentials": "Admin tim.gables@byers.com / Byers@13430 (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "None - tests use the existing seed job e5dc0bae-96bb-4cef-8001-7baf4e41d80a (A050ABC, 2 poles). Reorder test was not saved (cancelled). Per-pole sync was triggered but only updates span1/span2 from GPS - idempotent.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All 5 features work end-to-end. Key data-testids: map-btn, export-btn, add-pole-btn, add-underground-btn (JobDetail title bar); sync-pole-{poleId} (per-pole sync); sync-distances-btn (ViewPole + EditPole); screenshot-btn (JobMap). Backend endpoints: POST /api/poles/{id}/sync-distances, GET /api/jobs/{id}/export/excel (now embeds per-pole Photos ZIP + View Map hyperlinks). Note: 'View Map' link is job-level (same URL for every pole row) - confirm with PM if per-pole anchor was intended. Drag-drop save uses PUT /api/poles/reorder (already covered by previous iteration's test_reorder_and_zips.py).",
+  "rca of the issue": "No issues found - feature implementation complete and verified."
+}
