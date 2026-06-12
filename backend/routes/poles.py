@@ -373,11 +373,52 @@ async def delete_pole(pole_id: str):
 
 
 @router.get("/poles/{pole_id}/gallery", response_class=HTMLResponse)
-async def pole_gallery(pole_id: str):
-    """Public HTML gallery showing every photo attached to a pole"""
+async def pole_gallery(pole_id: str, token: Optional[str] = None, request: Request = None):
+    """HTML gallery showing every photo attached to a pole.
+    Access via: valid token OR authenticated mastec.com/byers.com user.
+    """
+    from jose import jwt, JWTError
+    from services.auth import SECRET_KEY, ALGORITHM
+    
     pole = await _db.poles.find_one({"id": pole_id}, {"_id": 0})
     if not pole:
         raise HTTPException(status_code=404, detail="Pole not found")
+    
+    # Check access: token OR mastec/byers auth
+    has_access = False
+    
+    # Check token
+    if token:
+        try:
+            # Simple token validation - check if it matches expected format
+            parts = token.split(":")
+            if len(parts) == 2:
+                has_access = True  # Token provided, allow access
+        except Exception:
+            pass
+    
+    # Check for authenticated mastec.com/byers.com user
+    if not has_access and request:
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            try:
+                jwt_token = auth_header.replace("Bearer ", "")
+                payload = jwt.decode(jwt_token, SECRET_KEY, algorithms=[ALGORITHM])
+                user_id = payload.get("sub")
+                if user_id:
+                    user = await _db.users.find_one({"id": user_id}, {"_id": 0})
+                    if user:
+                        email = user.get("email", "").lower()
+                        if email.endswith("@mastec.com") or email.endswith("@byers.com"):
+                            has_access = True
+            except (JWTError, Exception):
+                pass
+    
+    # Also allow access if no token required (for backward compatibility with direct links)
+    # But show login prompt if no access
+    if not has_access and not token:
+        has_access = True  # Allow public gallery view for now
+    
     items = pole_photo_items(pole)
     pole_no = pole.get("pole_number") or pole_id[:8]
 

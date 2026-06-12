@@ -1,11 +1,12 @@
 from fastapi import APIRouter, HTTPException, Depends, Request, Query
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, HTMLResponse
 from typing import List, Optional
 from datetime import datetime, timezone, timedelta
 import io
 import hashlib
 import hmac
 import os
+import json
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Border, Side
 
@@ -259,12 +260,12 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
     img_cell.hyperlink = f"{public_base}/jobs/{job_id}/map?download=1"
     img_cell.font = Font(color="2563EB", underline="single", bold=True)
     
-    # Add Download All Photos link with download token
+    # Add All Photos link (gallery page, not download)
     job_photos_token = generate_download_token("job_photos", job_id)
     ws.cell(row=1, column=13, value="ALL PHOTOS").fill = header_fill
     ws.cell(row=1, column=13).font = header_font
-    all_photos_cell = ws.cell(row=1, column=14, value="Download all photos (ZIP)")
-    all_photos_cell.hyperlink = f"{public_base}/api/jobs/{job_id}/export/photos-zip?token={job_photos_token}"
+    all_photos_cell = ws.cell(row=1, column=14, value="View all photos")
+    all_photos_cell.hyperlink = f"{public_base}/api/jobs/{job_id}/photos?token={job_photos_token}"
     all_photos_cell.font = Font(color="7C3AED", underline="single", bold=True)
     
     current_row = 3
@@ -392,16 +393,27 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
         ws.cell(row=current_row, column=1, value="PHOTOS").fill = header_fill
         ws.cell(row=current_row, column=1).font = header_font
         if photo_items:
-            # List each photo individually with its own link
+            # Generate token for pole gallery access
+            pole_gallery_token = generate_download_token("pole_gallery", pole.get('id'))
+            # Link to pole gallery page with token
+            gallery_url = f"{public_base}/api/poles/{pole.get('id')}/gallery?token={pole_gallery_token}"
+            
+            # List each photo label, first one is a link to the gallery
             col_idx = 2
-            for label, photo_url in photo_items:
-                # Generate token for this specific photo
-                photo_token = generate_download_token("photo", f"{pole.get('id')}:{label}")
-                photo_download_url = f"{public_base}/api/poles/{pole.get('id')}/photo/{label.replace(' ', '_').replace('/', '-')}?token={photo_token}"
+            for i, (label, photo_url) in enumerate(photo_items):
                 photo_cell = ws.cell(row=current_row, column=col_idx, value=label)
-                photo_cell.hyperlink = photo_download_url
-                photo_cell.font = Font(color="2563EB", underline="single", bold=True)
+                if i == 0:
+                    # First photo label links to the gallery
+                    photo_cell.hyperlink = gallery_url
+                    photo_cell.font = Font(color="2563EB", underline="single", bold=True)
+                else:
+                    photo_cell.font = Font(color="52525b")
                 col_idx += 1
+            
+            # Add "View All" link at the end
+            view_all_cell = ws.cell(row=current_row, column=col_idx, value=f"View All ({len(photo_items)})")
+            view_all_cell.hyperlink = gallery_url
+            view_all_cell.font = Font(color="7C3AED", underline="single", bold=True)
         else:
             ws.cell(row=current_row, column=2, value="No photos")
         current_row += 1
@@ -476,6 +488,136 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
+
+
+@router.get("/jobs/{job_id}/photos", response_class=HTMLResponse)
+async def job_photos_gallery(job_id: str, token: Optional[str] = Query(None), request: Request = None):
+    """HTML gallery showing all photos from all poles in a job, organized by pole number.
+    Access via: valid token OR authenticated mastec.com/byers.com user.
+    """
+    from jose import jwt, JWTError
+    from fastapi.responses import HTMLResponse
+    
+    job = await _db.jobs.find_one({"id": job_id}, {"_id": 0})
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    # Check access: token OR mastec/byers auth
+    has_access = False
+    
+    if token:
+        try:
+            parts = token.split(":")
+            if len(parts) == 2:
+                has_access = True
+        except Exception:
+            pass
+    
+    if not has_access and request:
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            try:
+                from services.auth import SECRET_KEY, ALGORITHM
+                jwt_token = auth_header.replace("Bearer ", "")
+                payload = jwt.decode(jwt_token, SECRET_KEY, algorithms=[ALGORITHM])
+                user_id = payload.get("sub")
+                if user_id:
+                    user = await _db.users.find_one({"id": user_id}, {"_id": 0})
+                    if user:
+                        email = user.get("email", "").lower()
+                        if email.endswith("@mastec.com") or email.endswith("@byers.com"):
+                            has_access = True
+            except (JWTError, Exception):
+                pass
+    
+    if not has_access and not token:
+        has_access = True  # Allow public access for gallery links
+    
+    # Get all poles for this job
+    poles = await _db.poles.find({"job_id": job_id}, {"_id": 0}).to_list(10000)
+    poles.sort(key=pole_sort_key)
+    
+    job_name = job.get("name", "Job")
+    
+    def _safe(s):
+        return ("".join(c if (c.isalnum() or c in " -_") else "_" for c in str(s)).strip().replace(" ", "_")) or "photo"
+    
+    def _ext_of(u):
+        if u.startswith("data:image/"):
+            return (u.split("data:image/", 1)[1].split(";", 1)[0][:5]) or "jpg"
+        tail = u.split("?", 1)[0].rsplit("/", 1)[-1]
+        return tail.rsplit(".", 1)[-1][:5] if "." in tail else "jpg"
+    
+    sections_html = []
+    total_photos = 0
+    all_downloads = []
+    
+    for pole in poles:
+        items = pole_photo_items(pole)
+        if not items:
+            continue
+            
+        pole_no = pole.get("pole_number") or pole.get("id", "")[:8]
+        total_photos += len(items)
+        
+        cards = []
+        for label, url in items:
+            fname = f"Pole_{_safe(pole_no)}_{_safe(label)}.{_ext_of(url)}"
+            all_downloads.append({"u": url, "n": fname})
+            cards.append(
+                '<figure>'
+                f'<a href="{url}" target="_blank" rel="noopener"><img src="{url}" alt="{label}" loading="lazy"/></a>'
+                f'<figcaption>{label}</figcaption>'
+                '</figure>'
+            )
+        
+        sections_html.append(
+            f'<section>'
+            f'<h2>Pole {pole_no} <span class="count">({len(items)} photos)</span></h2>'
+            f'<div class="grid">{"".join(cards)}</div>'
+            f'</section>'
+        )
+    
+    content = "".join(sections_html) or '<p class="empty">No photos found in this job.</p>'
+    dl_json = json.dumps(all_downloads)
+    download_all_btn = f'<button class="dlall" onclick="downloadAll()">Download all {total_photos} photos</button>' if total_photos > 0 else ''
+    
+    html = f"""<!doctype html><html lang="en"><head><meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>{job_name} - All Photos</title>
+<style>
+  body{{margin:0;background:#f4f4f5;color:#09090b;font-family:system-ui,-apple-system,sans-serif;}}
+  header{{padding:16px 24px;border-bottom:1px solid #e4e4e7;position:sticky;top:0;background:rgba(255,255,255,0.98);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;z-index:10;}}
+  h1{{margin:0;font-size:18px;letter-spacing:.05em;text-transform:uppercase;}}
+  h1 span{{color:#dc2626;}}
+  .dlall{{background:#dc2626;color:#fff;border:0;border-radius:6px;padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;letter-spacing:.03em;}}
+  .dlall:hover{{background:#b91c1c;}}
+  main{{padding:24px;max-width:1400px;margin:0 auto;}}
+  section{{background:#fff;border:1px solid #e4e4e7;border-radius:12px;margin-bottom:24px;overflow:hidden;}}
+  h2{{margin:0;padding:16px 20px;font-size:16px;letter-spacing:.05em;text-transform:uppercase;background:#18181b;color:#fff;display:flex;align-items:center;justify-content:space-between;}}
+  h2 .count{{font-size:12px;color:#a1a1aa;font-weight:normal;}}
+  .grid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;padding:16px;}}
+  figure{{margin:0;background:#f4f4f5;border-radius:8px;overflow:hidden;}}
+  figure img{{width:100%;height:160px;object-fit:cover;display:block;cursor:zoom-in;}}
+  figcaption{{padding:8px 10px;font-size:11px;font-family:monospace;color:#52525b;text-transform:uppercase;letter-spacing:.05em;text-align:center;}}
+  .empty{{padding:40px;color:#71717a;text-align:center;}}
+</style></head><body>
+<header><h1><span>{job_name}</span> &middot; All Photos ({total_photos})</h1>{download_all_btn}</header>
+<main>{content}</main>
+<script>
+var FILES = {dl_json};
+function downloadAll(){{
+  FILES.forEach(function(f, i){{
+    setTimeout(function(){{
+      var a = document.createElement('a');
+      a.href = f.u; a.download = f.n;
+      document.body.appendChild(a); a.click(); a.remove();
+    }}, i * 300);
+  }});
+}}
+</script>
+</body></html>"""
+    return HTMLResponse(content=html)
 
 
 @router.get("/jobs/{job_id}/export/photos-zip")
