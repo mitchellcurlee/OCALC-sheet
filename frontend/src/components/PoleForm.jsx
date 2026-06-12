@@ -28,6 +28,7 @@ import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from "react-lea
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { PhotoUpload } from "@/components/PhotoUpload";
+import { MultiPhotoUpload } from "@/components/MultiPhotoUpload";
 import { HeightInput } from "@/components/HeightInput";
 import { SpanDistance } from "@/components/SpanDistance";
 import { ReferenceHeightMeasurer } from "@/components/ReferenceHeightMeasurer";
@@ -81,8 +82,8 @@ const emptyFormData = () => ({
   job_number: "", pole_number: "P-", pole_owner: "", access: "", pole_class: "",
   pole_size: "", pole_size_type: "", pole_type: "", condition: "",
   ocalc_left_photo: "", ocalc_middle_photo: "", ocalc_right_photo: "",
-  has_birthmark: true, birthmark_photo: "",
-  mgnv: "", mgnv_condition: "", mgnv_photo: "",
+  has_birthmark: true, birthmark_photos: [],
+  mgnv: "", mgnv_condition: "", mgnv_photos: [],
   pole_terminal: "", risers: "", riser_height: "",
   use_manual_spans: false,
   span1_direction: "", span1_distance: "", span1_owner: "",
@@ -92,9 +93,8 @@ const emptyFormData = () => ({
   latitude: "", longitude: "-", notes: "",
 });
 const emptyDownGuy = () => ({ _key: rowKey(), owner: "", direction: "", size: "", type: "", condition: "", height: "", lead: "" });
-const emptyKnuckle = () => ({ _key: rowKey(), size: "", total_eyes: "", direction: "", condition: "", photo: "" });
-const emptyAttachment = () => ({ _key: rowKey(), height: "", owner: "", photo: "", notes: "" });
-const emptyAdditionalPhoto = () => ({ _key: rowKey(), label: "", photo: "" });
+const emptyKnuckle = () => ({ _key: rowKey(), size: "", total_eyes: "", direction: "", condition: "", photos: [] });
+const emptyAttachment = () => ({ _key: rowKey(), height: "", owner: "", photos: [], notes: "" });
 
 export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, onSubmit, submitting = false, backUrl = "/" }) => {
   const [gpsLoading, setGpsLoading] = useState(false);
@@ -129,7 +129,6 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
   const [downGuys, setDownGuys] = useState(() => [emptyDownGuy()]);
   const [knuckles, setKnuckles] = useState(() => [emptyKnuckle()]);
   const [attachments, setAttachments] = useState(() => [emptyAttachment()]);
-  const [additionalPhotos, setAdditionalPhotos] = useState(() => []);
   const [syncingDistances, setSyncingDistances] = useState(false);
 
   // Sync distances for this pole (edit mode only)
@@ -188,13 +187,17 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
       pole_size: p.pole_size,
     });
     
+    // Convert legacy single photo fields to arrays
+    const birthmarkPhotos = p.birthmark_photos || (p.birthmark_photo ? [p.birthmark_photo] : []);
+    const mgnvPhotos = p.mgnv_photos || (p.mgnv_photo ? [p.mgnv_photo] : []);
+    
     setFormData({
       job_number: p.job_number || "", pole_number: p.pole_number || "",
       pole_owner: p.pole_owner || "", access: p.access || "", pole_class: p.pole_class || "",
       pole_size: p.pole_size || "", pole_size_type: p.pole_size_type || "", pole_type: p.pole_type || "", condition: p.condition || "",
       ocalc_left_photo: p.ocalc_left_photo || "", ocalc_middle_photo: p.ocalc_middle_photo || "", ocalc_right_photo: p.ocalc_right_photo || "",
-      has_birthmark: p.has_birthmark !== false, birthmark_photo: p.birthmark_photo || "",
-      mgnv: p.mgnv || "", mgnv_condition: p.mgnv_condition || "", mgnv_photo: p.mgnv_photo || "",
+      has_birthmark: p.has_birthmark !== false, birthmark_photos: birthmarkPhotos,
+      mgnv: p.mgnv || "", mgnv_condition: p.mgnv_condition || "", mgnv_photos: mgnvPhotos,
       pole_terminal: p.pole_terminal || "", risers: p.risers || "", riser_height: p.riser_height?.toString() || "",
       use_manual_spans: p.use_manual_spans === true,
       span1_direction: p.span1_direction || "", span1_distance: p.span1_distance?.toString() || "", span1_owner: p.span1_owner || "",
@@ -204,9 +207,20 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
       latitude: p.latitude?.toString() || "", longitude: p.longitude?.toString() || "-", notes: p.notes || "",
     });
     setDownGuys(p.down_guys?.length > 0 ? p.down_guys.map(dg => ({ _key: rowKey(), ...dg, height: dg.height?.toString() || "" })) : [{ _key: rowKey(), owner: "", direction: "", size: "", type: "", condition: "", height: "", lead: "" }]);
-    setKnuckles(p.knuckles?.length > 0 ? p.knuckles.map(k => ({ _key: rowKey(), ...k })) : [{ _key: rowKey(), size: "", total_eyes: "", direction: "", condition: "", photo: "" }]);
-    setAttachments(p.attachments?.length > 0 ? p.attachments.map(a => ({ _key: rowKey(), ...a, height: a.height?.toString() || "", notes: a.notes || "" })) : [{ _key: rowKey(), height: "", owner: "", photo: "", notes: "" }]);
-    setAdditionalPhotos(p.additional_photos?.length > 0 ? p.additional_photos.map(ap => ({ _key: rowKey(), ...ap })) : []);
+    // Convert legacy single photo to photos array for knuckles
+    setKnuckles(p.knuckles?.length > 0 ? p.knuckles.map(k => ({ 
+      _key: rowKey(), 
+      ...k, 
+      photos: k.photos || (k.photo ? [k.photo] : []) 
+    })) : [{ _key: rowKey(), size: "", total_eyes: "", direction: "", condition: "", photos: [] }]);
+    // Convert legacy single photo to photos array for attachments
+    setAttachments(p.attachments?.length > 0 ? p.attachments.map(a => ({ 
+      _key: rowKey(), 
+      ...a, 
+      height: a.height?.toString() || "", 
+      notes: a.notes || "",
+      photos: a.photos || (a.photo ? [a.photo] : [])
+    })) : [{ _key: rowKey(), height: "", owner: "", photos: [], notes: "" }]);
   }, [initialPole, options.pole_owners]);
 
   // --- Autosave draft (create mode only) -----------------------------------
@@ -246,7 +260,6 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
       if (Array.isArray(d.downGuys) && d.downGuys.length) setDownGuys(d.downGuys);
       if (Array.isArray(d.knuckles) && d.knuckles.length) setKnuckles(d.knuckles);
       if (Array.isArray(d.attachments) && d.attachments.length) setAttachments(d.attachments);
-      if (Array.isArray(d.additionalPhotos) && d.additionalPhotos.length) setAdditionalPhotos(d.additionalPhotos);
       setDraftRestored(true);
     }
     restoreDoneRef.current = true; // saves are allowed only after restore
@@ -257,11 +270,11 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
   useEffect(() => {
     if (!draftKey || !restoreDoneRef.current) return;
     try {
-      window.localStorage.setItem(draftKey, JSON.stringify({ formData, downGuys, knuckles, attachments, additionalPhotos, ts: Date.now() }));
+      window.localStorage.setItem(draftKey, JSON.stringify({ formData, downGuys, knuckles, attachments, ts: Date.now() }));
     } catch (e) {
       // ignore quota/unavailable storage
     }
-  }, [draftKey, formData, downGuys, knuckles, attachments, additionalPhotos]);
+  }, [draftKey, formData, downGuys, knuckles, attachments]);
 
   const clearDraft = () => {
     if (!draftKey) return;
@@ -273,7 +286,6 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
     setDownGuys([emptyDownGuy()]);
     setKnuckles([emptyKnuckle()]);
     setAttachments([emptyAttachment()]);
-    setAdditionalPhotos([]);
     setDraftRestored(false);
     // clear after the reset state flushes (the save effect re-writes on change)
     setTimeout(clearDraft, 0);
@@ -336,19 +348,6 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
     const updated = [...attachments];
     updated[index][field] = value === BLANK ? "" : value;
     setAttachments(updated);
-  };
-
-  // Additional Photos handlers
-  const addAdditionalPhoto = () => {
-    setAdditionalPhotos([...additionalPhotos, emptyAdditionalPhoto()]);
-  };
-  const removeAdditionalPhoto = (index) => {
-    setAdditionalPhotos(additionalPhotos.filter((_, i) => i !== index));
-  };
-  const updateAdditionalPhoto = (index, field, value) => {
-    const updated = [...additionalPhotos];
-    updated[index][field] = value;
-    setAdditionalPhotos(updated);
   };
 
   const handleMapClick = useCallback((lat, lng) => {
@@ -489,12 +488,11 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
         ...dg,
         height: dg.height ? parseFloat(dg.height) : null
       })),
-      knuckles: knuckles.filter(k => k.size || k.total_eyes || k.direction || k.condition || k.photo).map(({ _key, ...k }) => k),
-      attachments: attachments.filter(a => a.height || a.owner || a.photo || a.notes).map(({ _key, ...a }) => ({
+      knuckles: knuckles.filter(k => k.size || k.total_eyes || k.direction || k.condition || (k.photos && k.photos.length > 0)).map(({ _key, ...k }) => k),
+      attachments: attachments.filter(a => a.height || a.owner || (a.photos && a.photos.length > 0) || a.notes).map(({ _key, ...a }) => ({
         ...a,
         height: a.height ? parseFloat(a.height) : null
       })),
-      additional_photos: additionalPhotos.filter(ap => ap.photo).map(({ _key, ...ap }) => ap),
     };
 
     // Debug: Log what's being submitted
@@ -840,14 +838,14 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
               <div className="flex flex-col sm:flex-row items-start gap-6">
                 <div className="space-y-2 w-full sm:w-48">
                   <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Has Birthmark</Label>
-                  <Select value={formData.has_birthmark ? "Yes" : "No"} onValueChange={(v) => setFormData((prev) => ({ ...prev, has_birthmark: v === "Yes", birthmark_photo: v === "Yes" ? prev.birthmark_photo : "" }))}>
+                  <Select value={formData.has_birthmark ? "Yes" : "No"} onValueChange={(v) => setFormData((prev) => ({ ...prev, has_birthmark: v === "Yes", birthmark_photos: v === "Yes" ? prev.birthmark_photos : [] }))}>
                     <SelectTrigger className="h-10 bg-white border-zinc-300 text-zinc-900" data-testid="has-birthmark-select"><SelectValue placeholder="Yes / No" /></SelectTrigger>
                     <SelectContent className="bg-zinc-50 border-zinc-300"><SelectItem value="Yes">Yes</SelectItem><SelectItem value="No">No</SelectItem></SelectContent>
                   </Select>
                 </div>
                 {formData.has_birthmark && (
                   <div className="flex-1 w-full sm:w-auto">
-                    <PhotoUpload label="Birthmark Photo" value={formData.birthmark_photo} onChange={(v) => handlePhotoChange("birthmark_photo", v)} testId="birthmark" />
+                    <MultiPhotoUpload label="Birthmark Photos" value={formData.birthmark_photos || []} onChange={(v) => setFormData((prev) => ({ ...prev, birthmark_photos: v }))} testId="birthmark" />
                   </div>
                 )}
               </div>
@@ -868,7 +866,7 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
                       <SelectContent className="bg-zinc-50 border-zinc-300"><SelectItem value={BLANK} className="text-zinc-500">—</SelectItem><SelectItem value="Good" className="text-green-700">Good</SelectItem><SelectItem value="Broken" className="text-red-600">Broken</SelectItem></SelectContent>
                     </Select>
                   </div>
-                  <PhotoUpload label="MGNV Photo" value={formData.mgnv_photo} onChange={(v) => handlePhotoChange("mgnv_photo", v)} testId="mgnv" />
+                  <MultiPhotoUpload label="MGNV Photos" value={formData.mgnv_photos || []} onChange={(v) => setFormData((prev) => ({ ...prev, mgnv_photos: v }))} testId="mgnv" />
                 </div>
               </div>
             </div>
@@ -922,7 +920,7 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
                         <Label className="text-xs font-mono text-zinc-500">Notes</Label>
                         <Input type="text" value={att.notes || ""} onChange={(e) => updateAttachment(index, "notes", e.target.value)} placeholder="Enter notes" className="h-9 bg-white border-zinc-300 text-zinc-900 text-sm" />
                       </div>
-                      <PhotoUpload label="Photo" value={att.photo} onChange={(v) => updateAttachment(index, "photo", v)} testId={`attachment${index}`} compact />
+                      <MultiPhotoUpload label="Photos" value={att.photos || []} onChange={(v) => updateAttachment(index, "photos", v)} testId={`attachment${index}`} compact />
                     </div>
                     {attachments.length > 1 && (
                       <Button type="button" onClick={() => removeAttachment(index)} size="icon" variant="ghost" className="text-red-600 hover:text-red-300 hover:bg-red-500/10 h-8 w-8">
@@ -985,62 +983,6 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
               <PhotoUpload label="Middle" value={formData.ocalc_middle_photo} onChange={(v) => handlePhotoChange("ocalc_middle_photo", v)} testId="ocalc-middle" />
               <PhotoUpload label="Right" value={formData.ocalc_right_photo} onChange={(v) => handlePhotoChange("ocalc_right_photo", v)} testId="ocalc-right" />
             </div>
-          </div>
-
-          {/* Additional Photos - Unlimited */}
-          <div className="industrial-card p-4 sm:p-5">
-            <div className="flex items-center justify-between mb-3 sm:mb-4">
-              <h2 className="font-heading text-base sm:text-lg font-bold text-zinc-900 flex items-center gap-2">
-                <div className="w-1 h-5 bg-cyan-500"></div>
-                Additional Photos
-              </h2>
-              <Button type="button" onClick={addAdditionalPhoto} size="sm" className="bg-cyan-600 hover:bg-cyan-700 text-white" data-testid="add-additional-photo-btn">
-                <Plus className="w-4 h-4 mr-1" /> Add Photo
-              </Button>
-            </div>
-            {additionalPhotos.length === 0 ? (
-              <p className="text-sm text-zinc-500 italic">No additional photos. Click "Add Photo" to upload more photos.</p>
-            ) : (
-              <div className="space-y-3">
-                {additionalPhotos.map((ap, index) => (
-                  <div key={ap._key} className="bg-zinc-50 p-3 border border-zinc-300">
-                    <div className="flex items-center gap-2 sm:gap-4">
-                      <span className="text-sm font-mono text-cyan-700 w-6">{index + 1}</span>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1 items-end">
-                        <div className="space-y-1">
-                          <Label className="text-xs font-mono text-zinc-500">Label (optional)</Label>
-                          <Input
-                            type="text"
-                            value={ap.label || ""}
-                            onChange={(e) => updateAdditionalPhoto(index, "label", e.target.value)}
-                            placeholder={`Photo ${index + 1}`}
-                            className="h-9 bg-white border-zinc-300 text-zinc-900 text-sm"
-                            data-testid={`additional-photo-${index}-label`}
-                          />
-                        </div>
-                        <PhotoUpload
-                          label="Photo"
-                          value={ap.photo}
-                          onChange={(v) => updateAdditionalPhoto(index, "photo", v)}
-                          testId={`additional-photo-${index}`}
-                          compact
-                        />
-                      </div>
-                      <Button
-                        type="button"
-                        onClick={() => removeAdditionalPhoto(index)}
-                        size="icon"
-                        variant="ghost"
-                        className="text-red-600 hover:text-red-300 hover:bg-red-500/10 h-8 w-8"
-                        data-testid={`remove-additional-photo-${index}`}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
 
           {/* Down Guys - Dynamic Rows */}
@@ -1156,7 +1098,7 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
                             </SelectContent>
                           </Select>
                         </div>
-                        <PhotoUpload label="Photo" value={knuckle.photo} onChange={(v) => updateKnuckle(index, "photo", v)} testId={`anchor${index}`} compact />
+                        <MultiPhotoUpload label="Photos" value={knuckle.photos || []} onChange={(v) => updateKnuckle(index, "photos", v)} testId={`anchor${index}`} compact />
                       </div>
                       {knuckles.length > 1 && (
                         <Button type="button" onClick={() => removeKnuckle(index)} size="icon" variant="ghost" className="text-red-600 hover:text-red-300 hover:bg-red-500/10 h-8 w-8">

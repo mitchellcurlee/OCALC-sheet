@@ -216,10 +216,10 @@ const ViewPole = () => {
   const hasDownGuyData = pole.down_guys && pole.down_guys.length > 0 && pole.down_guys.some(g => g.owner || g.direction || g.size || g.type || g.condition || g.height || g.lead);
 
   // Check if any anchor (knuckle) has data (array format)
-  const hasKnuckleData = pole.knuckles && pole.knuckles.length > 0 && pole.knuckles.some(k => k.size || k.total_eyes || k.direction || k.condition || k.photo);
+  const hasKnuckleData = pole.knuckles && pole.knuckles.length > 0 && pole.knuckles.some(k => k.size || k.total_eyes || k.direction || k.condition || (k.photos && k.photos.length > 0) || k.photo);
 
   // Check if any attachment has data (array format)
-  const hasAttachmentData = pole.attachments && pole.attachments.length > 0 && pole.attachments.some(a => a.height || a.owner || a.photo || a.notes);
+  const hasAttachmentData = pole.attachments && pole.attachments.length > 0 && pole.attachments.some(a => a.height || a.owner || (a.photos && a.photos.length > 0) || a.photo || a.notes);
 
   // Should show navigation
   const showNavigation = jobId && poles.length > 1;
@@ -429,16 +429,26 @@ const ViewPole = () => {
                 <Badge className={pole.has_birthmark ? "bg-green-500/20 text-green-700 border-green-500/50" : "bg-zinc-500/20 text-zinc-600 border-zinc-500/50"}>
                   {pole.has_birthmark ? "Has Birthmark" : "No Birthmark"}
                 </Badge>
-                {pole.has_birthmark && pole.birthmark_photo && renderPhoto("Birthmark Photo", pole.birthmark_photo)}
+                {pole.has_birthmark && (pole.birthmark_photos?.length > 0 || pole.birthmark_photo) && (
+                  <div className="flex flex-wrap gap-2">
+                    {(pole.birthmark_photos || [pole.birthmark_photo].filter(Boolean)).map((photo, idx) => (
+                      renderPhoto(`Birthmark${pole.birthmark_photos?.length > 1 ? ` ${idx+1}` : ""}`, photo)
+                    ))}
+                  </div>
+                )}
               </div>
               {/* MGNV */}
-              {(pole.mgnv || pole.mgnv_condition || pole.mgnv_photo) && (
+              {(pole.mgnv || pole.mgnv_condition || pole.mgnv_photos?.length > 0 || pole.mgnv_photo) && (
                 <div className="pt-4 border-t border-zinc-300">
                   <h3 className="text-sm font-mono text-cyan-700 mb-3">MGNV</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <DataRow label="MGNV Present" value={pole.mgnv} />
                     <DataRow label="Condition" value={pole.mgnv_condition} />
-                    {renderPhoto("MGNV Photo", pole.mgnv_photo)}
+                    <div className="flex flex-wrap gap-2">
+                      {(pole.mgnv_photos || [pole.mgnv_photo].filter(Boolean)).map((photo, idx) => (
+                        renderPhoto(`MGNV${pole.mgnv_photos?.length > 1 ? ` ${idx+1}` : ""}`, photo)
+                      ))}
+                    </div>
                   </div>
                 </div>
               )}
@@ -455,20 +465,6 @@ const ViewPole = () => {
                 {renderPhoto("Left", pole.ocalc_left_photo)}
                 {renderPhoto("Middle", pole.ocalc_middle_photo)}
                 {renderPhoto("Right", pole.ocalc_right_photo)}
-              </div>
-            </div>
-          )}
-
-          {/* Additional Photos */}
-          {pole.additional_photos && pole.additional_photos.length > 0 && (
-            <div className="industrial-card p-5">
-              <h2 className="font-heading text-lg font-bold text-zinc-900 mb-4 flex items-center gap-2">
-                <div className="w-1 h-5 bg-cyan-500"></div>Additional Photos ({pole.additional_photos.length})
-              </h2>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                {pole.additional_photos.map((ap, index) => (
-                  ap.photo && renderPhoto(ap.label || `Additional ${index + 1}`, ap.photo)
-                ))}
               </div>
             </div>
           )}
@@ -506,17 +502,24 @@ const ViewPole = () => {
                     <h3 className="text-sm font-mono text-orange-600 mb-3">ANCHOR</h3>
                     <div className="space-y-3">
                       {pole.knuckles && pole.knuckles.map((knuckle, index) => {
-                        if (!knuckle.size && !knuckle.total_eyes && !knuckle.direction && !knuckle.condition && !knuckle.photo) return null;
+                        const photos = knuckle.photos || (knuckle.photo ? [knuckle.photo] : []);
+                        if (!knuckle.size && !knuckle.total_eyes && !knuckle.direction && !knuckle.condition && photos.length === 0) return null;
                         return (
                           <div key={index} className="bg-zinc-50 p-3 border border-zinc-300">
-                            <div className="flex items-center gap-4">
+                            <div className="flex items-start gap-4">
                               <span className="text-sm font-mono text-orange-600 w-8">{index + 1}</span>
-                              <div className="grid grid-cols-2 md:grid-cols-5 gap-4 flex-1">
-                                <DataRow label="Size" value={knuckle.size ? `${knuckle.size}"` : null} />
-                                <DataRow label="Total Eyes" value={knuckle.total_eyes} />
-                                <DataRow label="Direction" value={knuckle.direction} />
-                                <DataRow label="Condition" value={knuckle.condition} />
-                                {renderPhoto("Photo", knuckle.photo)}
+                              <div className="flex-1">
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-2">
+                                  <DataRow label="Size" value={knuckle.size ? `${knuckle.size}"` : null} />
+                                  <DataRow label="Total Eyes" value={knuckle.total_eyes} />
+                                  <DataRow label="Direction" value={knuckle.direction} />
+                                  <DataRow label="Condition" value={knuckle.condition} />
+                                </div>
+                                {photos.length > 0 && (
+                                  <div className="flex flex-wrap gap-2 mt-2">
+                                    {photos.map((photo, pIdx) => renderPhoto(`Photo ${photos.length > 1 ? pIdx+1 : ""}`, photo))}
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -537,16 +540,23 @@ const ViewPole = () => {
               </h2>
               <div className="space-y-3">
                 {pole.attachments && pole.attachments.map((att, index) => {
-                  if (!att.height && !att.owner && !att.photo && !att.notes) return null;
+                  const photos = att.photos || (att.photo ? [att.photo] : []);
+                  if (!att.height && !att.owner && photos.length === 0 && !att.notes) return null;
                   return (
                     <div key={index} className="bg-zinc-50 p-3 border border-zinc-300">
-                      <div className="flex items-center gap-4">
+                      <div className="flex items-start gap-4">
                         <span className="text-sm font-mono text-green-700 w-8">{index + 1}</span>
-                        <div className="grid grid-cols-4 gap-4 flex-1">
-                          <DataRow label="Height" value={att.height ? formatHeight(att.height) : null} mono />
-                          <DataRow label="Owner" value={att.owner} />
-                          <DataRow label="Notes" value={att.notes} />
-                          {renderPhoto("Photo", att.photo)}
+                        <div className="flex-1">
+                          <div className="grid grid-cols-3 gap-4 mb-2">
+                            <DataRow label="Height" value={att.height ? formatHeight(att.height) : null} mono />
+                            <DataRow label="Owner" value={att.owner} />
+                            <DataRow label="Notes" value={att.notes} />
+                          </div>
+                          {photos.length > 0 && (
+                            <div className="flex flex-wrap gap-2 mt-2">
+                              {photos.map((photo, pIdx) => renderPhoto(`Photo ${photos.length > 1 ? pIdx+1 : ""}`, photo))}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>

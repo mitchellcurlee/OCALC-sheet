@@ -196,6 +196,50 @@ async def get_job_poles(job_id: str, current_user: dict = Depends(get_current_us
     return poles
 
 
+@router.put("/jobs/{job_id}/reorder-items")
+async def reorder_job_items(job_id: str, items: List[dict], current_user: dict = Depends(get_current_user)):
+    """
+    Reorder poles and underground items together within a job.
+    Expects: [{"id": "item-id", "type": "pole"|"underground", "sort_order": 0}, ...]
+    """
+    job = await can_access_job(job_id, current_user)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    updated_poles = 0
+    updated_underground = 0
+    now = datetime.now(timezone.utc).isoformat()
+    
+    for item in items:
+        item_id = item.get("id")
+        item_type = item.get("type")
+        sort_order = item.get("sort_order")
+        
+        if item_id is None or sort_order is None or item_type is None:
+            continue
+            
+        if item_type == "pole":
+            result = await _db.poles.update_one(
+                {"id": item_id, "job_id": job_id},
+                {"$set": {"sort_order": sort_order, "updated_at": now}}
+            )
+            if result.modified_count > 0:
+                updated_poles += 1
+        elif item_type == "underground":
+            result = await _db.underground.update_one(
+                {"id": item_id, "job_id": job_id},
+                {"$set": {"sort_order": sort_order, "updated_at": now}}
+            )
+            if result.modified_count > 0:
+                updated_underground += 1
+    
+    return {
+        "message": f"Updated order for {updated_poles} poles and {updated_underground} underground items",
+        "updated_poles": updated_poles,
+        "updated_underground": updated_underground
+    }
+
+
 @router.get("/jobs/{job_id}/export/excel")
 async def export_job_excel(job_id: str, request: Request, base_url: Optional[str] = None, current_user: dict = Depends(get_current_user)):
     """Export all poles from a job to Excel"""

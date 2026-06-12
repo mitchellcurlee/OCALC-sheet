@@ -4,11 +4,6 @@ from datetime import datetime, timezone
 import uuid
 
 
-class AdditionalPhoto(BaseModel):
-    label: Optional[str] = None
-    photo: Optional[str] = None
-
-
 class DownGuy(BaseModel):
     owner: Optional[str] = None
     direction: Optional[str] = None
@@ -26,13 +21,13 @@ class Knuckle(BaseModel):
     direction: Optional[str] = None
     lead: Optional[str] = None
     condition: Optional[str] = None
-    photo: Optional[str] = None
+    photos: Optional[List[str]] = []
 
 
 class Attachment(BaseModel):
     height: Optional[float] = None
     owner: Optional[str] = None
-    photo: Optional[str] = None
+    photos: Optional[List[str]] = []
     notes: Optional[str] = None
 
 
@@ -51,14 +46,13 @@ class PoleBase(BaseModel):
     ocalc_middle_photo: Optional[str] = None
     ocalc_right_photo: Optional[str] = None
     has_birthmark: bool = True
-    birthmark_photo: Optional[str] = None
+    birthmark_photos: Optional[List[str]] = []
     mgnv: Optional[str] = None
     mgnv_condition: Optional[str] = None
-    mgnv_photo: Optional[str] = None
+    mgnv_photos: Optional[List[str]] = []
     down_guys: Optional[List[DownGuy]] = []
     knuckles: Optional[List[Knuckle]] = []
     attachments: Optional[List[Attachment]] = []
-    additional_photos: Optional[List[AdditionalPhoto]] = []
     pole_terminal: Optional[str] = None
     risers: Optional[str] = None
     riser_height: Optional[float] = None
@@ -100,14 +94,13 @@ class PoleUpdate(BaseModel):
     ocalc_middle_photo: Optional[str] = None
     ocalc_right_photo: Optional[str] = None
     has_birthmark: Optional[bool] = None
-    birthmark_photo: Optional[str] = None
+    birthmark_photos: Optional[List[str]] = None
     mgnv: Optional[str] = None
     mgnv_condition: Optional[str] = None
-    mgnv_photo: Optional[str] = None
+    mgnv_photos: Optional[List[str]] = None
     down_guys: Optional[List[DownGuy]] = None
     knuckles: Optional[List[Knuckle]] = None
     attachments: Optional[List[Attachment]] = None
-    additional_photos: Optional[List[AdditionalPhoto]] = None
     pole_terminal: Optional[str] = None
     risers: Optional[str] = None
     riser_height: Optional[float] = None

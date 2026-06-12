@@ -23,7 +23,9 @@ async def create_underground(data: UndergroundCreate):
 
 @router.get("/jobs/{job_id}/underground", response_model=List[Underground])
 async def get_job_underground(job_id: str):
-    items = await _db.underground.find({"job_id": job_id}, {"_id": 0}).sort("created_at", 1).to_list(10000)
+    items = await _db.underground.find({"job_id": job_id}, {"_id": 0}).to_list(10000)
+    # Sort by sort_order if set, then by created_at
+    items.sort(key=lambda x: (x.get("sort_order") if x.get("sort_order") is not None else float('inf'), x.get("created_at", "")))
     return items
 
 

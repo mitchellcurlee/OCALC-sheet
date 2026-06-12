@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { PhotoUpload } from "@/components/PhotoUpload";
+import { MultiPhotoUpload } from "@/components/MultiPhotoUpload";
 import { ArrowLeft, Save, Loader2, MapPin, Search } from "lucide-react";
 
 const MapClickHandler = ({ onSelect }) => {
@@ -53,7 +53,7 @@ const UndergroundForm = () => {
     longitude: "-",
     label: "",
     notes: "",
-    photo: "",
+    photos: [],
   });
 
   const fetchOptions = useCallback(async () => {
@@ -70,13 +70,15 @@ const UndergroundForm = () => {
     try {
       const res = await axios.get(`/underground/${id}`);
       const u = res.data;
+      // Convert legacy single photo to array
+      const photos = u.photos || (u.photo ? [u.photo] : []);
       setFormData({
         type: u.type || "",
         latitude: u.latitude?.toString() || "",
         longitude: u.longitude?.toString() || "-",
         label: u.label || "",
         notes: u.notes || "",
-        photo: u.photo || "",
+        photos: photos,
       });
     } catch (e) {
       toast.error("Failed to load item");
@@ -160,7 +162,7 @@ const UndergroundForm = () => {
         type: formData.type,
         label: formData.label,
         notes: formData.notes,
-        photo: formData.photo,
+        photos: formData.photos,
         latitude: Number.isFinite(parseFloat(formData.latitude)) ? parseFloat(formData.latitude) : null,
         longitude: Number.isFinite(parseFloat(formData.longitude)) ? parseFloat(formData.longitude) : null,
       };
@@ -267,7 +269,7 @@ const UndergroundForm = () => {
               <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Notes</Label>
               <Textarea value={formData.notes} onChange={(e) => setFormData((p) => ({ ...p, notes: e.target.value }))} placeholder="Notes" className="bg-white border-zinc-300 text-zinc-900" data-testid="ug-notes-input" />
             </div>
-            <PhotoUpload label="Photo" value={formData.photo} onChange={(v) => setFormData((p) => ({ ...p, photo: v }))} testId="ug-photo" />
+            <MultiPhotoUpload label="Photos" value={formData.photos} onChange={(v) => setFormData((p) => ({ ...p, photos: v }))} testId="ug-photo" />
           </div>
         </form>
       </main>

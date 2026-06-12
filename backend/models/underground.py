@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional
+from typing import List, Optional
 from datetime import datetime, timezone
 import uuid
 
@@ -10,7 +10,8 @@ class UndergroundBase(BaseModel):
     longitude: Optional[float] = None
     label: Optional[str] = None
     notes: Optional[str] = None
-    photo: Optional[str] = None
+    photos: Optional[List[str]] = []
+    sort_order: Optional[int] = None
 
 
 class UndergroundCreate(UndergroundBase):
@@ -23,7 +24,8 @@ class UndergroundUpdate(BaseModel):
     longitude: Optional[float] = None
     label: Optional[str] = None
     notes: Optional[str] = None
-    photo: Optional[str] = None
+    photos: Optional[List[str]] = None
+    sort_order: Optional[int] = None
 
 
 class Underground(UndergroundBase):

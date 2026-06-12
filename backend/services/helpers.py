@@ -103,17 +103,41 @@ def pole_photo_items(pole: dict):
         ("OCALC Left", pole.get("ocalc_left_photo")),
         ("OCALC Middle", pole.get("ocalc_middle_photo")),
         ("OCALC Right", pole.get("ocalc_right_photo")),
-        ("Birthmark", pole.get("birthmark_photo")),
-        ("MGNV", pole.get("mgnv_photo")),
     ]
+    # Birthmark photos (array)
+    birthmark_photos = pole.get("birthmark_photos") or []
+    # Support legacy single photo field
+    if not birthmark_photos and pole.get("birthmark_photo"):
+        birthmark_photos = [pole.get("birthmark_photo")]
+    for i, photo in enumerate(birthmark_photos, 1):
+        label = "Birthmark" if len(birthmark_photos) == 1 else f"Birthmark {i}"
+        labeled.append((label, photo))
+    # MGNV photos (array)
+    mgnv_photos = pole.get("mgnv_photos") or []
+    # Support legacy single photo field
+    if not mgnv_photos and pole.get("mgnv_photo"):
+        mgnv_photos = [pole.get("mgnv_photo")]
+    for i, photo in enumerate(mgnv_photos, 1):
+        label = "MGNV" if len(mgnv_photos) == 1 else f"MGNV {i}"
+        labeled.append((label, photo))
+    # Anchor photos (array per knuckle)
     for i, kn in enumerate(pole.get("knuckles", []) or [], 1):
-        labeled.append((f"Anchor {i}", kn.get("photo")))
+        photos = kn.get("photos") or []
+        # Support legacy single photo field
+        if not photos and kn.get("photo"):
+            photos = [kn.get("photo")]
+        for j, photo in enumerate(photos, 1):
+            label = f"Anchor {i}" if len(photos) == 1 else f"Anchor {i}-{j}"
+            labeled.append((label, photo))
+    # HOA photos (array per attachment)
     for i, att in enumerate(pole.get("attachments", []) or [], 1):
-        labeled.append((f"HOA {i}", att.get("photo")))
-    # Additional photos
-    for i, ap in enumerate(pole.get("additional_photos", []) or [], 1):
-        label = ap.get("label") or f"Additional {i}"
-        labeled.append((label, ap.get("photo")))
+        photos = att.get("photos") or []
+        # Support legacy single photo field
+        if not photos and att.get("photo"):
+            photos = [att.get("photo")]
+        for j, photo in enumerate(photos, 1):
+            label = f"HOA {i}" if len(photos) == 1 else f"HOA {i}-{j}"
+            labeled.append((label, photo))
     for label, val in labeled:
         if val:
             items.append((label, val))
