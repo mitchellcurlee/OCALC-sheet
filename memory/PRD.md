@@ -487,6 +487,20 @@ Build an app that collects power pole data including: size of the pole, type of 
   - Tested sync pull endpoint: returns all jobs, poles, underground items
   - Multi-photo payloads are handled by existing sync infrastructure
 
+- **ASEForm.jsx Refactoring (Jun 12, 2026)**:
+  - Refactored ASEForm.jsx from 1339 lines into modular sub-components for maintainability
+  - Created `/app/frontend/src/components/ase/` directory with:
+    - `ASEFormConstants.js` (262 lines): All dropdown options (ASE_OPTIONS) and initial form state (INITIAL_FORM_DATA)
+    - `ASEFormHelpers.jsx` (82 lines): Shared UI components (Section, StyledInput, StyledTextarea, DropdownSelect, YesNoSelect, FieldRow, isFilled)
+    - `ASEChecklistTab.jsx` (415 lines): Tab 1 - ASE CKLIST with 11 sections (Employee Info, Address, BIDI Retrofit, Access/Customer Info, Building Characteristics, Fiber Attributes, NTE Equipment Attributes, EF Offer, EF Requirements, Additional Info, Mark Ups)
+    - `ASECoordinatorTab.jsx` (29 lines): Tab 2 - Coordinator Input with single section
+    - `ASESVCLOutputTab.jsx` (175 lines): Tab 3 - SVCL Output with 6 sections (Site & Order, Site Visit, Fiber Attributes, NTE Equipment Attributes, Multi Tenant Eligibility, Site Requirements)
+    - `index.js` (6 lines): Clean centralized exports
+  - Main `ASEForm.jsx` reduced to 417 lines (orchestrator with state, fetch logic, header, and tab wrapper)
+  - Total lines: 1386 (same functionality, well-organized and maintainable)
+  - All existing functionality preserved: 3-tab structure, auto-population from job items, photo uploads, save/export, map button
+  - Verified: Frontend build passes, all tabs render correctly, form fields work as expected
+
 ## Prioritized Backlog
 
 ### P0 (Critical)
@@ -496,7 +510,6 @@ Build an app that collects power pole data including: size of the pole, type of 
 - Bulk import from Excel
 
 ### P2 (Medium Priority)
-- Refactor ASEForm.jsx (1320+ lines) into sub-components (ASECklistTab, CoordinatorInputTab, SVCLOutputTab)
 - Refactor PoleForm.jsx (1100+ lines) and JobMap.jsx (700+ lines) into smaller components
 - Refactor PhotoMarkupEditor.jsx (1133+ lines) into sub-components
 - Replace native date input in ASE Form with shadcn Calendar for UX consistency

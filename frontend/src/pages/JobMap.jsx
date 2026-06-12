@@ -388,14 +388,14 @@ const JobMap = () => {
     }
   }, [poles, job, showStops, underground]);
 
-  // Screenshot the visible map frame using dom-to-image-more
+  // Screenshot the visible map frame using dom-to-image-more - captures entire app frame
   const captureMapScreenshot = useCallback(async () => {
     setScreenshotting(true);
     try {
-      // Find the map container element
-      const mapContainer = document.querySelector(".leaflet-container");
-      if (!mapContainer) {
-        toast.error("Map container not found");
+      // Find the entire page container to capture everything within the app frame
+      const pageContainer = document.querySelector('[data-testid="job-map-page"]');
+      if (!pageContainer) {
+        toast.error("Page container not found");
         setScreenshotting(false);
         return;
       }
@@ -403,18 +403,19 @@ const JobMap = () => {
       toast.info("Capturing screenshot...");
       
       // Use dom-to-image-more which handles SVG/Canvas overlays better
-      const dataUrl = await domtoimage.toPng(mapContainer, {
+      const dataUrl = await domtoimage.toPng(pageContainer, {
         quality: 1,
         bgcolor: "#ffffff",
+        width: pageContainer.scrollWidth,
+        height: pageContainer.scrollHeight,
         style: {
           // Ensure proper rendering
           transform: "none",
         },
         filter: (node) => {
-          // Include all elements except hidden ones
-          if (node.classList && node.classList.contains("leaflet-control-container")) {
-            // Keep controls but they might be styled differently
-            return true;
+          // Exclude some elements that might cause issues
+          if (node.classList && node.classList.contains("leaflet-control-zoom")) {
+            return false; // Exclude zoom controls from screenshot
           }
           return true;
         },

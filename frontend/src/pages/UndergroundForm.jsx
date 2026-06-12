@@ -54,6 +54,7 @@ const UndergroundForm = () => {
     label: "",
     notes: "",
     photos: [],
+    tie_in_measurements: "", // For Handhole/Pole tie-in measurements
   });
 
   const fetchOptions = useCallback(async () => {
@@ -79,6 +80,7 @@ const UndergroundForm = () => {
         label: u.label || "",
         notes: u.notes || "",
         photos: photos,
+        tie_in_measurements: u.tie_in_measurements || "",
       });
     } catch (e) {
       toast.error("Failed to load item");
@@ -269,6 +271,28 @@ const UndergroundForm = () => {
               <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Notes</Label>
               <Textarea value={formData.notes} onChange={(e) => setFormData((p) => ({ ...p, notes: e.target.value }))} placeholder="Notes" className="bg-white border-zinc-300 text-zinc-900" data-testid="ug-notes-input" />
             </div>
+            
+            {/* Handhole/Pole Tie-in Measurements - only show for Handhole type */}
+            {(formData.type === "Handhole" || formData.type?.toLowerCase().includes("handhole")) && (
+              <div className="space-y-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <Label className="text-xs font-mono tracking-widest text-amber-700 uppercase flex items-center gap-2">
+                  <span className="w-2 h-2 bg-amber-500 rounded-full"></span>
+                  Handhole / Pole Tie-in Measurements
+                </Label>
+                <Textarea 
+                  value={formData.tie_in_measurements} 
+                  onChange={(e) => setFormData((p) => ({ ...p, tie_in_measurements: e.target.value }))} 
+                  placeholder="Enter tie-in measurements from handhole to poles (e.g., HH to Pole 1: 125ft N, HH to Pole 2: 89ft E)" 
+                  className="bg-white border-amber-300 text-zinc-900" 
+                  rows={3}
+                  data-testid="ug-tiein-input" 
+                />
+                <p className="text-xs text-amber-600">
+                  Enter measurements from this handhole to connecting poles. This will auto-populate the "Starting FH/MH/Pole tie-in measurements" field in the ASE Site Walk Survey.
+                </p>
+              </div>
+            )}
+            
             <MultiPhotoUpload label="Photos" value={formData.photos} onChange={(v) => setFormData((p) => ({ ...p, photos: v }))} testId="ug-photo" />
           </div>
         </form>

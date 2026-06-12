@@ -12,6 +12,7 @@ class UndergroundBase(BaseModel):
     notes: Optional[str] = None
     photos: Optional[List[str]] = []
     sort_order: Optional[int] = None
+    tie_in_measurements: Optional[str] = None  # For Handhole/Pole tie-in measurements
 
 
 class UndergroundCreate(UndergroundBase):
@@ -26,6 +27,7 @@ class UndergroundUpdate(BaseModel):
     notes: Optional[str] = None
     photos: Optional[List[str]] = None
     sort_order: Optional[int] = None
+    tie_in_measurements: Optional[str] = None
 
 
 class Underground(UndergroundBase):
