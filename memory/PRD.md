@@ -344,6 +344,19 @@ Build an app that collects power pole data including: size of the pole, type of 
   - Verified: Backend CRUD, gallery HTML, frontend add/remove flow all working
   - Requires redeploy for production.
 
+- Multi-Photo & Combined Ordering Overhaul (Jun 12, 2026):
+  - **REMOVED Additional Photos section** - per user request
+  - **Multi-Photo Fields**: Converted to arrays: birthmark_photos, mgnv_photos, Knuckle.photos, Attachment.photos, Underground.photos
+  - OCALC Left/Middle/Right remain as single-photo fields (unchanged)
+  - **New MultiPhotoUpload Component**: Shows camera/upload buttons, mini gallery of added photos, allows unlimited photos per field
+  - **Combined Items Ordering**: Job Detail now shows poles and underground in a single unified list
+  - Header shows "Poles & Underground (X poles, Y UG)"
+  - Single Reorder button enables drag-and-drop for BOTH poles and underground together
+  - New endpoint PUT /api/jobs/{job_id}/reorder-items handles both types with sort_order
+  - Underground model now has sort_order field
+  - services/helpers.py pole_photo_items supports legacy single-photo fallback
+  - Requires redeploy for production.
+
 ## Prioritized Backlog
 
 ### P0 (Critical)
@@ -351,7 +364,7 @@ Build an app that collects power pole data including: size of the pole, type of 
 
 ### P1 (High Priority)
 - Bulk import from Excel
-- Verify offline sync with larger additional_photos payloads
+- Verify offline sync with multi-photo payloads
 
 ### P2 (Medium Priority)
 - Refactor PoleForm.jsx (1100+ lines) and JobMap.jsx (700+ lines) into smaller components
