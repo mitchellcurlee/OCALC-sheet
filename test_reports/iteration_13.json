@@ -1,0 +1,42 @@
+{
+  "summary": "Frontend regression of ASE Form auto-populate logic for job A050ABC (e5dc0bae-96bb-4cef-8001-7baf4e41d80a). Logged in as admin@mastecbyers.com and opened /jobs/{id}/ase. All 8 requested auto-populate features verified PASSING with green-fill indicators on populated fields and amber on empty/unmatched fields.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "ASE Form > Tab labels (carried from iter 12)", "issues": ["Tab labels still concatenate desktop+mobile spans in accessibility tree ('ASE CklistCklist' etc.). Cosmetic/a11y only."]},
+      {"screen": "ASE Form > Equipment Power Configuration (carried from iter 11/12)", "issues": ["Still reuses equipmentEnvironment options."]},
+      {"screen": "ASE Form > date pickers (carried from iter 11/12)", "issues": ["date_of_site_visit and bidi_agreed_date still use native browser date picker."]}
+    ]
+  },
+  "test_report_links": ["/app/test_reports/iteration_13.json"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "ASEForm.jsx is now 1144+ lines (>700-line guideline). The fetchJobAndASE auto-populate logic (lines 433-687) should be extracted to a dedicated hook (e.g. useASEAutoPopulate) and the tabs split into separate components.",
+    "fetchJobAndASE intentionally only auto-fills when target field is empty (correct), but has a subtle bug at line 659: nteItem = ugData.find(i => i.type === 'NTE' || (i.type === 'FBT/NTE' && fbtItem?.id !== i.id)). The OR short-circuits on plain 'NTE' so the FBT/NTE same-id check never triggers for a single FBT/NTE marker. If only one FBT/NTE marker exists, fbtItem and nteItem are the same object, and distance calculation returns 0 (handled by `if (dist > 0)`), but conceptually misleading. Consider explicit handling for co-located FBT/NTE.",
+    "Pole.span_distance values are parsed with parseFloat (good) but unit suffix is hard-coded as 'ft' regardless of stored unit. If span_distance is ever stored in meters, the tie-in measurements string becomes incorrect.",
+    "proposed_pole_and_bldg uses pole_number which can be 'EXPORT-TEST' (seed test data) - rendered output is 'Poles: 1, EXPORT-TEST'. Fine functionally, but worth confirming the format with PM (e.g., whether building info should be appended).",
+    "calculateDistance is defined inside the component on every render - move outside the component or memoize.",
+    "Auto-populate runs once on mount via useEffect+useCallback dep on jobId only; if user adds/edits a pole or underground item in another tab, the ASE form won't refresh until reload. Consider a manual 'Re-pull from job data' button or websocket invalidation."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a (frontend-only requested)", "frontend": "100% (8/8 features verified)"},
+  "test_credentials": "admin@mastecbyers.com / Mastecbyers@12345 (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "None. Used existing A050ABC job (2 poles incl. pole_number '1' and 'EXPORT-TEST'; 2 UG items: Handhole HH-1, Hoffman Box HB-1).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Verified auto-populate values for A050ABC: Address='24810 Majestic Cone Lane, Magnolia, tx 77355' (green); POLE LINE START='30.100189, -95.735174' (green); POLE LINE END='30.099507, -95.735153' (green); Starting Tie-in Measurements='Span 1: S - 249 ft; Span 2: S - 250 ft' (green); Path of Approach='Underground path: Handhole (HH-1) → Hoffman Box (HB-1)' (green); Proposed Location='24810 Majestic Cone Lane, Magnolia, tx 77355' (green); Proposed Pole and Building='Poles: 1, EXPORT-TEST' (green). FBT/NTE/SOC LAT/LONG fields correctly show 'Auto-filled from Underground markers' placeholder with amber background since no FBT/NTE/SOC markers exist on this job. PATH OF APPROACH / MEASUREMENTS section header shows '5/7 filled' counter consistent with the 5 green fields. data-testids in use: ase-form, tab-ase-checklist, tab-coordinator-input, tab-svcl-output, save-ase-btn, export-ase-btn.",
+  "feature_verification_matrix": {
+    "Address auto-populated from job location": "PASS - 24810 Majestic Cone Lane, Magnolia, tx 77355",
+    "POLE LINE START Lat/Long from first pole GPS": "PASS - 30.100189, -95.735174",
+    "POLE LINE END Lat/Long from last pole GPS": "PASS - 30.099507, -95.735153",
+    "Starting Tie-in Measurements from first pole span data": "PASS - Span 1: S - 249 ft; Span 2: S - 250 ft",
+    "Path of Approach Description from underground items": "PASS - Underground path: Handhole (HH-1) → Hoffman Box (HB-1)",
+    "Proposed Location auto-filled from job address": "PASS",
+    "Proposed Pole and Building shows pole numbers": "PASS - Poles: 1, EXPORT-TEST",
+    "'Auto-filled from Underground markers' placeholder when no FBT/NTE/SOC markers": "PASS - shown on FBT LAT/LONG, NTE LAT/LONG, SOC START, SOC END",
+    "Green indicators on auto-populated fields, amber on empty fields": "PASS - confirmed bg-green-50/border-green-300 vs bg-amber-50/border-amber-300 in StyledInput component"
+  },
+  "rca of the issue": "n/a - no bugs found in auto-populate logic"
+}
