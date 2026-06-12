@@ -446,7 +446,7 @@ const ASEForm = () => {
         setFormData(prev => ({ ...prev, ...aseRes.data.ase_data }));
       }
       
-      // Auto-populate some fields from job data
+      // Auto-populate fields from job data (poles and underground items)
       const jobData = jobRes.data;
       const polesData = polesRes.data || [];
       const ugData = undergroundRes.data || [];
@@ -454,43 +454,125 @@ const ASEForm = () => {
       setFormData(prev => {
         const updated = { ...prev };
         
+        // ========== ADDRESS / LOCATION ==========
         // Auto-fill address from job location if not set
         if (!updated.address && jobData.location) {
           updated.address = jobData.location;
         }
         
-        // Auto-fill coordinates from poles/underground if available
+        // ========== POLE DATA ==========
         if (polesData.length > 0) {
           const firstPole = polesData[0];
           const lastPole = polesData[polesData.length - 1];
           
-          // Pole line start/end
+          // Pole line start/end coordinates
           if (!updated.soc_pole_line_start && firstPole.latitude && firstPole.longitude) {
             updated.soc_pole_line_start = `${firstPole.latitude}, ${firstPole.longitude}`;
           }
           if (!updated.soc_pole_line_end && lastPole.latitude && lastPole.longitude) {
             updated.soc_pole_line_end = `${lastPole.latitude}, ${lastPole.longitude}`;
           }
+          
+          // Calculate total span distance from poles
+          let totalSpanDistance = 0;
+          polesData.forEach(pole => {
+            if (pole.span1_distance) totalSpanDistance += parseFloat(pole.span1_distance) || 0;
+            if (pole.span2_distance) totalSpanDistance += parseFloat(pole.span2_distance) || 0;
+            if (pole.span3_distance) totalSpanDistance += parseFloat(pole.span3_distance) || 0;
+            if (pole.span4_distance) totalSpanDistance += parseFloat(pole.span4_distance) || 0;
+          });
+          
+          // Auto-populate proposed pole and building info
+          if (!updated.proposed_pole_and_bldg && polesData.length > 0) {
+            const poleNumbers = polesData.map(p => p.pole_number).filter(Boolean).join(", ");
+            if (poleNumbers) {
+              updated.proposed_pole_and_bldg = `Poles: ${poleNumbers}`;
+            }
+          }
+          
+          // Count risers on poles
+          const risersCount = polesData.filter(p => p.risers && parseInt(p.risers) > 0).length;
+          
+          // Calculate starting tie-in measurements from first pole spans
+          if (!updated.starting_tie_in_measurements && firstPole) {
+            const measurements = [];
+            if (firstPole.span1_direction && firstPole.span1_distance) {
+              measurements.push(`Span 1: ${firstPole.span1_direction} - ${firstPole.span1_distance} ft`);
+            }
+            if (firstPole.span2_direction && firstPole.span2_distance) {
+              measurements.push(`Span 2: ${firstPole.span2_direction} - ${firstPole.span2_distance} ft`);
+            }
+            if (measurements.length > 0) {
+              updated.starting_tie_in_measurements = measurements.join("; ");
+            }
+          }
         }
         
-        // Check for FBT, NTE, SOC items in underground
+        // ========== UNDERGROUND DATA ==========
+        // Track counts of underground equipment
+        const ugCounts = {
+          handhole: 0,
+          manhole: 0,
+          pullbox: 0,
+          hoffmanBox: 0,
+          pedestal: 0,
+          fbt: 0,
+          nte: 0,
+          riser: 0
+        };
+        
         ugData.forEach(item => {
+          const itemType = item.type?.toLowerCase() || '';
+          
+          // Count equipment types
+          if (itemType.includes('handhole')) ugCounts.handhole++;
+          if (itemType.includes('manhole')) ugCounts.manhole++;
+          if (itemType === 'pullbox' || itemType.includes('pullbox')) ugCounts.pullbox++;
+          if (itemType.includes('hoffman')) ugCounts.hoffmanBox++;
+          if (itemType.includes('pedestal')) ugCounts.pedestal++;
+          if (itemType === 'riser') ugCounts.riser++;
+          
+          // FBT - Fiber Terminal data
           if (item.type === 'FBT' || item.type === 'FBT/NTE') {
+            ugCounts.fbt++;
             if (!updated.fiber_terminal_lat_long && item.latitude && item.longitude) {
               updated.fiber_terminal_lat_long = `${item.latitude}, ${item.longitude}`;
             }
             if (!updated.fiber_at_site) {
               updated.fiber_at_site = "Yes";
             }
+            if (!updated.existing_fiber_terminal) {
+              updated.existing_fiber_terminal = "Yes";
+            }
+            // Fiber terminal placement based on type
+            if (!updated.fiber_terminal_placement && item.type === 'FBT') {
+              updated.fiber_terminal_placement = "Terminal";
+            }
+            // Use notes as terminal location description
+            if (!updated.terminal_location_description && item.notes) {
+              updated.terminal_location_description = item.notes;
+            }
           }
+          
+          // NTE - Network Termination Equipment data
           if (item.type === 'NTE' || item.type === 'FBT/NTE') {
+            ugCounts.nte++;
             if (!updated.nte_lat_long && item.latitude && item.longitude) {
               updated.nte_lat_long = `${item.latitude}, ${item.longitude}`;
             }
             if (!updated.existing_nte_emts_at_site) {
               updated.existing_nte_emts_at_site = "Yes";
             }
+            if (!updated.existing_nte) {
+              updated.existing_nte = "Yes";
+            }
+            // Use notes as NTE location description
+            if (!updated.nte_location_description && item.notes) {
+              updated.nte_location_description = item.notes;
+            }
           }
+          
+          // SOC Start/End coordinates
           if (item.type === 'SOC Start') {
             if (!updated.soc_start_lat_long && item.latitude && item.longitude) {
               updated.soc_start_lat_long = `${item.latitude}, ${item.longitude}`;
@@ -501,12 +583,97 @@ const ASEForm = () => {
               updated.soc_end_lat_long = `${item.latitude}, ${item.longitude}`;
             }
           }
+          
+          // MPOE data
           if (item.type === 'MPOE') {
             if (!updated.mpoe_address && item.notes) {
               updated.mpoe_address = item.notes;
             }
+            if (!updated.how_many_dmarcs) {
+              updated.how_many_dmarcs = "1";
+            }
+          }
+          
+          // PFP - Primary Flexibility Point
+          if (item.type === 'PFP') {
+            if (!updated.nearest_fiber_lat_long && item.latitude && item.longitude) {
+              updated.nearest_fiber_lat_long = `${item.latitude}, ${item.longitude}`;
+            }
+          }
+          
+          // Riser
+          if (item.type === 'Riser') {
+            if (!updated.proposed_equipment_lat_long && item.latitude && item.longitude) {
+              updated.proposed_equipment_lat_long = `${item.latitude}, ${item.longitude}`;
+            }
+          }
+          
+          // Hoffman Box - auto-fill need_hoffman_box
+          if (item.type === 'Hoffman Box') {
+            if (!updated.need_hoffman_box) {
+              updated.need_hoffman_box = "Yes";
+            }
+          }
+          
+          // Pedestal
+          if (item.type === 'Pedestal') {
+            if (!updated.equipment_mounting) {
+              updated.equipment_mounting = "PEDESTAL - (PSTL)";
+            }
           }
         });
+        
+        // Auto-fill EF requirements based on underground counts
+        if (ugCounts.pullbox > 0 && !updated.need_pullbox) {
+          updated.need_pullbox = "Yes";
+          updated.pullbox_qty = String(ugCounts.pullbox);
+        }
+        if (ugCounts.hoffmanBox > 0 && !updated.need_hoffman_box) {
+          updated.need_hoffman_box = "Yes";
+          updated.hoffman_box_qty = String(ugCounts.hoffmanBox);
+        }
+        
+        // ========== PATH OF APPROACH ==========
+        // Generate path of approach description from underground items
+        if (!updated.path_of_approach && ugData.length > 0) {
+          const pathItems = ugData.map(item => {
+            if (item.label) {
+              return `${item.type} (${item.label})`;
+            }
+            return item.type;
+          }).join(" → ");
+          if (pathItems) {
+            updated.path_of_approach = `Underground path: ${pathItems}`;
+          }
+        }
+        
+        // ========== PROPOSED LOCATION ==========
+        // Generate proposed location from job and items
+        if (!updated.proposed_location && jobData.location) {
+          updated.proposed_location = jobData.location;
+        }
+        
+        // ========== DISTANCE CALCULATIONS ==========
+        // Calculate distance from FBT to NTE if both exist
+        const fbtItem = ugData.find(i => i.type === 'FBT' || i.type === 'FBT/NTE');
+        const nteItem = ugData.find(i => i.type === 'NTE' || (i.type === 'FBT/NTE' && fbtItem?.id !== i.id));
+        
+        if (fbtItem && nteItem && !updated.distance_fbt_to_nte) {
+          if (fbtItem.latitude && fbtItem.longitude && nteItem.latitude && nteItem.longitude) {
+            const dist = calculateDistance(
+              fbtItem.latitude, fbtItem.longitude,
+              nteItem.latitude, nteItem.longitude
+            );
+            if (dist > 0) {
+              updated.distance_fbt_to_nte = `${Math.round(dist)} ft`;
+            }
+          }
+        }
+        
+        // If FBT and NTE are same item (FBT/NTE), they're co-located
+        if (ugData.some(i => i.type === 'FBT/NTE') && !updated.nte_at_terminal) {
+          updated.nte_at_terminal = "Terminal";
+        }
         
         return updated;
       });
@@ -518,6 +685,19 @@ const ASEForm = () => {
       setLoading(false);
     }
   }, [jobId, navigate]);
+  
+  // Helper function to calculate distance between two GPS coordinates in feet
+  const calculateDistance = (lat1, lon1, lat2, lon2) => {
+    const R = 20902231; // Earth's radius in feet
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+  };
 
   useEffect(() => {
     fetchJobAndASE();
