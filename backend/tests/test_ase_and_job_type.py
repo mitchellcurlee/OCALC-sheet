@@ -116,23 +116,30 @@ class TestASEData:
         assert data.get("core_drill_qty") == "2"
 
     def test_export_ase_excel(self, auth_headers, created_job_id):
-        # First save some ASE data
+        # First save some ASE data using the actual backend field names
         ase_payload = {
-            "att_engineer": "Excel Engineer",
+            "assigned_att_eng": "Excel Engineer",
             "address": "999 Excel St",
+            "occupancy_type": "OFFICE",
             "buried_pvc": "Yes",
             "buried_pvc_length": "50ft",
         }
-        requests.put(f"{BASE_URL}/api/jobs/{created_job_id}/ase-data", json=ase_payload, headers=auth_headers, timeout=30)
+        save_r = requests.put(f"{BASE_URL}/api/jobs/{created_job_id}/ase-data", json=ase_payload, headers=auth_headers, timeout=30)
+        assert save_r.status_code == 200, save_r.text
+
+        # Confirm round-trip via GET
+        g = requests.get(f"{BASE_URL}/api/jobs/{created_job_id}/ase-data", headers=auth_headers, timeout=30)
+        assert g.status_code == 200
+        saved = g.json().get("ase_data", {})
+        assert saved.get("assigned_att_eng") == "Excel Engineer"
+        assert saved.get("address") == "999 Excel St"
 
         r = requests.get(f"{BASE_URL}/api/jobs/{created_job_id}/export/ase", headers=auth_headers, timeout=60)
         assert r.status_code == 200, r.text
         ct = r.headers.get("content-type", "")
         assert "spreadsheetml" in ct or "excel" in ct.lower(), f"Unexpected content-type: {ct}"
-        # Verify it's a valid xlsx
         wb = load_workbook(io.BytesIO(r.content))
         ws = wb.active
-        # Collect all cell values into a single string
         text = " ".join(str(c.value) for row in ws.iter_rows() for c in row if c.value is not None)
         assert "ASE SITE WALK SURVEY" in text
         assert "EMPLOYEE INFO" in text
@@ -140,9 +147,16 @@ class TestASEData:
         assert "FIBER ATTRIBUTES" in text
         assert "NTE - EQUIPMENT ATTRIBUTES" in text
         assert "EF REQUIREMENTS - DETAIL" in text
-        assert "Excel Engineer" in text
-        assert "999 Excel St" in text
-        assert "50ft" in text
+        # Verify saved ase_data values appear in export
+        assert "Excel Engineer" in text, "assigned_att_eng not exported"
+        assert "999 Excel St" in text, "address not exported"
+        assert "OFFICE" in text, "occupancy_type not exported"
+        assert "50ft" in text, "buried_pvc_length not exported"
+        # Verify cell fill colors (green for filled, yellow for empty) are present
+        fills = {c.fill.start_color.rgb for row in ws.iter_rows() for c in row if c.fill and c.fill.start_color and c.fill.start_color.rgb}
+        # dcfce7 = green filled, fef3c7 = yellow empty
+        assert any("DCFCE7" in (str(f) or "").upper() for f in fills), f"No green filled cells: {fills}"
+        assert any("FEF3C7" in (str(f) or "").upper() for f in fills), f"No yellow empty cells: {fills}"
 
     def test_ase_data_unknown_job(self, auth_headers):
         r = requests.put(f"{BASE_URL}/api/jobs/non-existent-id/ase-data", json={"x": 1}, headers=auth_headers, timeout=30)

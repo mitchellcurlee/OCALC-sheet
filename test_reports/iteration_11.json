@@ -1,0 +1,42 @@
+{
+  "summary": "Re-tested ASE Site Walk Survey after the dropdown completeness, visual feedback, auto-population, and Excel export updates. Backend: 6/6 pytest pass (including new assertions that the export workbook contains saved ASE values AND has both green (DCFCE7) and yellow (FEF3C7) PatternFill cells). Frontend on job A050ABC: ASE form renders all 14 sections with X/Y filled counters; auto-populated Address='24810 Majestic Cone Lane, Magnolia, tx 77355', POLE LINE START='30.100189, -95.735174', POLE LINE END='30.099507, -95.735153' from job/poles data; 3 fields show green styling, 117 show amber/yellow (120 total) — visual feedback works; Occupancy Type dropdown shows all 14 options; Save returns toast 'ASE data saved successfully!'; ASE Export button present.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "PUT /api/jobs/{job_id}/ase-data", "issue": "Accepts arbitrary dict with no Pydantic validation; payload schema is undocumented. Frontend uses fields like assigned_att_eng, occupancy_type, soc_pole_line_start (~90 fields) and any typo silently no-ops in the export."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "ASE Form > BIDI Retrofit / Employee Info", "issues": ["Date of Site Visit and BIDI 'What date was agreed to?' still use the native browser date picker (mm/dd/yyyy) instead of the shadcn Calendar/Popover used elsewhere - inconsistent UX (carried over from iteration 10)."]},
+      {"screen": "ASE Form > Equipment Power Configuration", "issues": ["Reuses ASE_OPTIONS.equipmentEnvironment (AC/DC/AC DUAL/DC DUAL) for Equipment Power Configuration - likely a copy/paste; verify with PM whether Power Configuration should have its own option list (typical values: AC ONLY, DC ONLY, AC PRIMARY/DC BACKUP, etc.)."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_ase_and_job_type.py",
+    "/app/test_reports/pytest/pytest_ase.xml"
+  ],
+  "action_items": [
+    "Optional: add a Pydantic ASEData model in /app/backend/models/job.py and use it as the body type for PUT /jobs/{id}/ase-data so unknown/typo fields are rejected and OpenAPI docs reflect the schema.",
+    "Optional: replace native date inputs in ASEForm.jsx (date_of_site_visit, bidi_agreed_date) with shadcn Calendar component for UX parity.",
+    "Optional: verify Equipment Power Configuration dropdown should not reuse equipmentEnvironment options."
+  ],
+  "critical_code_review_comments": [
+    "ASEForm.jsx is 1027 lines - exceeds the 700-line guideline. Consider splitting into section components (EmployeeInfoSection, FiberAttributesSection, NTESection, EFRequirementsSection, etc.) or moving ASE_OPTIONS + field group lists into a config module for maintainability.",
+    "ASE export endpoint reads ~90 keys from job.ase_data with literal strings - any rename on the frontend silently breaks the column without a test. Recommend centralising the field schema (shared dict or pydantic model imported by both save and export handlers).",
+    "Equipment Power Configuration field reuses equipmentEnvironment options (line 802 ASEForm.jsx). Likely incorrect - should have distinct list per ASE template.",
+    "DropdownSelect/YesNoSelect have nearly identical render bodies - DRY: YesNoSelect could be expressed as <DropdownSelect options={['Yes','No']} />."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_ase_and_job_type.py (fixed test_export_ase_excel to use correct backend field names assigned_att_eng/occupancy_type, added asserts for green DCFCE7 + yellow FEF3C7 PatternFill cells)"
+  ],
+  "success_rate": {"backend": "100% (6/6)", "frontend": "100% on tested flows - all 14 sections, counters, auto-fill, dropdown options, color feedback, Save, Export button"},
+  "test_credentials": "admin@mastecbyers.com / Mastecbyers12345",
+  "seed_data_creation": "Test fixture creates/cleans up TEST_ASE_JOB. Existing seeded job A050ABC (id e5dc0bae-96bb-4cef-8001-7baf4e41d80a) used for UI auto-population testing - has 2 poles with coordinates.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All ASE form requirements from this iteration are verified working end-to-end. Backend tests at /app/backend/tests/test_ase_and_job_type.py (6 tests) cover create_job with job_type, save/get/export ASE data, and color-fill assertions in the exported xlsx. Frontend route /jobs/{id}/ase auto-fills address/pole-line lat-long from job + poles; underground markers (FBT/NTE/SOC Start/SOC End/MPOE) drive fiber_terminal_lat_long, nte_lat_long, soc_start_lat_long, soc_end_lat_long, mpoe_address. Visual feedback uses bg-green-50/border-green-300 (filled) and bg-amber-50/border-amber-300 (empty) classes on every Input/Textarea/SelectTrigger. Section counters use 'X/Y filled' format. Excel export uses dcfce7 / fef3c7 PatternFill.",
+  "rca of the issue": "Previous iteration's test_export_ase_excel asserted the value 'Excel Engineer' would appear in the export, but the test PUT used field name 'att_engineer' while the export reads 'assigned_att_eng' (routes/jobs.py line 1032). The export was correct; the test had wrong field names. Fixed by aligning test payload field names with backend schema and added stronger assertions (round-trip GET + green/yellow fill check)."
+}
