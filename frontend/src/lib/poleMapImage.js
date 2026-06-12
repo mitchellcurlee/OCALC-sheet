@@ -163,6 +163,7 @@ export const computeUgConnectors = (route, ug) => {
       mid: [(u.pos[0] + best.pos[0]) / 2, (u.pos[1] + best.pos[1]) / 2],
       pole: best.pole_number,
       abbr: undergroundAbbr(u.type),
+      ugType: u.type, // Include the underground type for MPOE detection
     };
   });
 };

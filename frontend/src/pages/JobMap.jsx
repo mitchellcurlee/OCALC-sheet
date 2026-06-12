@@ -93,19 +93,19 @@ const labelIcon = (text, ox, oy) =>
   });
 
 // Underground item marker (GREEN square with abbreviation) - smaller
-const ugIcon = (abbr) =>
+const ugIcon = (abbr, isRed = false) =>
   L.divIcon({
     className: "ug-marker",
-    html: `<div style="background:#16a34a;color:#fff;border:1.5px solid #fff;border-radius:3px;min-width:18px;height:18px;padding:0 3px;display:flex;align-items:center;justify-content:center;font:600 9px/1 ui-monospace,monospace;box-shadow:0 1px 3px rgba(0,0,0,.4);white-space:nowrap;">${abbr}</div>`,
+    html: `<div style="background:${isRed ? '#dc2626' : '#16a34a'};color:#fff;border:1.5px solid #fff;border-radius:3px;min-width:18px;height:18px;padding:0 3px;display:flex;align-items:center;justify-content:center;font:600 9px/1 ui-monospace,monospace;box-shadow:0 1px 3px rgba(0,0,0,.4);white-space:nowrap;">${abbr}</div>`,
     iconSize: [18, 18],
     iconAnchor: [9, 9],
   });
 
-// Underground connector distance label (GREEN pill)
-const ugConnectorLabel = (text) =>
+// Underground connector distance label (GREEN or RED pill)
+const ugConnectorLabel = (text, isRed = false) =>
   L.divIcon({
     className: "ug-connector-label",
-    html: `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;"><span style="background:#fff;border:1.5px solid #16a34a;border-radius:11px;padding:1px 7px;font-family:ui-monospace,monospace;font-weight:700;font-size:10px;color:#166534;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,.35);">${text}</span></div>`,
+    html: `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;"><span style="background:#fff;border:1.5px solid ${isRed ? '#dc2626' : '#16a34a'};border-radius:11px;padding:1px 7px;font-family:ui-monospace,monospace;font-weight:700;font-size:10px;color:${isRed ? '#dc2626' : '#166534'};white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,.35);">${text}</span></div>`,
     iconSize: [64, 20],
     iconAnchor: [32, 10],
   });
@@ -187,6 +187,41 @@ const JobMap = () => {
   const presentUg = useMemo(() => [...new Set(ug.map((u) => u.type))], [ug]);
   const linePoints = route.map((p) => p.pos);
   const allPoints = useMemo(() => [...linePoints, ...ug.map((u) => u.pos)], [linePoints, ug]);
+
+  // Find MPOE positions to determine which segments should be red
+  const mpoePositions = useMemo(() => ug.filter(u => u.type === "MPOE").map(u => u.pos), [ug]);
+  
+  // Determine if a segment is "after MPOE" - check if MPOE is between start of route and this segment
+  const isSegmentAfterMPOE = useMemo(() => {
+    if (mpoePositions.length === 0) return segments.map(() => false);
+    
+    // For each segment, check if there's an MPOE that comes before it on the route
+    return segments.map((seg, segIndex) => {
+      // Get the position of the segment's starting pole
+      const segStartPole = route[segIndex];
+      if (!segStartPole) return false;
+      
+      // Check if any MPOE is "connected" to this segment or before it
+      // A simple heuristic: check if any MPOE is within reasonable distance of any pole before this segment
+      for (const mpoePos of mpoePositions) {
+        // Check connection to poles up to and including this segment's start
+        for (let i = 0; i <= segIndex; i++) {
+          const pole = route[i];
+          if (!pole) continue;
+          // Calculate distance from MPOE to this pole
+          const dist = Math.sqrt(
+            Math.pow((pole.pos[0] - mpoePos[0]) * 364000, 2) +
+            Math.pow((pole.pos[1] - mpoePos[1]) * 288200, 2)
+          );
+          // If MPOE is within 500ft of a pole before this segment, mark segment as "after MPOE"
+          if (dist < 500 && i < segIndex) {
+            return true;
+          }
+        }
+      }
+      return false;
+    });
+  }, [segments, route, mpoePositions]);
 
   // perpendicular screen offset for each segment label (alternating sides so
   // close-together measurements don't overlap each other or the markers)
@@ -585,11 +620,12 @@ const JobMap = () => {
               <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}" maxNativeZoom={19} maxZoom={22} />
               <FitBounds points={allPoints} disabled={editMode} />
               <MapRefSetter mapRef={mapRef} />
-              {/* Aerial path segments (BLUE) - editable */}
+              {/* Aerial path segments (BLUE, or RED after MPOE) - editable */}
               {route.length > 1 && route.slice(0, -1).map((fromPole, i) => {
                 const toPole = route[i + 1];
                 const segmentKey = `${fromPole.id}-${toPole.id}`;
                 const waypoints = customRoutes[segmentKey] || [];
+                const isAfterMPOE = isSegmentAfterMPOE[i] || false;
                 return (
                   <EditableRoute
                     key={segmentKey}
@@ -599,20 +635,26 @@ const JobMap = () => {
                     segmentId={segmentKey}
                     onWaypointsChange={handleWaypointsChange}
                     editMode={editMode}
-                    color="#2563eb"
+                    color={isAfterMPOE ? "#dc2626" : "#2563eb"}
                     weight={3}
                     showDistance={true}
                   />
                 );
               })}
-              {/* Underground connectors (GREEN dashed) */}
-              {ugConnectors.map((c, i) => (
-                <Polyline key={`ug-conn-${i}`} positions={[c.from, c.to]} pathOptions={{ color: "#16a34a", weight: 2.5, dashArray: "6,4" }} />
-              ))}
+              {/* Underground connectors (GREEN dashed, or RED if connected to MPOE) */}
+              {ugConnectors.map((c, i) => {
+                const isMPOEConnector = c.ugType === "MPOE";
+                return (
+                  <Polyline key={`ug-conn-${i}`} positions={[c.from, c.to]} pathOptions={{ color: isMPOEConnector ? "#dc2626" : "#16a34a", weight: 2.5, dashArray: "6,4" }} />
+                );
+              })}
               {/* Underground connector distance labels */}
-              {ugConnectors.map((c, i) => (
-                <Marker key={`ug-lbl-${i}`} position={c.mid} icon={ugConnectorLabel(fmtFeet(c.ft))} interactive={false} zIndexOffset={900} />
-              ))}
+              {ugConnectors.map((c, i) => {
+                const isMPOEConnector = c.ugType === "MPOE";
+                return (
+                  <Marker key={`ug-lbl-${i}`} position={c.mid} icon={ugConnectorLabel(fmtFeet(c.ft), isMPOEConnector)} interactive={false} zIndexOffset={900} />
+                );
+              })}
               {poleDisplayInfo.map((p, i) => {
                 const label = markerLabel(p, i, showStops);
                 const icon = p.isCluster 
@@ -646,20 +688,22 @@ const JobMap = () => {
               {!editMode && segLabels.map((s, i) => (
                 <Marker key={`arr-${i}`} position={s.mid} icon={arrowIcon(s.deg)} interactive={false} />
               ))}
-              {ug.map((u) => (
-                <Marker key={u.id} position={u.pos} icon={ugIcon(undergroundAbbr(u.type))}>
+              {ug.map((u) => {
+                const isMPOE = u.type === "MPOE";
+                return (
+                <Marker key={u.id} position={u.pos} icon={ugIcon(undergroundAbbr(u.type), isMPOE)}>
                   <Popup>
                     <div className="min-w-[170px] font-mono" data-testid={`ug-popup-${u.id}`}>
-                      <div className="text-sm font-bold text-green-700">{undergroundAbbr(u.type)} · {u.type}</div>
+                      <div className={`text-sm font-bold ${isMPOE ? 'text-red-700' : 'text-green-700'}`}>{undergroundAbbr(u.type)} · {u.type}</div>
                       {u.label && <div className="text-xs text-zinc-600 mt-1">{u.label}</div>}
                       {u.notes && <div className="text-xs text-zinc-500 mt-1">{u.notes}</div>}
                       <Link to={`/jobs/${jobId}/underground/edit/${u.id}`}>
-                        <Button size="sm" className="w-full h-8 mt-2 bg-green-600 hover:bg-green-700 text-white" data-testid={`ug-edit-${u.id}`}>Edit</Button>
+                        <Button size="sm" className={`w-full h-8 mt-2 ${isMPOE ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'} text-white`} data-testid={`ug-edit-${u.id}`}>Edit</Button>
                       </Link>
                     </div>
                   </Popup>
                 </Marker>
-              ))}
+              )})}
               {/* Map annotations (notes and measurements) */}
               <MapAnnotations
                 annotations={annotations}
