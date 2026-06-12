@@ -7,7 +7,7 @@ import { Slider } from "@/components/ui/slider";
 import { 
   Camera, Upload, X, Pencil, Type, Circle, Square, 
   Minus, Undo, Redo, Trash2, Loader2, ZoomIn,
-  Save, MousePointer, Move, ArrowRight, Triangle
+  Save, MousePointer, Move, ArrowRight, Triangle, List
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -91,9 +91,61 @@ export const PhotoMarkupEditor = ({ photos = [], onChange, label = "Mark Ups" })
   const [currentLine, setCurrentLine] = useState(null);
   const [shapeStart, setShapeStart] = useState(null);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [showLegend, setShowLegend] = useState(false);
   const imageRef = useRef(null);
 
   const photoArray = Array.isArray(photos) ? photos : (photos ? [photos] : []);
+
+  // Generate legend data from current annotations
+  const getLegendItems = useCallback(() => {
+    const items = [];
+    const markerCounts = {};
+    const shapeCounts = { rectangle: 0, circle: 0, arrow: 0, line: 0, triangle: 0 };
+    let drawCount = 0;
+    let textCount = 0;
+
+    annotations.forEach(ann => {
+      if (ann.type === "marker") {
+        const marker = UG_MARKERS.find(m => m.type === ann.label);
+        if (marker) {
+          markerCounts[ann.label] = (markerCounts[ann.label] || 0) + 1;
+        }
+      } else if (ann.type === "shape") {
+        shapeCounts[ann.shape] = (shapeCounts[ann.shape] || 0) + 1;
+      } else if (ann.type === "draw") {
+        drawCount++;
+      } else if (ann.type === "text") {
+        textCount++;
+      }
+    });
+
+    // Add markers to legend
+    Object.entries(markerCounts).forEach(([type, count]) => {
+      const marker = UG_MARKERS.find(m => m.type === type);
+      if (marker) {
+        items.push({ type: "marker", label: `${marker.type} - ${marker.label}`, color: marker.color, count });
+      }
+    });
+
+    // Add shapes to legend
+    Object.entries(shapeCounts).forEach(([shape, count]) => {
+      if (count > 0) {
+        items.push({ type: "shape", label: `${shape.charAt(0).toUpperCase() + shape.slice(1)}`, count });
+      }
+    });
+
+    // Add drawings
+    if (drawCount > 0) {
+      items.push({ type: "draw", label: "Freehand Drawing", count: drawCount });
+    }
+
+    // Add text
+    if (textCount > 0) {
+      items.push({ type: "text", label: "Text Annotation", count: textCount });
+    }
+
+    return items;
+  }, [annotations]);
 
   // Load image into canvas
   useEffect(() => {
@@ -966,6 +1018,21 @@ export const PhotoMarkupEditor = ({ photos = [], onChange, label = "Mark Ups" })
                 </div>
               </div>
 
+              {/* Legend toggle */}
+              <div className="space-y-2">
+                <Label className="text-xs font-mono">LEGEND</Label>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={showLegend ? "default" : "outline"}
+                  onClick={() => setShowLegend(!showLegend)}
+                  className="w-full h-8"
+                >
+                  <List className="w-4 h-4 mr-1" />
+                  {showLegend ? "Hide Legend" : "Show Legend"}
+                </Button>
+              </div>
+
               {/* Save button */}
               <Button
                 type="button"
@@ -978,7 +1045,7 @@ export const PhotoMarkupEditor = ({ photos = [], onChange, label = "Mark Ups" })
             </div>
 
             {/* Canvas area */}
-            <div ref={containerRef} className="flex-1 bg-zinc-900 flex items-center justify-center p-4 overflow-auto">
+            <div ref={containerRef} className="flex-1 bg-zinc-900 flex items-center justify-center p-4 overflow-auto relative">
               {!imageLoaded && currentPhoto && (
                 <div className="text-white text-center">
                   <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2" />
@@ -994,6 +1061,56 @@ export const PhotoMarkupEditor = ({ photos = [], onChange, label = "Mark Ups" })
                 className={`bg-white shadow-lg ${tool === "select" ? 'cursor-default' : 'cursor-crosshair'} ${!imageLoaded ? 'hidden' : ''}`}
                 style={{ maxWidth: "100%", maxHeight: "100%" }}
               />
+              
+              {/* Legend overlay */}
+              {showLegend && imageLoaded && (
+                <div className="absolute bottom-6 right-6 bg-white/95 backdrop-blur-sm border border-zinc-300 rounded-lg shadow-lg p-3 max-w-xs">
+                  <h4 className="font-mono text-xs font-bold text-zinc-700 mb-2 border-b pb-1">LEGEND</h4>
+                  {getLegendItems().length === 0 ? (
+                    <p className="text-xs text-zinc-500 italic">No annotations yet</p>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {getLegendItems().map((item, idx) => (
+                        <div key={idx} className="flex items-center gap-2 text-xs">
+                          {item.type === "marker" && (
+                            <>
+                              <span 
+                                className="w-4 h-4 rounded-full flex items-center justify-center text-white text-[8px] font-bold"
+                                style={{ backgroundColor: item.color }}
+                              >
+                                {item.label.split(" - ")[0]}
+                              </span>
+                              <span className="text-zinc-700">{item.label.split(" - ")[1]}</span>
+                              <span className="text-zinc-400 ml-auto">×{item.count}</span>
+                            </>
+                          )}
+                          {item.type === "shape" && (
+                            <>
+                              <Square className="w-4 h-4 text-zinc-600" />
+                              <span className="text-zinc-700">{item.label}</span>
+                              <span className="text-zinc-400 ml-auto">×{item.count}</span>
+                            </>
+                          )}
+                          {item.type === "draw" && (
+                            <>
+                              <Pencil className="w-4 h-4 text-zinc-600" />
+                              <span className="text-zinc-700">{item.label}</span>
+                              <span className="text-zinc-400 ml-auto">×{item.count}</span>
+                            </>
+                          )}
+                          {item.type === "text" && (
+                            <>
+                              <Type className="w-4 h-4 text-zinc-600" />
+                              <span className="text-zinc-700">{item.label}</span>
+                              <span className="text-zinc-400 ml-auto">×{item.count}</span>
+                            </>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </DialogContent>

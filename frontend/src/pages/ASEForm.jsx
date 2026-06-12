@@ -13,7 +13,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Save, FileSpreadsheet, Loader2, CheckCircle2, Camera } from "lucide-react";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import { ArrowLeft, Save, FileSpreadsheet, Loader2, CheckCircle2, Camera, ClipboardList, Users, FileOutput } from "lucide-react";
 import { MultiPhotoUpload } from "@/components/MultiPhotoUpload";
 import { PhotoMarkupEditor } from "@/components/PhotoMarkupEditor";
 
@@ -40,11 +46,11 @@ const ASE_OPTIONS = {
   // Equipment Mounting
   equipmentMounting: [
     "OUTSIDE WALL MOUNT", "INSIDE WALL MOUNT", "DESK MOUNT(WALL MOUNT)", 
-    "RACK", "PEDESTAL - (PSTL)"
+    "RACK", "PEDESTAL - (PSTL)", "HOFFMAN BOX", "H-FRAME"
   ],
   
   // Fiber Terminal Placement
-  fiberTerminalPlacement: ["Terminal", "Elsewhere", "POLE"],
+  fiberTerminalPlacement: ["Terminal", "Elsewhere", "POLE", "HOFFMAN BOX", "H-FRAME"],
   
   // Mounting Wall
   mountingWall: ["Wall", "EXISTING", "NEW"],
@@ -640,433 +646,475 @@ const ASEForm = () => {
           </span>
         </div>
         
-        {/* Employee Info */}
-        <Section title="EMPLOYEE INFO" filledCount={countFilledFields(employeeInfoFields)} totalCount={employeeInfoFields.length}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <FieldRow label="Date of Site Visit" filled={isFilled(formData.date_of_site_visit)}>
-              <StyledInput type="date" value={formData.date_of_site_visit} onChange={(e) => handleChange("date_of_site_visit", e.target.value)} />
-            </FieldRow>
-            <FieldRow label="Type of Site Visit" filled={isFilled(formData.type_of_site_visit)}>
-              <DropdownSelect value={formData.type_of_site_visit} onChange={(v) => handleChange("type_of_site_visit", v)} options={ASE_OPTIONS.siteVisitType} />
-            </FieldRow>
-            <FieldRow label="Assigned AT&T Engineer" filled={isFilled(formData.assigned_att_eng)}>
-              <StyledInput value={formData.assigned_att_eng} onChange={(e) => handleChange("assigned_att_eng", e.target.value)} />
-            </FieldRow>
-            <FieldRow label="Site Walked By" filled={isFilled(formData.site_walked_by)}>
-              <StyledInput value={formData.site_walked_by} onChange={(e) => handleChange("site_walked_by", e.target.value)} />
-            </FieldRow>
-            <FieldRow label="Site Walked With" filled={isFilled(formData.site_walked_with)}>
-              <StyledInput value={formData.site_walked_with} onChange={(e) => handleChange("site_walked_with", e.target.value)} />
-            </FieldRow>
-          </div>
-        </Section>
+        {/* 3-Tab Structure */}
+        <Tabs defaultValue="ase-checklist" className="w-full">
+          <TabsList className="grid w-full grid-cols-3 mb-6 bg-zinc-100 p-1 rounded-lg">
+            <TabsTrigger 
+              value="ase-checklist" 
+              className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:text-blue-700"
+              data-testid="tab-ase-checklist"
+            >
+              <ClipboardList className="w-4 h-4" />
+              <span className="hidden sm:inline">ASE Cklist</span>
+              <span className="sm:hidden">Cklist</span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="coordinator-input" 
+              className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:text-green-700"
+              data-testid="tab-coordinator-input"
+            >
+              <Users className="w-4 h-4" />
+              <span className="hidden sm:inline">Coordinator Input</span>
+              <span className="sm:hidden">Coord</span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="svcl-output" 
+              className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:text-purple-700"
+              data-testid="tab-svcl-output"
+            >
+              <FileOutput className="w-4 h-4" />
+              <span className="hidden sm:inline">SVCL Output</span>
+              <span className="sm:hidden">SVCL</span>
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Address Information */}
-        <Section title="ADDRESS INFORMATION" filledCount={countFilledFields(addressFields)} totalCount={addressFields.length}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <FieldRowWithPhoto label="Address" wide filled={isFilled(formData.address)} photos={formData.address_photos} onPhotosChange={(v) => handleChange("address_photos", v)}>
-              <StyledInput value={formData.address} onChange={(e) => handleChange("address", e.target.value)} />
-            </FieldRowWithPhoto>
-            <FieldRow label="MPOE Address" filled={isFilled(formData.mpoe_address)}>
-              <StyledInput value={formData.mpoe_address} onChange={(e) => handleChange("mpoe_address", e.target.value)} />
-            </FieldRow>
-            <FieldRow label="Suite &/or Bldg #" filled={isFilled(formData.suite_bldg)}>
-              <StyledInput value={formData.suite_bldg} onChange={(e) => handleChange("suite_bldg", e.target.value)} />
-            </FieldRow>
-          </div>
-        </Section>
-
-        {/* Access/Customer Information */}
-        <Section title="ACCESS/CUSTOMER INFORMATION" filledCount={countFilledFields(accessFields)} totalCount={accessFields.length}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <FieldRowWithPhoto label="Access Contact Name & Phone/Email" wide filled={isFilled(formData.access_contact)} photos={formData.access_contact_photos} onPhotosChange={(v) => handleChange("access_contact_photos", v)}>
-              <StyledInput value={formData.access_contact} onChange={(e) => handleChange("access_contact", e.target.value)} />
-            </FieldRowWithPhoto>
-            <FieldRow label="Building Owner Name & Phone/Email" wide filled={isFilled(formData.building_owner_contact)}>
-              <StyledInput value={formData.building_owner_contact} onChange={(e) => handleChange("building_owner_contact", e.target.value)} />
-            </FieldRow>
-            <FieldRow label="SPF Required?" filled={isFilled(formData.spf_required)}>
-              <YesNoSelect value={formData.spf_required} onChange={(v) => handleChange("spf_required", v)} />
-            </FieldRow>
-            <FieldRowWithPhoto label="SPF Contact Name & Phone/Email" filled={isFilled(formData.spf_contact)} photos={formData.spf_contact_photos} onPhotosChange={(v) => handleChange("spf_contact_photos", v)}>
-              <StyledInput value={formData.spf_contact} onChange={(e) => handleChange("spf_contact", e.target.value)} />
-            </FieldRowWithPhoto>
-            <FieldRow label="Timeframe / Access Hours" filled={isFilled(formData.timeframe)}>
-              <DropdownSelect value={formData.timeframe} onChange={(v) => handleChange("timeframe", v)} options={ASE_OPTIONS.timeframe} />
-            </FieldRow>
-            <FieldRow label="Access Notes/Special Instructions" wide filled={isFilled(formData.access_notes)}>
-              <StyledTextarea value={formData.access_notes} onChange={(e) => handleChange("access_notes", e.target.value)} rows={2} />
-            </FieldRow>
-          </div>
-        </Section>
-
-        {/* BIDI Retrofit */}
-        <Section title="BIDI RETROFIT" filledCount={countFilledFields(bidiFields)} totalCount={bidiFields.length}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <FieldRow label="Does This Qualify for BIDI Retrofit?" filled={isFilled(formData.bidi_retrofit_qualify)}>
-              <YesNoSelect value={formData.bidi_retrofit_qualify} onChange={(v) => handleChange("bidi_retrofit_qualify", v)} />
-            </FieldRow>
-            <FieldRow label="Did you speak to regarding Retrofit work?" filled={isFilled(formData.bidi_spoke_to)}>
-              <StyledInput value={formData.bidi_spoke_to} onChange={(e) => handleChange("bidi_spoke_to", e.target.value)} />
-            </FieldRow>
-            <FieldRow label="What date was agreed to?" filled={isFilled(formData.bidi_agreed_date)}>
-              <StyledInput type="date" value={formData.bidi_agreed_date} onChange={(e) => handleChange("bidi_agreed_date", e.target.value)} />
-            </FieldRow>
-            <FieldRow label="BIDI Access Notes/Special Instructions" wide filled={isFilled(formData.bidi_access_notes)}>
-              <StyledTextarea value={formData.bidi_access_notes} onChange={(e) => handleChange("bidi_access_notes", e.target.value)} rows={2} />
-            </FieldRow>
-          </div>
-        </Section>
-
-        {/* Building Characteristics */}
-        <Section title="BUILDING CHARACTERISTICS" filledCount={countFilledFields(buildingFields)} totalCount={buildingFields.length}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <FieldRow label="Occupancy Type" filled={isFilled(formData.occupancy_type)}>
-              <DropdownSelect value={formData.occupancy_type} onChange={(v) => handleChange("occupancy_type", v)} options={ASE_OPTIONS.occupancyTypes} />
-            </FieldRow>
-            <FieldRow label="Number of Floors" filled={isFilled(formData.number_of_floors)}>
-              <StyledInput value={formData.number_of_floors} onChange={(e) => handleChange("number_of_floors", e.target.value)} />
-            </FieldRow>
-            <FieldRow label="Number of Business Units" filled={isFilled(formData.number_of_business_units)}>
-              <StyledInput value={formData.number_of_business_units} onChange={(e) => handleChange("number_of_business_units", e.target.value)} />
-            </FieldRow>
-            <FieldRow label="Number of Tenants" filled={isFilled(formData.number_of_tenants)}>
-              <StyledInput value={formData.number_of_tenants} onChange={(e) => handleChange("number_of_tenants", e.target.value)} />
-            </FieldRow>
-            <FieldRow label="How many DMARCs?" filled={isFilled(formData.how_many_dmarcs)}>
-              <StyledInput value={formData.how_many_dmarcs} onChange={(e) => handleChange("how_many_dmarcs", e.target.value)} />
-            </FieldRow>
-            <FieldRow label="If additional DMARCs, where are they?" filled={isFilled(formData.additional_dmarcs_location)}>
-              <StyledInput value={formData.additional_dmarcs_location} onChange={(e) => handleChange("additional_dmarcs_location", e.target.value)} />
-            </FieldRow>
-            <FieldRow label="Is Customer Building Owner or Tenant?" filled={isFilled(formData.owner_or_tenant)}>
-              <DropdownSelect value={formData.owner_or_tenant} onChange={(v) => handleChange("owner_or_tenant", v)} options={ASE_OPTIONS.ownerTenant} />
-            </FieldRow>
-            <FieldRow label="Multi-Tenant" filled={isFilled(formData.multi_tenant)}>
-              <YesNoSelect value={formData.multi_tenant} onChange={(v) => handleChange("multi_tenant", v)} />
-            </FieldRow>
-            <FieldRow label="Ceiling Height" filled={isFilled(formData.ceiling_height)}>
-              <DropdownSelect value={formData.ceiling_height} onChange={(v) => handleChange("ceiling_height", v)} options={ASE_OPTIONS.ceilingHeight} />
-            </FieldRow>
-            <FieldRow label="Is proposed NTE in a common space that can serve multiple tenants?" wide filled={isFilled(formData.proposed_nte_common_space)}>
-              <YesNoSelect value={formData.proposed_nte_common_space} onChange={(v) => handleChange("proposed_nte_common_space", v)} />
-            </FieldRow>
-          </div>
-        </Section>
-
-        {/* Fiber Attributes */}
-        <Section title="FIBER ATTRIBUTES" filledCount={countFilledFields(fiberFields)} totalCount={fiberFields.length}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <FieldRow label="Fiber at Site?" filled={isFilled(formData.fiber_at_site)}>
-              <YesNoSelect value={formData.fiber_at_site} onChange={(v) => handleChange("fiber_at_site", v)} />
-            </FieldRow>
-            <FieldRowWithPhoto label="Existing INC" filled={isFilled(formData.existing_inc)} photos={formData.existing_inc_photos} onPhotosChange={(v) => handleChange("existing_inc_photos", v)}>
-              <YesNoSelect value={formData.existing_inc} onChange={(v) => handleChange("existing_inc", v)} />
-            </FieldRowWithPhoto>
-            <FieldRow label="INC Required" filled={isFilled(formData.inc_required)}>
-              <YesNoSelect value={formData.inc_required} onChange={(v) => handleChange("inc_required", v)} />
-            </FieldRow>
-            <FieldRowWithPhoto label="Existing Fiber Terminal" filled={isFilled(formData.existing_fiber_terminal)} photos={formData.existing_fiber_terminal_photos} onPhotosChange={(v) => handleChange("existing_fiber_terminal_photos", v)}>
-              <YesNoSelect value={formData.existing_fiber_terminal} onChange={(v) => handleChange("existing_fiber_terminal", v)} />
-            </FieldRowWithPhoto>
-            <FieldRowWithPhoto label="Fiber Terminal Placement" filled={isFilled(formData.fiber_terminal_placement)} photos={formData.fiber_terminal_placement_photos} onPhotosChange={(v) => handleChange("fiber_terminal_placement_photos", v)}>
-              <DropdownSelect value={formData.fiber_terminal_placement} onChange={(v) => handleChange("fiber_terminal_placement", v)} options={ASE_OPTIONS.fiberTerminalPlacement} />
-            </FieldRowWithPhoto>
-            <FieldRow label="LAT/LONG of Existing/New FBT" filled={isFilled(formData.fiber_terminal_lat_long)}>
-              <StyledInput value={formData.fiber_terminal_lat_long} onChange={(e) => handleChange("fiber_terminal_lat_long", e.target.value)} placeholder="Auto-filled from Underground markers" />
-            </FieldRow>
-            <FieldRow label="Fiber Terminal FID" filled={isFilled(formData.fiber_terminal_fid)}>
-              <StyledInput value={formData.fiber_terminal_fid} onChange={(e) => handleChange("fiber_terminal_fid", e.target.value)} />
-            </FieldRow>
-            <FieldRow label="FBT FID if Missing" filled={isFilled(formData.fbt_fid_if_missing)}>
-              <StyledInput value={formData.fbt_fid_if_missing} onChange={(e) => handleChange("fbt_fid_if_missing", e.target.value)} />
-            </FieldRow>
-            <FieldRowWithPhoto label="Active Ports" filled={isFilled(formData.fiber_active_ports)} photos={formData.fiber_active_ports_photos} onPhotosChange={(v) => handleChange("fiber_active_ports_photos", v)}>
-              <StyledInput value={formData.fiber_active_ports} onChange={(e) => handleChange("fiber_active_ports", e.target.value)} />
-            </FieldRowWithPhoto>
-            <FieldRowWithPhoto label="Fiber Reading" filled={isFilled(formData.fiber_reading)} photos={formData.fiber_reading_photos} onPhotosChange={(v) => handleChange("fiber_reading_photos", v)}>
-              <StyledInput value={formData.fiber_reading} onChange={(e) => handleChange("fiber_reading", e.target.value)} />
-            </FieldRowWithPhoto>
-            <FieldRow label="Describe Existing/Proposed Terminal Location" wide filled={isFilled(formData.terminal_location_description)}>
-              <StyledTextarea value={formData.terminal_location_description} onChange={(e) => handleChange("terminal_location_description", e.target.value)} rows={2} />
-            </FieldRow>
-            <FieldRow label="Terminal Floor #" filled={isFilled(formData.terminal_floor)}>
-              <StyledInput value={formData.terminal_floor} onChange={(e) => handleChange("terminal_floor", e.target.value)} />
-            </FieldRow>
-            <FieldRow label="Mounting Wall" filled={isFilled(formData.terminal_mounting_wall)}>
-              <DropdownSelect value={formData.terminal_mounting_wall} onChange={(v) => handleChange("terminal_mounting_wall", v)} options={ASE_OPTIONS.mountingWall} />
-            </FieldRow>
-            <FieldRow label="Terminal Rack Bay/Shelf" filled={isFilled(formData.terminal_rack_bay_shelf)}>
-              <StyledInput value={formData.terminal_rack_bay_shelf} onChange={(e) => handleChange("terminal_rack_bay_shelf", e.target.value)} />
-            </FieldRow>
-            <FieldRow label="LAT/LONG of Nearest Fiber" filled={isFilled(formData.nearest_fiber_lat_long)}>
-              <StyledInput value={formData.nearest_fiber_lat_long} onChange={(e) => handleChange("nearest_fiber_lat_long", e.target.value)} />
-            </FieldRow>
-            <FieldRow label="Nearest Fiber FID" filled={isFilled(formData.nearest_fiber_fid)}>
-              <StyledInput value={formData.nearest_fiber_fid} onChange={(e) => handleChange("nearest_fiber_fid", e.target.value)} />
-            </FieldRow>
-          </div>
-        </Section>
-
-        {/* NTE Equipment Attributes */}
-        <Section title="NTE - EQUIPMENT ATTRIBUTES" filledCount={countFilledFields(nteFields)} totalCount={nteFields.length}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <FieldRow label="Existing NTE/EMTs @ Site?" filled={isFilled(formData.existing_nte_emts_at_site)}>
-              <YesNoSelect value={formData.existing_nte_emts_at_site} onChange={(v) => handleChange("existing_nte_emts_at_site", v)} />
-            </FieldRow>
-            <FieldRowWithPhoto label="Existing NTE" filled={isFilled(formData.existing_nte)} photos={formData.existing_nte_photos} onPhotosChange={(v) => handleChange("existing_nte_photos", v)}>
-              <YesNoSelect value={formData.existing_nte} onChange={(v) => handleChange("existing_nte", v)} />
-            </FieldRowWithPhoto>
-            <FieldRowWithPhoto label="NTE Placement" filled={isFilled(formData.nte_placement)} photos={formData.nte_placement_photos} onPhotosChange={(v) => handleChange("nte_placement_photos", v)}>
-              <DropdownSelect value={formData.nte_placement} onChange={(v) => handleChange("nte_placement", v)} options={ASE_OPTIONS.existingNewLocation} />
-            </FieldRowWithPhoto>
-            <FieldRow label="NTE Active Ports" filled={isFilled(formData.nte_active_ports)}>
-              <StyledInput value={formData.nte_active_ports} onChange={(e) => handleChange("nte_active_ports", e.target.value)} />
-            </FieldRow>
-            <FieldRowWithPhoto label="NTE CLLI" filled={isFilled(formData.nte_clli)} photos={formData.nte_clli_photos} onPhotosChange={(v) => handleChange("nte_clli_photos", v)}>
-              <StyledInput value={formData.nte_clli} onChange={(e) => handleChange("nte_clli", e.target.value)} />
-            </FieldRowWithPhoto>
-            <FieldRow label="Ports/Band Available" filled={isFilled(formData.nte_ports_band_ava)}>
-              <StyledInput value={formData.nte_ports_band_ava} onChange={(e) => handleChange("nte_ports_band_ava", e.target.value)} />
-            </FieldRow>
-            <FieldRow label="Not Using Due To" filled={isFilled(formData.nte_not_using_due_to)}>
-              <StyledInput value={formData.nte_not_using_due_to} onChange={(e) => handleChange("nte_not_using_due_to", e.target.value)} />
-            </FieldRow>
-            <FieldRow label="NTE at Terminal or Another Location?" filled={isFilled(formData.nte_at_terminal)}>
-              <DropdownSelect value={formData.nte_at_terminal} onChange={(v) => handleChange("nte_at_terminal", v)} options={ASE_OPTIONS.nteLocation} />
-            </FieldRow>
-            <FieldRow label="Describe Existing/Proposed NTE Location" wide filled={isFilled(formData.nte_location_description)}>
-              <StyledTextarea value={formData.nte_location_description} onChange={(e) => handleChange("nte_location_description", e.target.value)} rows={2} />
-            </FieldRow>
-            <FieldRow label="NTE LAT/LONG" filled={isFilled(formData.nte_lat_long)}>
-              <StyledInput value={formData.nte_lat_long} onChange={(e) => handleChange("nte_lat_long", e.target.value)} placeholder="Auto-filled from Underground markers" />
-            </FieldRow>
-            <FieldRow label="NTE Floor #" filled={isFilled(formData.nte_floor)}>
-              <StyledInput value={formData.nte_floor} onChange={(e) => handleChange("nte_floor", e.target.value)} />
-            </FieldRow>
-            <FieldRow label="NTE Mounting Wall" filled={isFilled(formData.nte_mounting_wall)}>
-              <DropdownSelect value={formData.nte_mounting_wall} onChange={(v) => handleChange("nte_mounting_wall", v)} options={ASE_OPTIONS.mountingWall} />
-            </FieldRow>
-            <FieldRowWithPhoto label="NTE Rack Bay/Shelf" filled={isFilled(formData.nte_rack_bay_shelf)} photos={formData.nte_rack_bay_shelf_photos} onPhotosChange={(v) => handleChange("nte_rack_bay_shelf_photos", v)}>
-              <StyledInput value={formData.nte_rack_bay_shelf} onChange={(e) => handleChange("nte_rack_bay_shelf", e.target.value)} />
-            </FieldRowWithPhoto>
-            <FieldRow label="Equipment Environment" filled={isFilled(formData.equipment_environment)}>
-              <DropdownSelect value={formData.equipment_environment} onChange={(v) => handleChange("equipment_environment", v)} options={ASE_OPTIONS.equipmentEnvironment} />
-            </FieldRow>
-            <FieldRow label="Equipment Mounting" filled={isFilled(formData.equipment_mounting)}>
-              <DropdownSelect value={formData.equipment_mounting} onChange={(v) => handleChange("equipment_mounting", v)} options={ASE_OPTIONS.equipmentMounting} />
-            </FieldRow>
-            <FieldRowWithPhoto label="Equipment Power Configuration" filled={isFilled(formData.equipment_power_config)} photos={formData.equipment_power_config_photos} onPhotosChange={(v) => handleChange("equipment_power_config_photos", v)}>
-              <DropdownSelect value={formData.equipment_power_config} onChange={(v) => handleChange("equipment_power_config", v)} options={ASE_OPTIONS.equipmentEnvironment} />
-            </FieldRowWithPhoto>
-            <FieldRow label="Distance From FBT to NTE" filled={isFilled(formData.distance_fbt_to_nte)}>
-              <StyledInput value={formData.distance_fbt_to_nte} onChange={(e) => handleChange("distance_fbt_to_nte", e.target.value)} />
-            </FieldRow>
-            <FieldRow label="Distance from NTE to Customer IT Space" filled={isFilled(formData.distance_nte_to_it)}>
-              <StyledInput value={formData.distance_nte_to_it} onChange={(e) => handleChange("distance_nte_to_it", e.target.value)} />
-            </FieldRow>
-            <FieldRow label="Is Customer IT Space on Same Floor as NTE?" filled={isFilled(formData.it_same_floor_as_nte)}>
-              <DropdownSelect value={formData.it_same_floor_as_nte} onChange={(v) => handleChange("it_same_floor_as_nte", v)} options={ASE_OPTIONS.routerFloor} />
-            </FieldRow>
-            <FieldRow label="Router Within 300ft?" filled={isFilled(formData.router_within_300ft)}>
-              <DropdownSelect value={formData.router_within_300ft} onChange={(v) => handleChange("router_within_300ft", v)} options={ASE_OPTIONS.routerDistance} />
-            </FieldRow>
-            <FieldRow label="Proposed Equipment" filled={isFilled(formData.proposed_equipment)}>
-              <DropdownSelect value={formData.proposed_equipment} onChange={(v) => handleChange("proposed_equipment", v)} options={ASE_OPTIONS.proposedEquipment} />
-            </FieldRow>
-            <FieldRow label="Proposed Equipment Location" filled={isFilled(formData.proposed_equipment_location)}>
-              <StyledInput value={formData.proposed_equipment_location} onChange={(e) => handleChange("proposed_equipment_location", e.target.value)} />
-            </FieldRow>
-            <FieldRow label="Proposed Equipment LAT/LONG" filled={isFilled(formData.proposed_equipment_lat_long)}>
-              <StyledInput value={formData.proposed_equipment_lat_long} onChange={(e) => handleChange("proposed_equipment_lat_long", e.target.value)} />
-            </FieldRow>
-          </div>
-        </Section>
-
-        {/* Path of Approach */}
-        <Section title="PATH OF APPROACH / MEASUREMENTS" filledCount={countFilledFields(pathFields)} totalCount={pathFields.length}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <FieldRow label="Path of Approach Description" wide filled={isFilled(formData.path_of_approach)}>
-              <StyledTextarea value={formData.path_of_approach} onChange={(e) => handleChange("path_of_approach", e.target.value)} rows={2} />
-            </FieldRow>
-            <FieldRow label="Proposed Location" wide filled={isFilled(formData.proposed_location)}>
-              <StyledInput value={formData.proposed_location} onChange={(e) => handleChange("proposed_location", e.target.value)} />
-            </FieldRow>
-            <FieldRow label="Starting FH/MH/POLE Tie-in Measurements" wide filled={isFilled(formData.starting_tie_in_measurements)}>
-              <StyledTextarea value={formData.starting_tie_in_measurements} onChange={(e) => handleChange("starting_tie_in_measurements", e.target.value)} rows={2} />
-            </FieldRow>
-            <FieldRowWithPhoto label="POLE LINE START Lat/Long" filled={isFilled(formData.soc_pole_line_start)} photos={formData.pole_line_start_photos} onPhotosChange={(v) => handleChange("pole_line_start_photos", v)}>
-              <StyledInput value={formData.soc_pole_line_start} onChange={(e) => handleChange("soc_pole_line_start", e.target.value)} placeholder="Auto-filled from Poles" />
-            </FieldRowWithPhoto>
-            <FieldRowWithPhoto label="POLE LINE END Lat/Long" filled={isFilled(formData.soc_pole_line_end)} photos={formData.pole_line_end_photos} onPhotosChange={(v) => handleChange("pole_line_end_photos", v)}>
-              <StyledInput value={formData.soc_pole_line_end} onChange={(e) => handleChange("soc_pole_line_end", e.target.value)} placeholder="Auto-filled from Poles" />
-            </FieldRowWithPhoto>
-            <FieldRowWithPhoto label="SOC START Lat/Long" filled={isFilled(formData.soc_start_lat_long)} photos={formData.soc_start_photos} onPhotosChange={(v) => handleChange("soc_start_photos", v)}>
-              <StyledInput value={formData.soc_start_lat_long} onChange={(e) => handleChange("soc_start_lat_long", e.target.value)} placeholder="Auto-filled from Underground markers" />
-            </FieldRowWithPhoto>
-            <FieldRowWithPhoto label="SOC END Lat/Long" filled={isFilled(formData.soc_end_lat_long)} photos={formData.soc_end_photos} onPhotosChange={(v) => handleChange("soc_end_photos", v)}>
-              <StyledInput value={formData.soc_end_lat_long} onChange={(e) => handleChange("soc_end_lat_long", e.target.value)} placeholder="Auto-filled from Underground markers" />
-            </FieldRowWithPhoto>
-            <FieldRow label="Proposed Pole and Building" wide filled={isFilled(formData.proposed_pole_and_bldg)}>
-              <StyledInput value={formData.proposed_pole_and_bldg} onChange={(e) => handleChange("proposed_pole_and_bldg", e.target.value)} />
-            </FieldRow>
-          </div>
-        </Section>
-
-        {/* EF Offer/Requirements */}
-        <Section title="EF OFFER / REQUIREMENTS" filledCount={countFilledFields(efOfferFields)} totalCount={efOfferFields.length}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <FieldRow label="EF Requirements" filled={isFilled(formData.ef_requirements)}>
-              <DropdownSelect value={formData.ef_requirements} onChange={(v) => handleChange("ef_requirements", v)} options={ASE_OPTIONS.efRequirements} />
-            </FieldRow>
-            <FieldRow label="EF Needed" filled={isFilled(formData.ef_needed)}>
-              <YesNoSelect value={formData.ef_needed} onChange={(v) => handleChange("ef_needed", v)} />
-            </FieldRow>
-            <FieldRow label="EF Qualified" filled={isFilled(formData.ef_qualified)}>
-              <YesNoSelect value={formData.ef_qualified} onChange={(v) => handleChange("ef_qualified", v)} />
-            </FieldRow>
-            <FieldRow label="Customer EF Aware" filled={isFilled(formData.customer_ef_aware)}>
-              <YesNoSelect value={formData.customer_ef_aware} onChange={(v) => handleChange("customer_ef_aware", v)} />
-            </FieldRow>
-            <FieldRow label="End User Acceptance" filled={isFilled(formData.end_user_acceptance)}>
-              <YesNoSelect value={formData.end_user_acceptance} onChange={(v) => handleChange("end_user_acceptance", v)} />
-            </FieldRow>
-            <FieldRow label="EF Disqualification Reason" wide filled={isFilled(formData.ef_disqualification_reason)}>
-              <StyledInput value={formData.ef_disqualification_reason} onChange={(e) => handleChange("ef_disqualification_reason", e.target.value)} />
-            </FieldRow>
-            <FieldRow label="Are We Placing Conduit and How Long?" wide filled={isFilled(formData.placing_conduit_length)}>
-              <StyledInput value={formData.placing_conduit_length} onChange={(e) => handleChange("placing_conduit_length", e.target.value)} />
-            </FieldRow>
-            <FieldRow label="EF Conduit Length Category" filled={isFilled(formData.ef_conduit_length)}>
-              <DropdownSelect value={formData.ef_conduit_length} onChange={(v) => handleChange("ef_conduit_length", v)} options={ASE_OPTIONS.efConduitLength} />
-            </FieldRow>
-          </div>
-        </Section>
-
-        {/* EF Requirements Detail */}
-        <Section title="EF REQUIREMENTS - DETAIL" filledCount={countFilledFields(efDetailFields)} totalCount={efDetailFields.length}>
-          <div className="space-y-4">
-            {[
-              { label: "Do we need a buried PVC pipe?", key: "buried_pvc", qtyKey: "buried_pvc_length", qtyLabel: "Length" },
-              { label: "Do we need buried innerduct on customer property?", key: "buried_innerduct", qtyKey: "buried_innerduct_length", qtyLabel: "Length" },
-              { label: "Do we need EMT (metallic bldg pipe)?", key: "need_emt", qtyKey: "emt_length", qtyLabel: "Length" },
-              { label: "Do we need plastic building duct/pipe (Plenum)?", key: "need_plenum", qtyKey: "plenum_length", qtyLabel: "Length" },
-              { label: "Do we need a core drill?", key: "need_core_drill", qtyKey: "core_drill_qty", qtyLabel: "Qty" },
-              { label: "Do we need an eye-bolt/weatherhead?", key: "need_eyebolt", qtyKey: null },
-              { label: "Do we need a Pullbox?", key: "need_pullbox", qtyKey: "pullbox_qty", qtyLabel: "Qty" },
-              { label: "Do we need a Hoffman box?", key: "need_hoffman_box", qtyKey: "hoffman_box_qty", qtyLabel: "Qty" },
-              { label: "Do we need a backboard?", key: "need_backboard", qtyKey: "backboard_qty", qtyLabel: "Qty" },
-              { label: "Do we need an outlet?", key: "need_outlet", qtyKey: null },
-              { label: "Do we need a groundbar?", key: "need_groundbar", qtyKey: "groundbar_qty", qtyLabel: "Qty" },
-            ].map((item) => (
-              <div key={item.key} className={`grid grid-cols-1 sm:grid-cols-3 gap-4 items-end border-b pb-3 ${
-                isFilled(formData[item.key]) ? 'border-green-200 bg-green-50/50' : 'border-amber-200 bg-amber-50/50'
-              } rounded-lg p-3`}>
-                <div className="sm:col-span-1">
-                  <Label className={`text-xs font-mono ${isFilled(formData[item.key]) ? 'text-green-600' : 'text-amber-600'}`}>
-                    {item.label}
-                  </Label>
-                </div>
-                <div className="sm:col-span-1">
-                  <YesNoSelect value={formData[item.key]} onChange={(v) => handleChange(item.key, v)} />
-                </div>
-                {item.qtyKey && (
-                  <div className="sm:col-span-1">
-                    <Label className="text-xs font-mono text-zinc-500">{item.qtyLabel}</Label>
-                    <StyledInput value={formData[item.qtyKey] || ""} onChange={(e) => handleChange(item.qtyKey, e.target.value)} />
-                  </div>
-                )}
+          {/* TAB 1: ASE CHECKLIST */}
+          <TabsContent value="ase-checklist" className="space-y-6" data-testid="content-ase-checklist">
+            {/* Employee Info */}
+            <Section title="EMPLOYEE INFO" filledCount={countFilledFields(employeeInfoFields)} totalCount={employeeInfoFields.length}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FieldRow label="Date of Site Visit" filled={isFilled(formData.date_of_site_visit)}>
+                  <StyledInput type="date" value={formData.date_of_site_visit} onChange={(e) => handleChange("date_of_site_visit", e.target.value)} />
+                </FieldRow>
+                <FieldRow label="Type of Site Visit" filled={isFilled(formData.type_of_site_visit)}>
+                  <DropdownSelect value={formData.type_of_site_visit} onChange={(v) => handleChange("type_of_site_visit", v)} options={ASE_OPTIONS.siteVisitType} />
+                </FieldRow>
+                <FieldRow label="Assigned AT&T Engineer" filled={isFilled(formData.assigned_att_eng)}>
+                  <StyledInput value={formData.assigned_att_eng} onChange={(e) => handleChange("assigned_att_eng", e.target.value)} />
+                </FieldRow>
+                <FieldRow label="Site Walked By" filled={isFilled(formData.site_walked_by)}>
+                  <StyledInput value={formData.site_walked_by} onChange={(e) => handleChange("site_walked_by", e.target.value)} />
+                </FieldRow>
+                <FieldRow label="Site Walked With" filled={isFilled(formData.site_walked_with)}>
+                  <StyledInput value={formData.site_walked_with} onChange={(e) => handleChange("site_walked_with", e.target.value)} />
+                </FieldRow>
               </div>
-            ))}
-          </div>
-        </Section>
+            </Section>
 
-        {/* Site Requirements */}
-        <Section title="SITE REQUIREMENTS" filledCount={countFilledFields(siteReqFields)} totalCount={siteReqFields.length}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <FieldRow label="Site Readiness Evaluation" wide filled={isFilled(formData.site_readiness_evaluation)}>
-              <DropdownSelect value={formData.site_readiness_evaluation} onChange={(v) => handleChange("site_readiness_evaluation", v)} options={ASE_OPTIONS.siteReadiness} />
-            </FieldRow>
-            <FieldRow label="What Site Requirements are Already Provided?" wide filled={isFilled(formData.site_requirements_provided)}>
-              <StyledTextarea value={formData.site_requirements_provided} onChange={(e) => handleChange("site_requirements_provided", e.target.value)} rows={2} />
-            </FieldRow>
-            <FieldRow label="Grounding System" filled={isFilled(formData.grounding_system)}>
-              <StyledInput value={formData.grounding_system} onChange={(e) => handleChange("grounding_system", e.target.value)} />
-            </FieldRow>
-            <FieldRow label="Building Power Source" filled={isFilled(formData.building_power_source)}>
-              <StyledInput value={formData.building_power_source} onChange={(e) => handleChange("building_power_source", e.target.value)} />
-            </FieldRow>
-          </div>
-        </Section>
+            {/* Address Information */}
+            <Section title="ADDRESS INFORMATION" filledCount={countFilledFields(addressFields)} totalCount={addressFields.length}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FieldRowWithPhoto label="Address" wide filled={isFilled(formData.address)} photos={formData.address_photos} onPhotosChange={(v) => handleChange("address_photos", v)}>
+                  <StyledInput value={formData.address} onChange={(e) => handleChange("address", e.target.value)} />
+                </FieldRowWithPhoto>
+                <FieldRow label="MPOE Address" filled={isFilled(formData.mpoe_address)}>
+                  <StyledInput value={formData.mpoe_address} onChange={(e) => handleChange("mpoe_address", e.target.value)} />
+                </FieldRow>
+                <FieldRow label="Suite &/or Bldg #" filled={isFilled(formData.suite_bldg)}>
+                  <StyledInput value={formData.suite_bldg} onChange={(e) => handleChange("suite_bldg", e.target.value)} />
+                </FieldRow>
+              </div>
+            </Section>
 
-        {/* Multi-Tenant Eligibility */}
-        <Section title="MULTI TENANT ELIGIBILITY (MTEI)" filledCount={countFilledFields(['multi_tenant_eligibility', 'customer_handoff_panel_location', 'est_fiber_drop_length'])} totalCount={3}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <FieldRow label="Multi-Tenant Eligibility" filled={isFilled(formData.multi_tenant_eligibility)}>
-              <YesNoSelect value={formData.multi_tenant_eligibility} onChange={(v) => handleChange("multi_tenant_eligibility", v)} />
-            </FieldRow>
-            <FieldRow label="Customer Handoff Panel Location" filled={isFilled(formData.customer_handoff_panel_location)}>
-              <StyledInput value={formData.customer_handoff_panel_location} onChange={(e) => handleChange("customer_handoff_panel_location", e.target.value)} />
-            </FieldRow>
-            <FieldRow label="Est. Fiber Drop Length (MIN 10')" wide filled={isFilled(formData.est_fiber_drop_length)}>
-              <StyledInput value={formData.est_fiber_drop_length} onChange={(e) => handleChange("est_fiber_drop_length", e.target.value)} />
-            </FieldRow>
-          </div>
-        </Section>
+            {/* Access/Customer Information */}
+            <Section title="ACCESS/CUSTOMER INFORMATION" filledCount={countFilledFields(accessFields)} totalCount={accessFields.length}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FieldRowWithPhoto label="Access Contact Name & Phone/Email" wide filled={isFilled(formData.access_contact)} photos={formData.access_contact_photos} onPhotosChange={(v) => handleChange("access_contact_photos", v)}>
+                  <StyledInput value={formData.access_contact} onChange={(e) => handleChange("access_contact", e.target.value)} />
+                </FieldRowWithPhoto>
+                <FieldRow label="Building Owner Name & Phone/Email" wide filled={isFilled(formData.building_owner_contact)}>
+                  <StyledInput value={formData.building_owner_contact} onChange={(e) => handleChange("building_owner_contact", e.target.value)} />
+                </FieldRow>
+                <FieldRow label="SPF Required?" filled={isFilled(formData.spf_required)}>
+                  <YesNoSelect value={formData.spf_required} onChange={(v) => handleChange("spf_required", v)} />
+                </FieldRow>
+                <FieldRowWithPhoto label="SPF Contact Name & Phone/Email" filled={isFilled(formData.spf_contact)} photos={formData.spf_contact_photos} onPhotosChange={(v) => handleChange("spf_contact_photos", v)}>
+                  <StyledInput value={formData.spf_contact} onChange={(e) => handleChange("spf_contact", e.target.value)} />
+                </FieldRowWithPhoto>
+                <FieldRow label="Timeframe / Access Hours" filled={isFilled(formData.timeframe)}>
+                  <DropdownSelect value={formData.timeframe} onChange={(v) => handleChange("timeframe", v)} options={ASE_OPTIONS.timeframe} />
+                </FieldRow>
+                <FieldRow label="Access Notes/Special Instructions" wide filled={isFilled(formData.access_notes)}>
+                  <StyledTextarea value={formData.access_notes} onChange={(e) => handleChange("access_notes", e.target.value)} rows={2} />
+                </FieldRow>
+              </div>
+            </Section>
 
-        {/* Additional Information */}
-        <Section title="ADDITIONAL INFORMATION" filledCount={countFilledFields(additionalFields)} totalCount={additionalFields.length}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <FieldRowWithPhoto label="Are there any pipelines in the vicinity?" filled={isFilled(formData.pipelines_vicinity)} photos={formData.pipelines_vicinity_photos} onPhotosChange={(v) => handleChange("pipelines_vicinity_photos", v)}>
-              <YesNoSelect value={formData.pipelines_vicinity} onChange={(v) => handleChange("pipelines_vicinity", v)} />
-            </FieldRowWithPhoto>
-            <FieldRowWithPhoto label="Are there any pipelines in the path?" filled={isFilled(formData.pipelines_path)} photos={formData.pipelines_path_photos} onPhotosChange={(v) => handleChange("pipelines_path_photos", v)}>
-              <YesNoSelect value={formData.pipelines_path} onChange={(v) => handleChange("pipelines_path", v)} />
-            </FieldRowWithPhoto>
-            <FieldRowWithPhoto label="Are there any railroads in the vicinity?" filled={isFilled(formData.railroads_vicinity)} photos={formData.railroads_vicinity_photos} onPhotosChange={(v) => handleChange("railroads_vicinity_photos", v)}>
-              <YesNoSelect value={formData.railroads_vicinity} onChange={(v) => handleChange("railroads_vicinity", v)} />
-            </FieldRowWithPhoto>
-            <FieldRowWithPhoto label="Are there any railroads in the path?" filled={isFilled(formData.railroads_path)} photos={formData.railroads_path_photos} onPhotosChange={(v) => handleChange("railroads_path_photos", v)}>
-              <YesNoSelect value={formData.railroads_path} onChange={(v) => handleChange("railroads_path", v)} />
-            </FieldRowWithPhoto>
-            <FieldRow label="Permits Needed" wide filled={isFilled(formData.possible_permits)}>
-              <StyledInput value={formData.possible_permits} onChange={(e) => handleChange("possible_permits", e.target.value)} />
-            </FieldRow>
-            <FieldRow label="ROW Width, Pole-Pole, Clear Inside Path Measurements" wide filled={isFilled(formData.row_measurements)}>
-              <StyledTextarea value={formData.row_measurements} onChange={(e) => handleChange("row_measurements", e.target.value)} rows={2} />
-            </FieldRow>
-            <FieldRow label="Other Info - Is there anything else we must know?" wide filled={isFilled(formData.other_notes)}>
-              <StyledTextarea value={formData.other_notes} onChange={(e) => handleChange("other_notes", e.target.value)} rows={2} />
-            </FieldRow>
-            <FieldRow label="Additional SOW Notes" wide filled={isFilled(formData.additional_sow_notes)}>
-              <StyledTextarea value={formData.additional_sow_notes} onChange={(e) => handleChange("additional_sow_notes", e.target.value)} rows={3} />
-            </FieldRow>
-            <FieldRow label="Site & Order SOW Notes" wide filled={isFilled(formData.site_order_sow_notes)}>
-              <StyledTextarea value={formData.site_order_sow_notes} onChange={(e) => handleChange("site_order_sow_notes", e.target.value)} rows={3} />
-            </FieldRow>
-          </div>
-        </Section>
+            {/* Building Characteristics */}
+            <Section title="BUILDING CHARACTERISTICS" filledCount={countFilledFields(buildingFields)} totalCount={buildingFields.length}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FieldRow label="Occupancy Type" filled={isFilled(formData.occupancy_type)}>
+                  <DropdownSelect value={formData.occupancy_type} onChange={(v) => handleChange("occupancy_type", v)} options={ASE_OPTIONS.occupancyTypes} />
+                </FieldRow>
+                <FieldRow label="Number of Floors" filled={isFilled(formData.number_of_floors)}>
+                  <StyledInput value={formData.number_of_floors} onChange={(e) => handleChange("number_of_floors", e.target.value)} />
+                </FieldRow>
+                <FieldRow label="Number of Business Units" filled={isFilled(formData.number_of_business_units)}>
+                  <StyledInput value={formData.number_of_business_units} onChange={(e) => handleChange("number_of_business_units", e.target.value)} />
+                </FieldRow>
+                <FieldRow label="Number of Tenants" filled={isFilled(formData.number_of_tenants)}>
+                  <StyledInput value={formData.number_of_tenants} onChange={(e) => handleChange("number_of_tenants", e.target.value)} />
+                </FieldRow>
+                <FieldRow label="How many DMARCs?" filled={isFilled(formData.how_many_dmarcs)}>
+                  <StyledInput value={formData.how_many_dmarcs} onChange={(e) => handleChange("how_many_dmarcs", e.target.value)} />
+                </FieldRow>
+                <FieldRow label="If additional DMARCs, where are they?" filled={isFilled(formData.additional_dmarcs_location)}>
+                  <StyledInput value={formData.additional_dmarcs_location} onChange={(e) => handleChange("additional_dmarcs_location", e.target.value)} />
+                </FieldRow>
+                <FieldRow label="Is Customer Building Owner or Tenant?" filled={isFilled(formData.owner_or_tenant)}>
+                  <DropdownSelect value={formData.owner_or_tenant} onChange={(v) => handleChange("owner_or_tenant", v)} options={ASE_OPTIONS.ownerTenant} />
+                </FieldRow>
+                <FieldRow label="Multi-Tenant" filled={isFilled(formData.multi_tenant)}>
+                  <YesNoSelect value={formData.multi_tenant} onChange={(v) => handleChange("multi_tenant", v)} />
+                </FieldRow>
+                <FieldRow label="Ceiling Height" filled={isFilled(formData.ceiling_height)}>
+                  <DropdownSelect value={formData.ceiling_height} onChange={(v) => handleChange("ceiling_height", v)} options={ASE_OPTIONS.ceilingHeight} />
+                </FieldRow>
+                <FieldRow label="Is proposed NTE in a common space that can serve multiple tenants?" wide filled={isFilled(formData.proposed_nte_common_space)}>
+                  <YesNoSelect value={formData.proposed_nte_common_space} onChange={(v) => handleChange("proposed_nte_common_space", v)} />
+                </FieldRow>
+              </div>
+            </Section>
 
-        {/* Mark Ups Section with Photo Editor */}
-        <Section title="MARK UPS" filledCount={formData.markup_photos?.length || 0} totalCount={1}>
-          <PhotoMarkupEditor 
-            photos={formData.markup_photos || []} 
-            onChange={(v) => handleChange("markup_photos", v)}
-            label="Mark Ups"
-          />
-          <p className="text-xs text-zinc-500 mt-2">
-            Upload photos and add lines (multiple colors), underground markers, and text notes using the in-app editor.
-          </p>
-        </Section>
+            {/* BIDI Retrofit */}
+            <Section title="BIDI RETROFIT" filledCount={countFilledFields(bidiFields)} totalCount={bidiFields.length}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FieldRow label="Does This Qualify for BIDI Retrofit?" filled={isFilled(formData.bidi_retrofit_qualify)}>
+                  <YesNoSelect value={formData.bidi_retrofit_qualify} onChange={(v) => handleChange("bidi_retrofit_qualify", v)} />
+                </FieldRow>
+                <FieldRow label="Did you speak to regarding Retrofit work?" filled={isFilled(formData.bidi_spoke_to)}>
+                  <StyledInput value={formData.bidi_spoke_to} onChange={(e) => handleChange("bidi_spoke_to", e.target.value)} />
+                </FieldRow>
+                <FieldRow label="What date was agreed to?" filled={isFilled(formData.bidi_agreed_date)}>
+                  <StyledInput type="date" value={formData.bidi_agreed_date} onChange={(e) => handleChange("bidi_agreed_date", e.target.value)} />
+                </FieldRow>
+                <FieldRow label="BIDI Access Notes/Special Instructions" wide filled={isFilled(formData.bidi_access_notes)}>
+                  <StyledTextarea value={formData.bidi_access_notes} onChange={(e) => handleChange("bidi_access_notes", e.target.value)} rows={2} />
+                </FieldRow>
+              </div>
+            </Section>
 
-        {/* Multiple MPOE/Terminal */}
-        <Section title="MULTIPLE MPOE / TERMINAL" filledCount={countFilledFields(['multiple_mpoe_terminal'])} totalCount={1}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <FieldRow label="Multiple MPOE/Terminal?" filled={isFilled(formData.multiple_mpoe_terminal)}>
-              <YesNoSelect value={formData.multiple_mpoe_terminal} onChange={(v) => handleChange("multiple_mpoe_terminal", v)} />
-            </FieldRow>
-          </div>
-        </Section>
+            {/* Mark Ups Section with Photo Editor */}
+            <Section title="MARK UPS" filledCount={formData.markup_photos?.length || 0} totalCount={1}>
+              <PhotoMarkupEditor 
+                photos={formData.markup_photos || []} 
+                onChange={(v) => handleChange("markup_photos", v)}
+                label="Mark Ups"
+              />
+              <p className="text-xs text-zinc-500 mt-2">
+                Upload photos and add lines (multiple colors), underground markers, shapes, and text notes using the in-app editor.
+              </p>
+            </Section>
+          </TabsContent>
+
+          {/* TAB 2: COORDINATOR INPUT */}
+          <TabsContent value="coordinator-input" className="space-y-6" data-testid="content-coordinator-input">
+            {/* Fiber Attributes */}
+            <Section title="FIBER ATTRIBUTES" filledCount={countFilledFields(fiberFields)} totalCount={fiberFields.length}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FieldRow label="Fiber at Site?" filled={isFilled(formData.fiber_at_site)}>
+                  <YesNoSelect value={formData.fiber_at_site} onChange={(v) => handleChange("fiber_at_site", v)} />
+                </FieldRow>
+                <FieldRowWithPhoto label="Existing INC" filled={isFilled(formData.existing_inc)} photos={formData.existing_inc_photos} onPhotosChange={(v) => handleChange("existing_inc_photos", v)}>
+                  <YesNoSelect value={formData.existing_inc} onChange={(v) => handleChange("existing_inc", v)} />
+                </FieldRowWithPhoto>
+                <FieldRow label="INC Required" filled={isFilled(formData.inc_required)}>
+                  <YesNoSelect value={formData.inc_required} onChange={(v) => handleChange("inc_required", v)} />
+                </FieldRow>
+                <FieldRowWithPhoto label="Existing Fiber Terminal" filled={isFilled(formData.existing_fiber_terminal)} photos={formData.existing_fiber_terminal_photos} onPhotosChange={(v) => handleChange("existing_fiber_terminal_photos", v)}>
+                  <YesNoSelect value={formData.existing_fiber_terminal} onChange={(v) => handleChange("existing_fiber_terminal", v)} />
+                </FieldRowWithPhoto>
+                <FieldRowWithPhoto label="Fiber Terminal Placement" filled={isFilled(formData.fiber_terminal_placement)} photos={formData.fiber_terminal_placement_photos} onPhotosChange={(v) => handleChange("fiber_terminal_placement_photos", v)}>
+                  <DropdownSelect value={formData.fiber_terminal_placement} onChange={(v) => handleChange("fiber_terminal_placement", v)} options={ASE_OPTIONS.fiberTerminalPlacement} />
+                </FieldRowWithPhoto>
+                <FieldRow label="LAT/LONG of Existing/New FBT" filled={isFilled(formData.fiber_terminal_lat_long)}>
+                  <StyledInput value={formData.fiber_terminal_lat_long} onChange={(e) => handleChange("fiber_terminal_lat_long", e.target.value)} placeholder="Auto-filled from Underground markers" />
+                </FieldRow>
+                <FieldRow label="Fiber Terminal FID" filled={isFilled(formData.fiber_terminal_fid)}>
+                  <StyledInput value={formData.fiber_terminal_fid} onChange={(e) => handleChange("fiber_terminal_fid", e.target.value)} />
+                </FieldRow>
+                <FieldRow label="FBT FID if Missing" filled={isFilled(formData.fbt_fid_if_missing)}>
+                  <StyledInput value={formData.fbt_fid_if_missing} onChange={(e) => handleChange("fbt_fid_if_missing", e.target.value)} />
+                </FieldRow>
+                <FieldRowWithPhoto label="Active Ports" filled={isFilled(formData.fiber_active_ports)} photos={formData.fiber_active_ports_photos} onPhotosChange={(v) => handleChange("fiber_active_ports_photos", v)}>
+                  <StyledInput value={formData.fiber_active_ports} onChange={(e) => handleChange("fiber_active_ports", e.target.value)} />
+                </FieldRowWithPhoto>
+                <FieldRowWithPhoto label="Fiber Reading" filled={isFilled(formData.fiber_reading)} photos={formData.fiber_reading_photos} onPhotosChange={(v) => handleChange("fiber_reading_photos", v)}>
+                  <StyledInput value={formData.fiber_reading} onChange={(e) => handleChange("fiber_reading", e.target.value)} />
+                </FieldRowWithPhoto>
+                <FieldRow label="Describe Existing/Proposed Terminal Location" wide filled={isFilled(formData.terminal_location_description)}>
+                  <StyledTextarea value={formData.terminal_location_description} onChange={(e) => handleChange("terminal_location_description", e.target.value)} rows={2} />
+                </FieldRow>
+                <FieldRow label="Terminal Floor #" filled={isFilled(formData.terminal_floor)}>
+                  <StyledInput value={formData.terminal_floor} onChange={(e) => handleChange("terminal_floor", e.target.value)} />
+                </FieldRow>
+                <FieldRow label="Mounting Wall" filled={isFilled(formData.terminal_mounting_wall)}>
+                  <DropdownSelect value={formData.terminal_mounting_wall} onChange={(v) => handleChange("terminal_mounting_wall", v)} options={ASE_OPTIONS.mountingWall} />
+                </FieldRow>
+                <FieldRow label="Terminal Rack Bay/Shelf" filled={isFilled(formData.terminal_rack_bay_shelf)}>
+                  <StyledInput value={formData.terminal_rack_bay_shelf} onChange={(e) => handleChange("terminal_rack_bay_shelf", e.target.value)} />
+                </FieldRow>
+                <FieldRow label="LAT/LONG of Nearest Fiber" filled={isFilled(formData.nearest_fiber_lat_long)}>
+                  <StyledInput value={formData.nearest_fiber_lat_long} onChange={(e) => handleChange("nearest_fiber_lat_long", e.target.value)} />
+                </FieldRow>
+                <FieldRow label="Nearest Fiber FID" filled={isFilled(formData.nearest_fiber_fid)}>
+                  <StyledInput value={formData.nearest_fiber_fid} onChange={(e) => handleChange("nearest_fiber_fid", e.target.value)} />
+                </FieldRow>
+              </div>
+            </Section>
+
+            {/* NTE Equipment Attributes */}
+            <Section title="NTE - EQUIPMENT ATTRIBUTES" filledCount={countFilledFields(nteFields)} totalCount={nteFields.length}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FieldRow label="Existing NTE/EMTs @ Site?" filled={isFilled(formData.existing_nte_emts_at_site)}>
+                  <YesNoSelect value={formData.existing_nte_emts_at_site} onChange={(v) => handleChange("existing_nte_emts_at_site", v)} />
+                </FieldRow>
+                <FieldRowWithPhoto label="Existing NTE" filled={isFilled(formData.existing_nte)} photos={formData.existing_nte_photos} onPhotosChange={(v) => handleChange("existing_nte_photos", v)}>
+                  <YesNoSelect value={formData.existing_nte} onChange={(v) => handleChange("existing_nte", v)} />
+                </FieldRowWithPhoto>
+                <FieldRowWithPhoto label="NTE Placement" filled={isFilled(formData.nte_placement)} photos={formData.nte_placement_photos} onPhotosChange={(v) => handleChange("nte_placement_photos", v)}>
+                  <DropdownSelect value={formData.nte_placement} onChange={(v) => handleChange("nte_placement", v)} options={ASE_OPTIONS.existingNewLocation} />
+                </FieldRowWithPhoto>
+                <FieldRow label="NTE Active Ports" filled={isFilled(formData.nte_active_ports)}>
+                  <StyledInput value={formData.nte_active_ports} onChange={(e) => handleChange("nte_active_ports", e.target.value)} />
+                </FieldRow>
+                <FieldRowWithPhoto label="NTE CLLI" filled={isFilled(formData.nte_clli)} photos={formData.nte_clli_photos} onPhotosChange={(v) => handleChange("nte_clli_photos", v)}>
+                  <StyledInput value={formData.nte_clli} onChange={(e) => handleChange("nte_clli", e.target.value)} />
+                </FieldRowWithPhoto>
+                <FieldRow label="Ports/Band Available" filled={isFilled(formData.nte_ports_band_ava)}>
+                  <StyledInput value={formData.nte_ports_band_ava} onChange={(e) => handleChange("nte_ports_band_ava", e.target.value)} />
+                </FieldRow>
+                <FieldRow label="Not Using Due To" filled={isFilled(formData.nte_not_using_due_to)}>
+                  <StyledInput value={formData.nte_not_using_due_to} onChange={(e) => handleChange("nte_not_using_due_to", e.target.value)} />
+                </FieldRow>
+                <FieldRow label="NTE at Terminal or Another Location?" filled={isFilled(formData.nte_at_terminal)}>
+                  <DropdownSelect value={formData.nte_at_terminal} onChange={(v) => handleChange("nte_at_terminal", v)} options={ASE_OPTIONS.nteLocation} />
+                </FieldRow>
+                <FieldRow label="Describe Existing/Proposed NTE Location" wide filled={isFilled(formData.nte_location_description)}>
+                  <StyledTextarea value={formData.nte_location_description} onChange={(e) => handleChange("nte_location_description", e.target.value)} rows={2} />
+                </FieldRow>
+                <FieldRow label="NTE LAT/LONG" filled={isFilled(formData.nte_lat_long)}>
+                  <StyledInput value={formData.nte_lat_long} onChange={(e) => handleChange("nte_lat_long", e.target.value)} placeholder="Auto-filled from Underground markers" />
+                </FieldRow>
+                <FieldRow label="NTE Floor #" filled={isFilled(formData.nte_floor)}>
+                  <StyledInput value={formData.nte_floor} onChange={(e) => handleChange("nte_floor", e.target.value)} />
+                </FieldRow>
+                <FieldRow label="NTE Mounting Wall" filled={isFilled(formData.nte_mounting_wall)}>
+                  <DropdownSelect value={formData.nte_mounting_wall} onChange={(v) => handleChange("nte_mounting_wall", v)} options={ASE_OPTIONS.mountingWall} />
+                </FieldRow>
+                <FieldRowWithPhoto label="NTE Rack Bay/Shelf" filled={isFilled(formData.nte_rack_bay_shelf)} photos={formData.nte_rack_bay_shelf_photos} onPhotosChange={(v) => handleChange("nte_rack_bay_shelf_photos", v)}>
+                  <StyledInput value={formData.nte_rack_bay_shelf} onChange={(e) => handleChange("nte_rack_bay_shelf", e.target.value)} />
+                </FieldRowWithPhoto>
+                <FieldRow label="Equipment Environment" filled={isFilled(formData.equipment_environment)}>
+                  <DropdownSelect value={formData.equipment_environment} onChange={(v) => handleChange("equipment_environment", v)} options={ASE_OPTIONS.equipmentEnvironment} />
+                </FieldRow>
+                <FieldRow label="Equipment Mounting" filled={isFilled(formData.equipment_mounting)}>
+                  <DropdownSelect value={formData.equipment_mounting} onChange={(v) => handleChange("equipment_mounting", v)} options={ASE_OPTIONS.equipmentMounting} />
+                </FieldRow>
+                <FieldRowWithPhoto label="Equipment Power Configuration" filled={isFilled(formData.equipment_power_config)} photos={formData.equipment_power_config_photos} onPhotosChange={(v) => handleChange("equipment_power_config_photos", v)}>
+                  <DropdownSelect value={formData.equipment_power_config} onChange={(v) => handleChange("equipment_power_config", v)} options={ASE_OPTIONS.equipmentEnvironment} />
+                </FieldRowWithPhoto>
+                <FieldRow label="Distance From FBT to NTE" filled={isFilled(formData.distance_fbt_to_nte)}>
+                  <StyledInput value={formData.distance_fbt_to_nte} onChange={(e) => handleChange("distance_fbt_to_nte", e.target.value)} />
+                </FieldRow>
+                <FieldRow label="Distance from NTE to Customer IT Space" filled={isFilled(formData.distance_nte_to_it)}>
+                  <StyledInput value={formData.distance_nte_to_it} onChange={(e) => handleChange("distance_nte_to_it", e.target.value)} />
+                </FieldRow>
+                <FieldRow label="Is Customer IT Space on Same Floor as NTE?" filled={isFilled(formData.it_same_floor_as_nte)}>
+                  <DropdownSelect value={formData.it_same_floor_as_nte} onChange={(v) => handleChange("it_same_floor_as_nte", v)} options={ASE_OPTIONS.routerFloor} />
+                </FieldRow>
+                <FieldRow label="Router Within 300ft?" filled={isFilled(formData.router_within_300ft)}>
+                  <DropdownSelect value={formData.router_within_300ft} onChange={(v) => handleChange("router_within_300ft", v)} options={ASE_OPTIONS.routerDistance} />
+                </FieldRow>
+                <FieldRow label="Proposed Equipment" filled={isFilled(formData.proposed_equipment)}>
+                  <DropdownSelect value={formData.proposed_equipment} onChange={(v) => handleChange("proposed_equipment", v)} options={ASE_OPTIONS.proposedEquipment} />
+                </FieldRow>
+                <FieldRow label="Proposed Equipment Location" filled={isFilled(formData.proposed_equipment_location)}>
+                  <StyledInput value={formData.proposed_equipment_location} onChange={(e) => handleChange("proposed_equipment_location", e.target.value)} />
+                </FieldRow>
+                <FieldRow label="Proposed Equipment LAT/LONG" filled={isFilled(formData.proposed_equipment_lat_long)}>
+                  <StyledInput value={formData.proposed_equipment_lat_long} onChange={(e) => handleChange("proposed_equipment_lat_long", e.target.value)} />
+                </FieldRow>
+              </div>
+            </Section>
+
+            {/* Path of Approach */}
+            <Section title="PATH OF APPROACH / MEASUREMENTS" filledCount={countFilledFields(pathFields)} totalCount={pathFields.length}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FieldRow label="Path of Approach Description" wide filled={isFilled(formData.path_of_approach)}>
+                  <StyledTextarea value={formData.path_of_approach} onChange={(e) => handleChange("path_of_approach", e.target.value)} rows={2} />
+                </FieldRow>
+                <FieldRow label="Proposed Location" wide filled={isFilled(formData.proposed_location)}>
+                  <StyledInput value={formData.proposed_location} onChange={(e) => handleChange("proposed_location", e.target.value)} />
+                </FieldRow>
+                <FieldRow label="Starting FH/MH/POLE Tie-in Measurements" wide filled={isFilled(formData.starting_tie_in_measurements)}>
+                  <StyledTextarea value={formData.starting_tie_in_measurements} onChange={(e) => handleChange("starting_tie_in_measurements", e.target.value)} rows={2} />
+                </FieldRow>
+                <FieldRowWithPhoto label="POLE LINE START Lat/Long" filled={isFilled(formData.soc_pole_line_start)} photos={formData.pole_line_start_photos} onPhotosChange={(v) => handleChange("pole_line_start_photos", v)}>
+                  <StyledInput value={formData.soc_pole_line_start} onChange={(e) => handleChange("soc_pole_line_start", e.target.value)} placeholder="Auto-filled from Poles" />
+                </FieldRowWithPhoto>
+                <FieldRowWithPhoto label="POLE LINE END Lat/Long" filled={isFilled(formData.soc_pole_line_end)} photos={formData.pole_line_end_photos} onPhotosChange={(v) => handleChange("pole_line_end_photos", v)}>
+                  <StyledInput value={formData.soc_pole_line_end} onChange={(e) => handleChange("soc_pole_line_end", e.target.value)} placeholder="Auto-filled from Poles" />
+                </FieldRowWithPhoto>
+                <FieldRowWithPhoto label="SOC START Lat/Long" filled={isFilled(formData.soc_start_lat_long)} photos={formData.soc_start_photos} onPhotosChange={(v) => handleChange("soc_start_photos", v)}>
+                  <StyledInput value={formData.soc_start_lat_long} onChange={(e) => handleChange("soc_start_lat_long", e.target.value)} placeholder="Auto-filled from Underground markers" />
+                </FieldRowWithPhoto>
+                <FieldRowWithPhoto label="SOC END Lat/Long" filled={isFilled(formData.soc_end_lat_long)} photos={formData.soc_end_photos} onPhotosChange={(v) => handleChange("soc_end_photos", v)}>
+                  <StyledInput value={formData.soc_end_lat_long} onChange={(e) => handleChange("soc_end_lat_long", e.target.value)} placeholder="Auto-filled from Underground markers" />
+                </FieldRowWithPhoto>
+                <FieldRow label="Proposed Pole and Building" wide filled={isFilled(formData.proposed_pole_and_bldg)}>
+                  <StyledInput value={formData.proposed_pole_and_bldg} onChange={(e) => handleChange("proposed_pole_and_bldg", e.target.value)} />
+                </FieldRow>
+              </div>
+            </Section>
+
+            {/* EF Offer/Requirements */}
+            <Section title="EF OFFER / REQUIREMENTS" filledCount={countFilledFields(efOfferFields)} totalCount={efOfferFields.length}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FieldRow label="EF Requirements" filled={isFilled(formData.ef_requirements)}>
+                  <DropdownSelect value={formData.ef_requirements} onChange={(v) => handleChange("ef_requirements", v)} options={ASE_OPTIONS.efRequirements} />
+                </FieldRow>
+                <FieldRow label="EF Needed" filled={isFilled(formData.ef_needed)}>
+                  <YesNoSelect value={formData.ef_needed} onChange={(v) => handleChange("ef_needed", v)} />
+                </FieldRow>
+                <FieldRow label="EF Qualified" filled={isFilled(formData.ef_qualified)}>
+                  <YesNoSelect value={formData.ef_qualified} onChange={(v) => handleChange("ef_qualified", v)} />
+                </FieldRow>
+                <FieldRow label="Customer EF Aware" filled={isFilled(formData.customer_ef_aware)}>
+                  <YesNoSelect value={formData.customer_ef_aware} onChange={(v) => handleChange("customer_ef_aware", v)} />
+                </FieldRow>
+                <FieldRow label="End User Acceptance" filled={isFilled(formData.end_user_acceptance)}>
+                  <YesNoSelect value={formData.end_user_acceptance} onChange={(v) => handleChange("end_user_acceptance", v)} />
+                </FieldRow>
+                <FieldRow label="EF Disqualification Reason" wide filled={isFilled(formData.ef_disqualification_reason)}>
+                  <StyledInput value={formData.ef_disqualification_reason} onChange={(e) => handleChange("ef_disqualification_reason", e.target.value)} />
+                </FieldRow>
+                <FieldRow label="Are We Placing Conduit and How Long?" wide filled={isFilled(formData.placing_conduit_length)}>
+                  <StyledInput value={formData.placing_conduit_length} onChange={(e) => handleChange("placing_conduit_length", e.target.value)} />
+                </FieldRow>
+                <FieldRow label="EF Conduit Length Category" filled={isFilled(formData.ef_conduit_length)}>
+                  <DropdownSelect value={formData.ef_conduit_length} onChange={(v) => handleChange("ef_conduit_length", v)} options={ASE_OPTIONS.efConduitLength} />
+                </FieldRow>
+              </div>
+            </Section>
+
+            {/* EF Requirements Detail */}
+            <Section title="EF REQUIREMENTS - DETAIL" filledCount={countFilledFields(efDetailFields)} totalCount={efDetailFields.length}>
+              <div className="space-y-4">
+                {[
+                  { label: "Do we need a buried PVC pipe?", key: "buried_pvc", qtyKey: "buried_pvc_length", qtyLabel: "Length" },
+                  { label: "Do we need buried innerduct on customer property?", key: "buried_innerduct", qtyKey: "buried_innerduct_length", qtyLabel: "Length" },
+                  { label: "Do we need EMT (metallic bldg pipe)?", key: "need_emt", qtyKey: "emt_length", qtyLabel: "Length" },
+                  { label: "Do we need plastic building duct/pipe (Plenum)?", key: "need_plenum", qtyKey: "plenum_length", qtyLabel: "Length" },
+                  { label: "Do we need a core drill?", key: "need_core_drill", qtyKey: "core_drill_qty", qtyLabel: "Qty" },
+                  { label: "Do we need an eye-bolt/weatherhead?", key: "need_eyebolt", qtyKey: null },
+                  { label: "Do we need a Pullbox?", key: "need_pullbox", qtyKey: "pullbox_qty", qtyLabel: "Qty" },
+                  { label: "Do we need a Hoffman box?", key: "need_hoffman_box", qtyKey: "hoffman_box_qty", qtyLabel: "Qty" },
+                  { label: "Do we need a backboard?", key: "need_backboard", qtyKey: "backboard_qty", qtyLabel: "Qty" },
+                  { label: "Do we need an outlet?", key: "need_outlet", qtyKey: null },
+                  { label: "Do we need a groundbar?", key: "need_groundbar", qtyKey: "groundbar_qty", qtyLabel: "Qty" },
+                ].map((item) => (
+                  <div key={item.key} className={`grid grid-cols-1 sm:grid-cols-3 gap-4 items-end border-b pb-3 ${
+                    isFilled(formData[item.key]) ? 'border-green-200 bg-green-50/50' : 'border-amber-200 bg-amber-50/50'
+                  } rounded-lg p-3`}>
+                    <div className="sm:col-span-1">
+                      <Label className={`text-xs font-mono ${isFilled(formData[item.key]) ? 'text-green-600' : 'text-amber-600'}`}>
+                        {item.label}
+                      </Label>
+                    </div>
+                    <div className="sm:col-span-1">
+                      <YesNoSelect value={formData[item.key]} onChange={(v) => handleChange(item.key, v)} />
+                    </div>
+                    {item.qtyKey && (
+                      <div className="sm:col-span-1">
+                        <Label className="text-xs font-mono text-zinc-500">{item.qtyLabel}</Label>
+                        <StyledInput value={formData[item.qtyKey] || ""} onChange={(e) => handleChange(item.qtyKey, e.target.value)} />
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </Section>
+          </TabsContent>
+
+          {/* TAB 3: SVCL OUTPUT */}
+          <TabsContent value="svcl-output" className="space-y-6" data-testid="content-svcl-output">
+            {/* Site Requirements */}
+            <Section title="SITE REQUIREMENTS" filledCount={countFilledFields(siteReqFields)} totalCount={siteReqFields.length}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FieldRow label="Site Readiness Evaluation" wide filled={isFilled(formData.site_readiness_evaluation)}>
+                  <DropdownSelect value={formData.site_readiness_evaluation} onChange={(v) => handleChange("site_readiness_evaluation", v)} options={ASE_OPTIONS.siteReadiness} />
+                </FieldRow>
+                <FieldRow label="What Site Requirements are Already Provided?" wide filled={isFilled(formData.site_requirements_provided)}>
+                  <StyledTextarea value={formData.site_requirements_provided} onChange={(e) => handleChange("site_requirements_provided", e.target.value)} rows={2} />
+                </FieldRow>
+                <FieldRow label="Grounding System" filled={isFilled(formData.grounding_system)}>
+                  <StyledInput value={formData.grounding_system} onChange={(e) => handleChange("grounding_system", e.target.value)} />
+                </FieldRow>
+                <FieldRow label="Building Power Source" filled={isFilled(formData.building_power_source)}>
+                  <StyledInput value={formData.building_power_source} onChange={(e) => handleChange("building_power_source", e.target.value)} />
+                </FieldRow>
+              </div>
+            </Section>
+
+            {/* Multi-Tenant Eligibility */}
+            <Section title="MULTI TENANT ELIGIBILITY (MTEI)" filledCount={countFilledFields(['multi_tenant_eligibility', 'customer_handoff_panel_location', 'est_fiber_drop_length'])} totalCount={3}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FieldRow label="Multi-Tenant Eligibility" filled={isFilled(formData.multi_tenant_eligibility)}>
+                  <YesNoSelect value={formData.multi_tenant_eligibility} onChange={(v) => handleChange("multi_tenant_eligibility", v)} />
+                </FieldRow>
+                <FieldRow label="Customer Handoff Panel Location" filled={isFilled(formData.customer_handoff_panel_location)}>
+                  <StyledInput value={formData.customer_handoff_panel_location} onChange={(e) => handleChange("customer_handoff_panel_location", e.target.value)} />
+                </FieldRow>
+                <FieldRow label="Est. Fiber Drop Length (MIN 10')" wide filled={isFilled(formData.est_fiber_drop_length)}>
+                  <StyledInput value={formData.est_fiber_drop_length} onChange={(e) => handleChange("est_fiber_drop_length", e.target.value)} />
+                </FieldRow>
+              </div>
+            </Section>
+
+            {/* Additional Information */}
+            <Section title="ADDITIONAL INFORMATION" filledCount={countFilledFields(additionalFields)} totalCount={additionalFields.length}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FieldRowWithPhoto label="Are there any pipelines in the vicinity?" filled={isFilled(formData.pipelines_vicinity)} photos={formData.pipelines_vicinity_photos} onPhotosChange={(v) => handleChange("pipelines_vicinity_photos", v)}>
+                  <YesNoSelect value={formData.pipelines_vicinity} onChange={(v) => handleChange("pipelines_vicinity", v)} />
+                </FieldRowWithPhoto>
+                <FieldRowWithPhoto label="Are there any pipelines in the path?" filled={isFilled(formData.pipelines_path)} photos={formData.pipelines_path_photos} onPhotosChange={(v) => handleChange("pipelines_path_photos", v)}>
+                  <YesNoSelect value={formData.pipelines_path} onChange={(v) => handleChange("pipelines_path", v)} />
+                </FieldRowWithPhoto>
+                <FieldRowWithPhoto label="Are there any railroads in the vicinity?" filled={isFilled(formData.railroads_vicinity)} photos={formData.railroads_vicinity_photos} onPhotosChange={(v) => handleChange("railroads_vicinity_photos", v)}>
+                  <YesNoSelect value={formData.railroads_vicinity} onChange={(v) => handleChange("railroads_vicinity", v)} />
+                </FieldRowWithPhoto>
+                <FieldRowWithPhoto label="Are there any railroads in the path?" filled={isFilled(formData.railroads_path)} photos={formData.railroads_path_photos} onPhotosChange={(v) => handleChange("railroads_path_photos", v)}>
+                  <YesNoSelect value={formData.railroads_path} onChange={(v) => handleChange("railroads_path", v)} />
+                </FieldRowWithPhoto>
+                <FieldRow label="Permits Needed" wide filled={isFilled(formData.possible_permits)}>
+                  <StyledInput value={formData.possible_permits} onChange={(e) => handleChange("possible_permits", e.target.value)} />
+                </FieldRow>
+                <FieldRow label="ROW Width, Pole-Pole, Clear Inside Path Measurements" wide filled={isFilled(formData.row_measurements)}>
+                  <StyledTextarea value={formData.row_measurements} onChange={(e) => handleChange("row_measurements", e.target.value)} rows={2} />
+                </FieldRow>
+                <FieldRow label="Other Info - Is there anything else we must know?" wide filled={isFilled(formData.other_notes)}>
+                  <StyledTextarea value={formData.other_notes} onChange={(e) => handleChange("other_notes", e.target.value)} rows={2} />
+                </FieldRow>
+                <FieldRow label="Additional SOW Notes" wide filled={isFilled(formData.additional_sow_notes)}>
+                  <StyledTextarea value={formData.additional_sow_notes} onChange={(e) => handleChange("additional_sow_notes", e.target.value)} rows={3} />
+                </FieldRow>
+                <FieldRow label="Site & Order SOW Notes" wide filled={isFilled(formData.site_order_sow_notes)}>
+                  <StyledTextarea value={formData.site_order_sow_notes} onChange={(e) => handleChange("site_order_sow_notes", e.target.value)} rows={3} />
+                </FieldRow>
+              </div>
+            </Section>
+
+            {/* Multiple MPOE/Terminal */}
+            <Section title="MULTIPLE MPOE / TERMINAL" filledCount={countFilledFields(['multiple_mpoe_terminal'])} totalCount={1}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FieldRow label="Multiple MPOE/Terminal?" filled={isFilled(formData.multiple_mpoe_terminal)}>
+                  <YesNoSelect value={formData.multiple_mpoe_terminal} onChange={(v) => handleChange("multiple_mpoe_terminal", v)} />
+                </FieldRow>
+              </div>
+            </Section>
+          </TabsContent>
+        </Tabs>
 
         {/* Save/Export buttons at bottom */}
         <div className="flex justify-end gap-3 pt-4">

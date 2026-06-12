@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { useMap, Polyline, Marker, useMapEvents } from "react-leaflet";
+import { useMap, Polyline, Marker, CircleMarker, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 
 // Waypoint marker (draggable dot on the line)
@@ -149,8 +149,13 @@ export const EditableRoute = ({
   const labelPosition = getOffsetMidpoint(
     localWaypoints.length > 0 ? fullPath[Math.floor(fullPath.length / 2)] : startPos,
     localWaypoints.length > 0 ? (fullPath[Math.floor(fullPath.length / 2) + 1] || fullPath[Math.floor(fullPath.length / 2)]) : endPos,
-    15 // offset in pixels
+    25 // offset in pixels - increased to make arrow more visible
   );
+  
+  // Calculate direction from label to the actual line midpoint for the orange arrow
+  const actualMidpoint = localWaypoints.length > 0 
+    ? fullPath[Math.floor(fullPath.length / 2)]
+    : midpoint;
 
   return (
     <>
@@ -165,27 +170,43 @@ export const EditableRoute = ({
         }}
       />
 
-      {/* Distance label - positioned offset from line with orange dotted arrow to span */}
+      {/* Distance label - positioned offset from line */}
       {showDistance && totalDistance > 0 && (
-        <Marker
-          position={labelPosition}
-          icon={L.divIcon({
-            className: "distance-label",
-            html: `
-              <div style="position:relative;">
-                <svg style="position:absolute;left:-10px;top:-5px;width:80px;height:40px;overflow:visible;pointer-events:none;">
-                  <line x1="40" y1="20" x2="40" y2="35" stroke="#f97316" stroke-width="2" stroke-dasharray="3,2"/>
-                  <circle cx="40" cy="35" r="3" fill="#f97316"/>
-                </svg>
-                <div style="background:rgba(255,255,255,0.95);border:2px solid ${isAfterMPOE ? '#dc2626' : color};border-radius:12px;padding:3px 10px;font:700 12px/1.2 ui-monospace,monospace;color:${isAfterMPOE ? '#991b1b' : '#1e40af'};white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,.25);pointer-events:none;">${Math.round(totalDistance)} ft</div>
-              </div>
-            `,
-            iconSize: [80, 40],
-            iconAnchor: [40, 10],
-          })}
-          interactive={false}
-          zIndexOffset={800}
-        />
+        <>
+          {/* Orange dotted arrow line from label to the actual line */}
+          <Polyline
+            positions={[labelPosition, actualMidpoint]}
+            pathOptions={{
+              color: "#f97316",
+              weight: 2,
+              dashArray: "4, 3",
+              opacity: 0.9,
+            }}
+          />
+          {/* Orange dot at the end of the arrow (on the line) */}
+          <CircleMarker
+            center={actualMidpoint}
+            radius={4}
+            pathOptions={{
+              color: "#f97316",
+              fillColor: "#f97316",
+              fillOpacity: 1,
+              weight: 0,
+            }}
+          />
+          {/* Distance label pill */}
+          <Marker
+            position={labelPosition}
+            icon={L.divIcon({
+              className: "distance-label",
+              html: `<div style="background:rgba(255,255,255,0.95);border:2px solid ${isAfterMPOE ? '#dc2626' : color};border-radius:12px;padding:3px 10px;font:700 12px/1.2 ui-monospace,monospace;color:${isAfterMPOE ? '#991b1b' : '#1e40af'};white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,.25);pointer-events:none;">${Math.round(totalDistance)} ft</div>`,
+              iconSize: [70, 24],
+              iconAnchor: [35, 12],
+            })}
+            interactive={false}
+            zIndexOffset={800}
+          />
+        </>
       )}
 
       {/* Edit mode: show waypoints and midpoints */}
