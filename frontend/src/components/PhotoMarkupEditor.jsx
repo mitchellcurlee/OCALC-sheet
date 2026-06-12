@@ -3,10 +3,11 @@ import axios from "axios";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
 import { 
   Camera, Upload, X, Pencil, Type, Circle, Square, 
-  Minus, Undo, Redo, Download, Trash2, Loader2, ZoomIn,
-  Save, MousePointer
+  Minus, Undo, Redo, Trash2, Loader2, ZoomIn,
+  Save, MousePointer, Move, ArrowRight, Triangle
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -16,7 +17,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-// Underground marker types for the editor
+// Underground marker types - matches backend UNDERGROUND_TYPES exactly
 const UG_MARKERS = [
   { type: "HH", label: "Handhole", color: "#16a34a" },
   { type: "MH", label: "Manhole", color: "#16a34a" },
@@ -25,11 +26,14 @@ const UG_MARKERS = [
   { type: "HB", label: "Hoffman Box", color: "#16a34a" },
   { type: "PED", label: "Pedestal", color: "#16a34a" },
   { type: "PI", label: "Point of Intersection", color: "#16a34a" },
-  { type: "FBT", label: "Fiber Terminal", color: "#16a34a" },
-  { type: "NTE", label: "NTE", color: "#16a34a" },
+  { type: "FBT", label: "FBT", color: "#2563eb" },
+  { type: "NTE", label: "NTE", color: "#2563eb" },
+  { type: "F/N", label: "FBT/NTE", color: "#2563eb" },
+  { type: "PFP", label: "PFP", color: "#16a34a" },
+  { type: "SOC-S", label: "SOC Start", color: "#f97316" },
+  { type: "SOC-E", label: "SOC End", color: "#f97316" },
+  { type: "RSR", label: "Riser", color: "#8b5cf6" },
   { type: "MPOE", label: "MPOE", color: "#dc2626" },
-  { type: "SOC-S", label: "SOC Start", color: "#16a34a" },
-  { type: "SOC-E", label: "SOC End", color: "#16a34a" },
 ];
 
 const LINE_COLORS = [
@@ -43,9 +47,17 @@ const LINE_COLORS = [
   { name: "White", value: "#ffffff" },
 ];
 
+const SHAPES = [
+  { type: "rectangle", icon: Square, label: "Rectangle" },
+  { type: "circle", icon: Circle, label: "Circle" },
+  { type: "arrow", icon: ArrowRight, label: "Arrow" },
+  { type: "line", icon: Minus, label: "Line" },
+  { type: "triangle", icon: Triangle, label: "Triangle" },
+];
+
 /**
  * PhotoMarkupEditor - In-app photo editor for markup annotations
- * Allows adding lines, markers, and text notes on photos
+ * Allows adding lines, markers, shapes, and text notes on photos
  */
 export const PhotoMarkupEditor = ({ photos = [], onChange, label = "Mark Ups" }) => {
   const [editorOpen, setEditorOpen] = useState(false);
@@ -60,16 +72,24 @@ export const PhotoMarkupEditor = ({ photos = [], onChange, label = "Mark Ups" })
   const containerRef = useRef(null);
   
   // Editor state
-  const [tool, setTool] = useState("select"); // select, line, marker, text
+  const [tool, setTool] = useState("select"); // select, draw, marker, text, shape
   const [lineColor, setLineColor] = useState("#dc2626");
   const [lineWidth, setLineWidth] = useState(3);
+  const [fillShape, setFillShape] = useState(false);
   const [selectedMarker, setSelectedMarker] = useState(null);
+  const [selectedShape, setSelectedShape] = useState("rectangle");
+  const [markerSize, setMarkerSize] = useState(24);
   const [textInput, setTextInput] = useState("");
+  const [fontSize, setFontSize] = useState(16);
   const [annotations, setAnnotations] = useState([]); // Array of {type, data}
+  const [selectedAnnotation, setSelectedAnnotation] = useState(null);
   const [history, setHistory] = useState([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [isDrawing, setIsDrawing] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [currentLine, setCurrentLine] = useState(null);
+  const [shapeStart, setShapeStart] = useState(null);
   const [imageLoaded, setImageLoaded] = useState(false);
   const imageRef = useRef(null);
 
@@ -82,12 +102,9 @@ export const PhotoMarkupEditor = ({ photos = [], onChange, label = "Mark Ups" })
       const ctx = canvas.getContext("2d");
       const img = new Image();
       
-      // Try loading with crossOrigin for canvas editing support
-      // If CORS fails, we'll still show the image but editing may be limited
       img.crossOrigin = "anonymous";
       
       img.onload = () => {
-        // Scale to fit container while maintaining aspect ratio
         const maxWidth = 800;
         const maxHeight = 600;
         let width = img.width;
@@ -111,7 +128,6 @@ export const PhotoMarkupEditor = ({ photos = [], onChange, label = "Mark Ups" })
       
       img.onerror = () => {
         console.error("Failed to load image with CORS, trying without...");
-        // Try loading without crossOrigin as fallback
         const img2 = new Image();
         img2.onload = () => {
           const maxWidth = 800;
@@ -153,25 +169,40 @@ export const PhotoMarkupEditor = ({ photos = [], onChange, label = "Mark Ups" })
     const ctx = canvas.getContext("2d");
     const { img, width, height } = imageRef.current;
     
-    // Clear and redraw image
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(img, 0, 0, width, height);
     
     // Draw all annotations
-    annotations.forEach(ann => {
-      if (ann.type === "line") {
+    annotations.forEach((ann, idx) => {
+      const isSelected = selectedAnnotation === idx;
+      
+      if (ann.type === "line" || ann.type === "draw") {
         ctx.beginPath();
         ctx.strokeStyle = ann.color;
         ctx.lineWidth = ann.width;
         ctx.lineCap = "round";
-        ctx.moveTo(ann.points[0].x, ann.points[0].y);
-        ann.points.forEach(p => ctx.lineTo(p.x, p.y));
+        ctx.lineJoin = "round";
+        if (ann.points && ann.points.length > 0) {
+          ctx.moveTo(ann.points[0].x, ann.points[0].y);
+          ann.points.forEach(p => ctx.lineTo(p.x, p.y));
+        }
         ctx.stroke();
+        
+        if (isSelected) {
+          ctx.strokeStyle = "#3b82f6";
+          ctx.lineWidth = 1;
+          ctx.setLineDash([4, 4]);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
       } else if (ann.type === "marker") {
-        // Draw marker circle with label
+        const size = ann.size || 24;
+        const halfSize = size / 2;
+        
+        // Draw marker background
         ctx.beginPath();
         ctx.fillStyle = ann.color;
-        ctx.arc(ann.x, ann.y, 12, 0, Math.PI * 2);
+        ctx.arc(ann.x, ann.y, halfSize, 0, Math.PI * 2);
         ctx.fill();
         ctx.strokeStyle = "#fff";
         ctx.lineWidth = 2;
@@ -179,19 +210,97 @@ export const PhotoMarkupEditor = ({ photos = [], onChange, label = "Mark Ups" })
         
         // Label
         ctx.fillStyle = "#fff";
-        ctx.font = "bold 9px monospace";
+        ctx.font = `bold ${Math.max(8, size * 0.4)}px monospace`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText(ann.label, ann.x, ann.y);
+        
+        // Selection indicator
+        if (isSelected) {
+          ctx.strokeStyle = "#3b82f6";
+          ctx.lineWidth = 2;
+          ctx.setLineDash([4, 4]);
+          ctx.beginPath();
+          ctx.arc(ann.x, ann.y, halfSize + 4, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
       } else if (ann.type === "text") {
         ctx.fillStyle = ann.color || "#18181b";
-        ctx.font = "bold 14px sans-serif";
+        ctx.font = `bold ${ann.fontSize || 16}px sans-serif`;
         ctx.fillText(ann.text, ann.x, ann.y);
+        
+        if (isSelected) {
+          const metrics = ctx.measureText(ann.text);
+          ctx.strokeStyle = "#3b82f6";
+          ctx.lineWidth = 1;
+          ctx.setLineDash([4, 4]);
+          ctx.strokeRect(ann.x - 2, ann.y - (ann.fontSize || 16), metrics.width + 4, (ann.fontSize || 16) + 4);
+          ctx.setLineDash([]);
+        }
+      } else if (ann.type === "shape") {
+        ctx.strokeStyle = ann.color;
+        ctx.fillStyle = ann.fill ? ann.color + "40" : "transparent";
+        ctx.lineWidth = ann.width || 2;
+        
+        if (ann.shape === "rectangle") {
+          if (ann.fill) ctx.fillRect(ann.x, ann.y, ann.w, ann.h);
+          ctx.strokeRect(ann.x, ann.y, ann.w, ann.h);
+        } else if (ann.shape === "circle") {
+          const radius = Math.sqrt(ann.w * ann.w + ann.h * ann.h) / 2;
+          ctx.beginPath();
+          ctx.arc(ann.x + ann.w / 2, ann.y + ann.h / 2, radius, 0, Math.PI * 2);
+          if (ann.fill) ctx.fill();
+          ctx.stroke();
+        } else if (ann.shape === "line") {
+          ctx.beginPath();
+          ctx.moveTo(ann.x, ann.y);
+          ctx.lineTo(ann.x + ann.w, ann.y + ann.h);
+          ctx.stroke();
+        } else if (ann.shape === "arrow") {
+          // Draw line
+          ctx.beginPath();
+          ctx.moveTo(ann.x, ann.y);
+          ctx.lineTo(ann.x + ann.w, ann.y + ann.h);
+          ctx.stroke();
+          
+          // Draw arrowhead
+          const angle = Math.atan2(ann.h, ann.w);
+          const headLen = 15;
+          ctx.beginPath();
+          ctx.moveTo(ann.x + ann.w, ann.y + ann.h);
+          ctx.lineTo(
+            ann.x + ann.w - headLen * Math.cos(angle - Math.PI / 6),
+            ann.y + ann.h - headLen * Math.sin(angle - Math.PI / 6)
+          );
+          ctx.moveTo(ann.x + ann.w, ann.y + ann.h);
+          ctx.lineTo(
+            ann.x + ann.w - headLen * Math.cos(angle + Math.PI / 6),
+            ann.y + ann.h - headLen * Math.sin(angle + Math.PI / 6)
+          );
+          ctx.stroke();
+        } else if (ann.shape === "triangle") {
+          ctx.beginPath();
+          ctx.moveTo(ann.x + ann.w / 2, ann.y);
+          ctx.lineTo(ann.x, ann.y + ann.h);
+          ctx.lineTo(ann.x + ann.w, ann.y + ann.h);
+          ctx.closePath();
+          if (ann.fill) ctx.fill();
+          ctx.stroke();
+        }
+        
+        if (isSelected) {
+          ctx.strokeStyle = "#3b82f6";
+          ctx.lineWidth = 1;
+          ctx.setLineDash([4, 4]);
+          ctx.strokeRect(ann.x - 2, ann.y - 2, (ann.w || 0) + 4, (ann.h || 0) + 4);
+          ctx.setLineDash([]);
+        }
       }
     });
     
-    // Draw current line being drawn
-    if (currentLine && currentLine.points.length > 0) {
+    // Draw current drawing/shape in progress
+    if (currentLine && currentLine.points && currentLine.points.length > 0) {
       ctx.beginPath();
       ctx.strokeStyle = lineColor;
       ctx.lineWidth = lineWidth;
@@ -200,15 +309,49 @@ export const PhotoMarkupEditor = ({ photos = [], onChange, label = "Mark Ups" })
       currentLine.points.forEach(p => ctx.lineTo(p.x, p.y));
       ctx.stroke();
     }
-  }, [annotations, currentLine, lineColor, lineWidth]);
+    
+    if (shapeStart && tool === "shape") {
+      ctx.strokeStyle = lineColor;
+      ctx.fillStyle = fillShape ? lineColor + "40" : "transparent";
+      ctx.lineWidth = lineWidth;
+      ctx.setLineDash([4, 4]);
+      
+      const w = shapeStart.endX - shapeStart.x;
+      const h = shapeStart.endY - shapeStart.y;
+      
+      if (selectedShape === "rectangle") {
+        if (fillShape) ctx.fillRect(shapeStart.x, shapeStart.y, w, h);
+        ctx.strokeRect(shapeStart.x, shapeStart.y, w, h);
+      } else if (selectedShape === "circle") {
+        const radius = Math.sqrt(w * w + h * h) / 2;
+        ctx.beginPath();
+        ctx.arc(shapeStart.x + w / 2, shapeStart.y + h / 2, radius, 0, Math.PI * 2);
+        if (fillShape) ctx.fill();
+        ctx.stroke();
+      } else if (selectedShape === "line" || selectedShape === "arrow") {
+        ctx.beginPath();
+        ctx.moveTo(shapeStart.x, shapeStart.y);
+        ctx.lineTo(shapeStart.endX, shapeStart.endY);
+        ctx.stroke();
+      } else if (selectedShape === "triangle") {
+        ctx.beginPath();
+        ctx.moveTo(shapeStart.x + w / 2, shapeStart.y);
+        ctx.lineTo(shapeStart.x, shapeStart.y + h);
+        ctx.lineTo(shapeStart.x + w, shapeStart.y + h);
+        ctx.closePath();
+        if (fillShape) ctx.fill();
+        ctx.stroke();
+      }
+      ctx.setLineDash([]);
+    }
+  }, [annotations, currentLine, shapeStart, lineColor, lineWidth, fillShape, selectedShape, selectedAnnotation, tool]);
 
   useEffect(() => {
     if (imageLoaded) {
       redrawCanvas();
     }
-  }, [annotations, currentLine, imageLoaded, redrawCanvas]);
+  }, [annotations, currentLine, shapeStart, imageLoaded, redrawCanvas, selectedAnnotation]);
 
-  // Get canvas coordinates from mouse event
   const getCanvasCoords = (e) => {
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
@@ -218,62 +361,166 @@ export const PhotoMarkupEditor = ({ photos = [], onChange, label = "Mark Ups" })
     };
   };
 
-  // Mouse handlers for drawing
+  // Find annotation at position
+  const findAnnotationAt = (x, y) => {
+    for (let i = annotations.length - 1; i >= 0; i--) {
+      const ann = annotations[i];
+      if (ann.type === "marker") {
+        const size = ann.size || 24;
+        const dist = Math.sqrt((x - ann.x) ** 2 + (y - ann.y) ** 2);
+        if (dist <= size / 2) return i;
+      } else if (ann.type === "text") {
+        const fontSize = ann.fontSize || 16;
+        if (x >= ann.x && x <= ann.x + 100 && y >= ann.y - fontSize && y <= ann.y) {
+          return i;
+        }
+      } else if (ann.type === "shape") {
+        if (x >= ann.x && x <= ann.x + ann.w && y >= ann.y && y <= ann.y + ann.h) {
+          return i;
+        }
+      }
+    }
+    return -1;
+  };
+
   const handleMouseDown = (e) => {
     const coords = getCanvasCoords(e);
     
-    if (tool === "line") {
+    if (tool === "select") {
+      const idx = findAnnotationAt(coords.x, coords.y);
+      setSelectedAnnotation(idx >= 0 ? idx : null);
+      
+      if (idx >= 0) {
+        setIsDragging(true);
+        const ann = annotations[idx];
+        setDragOffset({ x: coords.x - (ann.x || 0), y: coords.y - (ann.y || 0) });
+      }
+    } else if (tool === "draw") {
       setIsDrawing(true);
-      setCurrentLine({ type: "line", color: lineColor, width: lineWidth, points: [coords] });
+      setCurrentLine({ type: "draw", color: lineColor, width: lineWidth, points: [coords] });
     } else if (tool === "marker" && selectedMarker) {
       const marker = UG_MARKERS.find(m => m.type === selectedMarker);
       if (marker) {
-        addAnnotation({ type: "marker", label: marker.type, color: marker.color, x: coords.x, y: coords.y });
+        addAnnotation({ 
+          type: "marker", 
+          label: marker.type, 
+          color: marker.color, 
+          x: coords.x, 
+          y: coords.y,
+          size: markerSize
+        });
       }
     } else if (tool === "text" && textInput.trim()) {
-      addAnnotation({ type: "text", text: textInput, color: lineColor, x: coords.x, y: coords.y });
+      addAnnotation({ 
+        type: "text", 
+        text: textInput, 
+        color: lineColor, 
+        x: coords.x, 
+        y: coords.y,
+        fontSize: fontSize
+      });
       setTextInput("");
+    } else if (tool === "shape") {
+      setShapeStart({ x: coords.x, y: coords.y, endX: coords.x, endY: coords.y });
     }
   };
 
   const handleMouseMove = (e) => {
-    if (!isDrawing || tool !== "line") return;
-    
     const coords = getCanvasCoords(e);
-    setCurrentLine(prev => ({
-      ...prev,
-      points: [...prev.points, coords]
-    }));
+    
+    if (isDragging && selectedAnnotation !== null) {
+      const newAnnotations = [...annotations];
+      const ann = newAnnotations[selectedAnnotation];
+      ann.x = coords.x - dragOffset.x;
+      ann.y = coords.y - dragOffset.y;
+      setAnnotations(newAnnotations);
+    } else if (isDrawing && tool === "draw") {
+      setCurrentLine(prev => ({
+        ...prev,
+        points: [...prev.points, coords]
+      }));
+    } else if (shapeStart && tool === "shape") {
+      setShapeStart(prev => ({ ...prev, endX: coords.x, endY: coords.y }));
+    }
   };
 
-  const handleMouseUp = () => {
-    if (isDrawing && currentLine && currentLine.points.length > 1) {
+  const handleMouseUp = (e) => {
+    const coords = getCanvasCoords(e);
+    
+    if (isDragging) {
+      setIsDragging(false);
+      saveHistory();
+    }
+    
+    if (isDrawing && currentLine && currentLine.points && currentLine.points.length > 1) {
       addAnnotation(currentLine);
     }
     setIsDrawing(false);
     setCurrentLine(null);
+    
+    if (shapeStart && tool === "shape") {
+      const w = coords.x - shapeStart.x;
+      const h = coords.y - shapeStart.y;
+      if (Math.abs(w) > 5 || Math.abs(h) > 5) {
+        addAnnotation({
+          type: "shape",
+          shape: selectedShape,
+          color: lineColor,
+          width: lineWidth,
+          fill: fillShape,
+          x: Math.min(shapeStart.x, coords.x),
+          y: Math.min(shapeStart.y, coords.y),
+          w: Math.abs(w),
+          h: Math.abs(h)
+        });
+      }
+      setShapeStart(null);
+    }
   };
 
-  // Add annotation with history
+  const saveHistory = () => {
+    const newHistory = history.slice(0, historyIndex + 1);
+    newHistory.push([...annotations]);
+    setHistory(newHistory);
+    setHistoryIndex(newHistory.length - 1);
+  };
+
   const addAnnotation = (ann) => {
     const newAnnotations = [...annotations, ann];
     setAnnotations(newAnnotations);
     
-    // Update history
     const newHistory = history.slice(0, historyIndex + 1);
     newHistory.push(newAnnotations);
     setHistory(newHistory);
     setHistoryIndex(newHistory.length - 1);
   };
 
-  // Undo/Redo
+  const deleteSelectedAnnotation = () => {
+    if (selectedAnnotation !== null) {
+      const newAnnotations = annotations.filter((_, i) => i !== selectedAnnotation);
+      setAnnotations(newAnnotations);
+      setSelectedAnnotation(null);
+      saveHistory();
+    }
+  };
+
+  const resizeSelectedMarker = (newSize) => {
+    if (selectedAnnotation !== null && annotations[selectedAnnotation]?.type === "marker") {
+      const newAnnotations = [...annotations];
+      newAnnotations[selectedAnnotation].size = newSize;
+      setAnnotations(newAnnotations);
+    }
+  };
+
   const undo = () => {
     if (historyIndex > 0) {
       setHistoryIndex(historyIndex - 1);
       setAnnotations(history[historyIndex - 1] || []);
+      setSelectedAnnotation(null);
     } else if (historyIndex === 0) {
       setHistoryIndex(-1);
       setAnnotations([]);
+      setSelectedAnnotation(null);
     }
   };
 
@@ -284,50 +531,48 @@ export const PhotoMarkupEditor = ({ photos = [], onChange, label = "Mark Ups" })
     }
   };
 
-  // Clear all annotations
   const clearAnnotations = () => {
     setAnnotations([]);
     setHistory([]);
     setHistoryIndex(-1);
-    redrawCanvas();
+    setSelectedAnnotation(null);
   };
 
-  // Save marked up photo
   const saveMarkup = async () => {
     if (!canvasRef.current) return;
     
     try {
-      // Convert canvas to blob
-      const canvas = canvasRef.current;
-      const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", 0.9));
-      
-      // Upload
-      const fd = new FormData();
-      fd.append("file", blob, `markup_${Date.now()}.jpg`);
-      const res = await axios.post("/upload-photo", fd, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      
-      // Update photos array - replace current or add new
-      const newPhotos = [...photoArray];
-      if (currentPhotoIndex >= 0) {
-        newPhotos[currentPhotoIndex] = res.data.url;
-      } else {
-        newPhotos.push(res.data.url);
-      }
-      onChange(newPhotos);
-      
-      toast.success("Markup saved!");
-      setEditorOpen(false);
-      setAnnotations([]);
-      setHistory([]);
-      setHistoryIndex(-1);
+      setSelectedAnnotation(null);
+      setTimeout(async () => {
+        redrawCanvas();
+        const canvas = canvasRef.current;
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", 0.9));
+        
+        const fd = new FormData();
+        fd.append("file", blob, `markup_${Date.now()}.jpg`);
+        const res = await axios.post("/upload-photo", fd, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        
+        const newPhotos = [...photoArray];
+        if (currentPhotoIndex >= 0) {
+          newPhotos[currentPhotoIndex] = res.data.url;
+        } else {
+          newPhotos.push(res.data.url);
+        }
+        onChange(newPhotos);
+        
+        toast.success("Markup saved!");
+        setEditorOpen(false);
+        setAnnotations([]);
+        setHistory([]);
+        setHistoryIndex(-1);
+      }, 100);
     } catch (err) {
       toast.error("Failed to save markup");
     }
   };
 
-  // File upload handlers
   const handleFileChange = async (e) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
@@ -363,10 +608,8 @@ export const PhotoMarkupEditor = ({ photos = [], onChange, label = "Mark Ups" })
   };
 
   const openEditor = (photo, index) => {
-    // Ensure full URL for canvas loading
     let photoUrl = photo;
     if (photo && photo.startsWith('/api/')) {
-      // Convert relative URL to full URL
       photoUrl = `${window.location.origin}${photo}`;
     }
     setCurrentPhoto(photoUrl);
@@ -375,6 +618,7 @@ export const PhotoMarkupEditor = ({ photos = [], onChange, label = "Mark Ups" })
     setHistory([]);
     setHistoryIndex(-1);
     setImageLoaded(false);
+    setSelectedAnnotation(null);
     setEditorOpen(true);
   };
 
@@ -464,7 +708,7 @@ export const PhotoMarkupEditor = ({ photos = [], onChange, label = "Mark Ups" })
 
       {/* Editor Dialog */}
       <Dialog open={editorOpen} onOpenChange={setEditorOpen}>
-        <DialogContent className="max-w-5xl max-h-[95vh] overflow-hidden p-0">
+        <DialogContent className="max-w-6xl max-h-[95vh] overflow-hidden p-0">
           <DialogHeader className="p-4 border-b bg-zinc-50">
             <DialogTitle className="flex items-center gap-2">
               <Pencil className="w-5 h-5" />
@@ -474,35 +718,48 @@ export const PhotoMarkupEditor = ({ photos = [], onChange, label = "Mark Ups" })
           
           <div className="flex h-[calc(95vh-120px)]">
             {/* Toolbar */}
-            <div className="w-56 border-r bg-zinc-50 p-3 space-y-4 overflow-y-auto">
+            <div className="w-64 border-r bg-zinc-50 p-3 space-y-3 overflow-y-auto">
               {/* Tool selection */}
               <div className="space-y-2">
                 <Label className="text-xs font-mono">TOOLS</Label>
-                <div className="grid grid-cols-2 gap-1">
+                <div className="grid grid-cols-5 gap-1">
                   <Button
                     type="button"
                     size="sm"
                     variant={tool === "select" ? "default" : "outline"}
                     onClick={() => setTool("select")}
-                    className="h-8"
+                    className="h-8 p-0"
+                    title="Select & Move"
                   >
                     <MousePointer className="w-4 h-4" />
                   </Button>
                   <Button
                     type="button"
                     size="sm"
-                    variant={tool === "line" ? "default" : "outline"}
-                    onClick={() => setTool("line")}
-                    className="h-8"
+                    variant={tool === "draw" ? "default" : "outline"}
+                    onClick={() => setTool("draw")}
+                    className="h-8 p-0"
+                    title="Draw"
                   >
                     <Pencil className="w-4 h-4" />
                   </Button>
                   <Button
                     type="button"
                     size="sm"
+                    variant={tool === "shape" ? "default" : "outline"}
+                    onClick={() => setTool("shape")}
+                    className="h-8 p-0"
+                    title="Shapes"
+                  >
+                    <Square className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
                     variant={tool === "marker" ? "default" : "outline"}
                     onClick={() => setTool("marker")}
-                    className="h-8"
+                    className="h-8 p-0"
+                    title="Markers"
                   >
                     <Circle className="w-4 h-4" />
                   </Button>
@@ -511,16 +768,48 @@ export const PhotoMarkupEditor = ({ photos = [], onChange, label = "Mark Ups" })
                     size="sm"
                     variant={tool === "text" ? "default" : "outline"}
                     onClick={() => setTool("text")}
-                    className="h-8"
+                    className="h-8 p-0"
+                    title="Text"
                   >
                     <Type className="w-4 h-4" />
                   </Button>
                 </div>
               </div>
 
-              {/* Line colors */}
+              {/* Shapes */}
+              {tool === "shape" && (
+                <div className="space-y-2">
+                  <Label className="text-xs font-mono">SHAPES</Label>
+                  <div className="grid grid-cols-5 gap-1">
+                    {SHAPES.map(s => (
+                      <Button
+                        key={s.type}
+                        type="button"
+                        size="sm"
+                        variant={selectedShape === s.type ? "default" : "outline"}
+                        onClick={() => setSelectedShape(s.type)}
+                        className="h-8 p-0"
+                        title={s.label}
+                      >
+                        <s.icon className="w-4 h-4" />
+                      </Button>
+                    ))}
+                  </div>
+                  <label className="flex items-center gap-2 text-xs">
+                    <input 
+                      type="checkbox" 
+                      checked={fillShape} 
+                      onChange={(e) => setFillShape(e.target.checked)}
+                      className="rounded"
+                    />
+                    Fill shape
+                  </label>
+                </div>
+              )}
+
+              {/* Colors */}
               <div className="space-y-2">
-                <Label className="text-xs font-mono">LINE COLOR</Label>
+                <Label className="text-xs font-mono">COLOR</Label>
                 <div className="flex flex-wrap gap-1">
                   {LINE_COLORS.map(c => (
                     <button
@@ -536,27 +825,25 @@ export const PhotoMarkupEditor = ({ photos = [], onChange, label = "Mark Ups" })
               </div>
 
               {/* Line width */}
-              <div className="space-y-2">
-                <Label className="text-xs font-mono">LINE WIDTH</Label>
-                <div className="flex gap-1">
-                  {[2, 3, 5, 8].map(w => (
-                    <button
-                      key={w}
-                      type="button"
-                      onClick={() => setLineWidth(w)}
-                      className={`flex-1 h-8 rounded border ${lineWidth === w ? 'bg-blue-100 border-blue-500' : 'border-zinc-300'}`}
-                    >
-                      <div className="mx-auto rounded-full bg-zinc-800" style={{ width: w * 2, height: w * 2 }} />
-                    </button>
-                  ))}
+              {(tool === "draw" || tool === "shape") && (
+                <div className="space-y-2">
+                  <Label className="text-xs font-mono">LINE WIDTH: {lineWidth}px</Label>
+                  <Slider
+                    value={[lineWidth]}
+                    onValueChange={([v]) => setLineWidth(v)}
+                    min={1}
+                    max={20}
+                    step={1}
+                    className="w-full"
+                  />
                 </div>
-              </div>
+              )}
 
               {/* Underground markers */}
               {tool === "marker" && (
                 <div className="space-y-2">
                   <Label className="text-xs font-mono">UG MARKERS</Label>
-                  <div className="grid grid-cols-3 gap-1 max-h-48 overflow-y-auto">
+                  <div className="grid grid-cols-3 gap-1 max-h-40 overflow-y-auto">
                     {UG_MARKERS.map(m => (
                       <button
                         key={m.type}
@@ -564,14 +851,26 @@ export const PhotoMarkupEditor = ({ photos = [], onChange, label = "Mark Ups" })
                         onClick={() => setSelectedMarker(m.type)}
                         className={`p-1 text-[10px] font-mono rounded border ${
                           selectedMarker === m.type 
-                            ? 'bg-green-100 border-green-500' 
+                            ? 'bg-blue-100 border-blue-500' 
                             : 'border-zinc-300 hover:bg-zinc-100'
                         }`}
                         style={{ color: m.color }}
+                        title={m.label}
                       >
                         {m.type}
                       </button>
                     ))}
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-mono">MARKER SIZE: {markerSize}px</Label>
+                    <Slider
+                      value={[markerSize]}
+                      onValueChange={([v]) => setMarkerSize(v)}
+                      min={16}
+                      max={48}
+                      step={2}
+                      className="w-full"
+                    />
                   </div>
                 </div>
               )}
@@ -579,18 +878,59 @@ export const PhotoMarkupEditor = ({ photos = [], onChange, label = "Mark Ups" })
               {/* Text input */}
               {tool === "text" && (
                 <div className="space-y-2">
-                  <Label className="text-xs font-mono">TEXT NOTE</Label>
+                  <Label className="text-xs font-mono">TEXT</Label>
                   <Input
                     value={textInput}
                     onChange={(e) => setTextInput(e.target.value)}
                     placeholder="Enter text..."
                     className="h-8 text-sm"
                   />
+                  <div className="space-y-1">
+                    <Label className="text-xs font-mono">FONT SIZE: {fontSize}px</Label>
+                    <Slider
+                      value={[fontSize]}
+                      onValueChange={([v]) => setFontSize(v)}
+                      min={10}
+                      max={48}
+                      step={2}
+                      className="w-full"
+                    />
+                  </div>
                   <p className="text-[10px] text-zinc-500">Click on image to place text</p>
                 </div>
               )}
 
-              {/* Undo/Redo */}
+              {/* Selected annotation controls */}
+              {tool === "select" && selectedAnnotation !== null && (
+                <div className="space-y-2 p-2 bg-blue-50 rounded">
+                  <Label className="text-xs font-mono text-blue-700">SELECTED ITEM</Label>
+                  {annotations[selectedAnnotation]?.type === "marker" && (
+                    <div className="space-y-1">
+                      <Label className="text-xs">Resize marker:</Label>
+                      <Slider
+                        value={[annotations[selectedAnnotation]?.size || 24]}
+                        onValueChange={([v]) => resizeSelectedMarker(v)}
+                        min={16}
+                        max={48}
+                        step={2}
+                        className="w-full"
+                      />
+                    </div>
+                  )}
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="destructive"
+                    onClick={deleteSelectedAnnotation}
+                    className="w-full h-8"
+                  >
+                    <Trash2 className="w-4 h-4 mr-1" />
+                    Delete
+                  </Button>
+                </div>
+              )}
+
+              {/* History controls */}
               <div className="space-y-2">
                 <Label className="text-xs font-mono">HISTORY</Label>
                 <div className="flex gap-1">
@@ -651,7 +991,7 @@ export const PhotoMarkupEditor = ({ photos = [], onChange, label = "Mark Ups" })
                 onMouseMove={handleMouseMove}
                 onMouseUp={handleMouseUp}
                 onMouseLeave={handleMouseUp}
-                className={`bg-white shadow-lg cursor-crosshair ${!imageLoaded ? 'hidden' : ''}`}
+                className={`bg-white shadow-lg ${tool === "select" ? 'cursor-default' : 'cursor-crosshair'} ${!imageLoaded ? 'hidden' : ''}`}
                 style={{ maxWidth: "100%", maxHeight: "100%" }}
               />
             </div>
