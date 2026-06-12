@@ -391,18 +391,50 @@ Build an app that collects power pole data including: size of the pole, type of 
   - Backend pytest 6/6, Frontend testing 100%
   - Requires redeploy for production.
 
+## Session Update (Jun 12, 2026 continued - ASE Form Reorganization)
+- **ASE Form 3-Tab Structure (Jun 12, 2026)**: Reorganized the ASE Site Walk Survey form into 3 tabs to match the user's Excel template:
+  - Tab 1: ASE Cklist - Employee Info, Address, Access/Customer, Building Characteristics, BIDI Retrofit, Mark Ups
+  - Tab 2: Coordinator Input - Fiber Attributes, NTE Equipment Attributes, Path of Approach, EF Offer/Requirements, EF Requirements Detail
+  - Tab 3: SVCL Output - Site Requirements, Multi Tenant Eligibility, Additional Information, Multiple MPOE/Terminal
+  - Used shadcn Tabs component with icons (ClipboardList, Users, FileOutput)
+  - Added accessibility improvements: aria-hidden on visual-only labels, sr-only text for screen readers
+  - Added data-testids for tabs: tab-ase-checklist, tab-coordinator-input, tab-svcl-output
+  - Requires redeploy for production.
+
+- **Dropdown Options Updated (Jun 12, 2026)**:
+  - Added "HOFFMAN BOX" and "H-FRAME" to Equipment Mounting dropdown
+  - Added "HOFFMAN BOX" and "H-FRAME" to Fiber Terminal Placement dropdown
+  - Requires redeploy for production.
+
+- **Photo Markup Editor Legend (Jun 12, 2026)**: Added a legend feature to the in-app photo markup editor:
+  - "Show Legend" / "Hide Legend" toggle button in the toolbar
+  - Legend overlay displays in bottom-right corner when enabled
+  - Shows all annotation types with counts: markers (with colors), shapes, freehand drawings, text annotations
+  - Added data-testids: toggle-legend-btn, photo-markup-legend
+  - Requires redeploy for production.
+
+- **Map Measurement Arrow (Jun 12, 2026)**: The orange dotted arrow for map measurements was already implemented in EditableRoute.jsx:
+  - Distance labels are offset perpendicular to the span line (25px)
+  - Orange dotted polyline (#f97316) connects the label to the actual line midpoint
+  - Orange circle marker at the line midpoint for visual clarity
+  - Verified working on the interactive map
+
 ## Prioritized Backlog
 
 ### P0 (Critical)
 - None currently
 
 ### P1 (High Priority)
+- Auto-populate ASE Site Walk Survey from job items (poles/underground markers) - NOT STARTED
 - Bulk import from Excel
 - Verify offline sync with multi-photo payloads
 
 ### P2 (Medium Priority)
+- Refactor ASEForm.jsx (1145+ lines) into sub-components (ASEChecklistTab, CoordinatorInputTab, SVCLOutputTab)
 - Refactor PoleForm.jsx (1100+ lines) and JobMap.jsx (700+ lines) into smaller components
+- Refactor PhotoMarkupEditor.jsx (1133+ lines) into sub-components
 - Replace native date input in ASE Form with shadcn Calendar for UX consistency
+- Fix Equipment Power Configuration dropdown - currently reuses equipmentEnvironment options
 
 ### P3 (Low Priority/Future)
 - localStorage -> httpOnly cookie migration for auth

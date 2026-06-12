@@ -655,8 +655,9 @@ const ASEForm = () => {
               data-testid="tab-ase-checklist"
             >
               <ClipboardList className="w-4 h-4" />
-              <span className="hidden sm:inline">ASE Cklist</span>
-              <span className="sm:hidden">Cklist</span>
+              <span className="hidden sm:inline" aria-hidden="true">ASE Cklist</span>
+              <span className="sm:hidden" aria-hidden="true">Cklist</span>
+              <span className="sr-only">ASE Checklist</span>
             </TabsTrigger>
             <TabsTrigger 
               value="coordinator-input" 
@@ -664,8 +665,9 @@ const ASEForm = () => {
               data-testid="tab-coordinator-input"
             >
               <Users className="w-4 h-4" />
-              <span className="hidden sm:inline">Coordinator Input</span>
-              <span className="sm:hidden">Coord</span>
+              <span className="hidden sm:inline" aria-hidden="true">Coordinator Input</span>
+              <span className="sm:hidden" aria-hidden="true">Coord</span>
+              <span className="sr-only">Coordinator Input</span>
             </TabsTrigger>
             <TabsTrigger 
               value="svcl-output" 
@@ -673,8 +675,9 @@ const ASEForm = () => {
               data-testid="tab-svcl-output"
             >
               <FileOutput className="w-4 h-4" />
-              <span className="hidden sm:inline">SVCL Output</span>
-              <span className="sm:hidden">SVCL</span>
+              <span className="hidden sm:inline" aria-hidden="true">SVCL Output</span>
+              <span className="sm:hidden" aria-hidden="true">SVCL</span>
+              <span className="sr-only">SVCL Output</span>
             </TabsTrigger>
           </TabsList>
 

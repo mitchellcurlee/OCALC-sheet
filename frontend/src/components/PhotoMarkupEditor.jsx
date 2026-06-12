@@ -1027,6 +1027,7 @@ export const PhotoMarkupEditor = ({ photos = [], onChange, label = "Mark Ups" })
                   variant={showLegend ? "default" : "outline"}
                   onClick={() => setShowLegend(!showLegend)}
                   className="w-full h-8"
+                  data-testid="toggle-legend-btn"
                 >
                   <List className="w-4 h-4 mr-1" />
                   {showLegend ? "Hide Legend" : "Show Legend"}
@@ -1064,7 +1065,7 @@ export const PhotoMarkupEditor = ({ photos = [], onChange, label = "Mark Ups" })
               
               {/* Legend overlay */}
               {showLegend && imageLoaded && (
-                <div className="absolute bottom-6 right-6 bg-white/95 backdrop-blur-sm border border-zinc-300 rounded-lg shadow-lg p-3 max-w-xs">
+                <div className="absolute bottom-6 right-6 bg-white/95 backdrop-blur-sm border border-zinc-300 rounded-lg shadow-lg p-3 max-w-xs" data-testid="photo-markup-legend">
                   <h4 className="font-mono text-xs font-bold text-zinc-700 mb-2 border-b pb-1">LEGEND</h4>
                   {getLegendItems().length === 0 ? (
                     <p className="text-xs text-zinc-500 italic">No annotations yet</p>
