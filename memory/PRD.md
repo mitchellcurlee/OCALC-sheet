@@ -432,6 +432,32 @@ Build an app that collects power pole data including: size of the pole, type of 
   - Co-located FBT/NTE detection sets nte_at_terminal="Terminal"
   - Requires redeploy for production.
 
+- **ASE Form EXACT Excel Match (Jun 12, 2026)**: Completely rewrote ASE Form to match the uploaded ASE CHECKLIST EXCEL file exactly:
+  - **Tab 1 - ASE CKLIST**: 11 sections matching Excel rows exactly:
+    - Employee Info (with dropdown of 11 employees from SOURCE sheet)
+    - Address (Address, MPOE Address, Suite &/or Bldg #)
+    - BIDI RETROFIT (5 fields)
+    - ACCESS/CUSTOMER INFORMATION (4 fields)
+    - BUILDING CHARACTERISTICS (6 fields)
+    - FIBER ATTRIBUTES (13 fields)
+    - NTE – EQUIPMENT ATTRIBUTES (16 fields)
+    - EF OFFER (7 fields)
+    - EF REQUIREMENTS (11-row table with YES/NO + QTTY columns)
+    - ADDITIONAL INFO (16 fields)
+    - MARK UPS (Photo editor)
+  - **Tab 2 - Coordinator Input**: Exactly 5 fields matching Excel:
+    - AT&T Engineer, Nearest Fiber FID if Missing, FBT FID if Missing, Possible Permits, Additional SOW notes
+  - **Tab 3 - SVCL Output**: 6 sections with calculated/output fields:
+    - Site & Order (Building Contact, Email, SOW Notes)
+    - Site Visit (Date, Type, Qualified Equipment, Occupancy, Multi-Tenant, Tenants, Floors, Demarcation)
+    - Fiber Attributes (INC, Terminal, Location, Floor, Aisle, Bay, Shelf)
+    - NTE Equipment Attributes (Environment, Location, Mounting, Power, Floor, Aisle, Bay, Shelf)
+    - Multi Tenant Eligibility (MTEI) (6 fields)
+    - Site Requirements (Site Readiness, EF Qualified, Customer Aware, End User Acceptance, etc.)
+  - All dropdown options extracted from Excel SOURCE and data sheets
+  - SVCL Output fields guard against empty source values
+  - Requires redeploy for production.
+
 ## Prioritized Backlog
 
 ### P0 (Critical)
@@ -442,11 +468,10 @@ Build an app that collects power pole data including: size of the pole, type of 
 - Verify offline sync with multi-photo payloads
 
 ### P2 (Medium Priority)
-- Refactor ASEForm.jsx (1145+ lines) into sub-components (ASEChecklistTab, CoordinatorInputTab, SVCLOutputTab) and extract auto-populate logic to useASEAutoPopulate hook
+- Refactor ASEForm.jsx (1143 lines) into sub-components (ASECklistTab, CoordinatorInputTab, SVCLOutputTab)
 - Refactor PoleForm.jsx (1100+ lines) and JobMap.jsx (700+ lines) into smaller components
 - Refactor PhotoMarkupEditor.jsx (1133+ lines) into sub-components
 - Replace native date input in ASE Form with shadcn Calendar for UX consistency
-- Fix Equipment Power Configuration dropdown - currently reuses equipmentEnvironment options
 - Add "Re-pull from job data" button in ASE form for manual refresh after editing poles/underground in another tab
 
 ### P3 (Low Priority/Future)
