@@ -7,7 +7,7 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import domtoimage from "dom-to-image-more";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ListOrdered, ChevronDown, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera, Hash } from "lucide-react";
+import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ListOrdered, ChevronDown, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera, Hash, Link2 } from "lucide-react";
 import { computeRoute, fmtFeet, feetToStation, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, ugWithGps, undergroundAbbr, computeUgConnectors } from "@/lib/poleMapImage";
 import {
   DropdownMenu,
@@ -158,6 +158,8 @@ const JobMap = () => {
   const [showStops, setShowStops] = useState(false);
   const [showStationNumbers, setShowStationNumbers] = useState(false);
   const [editMode, setEditMode] = useState(false);
+  const [connectionEditMode, setConnectionEditMode] = useState(false);
+  const [connections, setConnections] = useState([]);
   const [addingType, setAddingType] = useState(null); // "note" or "measurement"
   const [saving, setSaving] = useState(false);
   const [screenshotting, setScreenshotting] = useState(false);
@@ -166,17 +168,19 @@ const JobMap = () => {
 
   const fetchData = useCallback(async () => {
     try {
-      const [jobRes, polesRes, ugRes, routesRes, annotationsRes] = await Promise.all([
+      const [jobRes, polesRes, ugRes, routesRes, annotationsRes, connectionsRes] = await Promise.all([
         axios.get(`/jobs/${jobId}`),
         axios.get(`/jobs/${jobId}/poles`),
         axios.get(`/jobs/${jobId}/underground`),
         axios.get(`/jobs/${jobId}/routes`),
         axios.get(`/jobs/${jobId}/annotations`),
+        axios.get(`/jobs/${jobId}/connections`),
       ]);
       setJob(jobRes.data);
       setPoles(polesRes.data);
       setUnderground(ugRes.data);
       setAnnotations(annotationsRes.data);
+      setConnections(connectionsRes.data || []);
       
       // Convert routes array to a lookup object by segment key
       const routesLookup = {};
@@ -434,6 +438,158 @@ const JobMap = () => {
     }
   }, [jobId]);
 
+  // ======== CONNECTION MANAGEMENT ========
+  // Initialize default connections based on sort_order (matching job page order)
+  const initializeConnections = useCallback(async () => {
+    // Only initialize if no custom connections exist
+    if (connections.length > 0) return;
+    
+    // Combine all items (poles + underground) with their sort_order
+    const allItems = [];
+    
+    // Add poles with sort_order
+    route.forEach(p => {
+      allItems.push({
+        id: p.id,
+        type: "pole",
+        sort_order: p.sort_order ?? Infinity,
+        pos: p.pos
+      });
+    });
+    
+    // Add underground items with sort_order
+    ug.forEach(u => {
+      allItems.push({
+        id: u.id,
+        type: "underground",
+        sort_order: u.sort_order ?? Infinity,
+        pos: u.pos
+      });
+    });
+    
+    // Sort by sort_order (matching job page display order)
+    allItems.sort((a, b) => {
+      if (a.sort_order !== b.sort_order) return a.sort_order - b.sort_order;
+      return 0;
+    });
+    
+    // Create connections between consecutive items
+    const defaultConnections = [];
+    for (let i = 0; i < allItems.length - 1; i++) {
+      const fromItem = allItems[i];
+      const toItem = allItems[i + 1];
+      
+      // Determine connection type based on item types
+      let connectionType = "custom";
+      if (fromItem.type === "pole" && toItem.type === "pole") {
+        connectionType = "aerial";
+      } else if (fromItem.type === "underground" || toItem.type === "underground") {
+        connectionType = "underground";
+      }
+      
+      defaultConnections.push({
+        job_id: jobId,
+        from_item_id: fromItem.id,
+        from_item_type: fromItem.type,
+        to_item_id: toItem.id,
+        to_item_type: toItem.type,
+        connection_type: connectionType
+      });
+    }
+    
+    if (defaultConnections.length > 0) {
+      try {
+        const response = await axios.post(`/jobs/${jobId}/connections/bulk`, defaultConnections);
+        setConnections(response.data);
+      } catch (e) {
+        console.error("Failed to initialize connections:", e);
+      }
+    }
+  }, [jobId, route, ug, connections.length]);
+
+  // Update a connection endpoint
+  const handleConnectionUpdate = useCallback(async (connectionId, updates) => {
+    try {
+      const response = await axios.put(`/jobs/${jobId}/connections/${connectionId}`, updates);
+      setConnections(prev => prev.map(c => c.id === connectionId ? response.data : c));
+      toast.success("Connection updated");
+    } catch (e) {
+      toast.error("Failed to update connection");
+    }
+  }, [jobId]);
+
+  // Delete a connection
+  const handleConnectionDelete = useCallback(async (connectionId) => {
+    try {
+      await axios.delete(`/jobs/${jobId}/connections/${connectionId}`);
+      setConnections(prev => prev.filter(c => c.id !== connectionId));
+      toast.success("Connection deleted");
+    } catch (e) {
+      toast.error("Failed to delete connection");
+    }
+  }, [jobId]);
+
+  // Add a new connection
+  const handleConnectionAdd = useCallback(async (fromItem, toItem) => {
+    try {
+      const response = await axios.post(`/jobs/${jobId}/connections`, {
+        job_id: jobId,
+        from_item_id: fromItem.id,
+        from_item_type: fromItem.type,
+        to_item_id: toItem.id,
+        to_item_type: toItem.type,
+        connection_type: "custom"
+      });
+      setConnections(prev => [...prev, response.data]);
+      toast.success("Connection added");
+    } catch (e) {
+      toast.error("Failed to add connection");
+    }
+  }, [jobId]);
+
+  // Reset connections to default (recomputed from current poles/underground)
+  const resetConnections = useCallback(async () => {
+    // Delete all and reinitialize
+    try {
+      await axios.post(`/jobs/${jobId}/connections/bulk`, []);
+      setConnections([]);
+      // Let next render trigger initialization
+      setTimeout(() => {
+        initializeConnections();
+      }, 100);
+    } catch (e) {
+      toast.error("Failed to reset connections");
+    }
+  }, [jobId, initializeConnections]);
+
+  // All connectable items for the connection editor (sorted by sort_order)
+  const allConnectableItems = useMemo(() => {
+    const items = [];
+    route.forEach(p => {
+      items.push({
+        id: p.id,
+        pos: p.pos,
+        type: "pole",
+        label: p.pole_number || `Pole`,
+        sort_order: p.sort_order ?? Infinity
+      });
+    });
+    ug.forEach(u => {
+      items.push({
+        id: u.id,
+        pos: u.pos,
+        type: "underground",
+        label: u.label || u.type,
+        sort_order: u.sort_order ?? Infinity
+      });
+    });
+    // Sort by sort_order to match job page order
+    items.sort((a, b) => a.sort_order - b.sort_order);
+    return items;
+  }, [route, ug]);
+
+  // ======== END CONNECTION MANAGEMENT ========
+
   const downloadImage = useCallback(async () => {
     setDownloading(true);
     try {
@@ -594,7 +750,7 @@ const JobMap = () => {
               </DropdownMenuContent>
             </DropdownMenu>
             {/* Edit mode toggle */}
-            {!editMode ? (
+            {!editMode && !connectionEditMode ? (
               <div className="flex gap-2">
                 <Button
                   onClick={() => setEditMode(true)}
@@ -606,6 +762,17 @@ const JobMap = () => {
                 >
                   <Edit3 className="w-4 h-4 mr-2" />
                   Edit Lines
+                </Button>
+                <Button
+                  onClick={() => { setConnectionEditMode(true); initializeConnections(); }}
+                  disabled={route.length === 0 && ug.length === 0}
+                  variant="outline"
+                  className="bg-violet-50 border-violet-300 hover:bg-violet-100 text-violet-700"
+                  data-testid="edit-connections-btn"
+                  title="Edit line connections"
+                >
+                  <Link2 className="w-4 h-4 mr-2" />
+                  Connections
                 </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -661,6 +828,30 @@ const JobMap = () => {
                 </Button>
               </div>
             )}
+            {/* Connection Edit Mode UI */}
+            {connectionEditMode && (
+              <div className="flex gap-2">
+                <span className="flex items-center px-3 py-1 bg-violet-100 text-violet-800 rounded text-sm font-medium">
+                  Drag line endpoints to reconnect items
+                </span>
+                <Button
+                  onClick={resetConnections}
+                  variant="outline"
+                  className="bg-amber-50 border-amber-300 hover:bg-amber-100 text-amber-700"
+                  data-testid="reset-connections-btn"
+                >
+                  Reset
+                </Button>
+                <Button
+                  onClick={() => setConnectionEditMode(false)}
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                  data-testid="done-connections-btn"
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  Done
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       </header>
@@ -685,6 +876,11 @@ const JobMap = () => {
             {editMode && (
               <div className="absolute top-2 left-2 z-[1000] bg-blue-600 text-white px-3 py-1.5 rounded text-sm font-medium shadow-lg">
                 Edit Mode: Click blue dots to add waypoints, drag to move, double-click to remove
+              </div>
+            )}
+            {connectionEditMode && (
+              <div className="absolute top-2 left-2 z-[1000] bg-violet-600 text-white px-3 py-1.5 rounded text-sm font-medium shadow-lg">
+                Connection Edit: Drag blue endpoint handles to reconnect lines between items
               </div>
             )}
             <MapContainer 
@@ -846,6 +1042,118 @@ const JobMap = () => {
                 onAnnotationUpdate={handleAnnotationUpdate}
                 onAnnotationDelete={handleAnnotationDelete}
               />
+              {/* Connection edit mode - draggable endpoints */}
+              {connectionEditMode && connections.map(conn => {
+                // Find positions for from and to items
+                const fromItem = allConnectableItems.find(i => i.id === conn.from_item_id);
+                const toItem = allConnectableItems.find(i => i.id === conn.to_item_id);
+                
+                if (!fromItem || !toItem) return null;
+                
+                const lineColor = conn.connection_type === 'aerial' ? '#3b82f6' : 
+                                  conn.connection_type === 'underground' ? '#22c55e' : '#8b5cf6';
+                
+                return (
+                  <React.Fragment key={conn.id}>
+                    {/* Connection line with thicker styling for edit mode */}
+                    <Polyline
+                      positions={[fromItem.pos, toItem.pos]}
+                      pathOptions={{
+                        color: lineColor,
+                        weight: 4,
+                        opacity: 0.8,
+                        dashArray: conn.connection_type === 'custom' ? '8, 8' : undefined
+                      }}
+                    />
+                    {/* Draggable "from" endpoint */}
+                    <Marker
+                      position={fromItem.pos}
+                      icon={L.divIcon({
+                        className: "conn-endpoint",
+                        html: `<div style="width:16px;height:16px;border-radius:50%;background:#3b82f6;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.4);cursor:grab;"></div>`,
+                        iconSize: [16, 16],
+                        iconAnchor: [8, 8]
+                      })}
+                      draggable={true}
+                      eventHandlers={{
+                        dragend: async (e) => {
+                          const newPos = [e.target.getLatLng().lat, e.target.getLatLng().lng];
+                          // Find nearest connectable item
+                          let nearest = null;
+                          let minDist = Infinity;
+                          allConnectableItems.forEach(item => {
+                            if (item.id === conn.to_item_id) return; // Can't connect to same endpoint
+                            const dist = Math.sqrt(Math.pow(newPos[0] - item.pos[0], 2) + Math.pow(newPos[1] - item.pos[1], 2));
+                            if (dist < minDist) {
+                              minDist = dist;
+                              nearest = item;
+                            }
+                          });
+                          if (nearest && nearest.id !== conn.from_item_id) {
+                            await handleConnectionUpdate(conn.id, {
+                              from_item_id: nearest.id,
+                              from_item_type: nearest.type
+                            });
+                          }
+                          // Refresh to reset marker position
+                          fetchData();
+                        }
+                      }}
+                      zIndexOffset={1100}
+                    >
+                      <Popup>
+                        <div className="text-xs font-mono">
+                          <div className="font-bold">From: {fromItem.label}</div>
+                          <div className="text-zinc-500">Drag to reconnect</div>
+                        </div>
+                      </Popup>
+                    </Marker>
+                    {/* Draggable "to" endpoint */}
+                    <Marker
+                      position={toItem.pos}
+                      icon={L.divIcon({
+                        className: "conn-endpoint",
+                        html: `<div style="width:16px;height:16px;border-radius:50%;background:#ef4444;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.4);cursor:grab;"></div>`,
+                        iconSize: [16, 16],
+                        iconAnchor: [8, 8]
+                      })}
+                      draggable={true}
+                      eventHandlers={{
+                        dragend: async (e) => {
+                          const newPos = [e.target.getLatLng().lat, e.target.getLatLng().lng];
+                          // Find nearest connectable item
+                          let nearest = null;
+                          let minDist = Infinity;
+                          allConnectableItems.forEach(item => {
+                            if (item.id === conn.from_item_id) return; // Can't connect to same endpoint
+                            const dist = Math.sqrt(Math.pow(newPos[0] - item.pos[0], 2) + Math.pow(newPos[1] - item.pos[1], 2));
+                            if (dist < minDist) {
+                              minDist = dist;
+                              nearest = item;
+                            }
+                          });
+                          if (nearest && nearest.id !== conn.to_item_id) {
+                            await handleConnectionUpdate(conn.id, {
+                              to_item_id: nearest.id,
+                              to_item_type: nearest.type
+                            });
+                          }
+                          // Refresh to reset marker position
+                          fetchData();
+                        }
+                      }}
+                      zIndexOffset={1100}
+                    >
+                      <Popup>
+                        <div className="text-xs font-mono">
+                          <div className="font-bold">To: {toItem.label}</div>
+                          <div className="text-zinc-500">Drag to reconnect</div>
+                        </div>
+                      </Popup>
+                    </Marker>
+                  </React.Fragment>
+                );
+              })}
             </MapContainer>
             <div className="absolute bottom-3 right-3 z-[500] bg-white/90 border border-zinc-200 rounded px-3 py-2 text-xs font-mono shadow pointer-events-none max-w-[220px]" data-testid="map-legend">
               <div className="font-bold text-zinc-700 mb-1">LEGEND</div>
