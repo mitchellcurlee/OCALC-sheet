@@ -349,12 +349,26 @@ Build an app that collects power pole data including: size of the pole, type of 
   - **Multi-Photo Fields**: Converted to arrays: birthmark_photos, mgnv_photos, Knuckle.photos, Attachment.photos, Underground.photos
   - OCALC Left/Middle/Right remain as single-photo fields (unchanged)
   - **New MultiPhotoUpload Component**: Shows camera/upload buttons, mini gallery of added photos, allows unlimited photos per field
+  - **Multiple File Selection**: Users can now select multiple files at once in the file picker
   - **Combined Items Ordering**: Job Detail now shows poles and underground in a single unified list
   - Header shows "Poles & Underground (X poles, Y UG)"
   - Single Reorder button enables drag-and-drop for BOTH poles and underground together
   - New endpoint PUT /api/jobs/{job_id}/reorder-items handles both types with sort_order
   - Underground model now has sort_order field
   - services/helpers.py pole_photo_items supports legacy single-photo fallback
+  - Requires redeploy for production.
+
+- ASE Site Walk Survey & Job Types (Jun 12, 2026):
+  - **ASE Form**: New page at /jobs/{jobId}/ase with 70+ fields organized by sections:
+    - Employee Info, Address Information, Access/Customer Information
+    - Building Characteristics, Fiber Attributes, NTE Equipment Attributes
+    - Path of Approach/Measurements, EF Offer/Requirements, EF Requirements Detail
+    - Site Requirements, Additional Information
+  - **ASE Export**: Exports ASE form data to Excel with same layout as provided template
+  - **ASE Form Button**: Blue button on Job Detail page between OCALC Export and Add Pole
+  - **SVCL/FS Job Type**: New job type option in Create/Edit Job dialogs
+  - Job model updated with job_type field (default: OCALC) and ase_data (dict)
+  - Backend endpoints: PUT/GET /api/jobs/{id}/ase-data, GET /api/jobs/{id}/export/ase
   - Requires redeploy for production.
 
 ## Prioritized Backlog
@@ -368,7 +382,9 @@ Build an app that collects power pole data including: size of the pole, type of 
 
 ### P2 (Medium Priority)
 - Refactor PoleForm.jsx (1100+ lines) and JobMap.jsx (700+ lines) into smaller components
+- Replace native date input in ASE Form with shadcn Calendar for UX consistency
 
 ### P3 (Low Priority/Future)
 - localStorage -> httpOnly cookie migration for auth
+- ASEData Pydantic model for better validation
 
