@@ -371,6 +371,26 @@ Build an app that collects power pole data including: size of the pole, type of 
   - Backend endpoints: PUT/GET /api/jobs/{id}/ase-data, GET /api/jobs/{id}/export/ase
   - Requires redeploy for production.
 
+- ASE Form Complete Integration (Jun 12, 2026):
+  - **All Dropdown Options**: Integrated complete dropdown options from the uploaded ASE Excel template:
+    - Occupancy Types (14 options), Equipment Environment (AC/DC/AC DUAL/DC DUAL)
+    - Equipment Mounting (OUTSIDE WALL MOUNT, INSIDE WALL MOUNT, DESK MOUNT, RACK, PEDESTAL)
+    - Fiber Terminal Placement (Terminal, Elsewhere, POLE), Mounting Wall (Wall, EXISTING, NEW)
+    - Site Readiness, EF Conduit Length (UNDER/OVER 1000'), EF Requirements (IN PLACE, NEEDED)
+    - Proposed Equipment (CIENA 3903X OR EQUIVALENT, RAD, N/A), and more
+  - **Visual Feedback**: Green background/border for filled fields, Amber/Yellow for unfilled
+  - **Section Counters**: Each section header shows "X/Y filled" count
+  - **Auto-Population from Job Data**:
+    - Address field auto-filled from job.location
+    - POLE LINE START/END from first/last pole GPS coordinates
+    - Fiber Terminal LAT/LONG from FBT/FBT-NTE underground markers
+    - NTE LAT/LONG from NTE/FBT-NTE underground markers
+    - SOC START/END from SOC Start/SOC End underground markers
+  - **14 Complete Sections**: Employee Info, Address, Access/Customer, BIDI Retrofit, Building Characteristics, Fiber Attributes, NTE Equipment Attributes, Path of Approach, EF Offer/Requirements, EF Requirements Detail, Site Requirements, Multi Tenant Eligibility, Additional Information, Multiple MPOE/Terminal
+  - **Excel Export**: Updated to include all new fields with green/yellow cell coloring for filled/unfilled values
+  - Backend pytest 6/6, Frontend testing 100%
+  - Requires redeploy for production.
+
 ## Prioritized Backlog
 
 ### P0 (Critical)
