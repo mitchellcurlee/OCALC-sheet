@@ -471,6 +471,22 @@ Build an app that collects power pole data including: size of the pole, type of 
     - Removes duplicates and displays in Mark Ups section for annotation
   - Requires redeploy for production.
 
+- **Pole Form HOA Mark Ups (Jun 12, 2026)**:
+  - Added PhotoMarkupEditor to pole edit form for HOA (Height of Attachment) photos
+  - New `hoa_markup_photos` field in pole data model
+  - Users can upload pole photos and add annotations: lines, shapes, text, measurement markers
+  - Same editing capabilities as ASE Site Walk Survey form
+  - Requires redeploy for production.
+
+- **Offline Sync Verification (Jun 12, 2026)**:
+  - Verified offline sync infrastructure is working:
+    - IndexedDB stores jobs, poles, underground items locally
+    - Sync queue handles pending changes when offline
+    - Push/Pull sync endpoints working correctly
+    - All photo arrays (birthmark_photos, mgnv_photos, hoa_photos, hoa_markup_photos, photos) are synced
+  - Tested sync pull endpoint: returns all jobs, poles, underground items
+  - Multi-photo payloads are handled by existing sync infrastructure
+
 ## Prioritized Backlog
 
 ### P0 (Critical)
@@ -478,7 +494,6 @@ Build an app that collects power pole data including: size of the pole, type of 
 
 ### P1 (High Priority)
 - Bulk import from Excel
-- Verify offline sync with multi-photo payloads
 
 ### P2 (Medium Priority)
 - Refactor ASEForm.jsx (1320+ lines) into sub-components (ASECklistTab, CoordinatorInputTab, SVCLOutputTab)

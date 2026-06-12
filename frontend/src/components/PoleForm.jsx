@@ -23,6 +23,7 @@ import {
   Trash2,
   Search,
   RefreshCw,
+  Pencil,
 } from "lucide-react";
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
@@ -32,6 +33,7 @@ import { MultiPhotoUpload } from "@/components/MultiPhotoUpload";
 import { HeightInput } from "@/components/HeightInput";
 import { SpanDistance } from "@/components/SpanDistance";
 import { ReferenceHeightMeasurer } from "@/components/ReferenceHeightMeasurer";
+import { PhotoMarkupEditor } from "@/components/PhotoMarkupEditor";
 
 // Fix Leaflet marker icon issue
 delete L.Icon.Default.prototype._getIconUrl;
@@ -91,6 +93,7 @@ const emptyFormData = () => ({
   span3_direction: "", span3_distance: "", span3_owner: "",
   span4_direction: "", span4_distance: "", span4_owner: "",
   latitude: "", longitude: "-", notes: "",
+  hoa_markup_photos: [], // Photos for HOA markup/annotation
 });
 const emptyDownGuy = () => ({ _key: rowKey(), owner: "", direction: "", size: "", type: "", condition: "", height: "", lead: "" });
 const emptyKnuckle = () => ({ _key: rowKey(), size: "", total_eyes: "", direction: "", condition: "", photos: [] });
@@ -205,6 +208,7 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
       span3_direction: p.span3_direction || "", span3_distance: p.span3_distance?.toString() || "", span3_owner: p.span3_owner || "",
       span4_direction: p.span4_direction || "", span4_distance: p.span4_distance?.toString() || "", span4_owner: p.span4_owner || "",
       latitude: p.latitude?.toString() || "", longitude: p.longitude?.toString() || "-", notes: p.notes || "",
+      hoa_markup_photos: p.hoa_markup_photos || [],
     });
     setDownGuys(p.down_guys?.length > 0 ? p.down_guys.map(dg => ({ _key: rowKey(), ...dg, height: dg.height?.toString() || "" })) : [{ _key: rowKey(), owner: "", direction: "", size: "", type: "", condition: "", height: "", lead: "" }]);
     // Convert legacy single photo to photos array for knuckles
@@ -968,6 +972,22 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
                     </div>
                   </div>
                 </div>
+              </div>
+              
+              {/* HOA Mark Ups - Photo Editor */}
+              <div className="mt-4 pt-4 border-t border-zinc-300">
+                <div className="flex items-center gap-2 mb-3">
+                  <Pencil className="w-4 h-4 text-green-600" />
+                  <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">HOA Mark Ups</Label>
+                </div>
+                <PhotoMarkupEditor 
+                  photos={formData.hoa_markup_photos || []} 
+                  onChange={(v) => setFormData(prev => ({ ...prev, hoa_markup_photos: v }))}
+                  label="HOA Mark Ups"
+                />
+                <p className="text-xs text-zinc-500 mt-2">
+                  Upload pole photos and add annotations: lines, shapes, text, and measurement markers.
+                </p>
               </div>
             </div>
           </div>

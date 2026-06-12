@@ -56,6 +56,7 @@ class PoleBase(BaseModel):
     pole_terminal: Optional[str] = None
     risers: Optional[str] = None
     riser_height: Optional[float] = None
+    hoa_markup_photos: Optional[List[str]] = []  # Photos with HOA annotations/markup
     use_manual_spans: Optional[bool] = False
     span1_direction: Optional[str] = None
     span1_distance: Optional[float] = None
@@ -104,6 +105,7 @@ class PoleUpdate(BaseModel):
     pole_terminal: Optional[str] = None
     risers: Optional[str] = None
     riser_height: Optional[float] = None
+    hoa_markup_photos: Optional[List[str]] = None
     use_manual_spans: Optional[bool] = None
     span1_direction: Optional[str] = None
     span1_distance: Optional[float] = None
