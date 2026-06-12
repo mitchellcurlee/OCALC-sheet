@@ -1,4 +1,4 @@
-import { Section, StyledInput, StyledTextarea, DropdownSelect, YesNoSelect, FieldRow, isFilled } from "./ASEFormHelpers";
+import { Section, CollapsibleSection, StyledInput, StyledTextarea, DropdownSelect, YesNoSelect, FieldRow, isFilled } from "./ASEFormHelpers";
 import { ASE_OPTIONS } from "./ASEFormConstants";
 import { PhotoMarkupEditor } from "@/components/PhotoMarkupEditor";
 import { ASEPhotoField } from "@/components/ASEPhotoField";
@@ -44,8 +44,8 @@ const ASEChecklistTab = ({ formData, handleChange }) => {
         </div>
       </Section>
 
-      {/* BIDI RETROFIT */}
-      <Section title="BIDI RETROFIT">
+      {/* BIDI RETROFIT - Collapsible */}
+      <CollapsibleSection title="BIDI RETROFIT" defaultOpen={false}>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FieldRow label="Does this qualify for BIDI Retrofit?">
             <YesNoSelect value={formData.bidi_retrofit_qualify} onChange={(v) => handleChange("bidi_retrofit_qualify", v)} filled={isFilled(formData.bidi_retrofit_qualify)} />
@@ -63,7 +63,7 @@ const ASEChecklistTab = ({ formData, handleChange }) => {
             <StyledTextarea value={formData.bidi_access_notes} onChange={(e) => handleChange("bidi_access_notes", e.target.value)} rows={2} filled={isFilled(formData.bidi_access_notes)} />
           </FieldRow>
         </div>
-      </Section>
+      </CollapsibleSection>
 
       {/* ACCESS/CUSTOMER INFORMATION */}
       <Section title="ACCESS/CUSTOMER INFORMATION">
@@ -186,14 +186,14 @@ const ASEChecklistTab = ({ formData, handleChange }) => {
         </div>
       </Section>
 
-      {/* NTE – EQUIPMENT ATTRIBUTES */}
-      <Section title="NTE - EQUIPMENT ATTRIBUTES">
+      {/* NTE – EQUIPMENT ATTRIBUTES - Collapsible */}
+      <CollapsibleSection title="NTE - EQUIPMENT ATTRIBUTES" defaultOpen={false}>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FieldRow label="Existing NTE">
             <YesNoSelect value={formData.existing_nte} onChange={(v) => handleChange("existing_nte", v)} filled={isFilled(formData.existing_nte)} />
           </FieldRow>
           <FieldRow label="NTE Placement">
-            <DropdownSelect value={formData.nte_placement} onChange={(v) => handleChange("nte_placement", v)} options={ASE_OPTIONS.equipmentMounting} filled={isFilled(formData.nte_placement)} />
+            <DropdownSelect value={formData.nte_placement} onChange={(v) => handleChange("nte_placement", v)} options={ASE_OPTIONS.ntePlacement} filled={isFilled(formData.nte_placement)} />
           </FieldRow>
           <FieldRow label="Active ports" note="FOR EXISTING">
             <StyledInput value={formData.nte_active_ports} onChange={(e) => handleChange("nte_active_ports", e.target.value)} filled={isFilled(formData.nte_active_ports)} />
@@ -214,7 +214,7 @@ const ASEChecklistTab = ({ formData, handleChange }) => {
             <StyledInput value={formData.nte_floor} onChange={(e) => handleChange("nte_floor", e.target.value)} filled={isFilled(formData.nte_floor)} />
           </FieldRow>
           <FieldRow label="Mounting Wall">
-            <DropdownSelect value={formData.nte_mounting_wall} onChange={(v) => handleChange("nte_mounting_wall", v)} options={ASE_OPTIONS.mountingWall} filled={isFilled(formData.nte_mounting_wall)} />
+            <DropdownSelect value={formData.nte_mounting_wall} onChange={(v) => handleChange("nte_mounting_wall", v)} options={ASE_OPTIONS.nteMountingWall} filled={isFilled(formData.nte_mounting_wall)} />
           </FieldRow>
           <FieldRow label="Rack Bay" note="IF APPLICABLE">
             <StyledInput value={formData.nte_rack_bay} onChange={(e) => handleChange("nte_rack_bay", e.target.value)} filled={isFilled(formData.nte_rack_bay)} />
@@ -238,7 +238,7 @@ const ASEChecklistTab = ({ formData, handleChange }) => {
             <StyledInput value={formData.ceiling_height} onChange={(e) => handleChange("ceiling_height", e.target.value)} filled={isFilled(formData.ceiling_height)} placeholder="e.g., 10'" />
           </FieldRow>
         </div>
-      </Section>
+      </CollapsibleSection>
 
       {/* EF OFFER */}
       <Section title="EF OFFER">
@@ -250,19 +250,19 @@ const ASEChecklistTab = ({ formData, handleChange }) => {
             <YesNoSelect value={formData.ef_qualified} onChange={(v) => handleChange("ef_qualified", v)} filled={isFilled(formData.ef_qualified)} />
           </FieldRow>
           <FieldRow label="EF disqualification reason" wide>
-            <StyledInput value={formData.ef_disqualification_reason} onChange={(e) => handleChange("ef_disqualification_reason", e.target.value)} filled={isFilled(formData.ef_disqualification_reason)} />
+            <DropdownSelect value={formData.ef_disqualification_reason} onChange={(v) => handleChange("ef_disqualification_reason", v)} options={ASE_OPTIONS.efDisqualificationReason} filled={isFilled(formData.ef_disqualification_reason)} />
           </FieldRow>
           <FieldRow label="Is the Customer Building Owner or Tenant?">
             <DropdownSelect value={formData.owner_or_tenant} onChange={(v) => handleChange("owner_or_tenant", v)} options={ASE_OPTIONS.ownerTenant} filled={isFilled(formData.owner_or_tenant)} />
           </FieldRow>
           <FieldRow label="SPF Required?">
-            <YesNoSelect value={formData.spf_required} onChange={(v) => handleChange("spf_required", v)} filled={isFilled(formData.spf_required)} />
+            <DropdownSelect value={formData.spf_required} onChange={(v) => handleChange("spf_required", v)} options={ASE_OPTIONS.spfRequired} filled={isFilled(formData.spf_required)} />
           </FieldRow>
           <FieldRow label="SPF contact name & phone/email" wide>
             <StyledInput value={formData.spf_contact} onChange={(e) => handleChange("spf_contact", e.target.value)} filled={isFilled(formData.spf_contact)} />
           </FieldRow>
           <FieldRow label="Are we placing conduit and how long?" wide>
-            <StyledInput value={formData.placing_conduit_length} onChange={(e) => handleChange("placing_conduit_length", e.target.value)} filled={isFilled(formData.placing_conduit_length)} />
+            <DropdownSelect value={formData.placing_conduit_length} onChange={(v) => handleChange("placing_conduit_length", v)} options={ASE_OPTIONS.conduitLength} filled={isFilled(formData.placing_conduit_length)} />
           </FieldRow>
         </div>
       </Section>

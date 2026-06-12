@@ -88,11 +88,33 @@ const ASEForm = () => {
             }
           }
           
-          // Proposed pole and building
+          // Proposed pole and building height - from HOA data
           if (!updated.proposed_pole_bldg_height && polesData.length > 0) {
-            const poleNumbers = polesData.map(p => p.pole_number).filter(Boolean).join(", ");
-            if (poleNumbers) {
-              updated.proposed_pole_bldg_height = `Poles: ${poleNumbers}`;
+            const hoaData = [];
+            polesData.forEach(pole => {
+              const poleId = pole.pole_number || pole.pole_tag || `Pole ${polesData.indexOf(pole) + 1}`;
+              // Get HOA heights from pole data
+              if (pole.hoa_measurements) {
+                hoaData.push(`${poleId}: ${pole.hoa_measurements}`);
+              } else {
+                // Try to build from individual HOA fields
+                const heights = [];
+                if (pole.hoa_power) heights.push(`Power: ${pole.hoa_power}`);
+                if (pole.hoa_telco) heights.push(`Telco: ${pole.hoa_telco}`);
+                if (pole.hoa_proposed) heights.push(`Proposed: ${pole.hoa_proposed}`);
+                if (heights.length > 0) {
+                  hoaData.push(`${poleId}: ${heights.join(', ')}`);
+                }
+              }
+            });
+            if (hoaData.length > 0) {
+              updated.proposed_pole_bldg_height = hoaData.join('; ');
+            } else {
+              // Fallback: just list pole numbers
+              const poleNumbers = polesData.map(p => p.pole_number || p.pole_tag).filter(Boolean).join(", ");
+              if (poleNumbers) {
+                updated.proposed_pole_bldg_height = `Poles: ${poleNumbers}`;
+              }
             }
           }
         }
@@ -179,11 +201,80 @@ const ASEForm = () => {
           }
         }
         
-        // Path of approach
-        if (!updated.path_of_approach && ugData.length > 0) {
-          const pathItems = ugData.map(item => item.label ? `${item.type} (${item.label})` : item.type).join(" → ");
-          if (pathItems) {
-            updated.path_of_approach = `Underground path: ${pathItems}`;
+        // Path of approach with station numbers (0+00 format)
+        if (!updated.path_of_approach) {
+          // Helper function to convert feet to station format
+          const feetToStation = (feet) => {
+            const stations = Math.floor(feet / 100);
+            const remainder = Math.round(feet % 100);
+            return `${stations}+${remainder.toString().padStart(2, '0')}`;
+          };
+          
+          // Build path with station numbers
+          const pathSegments = [];
+          let runningDistance = 0; // Start at 0+00
+          
+          // Sort items by order if available
+          const sortedItems = [...ugData, ...polesData].sort((a, b) => (a.order || 0) - (b.order || 0));
+          
+          // Group by underground items first, then poles
+          const ugItems = ugData.sort((a, b) => (a.order || 0) - (b.order || 0));
+          const poleItems = polesData.sort((a, b) => (a.order || 0) - (b.order || 0));
+          
+          // Process underground items first
+          ugItems.forEach((item, idx) => {
+            const itemName = item.label || item.type;
+            const startStation = feetToStation(runningDistance);
+            
+            // Get distance to next item if available
+            let distance = 0;
+            if (item.span_distance) {
+              distance = parseFloat(item.span_distance) || 0;
+            } else if (item.distance) {
+              distance = parseFloat(item.distance) || 0;
+            }
+            
+            if (idx === 0) {
+              pathSegments.push(`${itemName} ${startStation}`);
+            } else {
+              pathSegments.push(`${itemName} ${startStation}`);
+            }
+            
+            runningDistance += distance;
+          });
+          
+          // Process poles with aerial notation
+          if (poleItems.length > 0) {
+            const firstPole = poleItems[0];
+            const lastPole = poleItems[poleItems.length - 1];
+            
+            // Get direction from first pole span
+            const direction = firstPole.span1_direction || 'to';
+            
+            // Calculate pole distances
+            poleItems.forEach((pole, idx) => {
+              const poleId = pole.pole_number || pole.pole_tag || `P${idx + 1}`;
+              const startStation = feetToStation(runningDistance);
+              
+              // Get span distance to next pole
+              let spanDistance = 0;
+              if (pole.span1_distance) {
+                spanDistance = parseFloat(pole.span1_distance) || 0;
+              }
+              
+              if (idx === 0) {
+                pathSegments.push(`aerial ${poleId} ${startStation}`);
+              } else if (idx === poleItems.length - 1) {
+                pathSegments.push(`to ${poleId} ${startStation}`);
+              }
+              
+              runningDistance += spanDistance;
+            });
+          }
+          
+          if (pathSegments.length > 0) {
+            // Format: "HH 1 0+00 east to P1 0+56, aerial P1 to P2 3+50"
+            updated.path_of_approach = pathSegments.join(', ');
           }
         }
         

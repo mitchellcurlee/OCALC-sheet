@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,6 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { ASE_OPTIONS, BLANK } from "./ASEFormConstants";
 
 // Section component for consistent styling
@@ -20,6 +22,36 @@ export const Section = ({ title, children, className = "" }) => (
     {children}
   </div>
 );
+
+// Collapsible Section component
+export const CollapsibleSection = ({ title, children, className = "", defaultOpen = true }) => {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+  
+  return (
+    <div className={`bg-white border border-zinc-200 rounded-lg ${className}`}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full p-4 sm:p-5 flex items-center justify-between hover:bg-zinc-50 transition-colors rounded-lg"
+      >
+        <h2 className="font-mono text-sm sm:text-base font-bold text-zinc-900 flex items-center gap-2 uppercase tracking-wide">
+          <div className="w-1 h-5 bg-blue-600"></div>
+          {title}
+        </h2>
+        {isOpen ? (
+          <ChevronDown className="w-5 h-5 text-zinc-500" />
+        ) : (
+          <ChevronRight className="w-5 h-5 text-zinc-500" />
+        )}
+      </button>
+      {isOpen && (
+        <div className="px-4 sm:px-5 pb-4 sm:pb-5">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+};
 
 // Styled input with fill indicator
 export const StyledInput = ({ filled, ...props }) => (

@@ -17,29 +17,29 @@ export const ASE_OPTIONS = {
   // Owner/Tenant (from data sheet Column C)
   ownerTenant: ["BUILDING OWNER", "TENANT"],
   
-  // Equipment Mounting (from SOURCE sheet Column D) - also used for NTE Placement
-  equipmentMounting: [
-    "POLE", "PEDESTAL", "OUTSIDE WALL MOUNT", "INSIDE WALL MOUNT", 
-    "H-Frame", "RACK", "DESK MOUNT(WALL MOUNT)", "HOFFMAN BOX"
-  ],
-  
   // Power Configuration (from SOURCE sheet Column E)
   powerConfiguration: ["AC SINGLE", "AC DUAL", "DC SINGLE", "DC DUAL"],
   
   // Power Type (from data sheet Column E)
   powerType: ["AC", "DC", "DUEL POWER SUPPLY"],
   
-  // Construction Type (from SOURCE sheet Column F)  
-  constructionType: ["CONSTRUCTION", "REMODEL", "CWOTS", "CONSTRUCTION TRAILER", "CELL SITE", "N/A"],
+  // Construction Type / EF Disqualification Reason (from SOURCE sheet Column F)  
+  efDisqualificationReason: ["CONSTRUCTION", "REMODEL", "CWOTS", "CONSTRUCTION TRAILER", "CELL SITE", "N/A"],
   
   // Terminal Location (from data sheet Column F)
   terminalLocation: ["NEW", "EXISTING"],
   
-  // Mounting Wall (from data sheet Column D)
-  mountingWall: ["BACKBOARD", "RACK"],
+  // Mounting Wall - directions (removed BACKBOARD)
+  mountingWall: ["NORTH", "SOUTH", "EAST", "WEST", "RACK"],
   
-  // Fiber Terminal Placement - includes HOFFMAN BOX
-  fiberTerminalPlacement: ["Terminal", "Elsewhere", "POLE", "H-Frame", "RACK", "HOFFMAN BOX"],
+  // NTE Mounting Wall - includes Desk Mount
+  nteMountingWall: ["NORTH", "SOUTH", "EAST", "WEST", "RACK", "DESK MOUNT"],
+  
+  // Fiber Terminal Placement - updated options
+  fiberTerminalPlacement: ["INSIDE WALL MOUNT", "OUTSIDE WALL MOUNT", "RACK", "PEDESTAL", "H-FRAME", "HOFFMAN BOX", "POLE"],
+  
+  // NTE Placement - updated options  
+  ntePlacement: ["INSIDE WALL MOUNT", "OUTSIDE WALL MOUNT", "RACK", "H-FRAME", "HOFFMAN BOX", "DESK MOUNT (WALL MOUNT)"],
   
   // NTE Location
   nteLocation: ["Terminal", "Another Location"],
@@ -56,6 +56,12 @@ export const ASE_OPTIONS = {
   
   // Qualified Equipment
   qualifiedEquipment: ["None Found", "CIENA 3930 OR EQUIVALENT RAD", "CIENA 3931", "CIENA 3903X OR EQUIVALENT RAD"],
+  
+  // SPF Required options
+  spfRequired: ["NO", "Yes, Pending Approval", "Yes, Approved"],
+  
+  // Conduit length options
+  conduitLength: ["NONE", "Under 1000ft", "Over 1000ft"],
   
   // Employees (from SOURCE sheet Column A)
   employees: [
