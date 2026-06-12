@@ -1,0 +1,172 @@
+import { useState, useRef } from "react";
+import axios from "axios";
+import { Button } from "@/components/ui/button";
+import { Camera, Upload, X, ZoomIn, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+} from "@/components/ui/dialog";
+
+/**
+ * ASEPhotoField - Compact photo upload for ASE form fields
+ * Shows small camera icon next to field, expands to show photos
+ */
+export const ASEPhotoField = ({ fieldKey, photos = [], onChange, label }) => {
+  const fileInputRef = useRef(null);
+  const cameraInputRef = useRef(null);
+  const [uploading, setUploading] = useState(false);
+  const [lightboxPhoto, setLightboxPhoto] = useState(null);
+  const [expanded, setExpanded] = useState(false);
+
+  const photoArray = Array.isArray(photos) ? photos : (photos ? [photos] : []);
+
+  const handleFileChange = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    
+    setUploading(true);
+    const newPhotos = [...photoArray];
+    
+    for (const file of files) {
+      if (file.size > 25 * 1024 * 1024) {
+        toast.error(`${file.name} is too large (max 25MB)`);
+        continue;
+      }
+      try {
+        const fd = new FormData();
+        fd.append("file", file);
+        const res = await axios.post("/upload-photo", fd, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        newPhotos.push(res.data.url);
+      } catch (err) {
+        toast.error(`Failed to upload ${file.name}`);
+      }
+    }
+    
+    onChange(newPhotos);
+    setUploading(false);
+    if (e.target) e.target.value = "";
+  };
+
+  const removePhoto = (index) => {
+    const newPhotos = photoArray.filter((_, i) => i !== index);
+    onChange(newPhotos);
+  };
+
+  return (
+    <div className="inline-flex items-center gap-1">
+      {/* Camera button */}
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className={`p-1 rounded transition-colors ${
+          photoArray.length > 0 
+            ? 'bg-green-100 text-green-700 hover:bg-green-200' 
+            : 'bg-zinc-100 text-zinc-500 hover:bg-zinc-200'
+        }`}
+        title={`${label} photos (${photoArray.length})`}
+      >
+        {uploading ? (
+          <Loader2 className="w-4 h-4 animate-spin" />
+        ) : (
+          <Camera className="w-4 h-4" />
+        )}
+        {photoArray.length > 0 && (
+          <span className="absolute -top-1 -right-1 bg-green-600 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center">
+            {photoArray.length}
+          </span>
+        )}
+      </button>
+
+      {/* Hidden file inputs */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={handleFileChange}
+      />
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={handleFileChange}
+      />
+
+      {/* Expanded photo panel */}
+      {expanded && (
+        <div className="absolute z-50 mt-8 left-0 bg-white border border-zinc-300 rounded-lg shadow-lg p-3 min-w-[200px]">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-mono text-zinc-600">{label}</span>
+            <button onClick={() => setExpanded(false)} className="text-zinc-400 hover:text-zinc-600">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          
+          {/* Photo grid */}
+          {photoArray.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-2">
+              {photoArray.map((photo, idx) => (
+                <div key={idx} className="relative w-14 h-14 group">
+                  <img
+                    src={photo}
+                    alt=""
+                    className="w-full h-full object-cover rounded border border-zinc-200 cursor-pointer"
+                    onClick={() => setLightboxPhoto(photo)}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removePhoto(idx)}
+                    className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          
+          {/* Upload buttons */}
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => cameraInputRef.current?.click()}
+              className="flex-1 h-7 text-xs"
+            >
+              <Camera className="w-3 h-3 mr-1" />
+              Camera
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => fileInputRef.current?.click()}
+              className="flex-1 h-7 text-xs"
+            >
+              <Upload className="w-3 h-3 mr-1" />
+              Upload
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Lightbox */}
+      <Dialog open={!!lightboxPhoto} onOpenChange={() => setLightboxPhoto(null)}>
+        <DialogContent className="max-w-4xl p-2 bg-black/90">
+          {lightboxPhoto && (
+            <img src={lightboxPhoto} alt="" className="max-h-[80vh] w-auto mx-auto object-contain" />
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
+
+export default ASEPhotoField;

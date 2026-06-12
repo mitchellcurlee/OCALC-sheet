@@ -13,6 +13,7 @@ import ViewPole from "@/pages/ViewPole";
 import JobMap from "@/pages/JobMap";
 import UndergroundForm from "@/pages/UndergroundForm";
 import ASEForm from "@/pages/ASEForm";
+import ASEPhotoGallery from "@/pages/ASEPhotoGallery";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import InstallPrompt from "@/components/InstallPrompt";
@@ -28,6 +29,9 @@ function App() {
             {/* Auth Routes */}
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            
+            {/* Public Routes - no auth required */}
+            <Route path="/ase-gallery/:jobId" element={<ASEPhotoGallery />} />
             
             {/* Protected Routes */}
             <Route path="/" element={<ProtectedRoute><JobsList /></ProtectedRoute>} />

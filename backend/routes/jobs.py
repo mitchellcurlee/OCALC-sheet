@@ -958,6 +958,61 @@ async def get_ase_data(job_id: str, current_user: dict = Depends(get_current_use
     return {"ase_data": job.get("ase_data", {})}
 
 
+@router.get("/jobs/{job_id}/ase-gallery")
+async def get_ase_gallery(job_id: str, token: str = None):
+    """Get ASE photos for gallery view - accessible via token (no auth required)"""
+    if not token:
+        raise HTTPException(status_code=401, detail="Token required")
+    
+    # Verify token
+    if not verify_gallery_token(token, job_id):
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    
+    job = await _db.jobs.find_one({"id": job_id}, {"_id": 0})
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    ase = job.get("ase_data", {})
+    
+    # Collect all photos by category
+    photo_fields = [
+        ("Address", "address_photos"),
+        ("Access Contact", "access_contact_photos"),
+        ("SPF Contact", "spf_contact_photos"),
+        ("Existing INC", "existing_inc_photos"),
+        ("Existing Fiber Terminal", "existing_fiber_terminal_photos"),
+        ("Fiber Terminal Placement", "fiber_terminal_placement_photos"),
+        ("Active Ports", "fiber_active_ports_photos"),
+        ("Fiber Reading", "fiber_reading_photos"),
+        ("Existing NTE", "existing_nte_photos"),
+        ("NTE Placement", "nte_placement_photos"),
+        ("NTE CLLI", "nte_clli_photos"),
+        ("Rack Bay/Shelf", "nte_rack_bay_shelf_photos"),
+        ("Equipment Power Config", "equipment_power_config_photos"),
+        ("Pole Line Start", "pole_line_start_photos"),
+        ("Pole Line End", "pole_line_end_photos"),
+        ("SOC Start", "soc_start_photos"),
+        ("SOC End", "soc_end_photos"),
+        ("Pipelines Vicinity", "pipelines_vicinity_photos"),
+        ("Pipelines Path", "pipelines_path_photos"),
+        ("Railroads Vicinity", "railroads_vicinity_photos"),
+        ("Railroads Path", "railroads_path_photos"),
+        ("Mark Ups", "markup_photos"),
+    ]
+    
+    photos = {}
+    for label, field in photo_fields:
+        field_photos = ase.get(field, []) or []
+        if field_photos:
+            photos[label] = field_photos
+    
+    return {
+        "job_name": job.get("name", ""),
+        "job_location": job.get("location", ""),
+        "photos": photos
+    }
+
+
 @router.get("/jobs/{job_id}/export/ase")
 async def export_ase_excel(job_id: str, current_user: dict = Depends(get_current_user)):
     """Export ASE Site Walk Survey data to Excel"""
@@ -1200,6 +1255,64 @@ async def export_ase_excel(job_id: str, current_user: dict = Depends(get_current
     # Multiple MPOE/Terminal
     add_section("MULTIPLE MPOE / TERMINAL")
     add_row("Multiple MPOE/Terminal?:", ase.get("multiple_mpoe_terminal", ""))
+    current_row += 1
+    
+    # Photo Gallery Section - collect all photos from ASE form
+    photo_fields = [
+        ("Address", "address_photos"),
+        ("Access Contact", "access_contact_photos"),
+        ("SPF Contact", "spf_contact_photos"),
+        ("Existing INC", "existing_inc_photos"),
+        ("Existing Fiber Terminal", "existing_fiber_terminal_photos"),
+        ("Fiber Terminal Placement", "fiber_terminal_placement_photos"),
+        ("Active Ports", "fiber_active_ports_photos"),
+        ("Fiber Reading", "fiber_reading_photos"),
+        ("Existing NTE", "existing_nte_photos"),
+        ("NTE Placement", "nte_placement_photos"),
+        ("NTE CLLI", "nte_clli_photos"),
+        ("Rack Bay/Shelf", "nte_rack_bay_shelf_photos"),
+        ("Equipment Power Config", "equipment_power_config_photos"),
+        ("Pole Line Start", "pole_line_start_photos"),
+        ("Pole Line End", "pole_line_end_photos"),
+        ("SOC Start", "soc_start_photos"),
+        ("SOC End", "soc_end_photos"),
+        ("Pipelines Vicinity", "pipelines_vicinity_photos"),
+        ("Pipelines Path", "pipelines_path_photos"),
+        ("Railroads Vicinity", "railroads_vicinity_photos"),
+        ("Railroads Path", "railroads_path_photos"),
+        ("Mark Ups", "markup_photos"),
+    ]
+    
+    # Collect all photos
+    all_photos = []
+    for label, field in photo_fields:
+        photos = ase.get(field, []) or []
+        if photos:
+            for photo in photos:
+                all_photos.append((label, photo))
+    
+    if all_photos:
+        add_section("PHOTOS")
+        
+        # Add a link to the ASE Photo Gallery page
+        gallery_token = create_gallery_token(job_id, days_valid=30)
+        public_base = os.environ.get("PUBLIC_URL", "https://poledatasheet.info")
+        gallery_url = f"{public_base}/ase-gallery/{job_id}?token={gallery_token}"
+        
+        cell = ws.cell(row=current_row, column=1, value="Photo Gallery (Accessible to everyone):")
+        cell.font = label_font
+        link_cell = ws.cell(row=current_row, column=2, value="View All ASE Photos")
+        link_cell.hyperlink = gallery_url
+        link_cell.font = Font(color="2563EB", underline="single", bold=True, size=10)
+        current_row += 1
+        
+        # List photos with their labels
+        for label, photo_url in all_photos:
+            ws.cell(row=current_row, column=1, value=f"  • {label}").font = value_font
+            photo_cell = ws.cell(row=current_row, column=2, value="View Photo")
+            photo_cell.hyperlink = photo_url
+            photo_cell.font = Font(color="2563EB", underline="single", size=9)
+            current_row += 1
     
     # Column widths
     ws.column_dimensions["A"].width = 50
