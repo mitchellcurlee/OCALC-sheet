@@ -1,8 +1,11 @@
-from fastapi import APIRouter, HTTPException, Depends, Request
+from fastapi import APIRouter, HTTPException, Depends, Request, Query
 from fastapi.responses import StreamingResponse
 from typing import List, Optional
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import io
+import hashlib
+import hmac
+import os
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Border, Side
 
@@ -15,10 +18,41 @@ router = APIRouter(tags=["jobs"])
 
 _db = None
 
+# Secret for signing download tokens (use JWT secret or generate one)
+DOWNLOAD_SECRET = os.environ.get("JWT_SECRET", "download-secret-key-change-me")
+
 
 def set_db(db):
     global _db
     _db = db
+
+
+def generate_download_token(resource_type: str, resource_id: str, expires_hours: int = 24) -> str:
+    """Generate a time-limited download token"""
+    expires = int((datetime.now(timezone.utc) + timedelta(hours=expires_hours)).timestamp())
+    message = f"{resource_type}:{resource_id}:{expires}"
+    signature = hmac.new(DOWNLOAD_SECRET.encode(), message.encode(), hashlib.sha256).hexdigest()[:16]
+    return f"{expires}:{signature}"
+
+
+def verify_download_token(resource_type: str, resource_id: str, token: str) -> bool:
+    """Verify a download token is valid and not expired"""
+    try:
+        parts = token.split(":")
+        if len(parts) != 2:
+            return False
+        expires, signature = int(parts[0]), parts[1]
+        
+        # Check if expired
+        if datetime.now(timezone.utc).timestamp() > expires:
+            return False
+        
+        # Verify signature
+        message = f"{resource_type}:{resource_id}:{expires}"
+        expected_sig = hmac.new(DOWNLOAD_SECRET.encode(), message.encode(), hashlib.sha256).hexdigest()[:16]
+        return hmac.compare_digest(signature, expected_sig)
+    except Exception:
+        return False
 
 
 @router.post("/jobs", response_model=Job)
@@ -199,11 +233,12 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
     img_cell.hyperlink = f"{public_base}/jobs/{job_id}/map?download=1"
     img_cell.font = Font(color="2563EB", underline="single", bold=True)
     
-    # Add Download All Photos link
+    # Add Download All Photos link with download token
+    job_photos_token = generate_download_token("job_photos", job_id)
     ws.cell(row=1, column=13, value="ALL PHOTOS").fill = header_fill
     ws.cell(row=1, column=13).font = header_font
     all_photos_cell = ws.cell(row=1, column=14, value="Download all photos (ZIP)")
-    all_photos_cell.hyperlink = f"{public_base}/api/jobs/{job_id}/export/photos-zip"
+    all_photos_cell.hyperlink = f"{public_base}/api/jobs/{job_id}/export/photos-zip?token={job_photos_token}"
     all_photos_cell.font = Font(color="7C3AED", underline="single", bold=True)
     
     current_row = 3
@@ -331,8 +366,9 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
         ws.cell(row=current_row, column=1, value="PHOTOS").fill = header_fill
         ws.cell(row=current_row, column=1).font = header_font
         if photo_items:
-            # Single Download Photos link that downloads all photos for this pole as ZIP
-            photos_zip_url = f"{public_base}/api/poles/{pole.get('id')}/photos-zip"
+            # Single Download Photos link with download token
+            pole_photos_token = generate_download_token("pole_photos", pole.get('id'))
+            photos_zip_url = f"{public_base}/api/poles/{pole.get('id')}/photos-zip?token={pole_photos_token}"
             download_cell = ws.cell(row=current_row, column=2, value=f"Download {len(photo_items)} photo(s)")
             download_cell.hyperlink = photos_zip_url
             download_cell.font = Font(color="2563EB", underline="single", bold=True)
@@ -413,16 +449,19 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
 
 
 @router.get("/jobs/{job_id}/export/photos-zip")
-async def export_job_photos_zip(job_id: str, current_user: dict = Depends(get_current_user)):
-    """Export all photos from a job as a ZIP file, organized by pole with labels"""
+async def export_job_photos_zip(job_id: str, token: Optional[str] = Query(None)):
+    """Export all photos from a job as a ZIP file, organized by pole with labels.
+    Access via either: authenticated request OR valid download token from Excel export.
+    """
     import zipfile
     import base64
     from services.storage import get_object
     
-    if is_admin_user(current_user):
-        job = await _db.jobs.find_one({"id": job_id}, {"_id": 0})
-    else:
-        job = await _db.jobs.find_one({"id": job_id, "user_id": current_user["id"]}, {"_id": 0})
+    # Verify access via token
+    if not token or not verify_download_token("job_photos", job_id, token):
+        raise HTTPException(status_code=401, detail="Invalid or expired download link. Please export a new Excel file.")
+    
+    job = await _db.jobs.find_one({"id": job_id}, {"_id": 0})
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
     
@@ -473,25 +512,21 @@ async def export_job_photos_zip(job_id: str, current_user: dict = Depends(get_cu
 
 
 @router.get("/poles/{pole_id}/photos-zip")
-async def export_pole_photos_zip(pole_id: str, current_user: dict = Depends(get_current_user)):
-    """Export all photos from a single pole as a ZIP file"""
+async def export_pole_photos_zip(pole_id: str, token: Optional[str] = Query(None)):
+    """Export all photos from a single pole as a ZIP file.
+    Access via either: authenticated request OR valid download token from Excel export.
+    """
     import zipfile
     import base64
     from services.storage import get_object
     
+    # Verify access via token
+    if not token or not verify_download_token("pole_photos", pole_id, token):
+        raise HTTPException(status_code=401, detail="Invalid or expired download link. Please export a new Excel file.")
+    
     pole = await _db.poles.find_one({"id": pole_id}, {"_id": 0})
     if not pole:
         raise HTTPException(status_code=404, detail="Pole not found")
-    
-    # Verify user has access to this pole's job
-    job_id = pole.get("job_id")
-    if job_id:
-        if is_admin_user(current_user):
-            job = await _db.jobs.find_one({"id": job_id}, {"_id": 0})
-        else:
-            job = await _db.jobs.find_one({"id": job_id, "user_id": current_user["id"]}, {"_id": 0})
-        if not job:
-            raise HTTPException(status_code=403, detail="Access denied")
     
     pole_number = pole.get("pole_number", "unknown")
     safe_pole_name = "".join(c for c in pole_number if c.isalnum() or c in (' ', '-', '_')).strip() or "unknown"
