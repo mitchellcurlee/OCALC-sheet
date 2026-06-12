@@ -419,22 +419,35 @@ Build an app that collects power pole data including: size of the pole, type of 
   - Orange circle marker at the line midpoint for visual clarity
   - Verified working on the interactive map
 
+- **ASE Form Auto-Populate (Jun 12, 2026)**: Implemented comprehensive auto-populate from job items:
+  - Address from job.location
+  - POLE LINE START/END Lat/Long from first/last pole GPS coordinates
+  - Starting FH/MH/POLE Tie-in Measurements from first pole span data
+  - Path of Approach Description auto-generated from underground items list (e.g., "Handhole (HH-1) → Hoffman Box (HB-1)")
+  - Proposed Location from job address
+  - Proposed Pole and Building shows pole numbers from the job
+  - FBT/NTE/SOC/MPOE/PFP/Riser coordinates auto-filled when markers exist
+  - Equipment detection: Hoffman Box sets need_hoffman_box=Yes, Pedestal sets equipment_mounting
+  - Distance calculation between FBT and NTE when both exist
+  - Co-located FBT/NTE detection sets nte_at_terminal="Terminal"
+  - Requires redeploy for production.
+
 ## Prioritized Backlog
 
 ### P0 (Critical)
 - None currently
 
 ### P1 (High Priority)
-- Auto-populate ASE Site Walk Survey from job items (poles/underground markers) - NOT STARTED
 - Bulk import from Excel
 - Verify offline sync with multi-photo payloads
 
 ### P2 (Medium Priority)
-- Refactor ASEForm.jsx (1145+ lines) into sub-components (ASEChecklistTab, CoordinatorInputTab, SVCLOutputTab)
+- Refactor ASEForm.jsx (1145+ lines) into sub-components (ASEChecklistTab, CoordinatorInputTab, SVCLOutputTab) and extract auto-populate logic to useASEAutoPopulate hook
 - Refactor PoleForm.jsx (1100+ lines) and JobMap.jsx (700+ lines) into smaller components
 - Refactor PhotoMarkupEditor.jsx (1133+ lines) into sub-components
 - Replace native date input in ASE Form with shadcn Calendar for UX consistency
 - Fix Equipment Power Configuration dropdown - currently reuses equipmentEnvironment options
+- Add "Re-pull from job data" button in ASE form for manual refresh after editing poles/underground in another tab
 
 ### P3 (Low Priority/Future)
 - localStorage -> httpOnly cookie migration for auth
