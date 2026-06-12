@@ -459,6 +459,20 @@ const ViewPole = () => {
             </div>
           )}
 
+          {/* Additional Photos */}
+          {pole.additional_photos && pole.additional_photos.length > 0 && (
+            <div className="industrial-card p-5">
+              <h2 className="font-heading text-lg font-bold text-zinc-900 mb-4 flex items-center gap-2">
+                <div className="w-1 h-5 bg-cyan-500"></div>Additional Photos ({pole.additional_photos.length})
+              </h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                {pole.additional_photos.map((ap, index) => (
+                  ap.photo && renderPhoto(ap.label || `Additional ${index + 1}`, ap.photo)
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Down Guys with Knuckles */}
           {(hasDownGuyData || hasKnuckleData) && (
             <div className="industrial-card p-5">

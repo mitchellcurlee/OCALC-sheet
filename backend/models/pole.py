@@ -4,6 +4,11 @@ from datetime import datetime, timezone
 import uuid
 
 
+class AdditionalPhoto(BaseModel):
+    label: Optional[str] = None
+    photo: Optional[str] = None
+
+
 class DownGuy(BaseModel):
     owner: Optional[str] = None
     direction: Optional[str] = None
@@ -31,6 +36,11 @@ class Attachment(BaseModel):
     notes: Optional[str] = None
 
 
+class AdditionalPhoto(BaseModel):
+    label: Optional[str] = None
+    photo: Optional[str] = None
+
+
 class PoleBase(BaseModel):
     job_id: Optional[str] = None
     job_number: Optional[str] = None
@@ -53,6 +63,7 @@ class PoleBase(BaseModel):
     down_guys: Optional[List[DownGuy]] = []
     knuckles: Optional[List[Knuckle]] = []
     attachments: Optional[List[Attachment]] = []
+    additional_photos: Optional[List[AdditionalPhoto]] = []
     pole_terminal: Optional[str] = None
     risers: Optional[str] = None
     riser_height: Optional[float] = None
@@ -101,6 +112,7 @@ class PoleUpdate(BaseModel):
     down_guys: Optional[List[DownGuy]] = None
     knuckles: Optional[List[Knuckle]] = None
     attachments: Optional[List[Attachment]] = None
+    additional_photos: Optional[List[AdditionalPhoto]] = None
     pole_terminal: Optional[str] = None
     risers: Optional[str] = None
     riser_height: Optional[float] = None

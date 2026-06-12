@@ -94,6 +94,7 @@ const emptyFormData = () => ({
 const emptyDownGuy = () => ({ _key: rowKey(), owner: "", direction: "", size: "", type: "", condition: "", height: "", lead: "" });
 const emptyKnuckle = () => ({ _key: rowKey(), size: "", total_eyes: "", direction: "", condition: "", photo: "" });
 const emptyAttachment = () => ({ _key: rowKey(), height: "", owner: "", photo: "", notes: "" });
+const emptyAdditionalPhoto = () => ({ _key: rowKey(), label: "", photo: "" });
 
 export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, onSubmit, submitting = false, backUrl = "/" }) => {
   const [gpsLoading, setGpsLoading] = useState(false);
@@ -128,6 +129,7 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
   const [downGuys, setDownGuys] = useState(() => [emptyDownGuy()]);
   const [knuckles, setKnuckles] = useState(() => [emptyKnuckle()]);
   const [attachments, setAttachments] = useState(() => [emptyAttachment()]);
+  const [additionalPhotos, setAdditionalPhotos] = useState(() => []);
   const [syncingDistances, setSyncingDistances] = useState(false);
 
   // Sync distances for this pole (edit mode only)
@@ -204,6 +206,7 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
     setDownGuys(p.down_guys?.length > 0 ? p.down_guys.map(dg => ({ _key: rowKey(), ...dg, height: dg.height?.toString() || "" })) : [{ _key: rowKey(), owner: "", direction: "", size: "", type: "", condition: "", height: "", lead: "" }]);
     setKnuckles(p.knuckles?.length > 0 ? p.knuckles.map(k => ({ _key: rowKey(), ...k })) : [{ _key: rowKey(), size: "", total_eyes: "", direction: "", condition: "", photo: "" }]);
     setAttachments(p.attachments?.length > 0 ? p.attachments.map(a => ({ _key: rowKey(), ...a, height: a.height?.toString() || "", notes: a.notes || "" })) : [{ _key: rowKey(), height: "", owner: "", photo: "", notes: "" }]);
+    setAdditionalPhotos(p.additional_photos?.length > 0 ? p.additional_photos.map(ap => ({ _key: rowKey(), ...ap })) : []);
   }, [initialPole, options.pole_owners]);
 
   // --- Autosave draft (create mode only) -----------------------------------
@@ -243,6 +246,7 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
       if (Array.isArray(d.downGuys) && d.downGuys.length) setDownGuys(d.downGuys);
       if (Array.isArray(d.knuckles) && d.knuckles.length) setKnuckles(d.knuckles);
       if (Array.isArray(d.attachments) && d.attachments.length) setAttachments(d.attachments);
+      if (Array.isArray(d.additionalPhotos) && d.additionalPhotos.length) setAdditionalPhotos(d.additionalPhotos);
       setDraftRestored(true);
     }
     restoreDoneRef.current = true; // saves are allowed only after restore
@@ -253,11 +257,11 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
   useEffect(() => {
     if (!draftKey || !restoreDoneRef.current) return;
     try {
-      window.localStorage.setItem(draftKey, JSON.stringify({ formData, downGuys, knuckles, attachments, ts: Date.now() }));
+      window.localStorage.setItem(draftKey, JSON.stringify({ formData, downGuys, knuckles, attachments, additionalPhotos, ts: Date.now() }));
     } catch (e) {
       // ignore quota/unavailable storage
     }
-  }, [draftKey, formData, downGuys, knuckles, attachments]);
+  }, [draftKey, formData, downGuys, knuckles, attachments, additionalPhotos]);
 
   const clearDraft = () => {
     if (!draftKey) return;
@@ -269,6 +273,7 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
     setDownGuys([emptyDownGuy()]);
     setKnuckles([emptyKnuckle()]);
     setAttachments([emptyAttachment()]);
+    setAdditionalPhotos([]);
     setDraftRestored(false);
     // clear after the reset state flushes (the save effect re-writes on change)
     setTimeout(clearDraft, 0);
@@ -331,6 +336,19 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
     const updated = [...attachments];
     updated[index][field] = value === BLANK ? "" : value;
     setAttachments(updated);
+  };
+
+  // Additional Photos handlers
+  const addAdditionalPhoto = () => {
+    setAdditionalPhotos([...additionalPhotos, emptyAdditionalPhoto()]);
+  };
+  const removeAdditionalPhoto = (index) => {
+    setAdditionalPhotos(additionalPhotos.filter((_, i) => i !== index));
+  };
+  const updateAdditionalPhoto = (index, field, value) => {
+    const updated = [...additionalPhotos];
+    updated[index][field] = value;
+    setAdditionalPhotos(updated);
   };
 
   const handleMapClick = useCallback((lat, lng) => {
@@ -476,6 +494,7 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
         ...a,
         height: a.height ? parseFloat(a.height) : null
       })),
+      additional_photos: additionalPhotos.filter(ap => ap.photo).map(({ _key, ...ap }) => ap),
     };
 
     // Debug: Log what's being submitted
@@ -966,6 +985,62 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
               <PhotoUpload label="Middle" value={formData.ocalc_middle_photo} onChange={(v) => handlePhotoChange("ocalc_middle_photo", v)} testId="ocalc-middle" />
               <PhotoUpload label="Right" value={formData.ocalc_right_photo} onChange={(v) => handlePhotoChange("ocalc_right_photo", v)} testId="ocalc-right" />
             </div>
+          </div>
+
+          {/* Additional Photos - Unlimited */}
+          <div className="industrial-card p-4 sm:p-5">
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
+              <h2 className="font-heading text-base sm:text-lg font-bold text-zinc-900 flex items-center gap-2">
+                <div className="w-1 h-5 bg-cyan-500"></div>
+                Additional Photos
+              </h2>
+              <Button type="button" onClick={addAdditionalPhoto} size="sm" className="bg-cyan-600 hover:bg-cyan-700 text-white" data-testid="add-additional-photo-btn">
+                <Plus className="w-4 h-4 mr-1" /> Add Photo
+              </Button>
+            </div>
+            {additionalPhotos.length === 0 ? (
+              <p className="text-sm text-zinc-500 italic">No additional photos. Click "Add Photo" to upload more photos.</p>
+            ) : (
+              <div className="space-y-3">
+                {additionalPhotos.map((ap, index) => (
+                  <div key={ap._key} className="bg-zinc-50 p-3 border border-zinc-300">
+                    <div className="flex items-center gap-2 sm:gap-4">
+                      <span className="text-sm font-mono text-cyan-700 w-6">{index + 1}</span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1 items-end">
+                        <div className="space-y-1">
+                          <Label className="text-xs font-mono text-zinc-500">Label (optional)</Label>
+                          <Input
+                            type="text"
+                            value={ap.label || ""}
+                            onChange={(e) => updateAdditionalPhoto(index, "label", e.target.value)}
+                            placeholder={`Photo ${index + 1}`}
+                            className="h-9 bg-white border-zinc-300 text-zinc-900 text-sm"
+                            data-testid={`additional-photo-${index}-label`}
+                          />
+                        </div>
+                        <PhotoUpload
+                          label="Photo"
+                          value={ap.photo}
+                          onChange={(v) => updateAdditionalPhoto(index, "photo", v)}
+                          testId={`additional-photo-${index}`}
+                          compact
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        onClick={() => removeAdditionalPhoto(index)}
+                        size="icon"
+                        variant="ghost"
+                        className="text-red-600 hover:text-red-300 hover:bg-red-500/10 h-8 w-8"
+                        data-testid={`remove-additional-photo-${index}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Down Guys - Dynamic Rows */}

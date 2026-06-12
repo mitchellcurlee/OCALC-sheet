@@ -92,7 +92,7 @@ const labelIcon = (text, ox, oy) =>
     iconAnchor: [32 - ox, 11 - oy],
   });
 
-// Underground item marker (GREEN square with abbreviation) - smaller
+// Underground item marker (GREEN square with abbreviation, RED for MPOE) - smaller
 const ugIcon = (abbr, isRed = false) =>
   L.divIcon({
     className: "ug-marker",

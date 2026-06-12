@@ -110,6 +110,10 @@ def pole_photo_items(pole: dict):
         labeled.append((f"Anchor {i}", kn.get("photo")))
     for i, att in enumerate(pole.get("attachments", []) or [], 1):
         labeled.append((f"HOA {i}", att.get("photo")))
+    # Additional photos
+    for i, ap in enumerate(pole.get("additional_photos", []) or [], 1):
+        label = ap.get("label") or f"Additional {i}"
+        labeled.append((label, ap.get("photo")))
     for label, val in labeled:
         if val:
             items.append((label, val))
