@@ -303,6 +303,7 @@ Build an app that collects power pole data including: size of the pole, type of 
   - Replaced up/down arrow buttons with drag-and-drop interface using @dnd-kit
   - SortablePoleItem component with grip handles for intuitive dragging
   - Maintained Save Order and Cancel buttons
+  - Added "Save & Sync All" button (blue) that saves order AND recalculates all span distances from GPS
   - Requires redeploy for production.
 
 - Simplified JobDetail Title Bar (Jun 12, 2026):

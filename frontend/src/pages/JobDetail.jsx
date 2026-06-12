@@ -115,6 +115,7 @@ const JobDetail = () => {
   const [reorderMode, setReorderMode] = useState(false);
   const [reorderedPoles, setReorderedPoles] = useState([]);
   const [syncingPoleId, setSyncingPoleId] = useState(null);
+  const [syncingAll, setSyncingAll] = useState(false);
 
   // Drag-and-drop sensors
   const sensors = useSensors(
@@ -156,6 +157,29 @@ const JobDetail = () => {
       fetchJobAndPoles();
     } catch (e) {
       toast.error("Failed to save pole order");
+    }
+  };
+
+  // Save and sync all distances after reordering
+  const saveAndSyncAll = async () => {
+    setSyncingAll(true);
+    try {
+      // First save the new order
+      const poleOrders = reorderedPoles.map((p, i) => ({ id: p.id, sort_order: i }));
+      await axios.put("/poles/reorder", poleOrders);
+      
+      // Then sync all distances based on new order
+      const syncResult = await axios.post(`/jobs/${jobId}/sync-map-distances`);
+      const updatedCount = syncResult.data.updated || 0;
+      
+      toast.success(`Order saved & ${updatedCount} pole distances synced!`);
+      setReorderMode(false);
+      setReorderedPoles([]);
+      fetchJobAndPoles();
+    } catch (e) {
+      toast.error("Failed to save and sync");
+    } finally {
+      setSyncingAll(false);
     }
   };
 
@@ -414,11 +438,22 @@ const JobDetail = () => {
           <div className="flex items-center gap-2">
             {reorderMode ? (
               <>
-                <Button variant="outline" size="sm" onClick={cancelReorder} className="gap-1">
+                <Button variant="outline" size="sm" onClick={cancelReorder} disabled={syncingAll} className="gap-1">
                   <X className="w-4 h-4" /> Cancel
                 </Button>
-                <Button size="sm" onClick={saveReorder} className="bg-green-600 hover:bg-green-700 gap-1">
+                <Button size="sm" onClick={saveReorder} disabled={syncingAll} className="bg-green-600 hover:bg-green-700 gap-1">
                   <Check className="w-4 h-4" /> Save Order
+                </Button>
+                <Button 
+                  size="sm" 
+                  onClick={saveAndSyncAll} 
+                  disabled={syncingAll}
+                  className="bg-blue-600 hover:bg-blue-700 gap-1"
+                  data-testid="save-sync-all-btn"
+                  title="Save new order and recalculate all span distances from GPS"
+                >
+                  {syncingAll ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                  Save & Sync All
                 </Button>
               </>
             ) : (
