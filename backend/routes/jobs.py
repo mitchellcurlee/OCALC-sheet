@@ -27,9 +27,9 @@ def set_db(db):
     _db = db
 
 
-def generate_download_token(resource_type: str, resource_id: str, expires_hours: int = 24) -> str:
-    """Generate a time-limited download token"""
-    expires = int((datetime.now(timezone.utc) + timedelta(hours=expires_hours)).timestamp())
+def generate_download_token(resource_type: str, resource_id: str, expires_days: int = 30) -> str:
+    """Generate a time-limited download token (default 30 days)"""
+    expires = int((datetime.now(timezone.utc) + timedelta(days=expires_days)).timestamp())
     message = f"{resource_type}:{resource_id}:{expires}"
     signature = hmac.new(DOWNLOAD_SECRET.encode(), message.encode(), hashlib.sha256).hexdigest()[:16]
     return f"{expires}:{signature}"
