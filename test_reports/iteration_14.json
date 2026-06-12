@@ -1,0 +1,132 @@
+{
+  "summary": "Frontend regression for ASE Form 3-tab restructure on A050ABC (e5dc0bae-96bb-4cef-8001-7baf4e41d80a). All 18 features in the review_request VERIFIED PASSING. ASE CKLIST tab has all 11 sections, Coordinator Input has exactly 5 fields, SVCL Output has all 6 sections with the required sub-fields. EF REQUIREMENTS table has exactly 11 rows with YES/NO + QTTY columns. Employee Info dropdown contains 11 names (incl. COCHISE NAVA, MITCHELL CURLEE, etc.). Equipment Mounting dropdown has all 7 expected options (POLE, PEDESTAL, OUTSIDE WALL MOUNT, INSIDE WALL MOUNT, H-Frame, RACK, DESK MOUNT(WALL MOUNT)). Site Readiness Evaluation dropdown has the 3 expected SVCL options.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "SVCL Output > Site Visit > Building Demarcation",
+        "issue": "Read-only computed field renders 'Multiple MPOE/Terminal' even when how_many_dmarcs is empty. parseInt('')===1 is false so the ternary at line 999 always falls through to 'Multiple MPOE/Terminal'. Should render empty when source is empty.",
+        "selector": "label:has-text('Building Demarcation') + input",
+        "priority": "MEDIUM"
+      },
+      {
+        "component": "SVCL Output > Site Visit > Multi-Tenant",
+        "issue": "Always renders 'NO' when number_of_business_units is empty (line 990). Same pattern: should render empty/— when source is empty.",
+        "selector": "label:has-text('Multi-Tenant') + input",
+        "priority": "MEDIUM"
+      },
+      {
+        "component": "SVCL Output > Site Visit > Disable NTE Auto-Assignment",
+        "issue": "Line 1002 compares formData.number_of_business_units === 'NO' which can never be true (it's a numeric string). Field always renders 'NO' and logic appears wrong (should likely compare against multi_tenant value).",
+        "selector": "label:has-text('Disable NTE Auto-Assignment') + input",
+        "priority": "HIGH"
+      },
+      {
+        "component": "SVCL Output > NTE Equipment Attributes > Equipment location",
+        "issue": "Line 1044 defaults to 'SUITE' whenever nte_at_terminal !== 'Terminal' (even when empty). Should render empty when source is empty.",
+        "selector": "label:has-text('Equipment location') + input",
+        "priority": "MEDIUM"
+      },
+      {
+        "component": "SVCL Output > Multi Tenant Eligibility > Multi-Tenant Eligibility",
+        "issue": "Line 1071 always renders 'NO' when proposed_nte_common_space is empty. Should render empty.",
+        "selector": "label:has-text('Multi-Tenant Eligibility') + input",
+        "priority": "MEDIUM"
+      },
+      {
+        "component": "SVCL Output > Multi Tenant Eligibility > Customer Handoff Panel Location",
+        "issue": "Line 1074 default falls back to 'SUITE' whenever nte_at_terminal !== 'Terminal'. Should be empty when nte_at_terminal is empty.",
+        "selector": "label:has-text('Customer Handoff Panel Location') + input",
+        "priority": "LOW"
+      },
+      {
+        "component": "SVCL Output > Multi Tenant Eligibility > Ceiling Height",
+        "issue": "Line 1086 parseInt(empty)<10 -> false so always renders 'NO'. Should render empty when ceiling_height not set.",
+        "selector": "label:has-text('Ceiling Height') + input",
+        "priority": "MEDIUM"
+      },
+      {
+        "component": "SVCL Output > Site Requirements > End User Acceptance",
+        "issue": "Line 1104 defaults to 'Yes - EF Offer Accepted' whenever ef_qualified !== 'NO' (including empty). Should render empty when source not set.",
+        "selector": "label:has-text('End User Acceptance') + input",
+        "priority": "MEDIUM"
+      },
+      {
+        "component": "SVCL Output > Site Requirements > Other Requirements",
+        "issue": "Line 1113-1119 always prepends 'NOTE: FOR ANY QUESTIONS ... PLEASE CONTACT: ' and appends employee_info. When employee_info is empty the trailing 'CONTACT: ' looks unfinished. Field is marked filled=true even with no real content.",
+        "selector": "label:has-text('Other Requirements') + textarea",
+        "priority": "LOW"
+      },
+      {
+        "component": "SVCL Output > Site & Order > Building Contact",
+        "issue": "Line 963 uses `value={formData.building_contact || formData.building_owner_contact}` but onChange only updates building_contact. Typing into the field while building_owner_contact is set creates a confusing fallback (you cannot clear it back to empty until you type at least one char). Recommend always binding to building_contact and initializing it from building_owner_contact only via the auto-populate effect (already done at lines 478-480).",
+        "selector": "label:has-text('Building Contact') + input",
+        "priority": "LOW"
+      },
+      {
+        "component": "SVCL Output > Multi Tenant Eligibility > Est. Fiber Drop Length",
+        "issue": "Line 1077 uses `value={formData.est_fiber_drop_length || formData.distance_fbt_to_nte}` same anti-pattern – user cannot clear field while distance_fbt_to_nte is set.",
+        "selector": "label:has-text('Est. Fiber Drop Length') + input",
+        "priority": "LOW"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "ASE Form > Tab labels",
+        "issues": ["Tab labels still render desktop+mobile spans concatenated in a11y tree (cosmetic, carried over from iter 12/13)."]
+      },
+      {
+        "screen": "ASE Form > date pickers",
+        "issues": ["date_of_site_visit and bidi_agreed_date still use native browser date picker instead of shadcn Calendar component (carried over)."]
+      },
+      {
+        "screen": "SVCL Output read-only fields",
+        "issues": ["All read-only fields with computed defaults render misleading values when their source inputs are empty (see ui_bugs above)."]
+      }
+    ]
+  },
+  "test_report_links": ["/app/test_reports/iteration_14.json"],
+  "action_items": [
+    "Guard SVCL Output computed read-only fields: only render the derived value when source field has a non-empty value, otherwise render empty string. Affects Building Demarcation, Multi-Tenant, Disable NTE Auto-Assignment, Equipment location, Multi-Tenant Eligibility, Ceiling Height (MTEI), End User Acceptance.",
+    "Fix Disable NTE Auto-Assignment logic at line 1002 – comparing number_of_business_units === 'NO' is incorrect (numeric field).",
+    "Refactor Building Contact and Est. Fiber Drop Length to not use the `value={a || b}` anti-pattern (controlled input cannot be cleared).",
+    "Consider splitting ASEForm.jsx (1142 lines, >700 guideline) into smaller components – ASECklistTab.jsx, CoordinatorInputTab.jsx, SVCLOutputTab.jsx."
+  ],
+  "critical_code_review_comments": [
+    "ASEForm.jsx is 1142 lines – split into sub-components per tab.",
+    "Read-only computed SVCL fields default to misleading non-empty values when source fields are empty (line 990, 999, 1002, 1044, 1071, 1074, 1086, 1104). Wrap each ternary to return '' when source is empty.",
+    "`value={a || b}` pattern on controlled inputs (lines 963, 1074, 1077) prevents user from clearing the field. Use explicit fallback only at initial state, then bind to single source.",
+    "Other Requirements at line 1113 hard-codes a long instructional sentence and marks the field 'filled'. This is presentation text, not form data – consider rendering as static text and not persisting in formData.",
+    "ASE_OPTIONS.equipmentMounting is reused for both NTE Placement and Fiber Terminal Placement – Fiber Terminal Placement actually uses fiberTerminalPlacement (correct), so naming is fine, but NTE Placement label says 'Placement' while Excel column is 'Mounting'. Verify with PM whether NTE Placement should pull from equipmentMounting or a different enum."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a (frontend-only requested)", "frontend": "100% (18/18 review features verified); 11 minor logic bugs found in SVCL Output computed defaults"},
+  "test_credentials": "admin@mastecbyers.com / Mastecbyers@12345 (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "None. Reused existing A050ABC job (id e5dc0bae-96bb-4cef-8001-7baf4e41d80a).",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "ASE Form successfully restructured to 3-tab Excel-matched layout. data-testids in use: ase-form, tab-ase-cklist (note: changed from prior tab-ase-checklist), tab-coordinator-input, tab-svcl-output, content-ase-cklist, content-coordinator-input, content-svcl-output, save-ase-btn, export-ase-btn. The SVCL Output tab contains 8+ computed read-only fields whose ternary defaults render misleading values when source fields are empty – flag for main agent to fix. EF REQUIREMENTS table verified at exactly 11 rows. Employee Info dropdown verified at 11 entries (matches SOURCE sheet). Equipment Mounting dropdown verified at 7 entries matching review_request spec.",
+  "feature_verification_matrix": {
+    "ASE CKLIST tab present with all 11 sections (Employee Info, Address, BIDI RETROFIT, ACCESS/CUSTOMER INFORMATION, BUILDING CHARACTERISTICS, FIBER ATTRIBUTES, NTE EQUIPMENT ATTRIBUTES, EF OFFER, EF REQUIREMENTS, ADDITIONAL INFO, MARK UPS)": "PASS",
+    "Employee Info dropdown with names from Excel SOURCE": "PASS (11 employees incl. COCHISE NAVA, MITCHELL CURLEE, Jared Monroe, John Sydow, John Maier, Stan Duke, Luis Ramirez, Jacob Adrianson, Juan Arias, Carlos Sanchez, Steveland Horton)",
+    "Address section with Address, MPOE Address, Suite &/or Bldg # fields": "PASS",
+    "BIDI RETROFIT section": "PASS",
+    "ACCESS/CUSTOMER INFORMATION section": "PASS",
+    "BUILDING CHARACTERISTICS section": "PASS",
+    "FIBER ATTRIBUTES section": "PASS",
+    "NTE EQUIPMENT ATTRIBUTES section": "PASS",
+    "EF OFFER section": "PASS",
+    "EF REQUIREMENTS table with 11 rows YES/NO + QTTY": "PASS (exactly 11 rows)",
+    "ADDITIONAL INFO section": "PASS",
+    "Coordinator Input tab has exactly 5 fields (AT&T Engineer, Nearest Fiber FID if Missing, FBT FID if Missing, Possible Permits, Additional SOW notes)": "PASS (5 labels total)",
+    "SVCL Output Site & Order (Building Contact, Building Contact Email, SOW Notes)": "PASS",
+    "SVCL Output Site Visit (Date, Type, Qualified Equipment, Occupancy Type, Multi-Tenant, Number of Tenants)": "PASS",
+    "SVCL Output Fiber Attributes (Terminal Floor/Aisle/Bay/Shelf)": "PASS",
+    "SVCL Output NTE Equipment Attributes (Environment/Location/Mounting/Power)": "PASS",
+    "SVCL Output Multi Tenant Eligibility": "PASS (with logic bugs flagged)",
+    "SVCL Output Site Requirements with Site Readiness Evaluation dropdown": "PASS (3 options match spec)",
+    "Equipment Mounting dropdown options exact match": "PASS (POLE, PEDESTAL, OUTSIDE WALL MOUNT, INSIDE WALL MOUNT, H-Frame, RACK, DESK MOUNT(WALL MOUNT))"
+  },
+  "rca of the issue": "n/a – feature additions verified. Several logic issues exist in SVCL Output computed defaults that should be addressed by main agent."
+}
