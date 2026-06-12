@@ -19,8 +19,9 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
-import { ArrowLeft, Save, FileSpreadsheet, Loader2, ClipboardList, Users, FileOutput } from "lucide-react";
+import { ArrowLeft, Save, FileSpreadsheet, Loader2, ClipboardList, Users, FileOutput, Camera } from "lucide-react";
 import { PhotoMarkupEditor } from "@/components/PhotoMarkupEditor";
+import { ASEPhotoField } from "@/components/ASEPhotoField";
 
 const BLANK = "__BLANK__";
 
@@ -41,10 +42,10 @@ const ASE_OPTIONS = {
   // Owner/Tenant (from data sheet Column C)
   ownerTenant: ["BUILDING OWNER", "TENANT"],
   
-  // Equipment Mounting (from SOURCE sheet Column D)
+  // Equipment Mounting (from SOURCE sheet Column D) - also used for NTE Placement
   equipmentMounting: [
     "POLE", "PEDESTAL", "OUTSIDE WALL MOUNT", "INSIDE WALL MOUNT", 
-    "H-Frame", "RACK", "DESK MOUNT(WALL MOUNT)"
+    "H-Frame", "RACK", "DESK MOUNT(WALL MOUNT)", "HOFFMAN BOX"
   ],
   
   // Power Configuration (from SOURCE sheet Column E)
@@ -62,8 +63,8 @@ const ASE_OPTIONS = {
   // Mounting Wall (from data sheet Column D)
   mountingWall: ["BACKBOARD", "RACK"],
   
-  // Fiber Terminal Placement
-  fiberTerminalPlacement: ["Terminal", "Elsewhere", "POLE", "H-Frame", "RACK"],
+  // Fiber Terminal Placement - includes HOFFMAN BOX
+  fiberTerminalPlacement: ["Terminal", "Elsewhere", "POLE", "H-Frame", "RACK", "HOFFMAN BOX"],
   
   // NTE Location
   nteLocation: ["Terminal", "Another Location"],
@@ -292,6 +293,18 @@ const ASEForm = () => {
     row_measurements: "",
     other_notes: "",
     
+    // Photo fields for sections
+    address_photos: [],
+    access_customer_photos: [],
+    building_characteristics_photos: [],
+    soc_start_photos: [],
+    soc_end_photos: [],
+    pole_line_start_photos: [],
+    pole_line_end_photos: [],
+    fbt_photos: [],
+    nte_photos: [],
+    mpoe_photos: [],
+    
     // Mark Ups
     markup_photos: [],
     
@@ -421,37 +434,80 @@ const ASEForm = () => {
           }
         }
         
-        // Underground items
+        // Underground items - with photo attachment
         ugData.forEach(item => {
+          // Get photos from item (handle both single photo and photos array)
+          const itemPhotos = item.photos || (item.photo ? [item.photo] : []);
+          
           if (item.type === 'FBT' || item.type === 'FBT/NTE') {
             if (!updated.fiber_terminal_lat_long && item.latitude && item.longitude) {
               updated.fiber_terminal_lat_long = `${item.latitude}, ${item.longitude}`;
             }
             if (!updated.existing_fiber_terminal) updated.existing_fiber_terminal = "YES";
+            // Attach FBT photos
+            if (itemPhotos.length > 0 && (!updated.fbt_photos || updated.fbt_photos.length === 0)) {
+              updated.fbt_photos = itemPhotos;
+            }
           }
           if (item.type === 'NTE' || item.type === 'FBT/NTE') {
             if (!updated.nte_lat_long && item.latitude && item.longitude) {
               updated.nte_lat_long = `${item.latitude}, ${item.longitude}`;
             }
             if (!updated.existing_nte) updated.existing_nte = "YES";
+            // Attach NTE photos
+            if (itemPhotos.length > 0 && (!updated.nte_photos || updated.nte_photos.length === 0)) {
+              updated.nte_photos = itemPhotos;
+            }
           }
           if (item.type === 'SOC Start') {
             if (!updated.soc_start_lat_long && item.latitude && item.longitude) {
               updated.soc_start_lat_long = `${item.latitude}, ${item.longitude}`;
+            }
+            // Attach SOC Start photos
+            if (itemPhotos.length > 0 && (!updated.soc_start_photos || updated.soc_start_photos.length === 0)) {
+              updated.soc_start_photos = itemPhotos;
             }
           }
           if (item.type === 'SOC End') {
             if (!updated.soc_end_lat_long && item.latitude && item.longitude) {
               updated.soc_end_lat_long = `${item.latitude}, ${item.longitude}`;
             }
+            // Attach SOC End photos
+            if (itemPhotos.length > 0 && (!updated.soc_end_photos || updated.soc_end_photos.length === 0)) {
+              updated.soc_end_photos = itemPhotos;
+            }
           }
-          if (item.type === 'MPOE' && !updated.mpoe_address && item.notes) {
-            updated.mpoe_address = item.notes;
+          if (item.type === 'MPOE') {
+            if (!updated.mpoe_address && item.notes) {
+              updated.mpoe_address = item.notes;
+            }
+            // Attach MPOE photos
+            if (itemPhotos.length > 0 && (!updated.mpoe_photos || updated.mpoe_photos.length === 0)) {
+              updated.mpoe_photos = itemPhotos;
+            }
           }
           if (item.type === 'Hoffman Box' && !updated.need_hoffman_box) {
             updated.need_hoffman_box = "YES";
           }
         });
+        
+        // Attach pole photos to pole line start/end
+        if (polesData.length > 0) {
+          const firstPole = polesData[0];
+          const lastPole = polesData[polesData.length - 1];
+          
+          // First pole photos for pole line start
+          const firstPolePhotos = firstPole.photos || (firstPole.photo ? [firstPole.photo] : []);
+          if (firstPolePhotos.length > 0 && (!updated.pole_line_start_photos || updated.pole_line_start_photos.length === 0)) {
+            updated.pole_line_start_photos = firstPolePhotos;
+          }
+          
+          // Last pole photos for pole line end
+          const lastPolePhotos = lastPole.photos || (lastPole.photo ? [lastPole.photo] : []);
+          if (lastPolePhotos.length > 0 && (!updated.pole_line_end_photos || updated.pole_line_end_photos.length === 0)) {
+            updated.pole_line_end_photos = lastPolePhotos;
+          }
+        }
         
         // Path of approach
         if (!updated.path_of_approach && ugData.length > 0) {
@@ -478,6 +534,52 @@ const ASEForm = () => {
         // Building contact from access contact
         if (!updated.building_contact && updated.building_owner_contact) {
           updated.building_contact = updated.building_owner_contact;
+        }
+        
+        // ========== COLLECT ALL JOB PHOTOS FOR MARK UPS GALLERY ==========
+        // Only auto-populate if markup_photos is empty (don't overwrite user edits)
+        if (!updated.markup_photos || updated.markup_photos.length === 0) {
+          const allJobPhotos = [];
+          
+          // Collect photos from all poles
+          polesData.forEach(pole => {
+            // Main pole photo
+            if (pole.photo) allJobPhotos.push(pole.photo);
+            if (pole.photos && Array.isArray(pole.photos)) {
+              allJobPhotos.push(...pole.photos);
+            }
+            // Birthmark photos
+            if (pole.birthmark_photos && Array.isArray(pole.birthmark_photos)) {
+              allJobPhotos.push(...pole.birthmark_photos);
+            }
+            // MGNV photos
+            if (pole.mgnv_photos && Array.isArray(pole.mgnv_photos)) {
+              allJobPhotos.push(...pole.mgnv_photos);
+            }
+            // Anchor photos
+            if (pole.anchor_photos && Array.isArray(pole.anchor_photos)) {
+              allJobPhotos.push(...pole.anchor_photos);
+            }
+            // HOA photos
+            if (pole.hoa_photos && Array.isArray(pole.hoa_photos)) {
+              allJobPhotos.push(...pole.hoa_photos);
+            }
+          });
+          
+          // Collect photos from all underground items
+          ugData.forEach(item => {
+            if (item.photo) allJobPhotos.push(item.photo);
+            if (item.photos && Array.isArray(item.photos)) {
+              allJobPhotos.push(...item.photos);
+            }
+          });
+          
+          // Remove duplicates and empty values
+          const uniquePhotos = [...new Set(allJobPhotos.filter(p => p && typeof p === 'string'))];
+          
+          if (uniquePhotos.length > 0) {
+            updated.markup_photos = uniquePhotos;
+          }
         }
         
         return updated;
@@ -632,6 +734,14 @@ const ASEForm = () => {
                   <StyledInput value={formData.suite_bldg} onChange={(e) => handleChange("suite_bldg", e.target.value)} filled={isFilled(formData.suite_bldg)} />
                 </FieldRow>
               </div>
+              {/* Address Photos */}
+              <div className="mt-4 pt-4 border-t border-zinc-200">
+                <ASEPhotoField 
+                  label="Address Photos" 
+                  photos={formData.address_photos || []} 
+                  onChange={(v) => handleChange("address_photos", v)} 
+                />
+              </div>
             </Section>
 
             {/* BIDI RETROFIT */}
@@ -671,6 +781,14 @@ const ASEForm = () => {
                   <StyledTextarea value={formData.access_notes} onChange={(e) => handleChange("access_notes", e.target.value)} rows={2} filled={isFilled(formData.access_notes)} />
                 </FieldRow>
               </div>
+              {/* Access/Customer Photos */}
+              <div className="mt-4 pt-4 border-t border-zinc-200">
+                <ASEPhotoField 
+                  label="Access/Customer Photos" 
+                  photos={formData.access_customer_photos || []} 
+                  onChange={(v) => handleChange("access_customer_photos", v)} 
+                />
+              </div>
             </Section>
 
             {/* BUILDING CHARACTERISTICS */}
@@ -694,6 +812,14 @@ const ASEForm = () => {
                 <FieldRow label="Is the proposed NTE in a common space and can serve multiple tenants?" wide>
                   <YesNoSelect value={formData.proposed_nte_common_space} onChange={(v) => handleChange("proposed_nte_common_space", v)} filled={isFilled(formData.proposed_nte_common_space)} />
                 </FieldRow>
+              </div>
+              {/* Building Characteristics Photos */}
+              <div className="mt-4 pt-4 border-t border-zinc-200">
+                <ASEPhotoField 
+                  label="Building Characteristics Photos" 
+                  photos={formData.building_characteristics_photos || []} 
+                  onChange={(v) => handleChange("building_characteristics_photos", v)} 
+                />
               </div>
             </Section>
 
@@ -878,18 +1004,75 @@ const ASEForm = () => {
                 <FieldRow label="Describe path of approach, include SOC length" wide>
                   <StyledTextarea value={formData.path_of_approach} onChange={(e) => handleChange("path_of_approach", e.target.value)} rows={2} filled={isFilled(formData.path_of_approach)} />
                 </FieldRow>
-                <FieldRow label="POLE LINE START Lat/Long" note="IF PLACING AERIAL">
-                  <StyledInput value={formData.soc_pole_line_start} onChange={(e) => handleChange("soc_pole_line_start", e.target.value)} filled={isFilled(formData.soc_pole_line_start)} />
-                </FieldRow>
-                <FieldRow label="POLE LINE END Lat/Long" note="IF PLACING AERIAL">
-                  <StyledInput value={formData.soc_pole_line_end} onChange={(e) => handleChange("soc_pole_line_end", e.target.value)} filled={isFilled(formData.soc_pole_line_end)} />
-                </FieldRow>
-                <FieldRow label="SOC START Lat/Long">
-                  <StyledInput value={formData.soc_start_lat_long} onChange={(e) => handleChange("soc_start_lat_long", e.target.value)} filled={isFilled(formData.soc_start_lat_long)} />
-                </FieldRow>
-                <FieldRow label="SOC END Lat/Long">
-                  <StyledInput value={formData.soc_end_lat_long} onChange={(e) => handleChange("soc_end_lat_long", e.target.value)} filled={isFilled(formData.soc_end_lat_long)} />
-                </FieldRow>
+                
+                {/* POLE LINE START with photos */}
+                <div>
+                  <FieldRow label="POLE LINE START Lat/Long" note="IF PLACING AERIAL">
+                    <StyledInput value={formData.soc_pole_line_start} onChange={(e) => handleChange("soc_pole_line_start", e.target.value)} filled={isFilled(formData.soc_pole_line_start)} />
+                  </FieldRow>
+                  {(formData.pole_line_start_photos?.length > 0) && (
+                    <div className="mt-2">
+                      <ASEPhotoField 
+                        label="" 
+                        photos={formData.pole_line_start_photos || []} 
+                        onChange={(v) => handleChange("pole_line_start_photos", v)} 
+                        compact
+                      />
+                    </div>
+                  )}
+                </div>
+                
+                {/* POLE LINE END with photos */}
+                <div>
+                  <FieldRow label="POLE LINE END Lat/Long" note="IF PLACING AERIAL">
+                    <StyledInput value={formData.soc_pole_line_end} onChange={(e) => handleChange("soc_pole_line_end", e.target.value)} filled={isFilled(formData.soc_pole_line_end)} />
+                  </FieldRow>
+                  {(formData.pole_line_end_photos?.length > 0) && (
+                    <div className="mt-2">
+                      <ASEPhotoField 
+                        label="" 
+                        photos={formData.pole_line_end_photos || []} 
+                        onChange={(v) => handleChange("pole_line_end_photos", v)} 
+                        compact
+                      />
+                    </div>
+                  )}
+                </div>
+                
+                {/* SOC START with photos */}
+                <div>
+                  <FieldRow label="SOC START Lat/Long">
+                    <StyledInput value={formData.soc_start_lat_long} onChange={(e) => handleChange("soc_start_lat_long", e.target.value)} filled={isFilled(formData.soc_start_lat_long)} />
+                  </FieldRow>
+                  {(formData.soc_start_photos?.length > 0) && (
+                    <div className="mt-2">
+                      <ASEPhotoField 
+                        label="" 
+                        photos={formData.soc_start_photos || []} 
+                        onChange={(v) => handleChange("soc_start_photos", v)} 
+                        compact
+                      />
+                    </div>
+                  )}
+                </div>
+                
+                {/* SOC END with photos */}
+                <div>
+                  <FieldRow label="SOC END Lat/Long">
+                    <StyledInput value={formData.soc_end_lat_long} onChange={(e) => handleChange("soc_end_lat_long", e.target.value)} filled={isFilled(formData.soc_end_lat_long)} />
+                  </FieldRow>
+                  {(formData.soc_end_photos?.length > 0) && (
+                    <div className="mt-2">
+                      <ASEPhotoField 
+                        label="" 
+                        photos={formData.soc_end_photos || []} 
+                        onChange={(v) => handleChange("soc_end_photos", v)} 
+                        compact
+                      />
+                    </div>
+                  )}
+                </div>
+                
                 <FieldRow label="Proposed POLE and BLDG Height of Attachment" note="IF PLACING AERIAL">
                   <StyledInput value={formData.proposed_pole_bldg_height} onChange={(e) => handleChange("proposed_pole_bldg_height", e.target.value)} filled={isFilled(formData.proposed_pole_bldg_height)} />
                 </FieldRow>

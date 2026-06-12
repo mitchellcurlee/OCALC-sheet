@@ -11,8 +11,9 @@ import {
 /**
  * ASEPhotoField - Compact photo upload for ASE form fields
  * Shows small camera icon next to field, expands to show photos
+ * If compact=true, shows thumbnails inline instead of popup
  */
-export const ASEPhotoField = ({ fieldKey, photos = [], onChange, label }) => {
+export const ASEPhotoField = ({ fieldKey, photos = [], onChange, label, compact = false }) => {
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
@@ -55,30 +56,76 @@ export const ASEPhotoField = ({ fieldKey, photos = [], onChange, label }) => {
     onChange(newPhotos);
   };
 
+  // Compact mode - show inline thumbnails
+  if (compact) {
+    return (
+      <div className="flex flex-wrap items-center gap-2">
+        {photoArray.map((photo, idx) => (
+          <div key={idx} className="relative w-10 h-10 group">
+            <img
+              src={photo}
+              alt=""
+              className="w-full h-full object-cover rounded border border-zinc-200 cursor-pointer"
+              onClick={() => setLightboxPhoto(photo)}
+            />
+            <button
+              type="button"
+              onClick={() => removePhoto(idx)}
+              className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+        ))}
+        
+        {/* Add photo button */}
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          className="w-10 h-10 border-2 border-dashed border-zinc-300 rounded flex items-center justify-center text-zinc-400 hover:border-blue-400 hover:text-blue-500 transition-colors"
+          disabled={uploading}
+        >
+          {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
+        </button>
+        
+        <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFileChange} />
+        
+        {/* Lightbox */}
+        <Dialog open={!!lightboxPhoto} onOpenChange={() => setLightboxPhoto(null)}>
+          <DialogContent className="max-w-4xl p-0 bg-black/90">
+            <img src={lightboxPhoto} alt="" className="w-full h-auto max-h-[80vh] object-contain" />
+          </DialogContent>
+        </Dialog>
+      </div>
+    );
+  }
+
   return (
-    <div className="inline-flex items-center gap-1">
-      {/* Camera button */}
-      <button
-        type="button"
-        onClick={() => setExpanded(!expanded)}
-        className={`p-1 rounded transition-colors ${
-          photoArray.length > 0 
-            ? 'bg-green-100 text-green-700 hover:bg-green-200' 
-            : 'bg-zinc-100 text-zinc-500 hover:bg-zinc-200'
-        }`}
-        title={`${label} photos (${photoArray.length})`}
-      >
-        {uploading ? (
-          <Loader2 className="w-4 h-4 animate-spin" />
-        ) : (
-          <Camera className="w-4 h-4" />
-        )}
-        {photoArray.length > 0 && (
-          <span className="absolute -top-1 -right-1 bg-green-600 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center">
-            {photoArray.length}
-          </span>
-        )}
-      </button>
+    <div className="relative">
+      {label && <label className="text-xs font-mono text-zinc-600 mb-1.5 block uppercase tracking-wide">{label}</label>}
+      <div className="inline-flex items-center gap-1">
+        {/* Camera button */}
+        <button
+          type="button"
+          onClick={() => setExpanded(!expanded)}
+          className={`relative p-1.5 rounded transition-colors ${
+            photoArray.length > 0 
+              ? 'bg-green-100 text-green-700 hover:bg-green-200' 
+              : 'bg-zinc-100 text-zinc-500 hover:bg-zinc-200'
+          }`}
+          title={`${label || 'Photos'} (${photoArray.length})`}
+        >
+          {uploading ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Camera className="w-4 h-4" />
+          )}
+          {photoArray.length > 0 && (
+            <span className="absolute -top-1 -right-1 bg-green-600 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center">
+              {photoArray.length}
+            </span>
+          )}
+        </button>
 
       {/* Hidden file inputs */}
       <input
@@ -165,6 +212,7 @@ export const ASEPhotoField = ({ fieldKey, photos = [], onChange, label }) => {
           )}
         </DialogContent>
       </Dialog>
+      </div>
     </div>
   );
 };

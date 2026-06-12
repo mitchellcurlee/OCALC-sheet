@@ -458,6 +458,19 @@ Build an app that collects power pole data including: size of the pole, type of 
   - SVCL Output fields guard against empty source values
   - Requires redeploy for production.
 
+- **ASE Form Photo Enhancements (Jun 12, 2026)**:
+  - Added "HOFFMAN BOX" to NTE Placement and Fiber Terminal Placement dropdowns
+  - Added photo upload sections to Address, ACCESS/CUSTOMER INFORMATION, and BUILDING CHARACTERISTICS sections
+  - Auto-attach photos from job items to corresponding ASE fields:
+    - SOC Start/End photos from underground markers with those types
+    - Pole Line Start/End photos from first/last poles
+    - FBT/NTE/MPOE photos from underground markers
+  - **Mark Ups Gallery now auto-populates with ALL job photos**:
+    - Collects photos from all poles (main, birthmark, MGNV, anchor, HOA photos)
+    - Collects photos from all underground items
+    - Removes duplicates and displays in Mark Ups section for annotation
+  - Requires redeploy for production.
+
 ## Prioritized Backlog
 
 ### P0 (Critical)
@@ -468,7 +481,7 @@ Build an app that collects power pole data including: size of the pole, type of 
 - Verify offline sync with multi-photo payloads
 
 ### P2 (Medium Priority)
-- Refactor ASEForm.jsx (1143 lines) into sub-components (ASECklistTab, CoordinatorInputTab, SVCLOutputTab)
+- Refactor ASEForm.jsx (1320+ lines) into sub-components (ASECklistTab, CoordinatorInputTab, SVCLOutputTab)
 - Refactor PoleForm.jsx (1100+ lines) and JobMap.jsx (700+ lines) into smaller components
 - Refactor PhotoMarkupEditor.jsx (1133+ lines) into sub-components
 - Replace native date input in ASE Form with shadcn Calendar for UX consistency
