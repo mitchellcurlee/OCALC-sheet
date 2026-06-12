@@ -298,3 +298,37 @@ Build an app that collects power pole data including: size of the pole, type of 
   - Added sort_order to PoleUpdate model to allow persistence
   - Requires redeploy for production.
 
+## Session Update (Jun 12, 2026)
+- Drag-and-Drop Pole Reordering (Jun 12, 2026):
+  - Replaced up/down arrow buttons with drag-and-drop interface using @dnd-kit
+  - SortablePoleItem component with grip handles for intuitive dragging
+  - Maintained Save Order and Cancel buttons
+  - Requires redeploy for production.
+
+- Simplified JobDetail Title Bar (Jun 12, 2026):
+  - Removed: Map Image, Photos ZIP, Map ZIP, Sync Distances buttons
+  - Kept: Map, Export, Add Pole, Add Underground
+  - Per-pole Photo ZIP and Map links moved to Excel export
+  - Sync Distances button moved to per-pole cards
+  - Requires redeploy for production.
+
+- Per-Pole Sync Distances (Jun 12, 2026):
+  - Added Sync Distances button (blue refresh icon) to each pole card in JobDetail
+  - Added Sync Dist button to ViewPole page header
+  - Added Sync Dist button to EditPole page header (PoleForm)
+  - New endpoint POST /api/poles/{pole_id}/sync-distances syncs only that pole
+  - Requires redeploy for production.
+
+- Interactive Map Screenshot (Jun 12, 2026):
+  - Added Screenshot button (purple camera icon) to JobMap page header
+  - Uses html2canvas to capture only the visible map frame
+  - Downloads as PNG file named {job_name}_screenshot.png
+  - Requires redeploy for production.
+
+- Excel Export Enhancements (Jun 12, 2026):
+  - Added per-pole "Photos ZIP" hyperlink (purple text) that downloads pole's photos as ZIP
+  - Added per-pole "View Map" hyperlink for each pole row
+  - Added "View Map" hyperlink for each underground item row
+  - New endpoint GET /api/poles/{pole_id}/photos-zip for single-pole photo ZIP
+  - Requires redeploy for production.
+
