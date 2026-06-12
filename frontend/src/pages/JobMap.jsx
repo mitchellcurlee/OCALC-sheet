@@ -570,7 +570,18 @@ const JobMap = () => {
                 Edit Mode: Click blue dots to add waypoints, drag to move, double-click to remove
               </div>
             )}
-            <MapContainer center={center} zoom={18} minZoom={3} maxZoom={22} scrollWheelZoom={true} style={{ height: "100%", width: "100%" }} className="z-0">
+            <MapContainer 
+              center={center} 
+              zoom={18} 
+              minZoom={3} 
+              maxZoom={22} 
+              zoomDelta={0.25}
+              zoomSnap={0.25}
+              wheelPxPerZoomLevel={120}
+              scrollWheelZoom={true} 
+              style={{ height: "100%", width: "100%" }} 
+              className="z-0"
+            >
               <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" attribution="&copy; Esri" maxNativeZoom={19} maxZoom={22} />
               <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}" maxNativeZoom={19} maxZoom={22} />
               <FitBounds points={allPoints} disabled={editMode} />

@@ -449,16 +449,41 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
 
 
 @router.get("/jobs/{job_id}/export/photos-zip")
-async def export_job_photos_zip(job_id: str, token: Optional[str] = Query(None)):
+async def export_job_photos_zip(job_id: str, token: Optional[str] = Query(None), request: Request = None):
     """Export all photos from a job as a ZIP file, organized by pole with labels.
-    Access via either: authenticated request OR valid download token from Excel export.
+    Access via: valid download token (30 days) OR authenticated mastec.com/byers.com user.
     """
     import zipfile
     import base64
     from services.storage import get_object
+    from jose import jwt, JWTError
     
-    # Verify access via token
-    if not token or not verify_download_token("job_photos", job_id, token):
+    # Check access: either valid token OR authenticated mastec.com/byers.com user
+    has_access = False
+    
+    # Check token first
+    if token and verify_download_token("job_photos", job_id, token):
+        has_access = True
+    
+    # Check for authenticated mastec.com/byers.com user
+    if not has_access and request:
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            try:
+                from services.auth import SECRET_KEY, ALGORITHM
+                jwt_token = auth_header.replace("Bearer ", "")
+                payload = jwt.decode(jwt_token, SECRET_KEY, algorithms=[ALGORITHM])
+                user_id = payload.get("sub")
+                if user_id:
+                    user = await _db.users.find_one({"id": user_id}, {"_id": 0})
+                    if user:
+                        email = user.get("email", "").lower()
+                        if email.endswith("@mastec.com") or email.endswith("@byers.com"):
+                            has_access = True
+            except (JWTError, Exception):
+                pass
+    
+    if not has_access:
         raise HTTPException(status_code=401, detail="Invalid or expired download link. Please export a new Excel file.")
     
     job = await _db.jobs.find_one({"id": job_id}, {"_id": 0})
@@ -512,16 +537,41 @@ async def export_job_photos_zip(job_id: str, token: Optional[str] = Query(None))
 
 
 @router.get("/poles/{pole_id}/photos-zip")
-async def export_pole_photos_zip(pole_id: str, token: Optional[str] = Query(None)):
+async def export_pole_photos_zip(pole_id: str, token: Optional[str] = Query(None), request: Request = None):
     """Export all photos from a single pole as a ZIP file.
-    Access via either: authenticated request OR valid download token from Excel export.
+    Access via: valid download token (30 days) OR authenticated mastec.com/byers.com user.
     """
     import zipfile
     import base64
     from services.storage import get_object
+    from jose import jwt, JWTError
     
-    # Verify access via token
-    if not token or not verify_download_token("pole_photos", pole_id, token):
+    # Check access: either valid token OR authenticated mastec.com/byers.com user
+    has_access = False
+    
+    # Check token first
+    if token and verify_download_token("pole_photos", pole_id, token):
+        has_access = True
+    
+    # Check for authenticated mastec.com/byers.com user
+    if not has_access and request:
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            try:
+                from services.auth import SECRET_KEY, ALGORITHM
+                jwt_token = auth_header.replace("Bearer ", "")
+                payload = jwt.decode(jwt_token, SECRET_KEY, algorithms=[ALGORITHM])
+                user_id = payload.get("sub")
+                if user_id:
+                    user = await _db.users.find_one({"id": user_id}, {"_id": 0})
+                    if user:
+                        email = user.get("email", "").lower()
+                        if email.endswith("@mastec.com") or email.endswith("@byers.com"):
+                            has_access = True
+            except (JWTError, Exception):
+                pass
+    
+    if not has_access:
         raise HTTPException(status_code=401, detail="Invalid or expired download link. Please export a new Excel file.")
     
     pole = await _db.poles.find_one({"id": pole_id}, {"_id": 0})
