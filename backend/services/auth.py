@@ -62,3 +62,15 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
 def is_admin_user(user: dict) -> bool:
     """Check if user is the master admin"""
     return user.get("is_admin", False) or user.get("email", "").lower() == MASTER_ADMIN_EMAIL.lower()
+
+
+def is_mastec_byers_admin(user: dict) -> bool:
+    """Check if user is the mastec/byers admin who can see all mastec.com and byers.com jobs"""
+    email = user.get("email", "").lower()
+    return email == "admin@mastecbyers.com"
+
+
+def is_mastec_byers_user(user: dict) -> bool:
+    """Check if user belongs to mastec.com or byers.com domain"""
+    email = user.get("email", "").lower()
+    return email.endswith("@mastec.com") or email.endswith("@byers.com")

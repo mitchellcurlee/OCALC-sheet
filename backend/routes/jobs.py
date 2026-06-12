@@ -11,7 +11,7 @@ from openpyxl.styles import Font, PatternFill, Border, Side
 
 from models.job import Job, JobCreate, JobUpdate
 from models.pole import Pole
-from services.auth import get_current_user, is_admin_user
+from services.auth import get_current_user, is_admin_user, is_mastec_byers_admin
 from services.helpers import pole_sort_key, format_height, pole_photo_items
 
 router = APIRouter(tags=["jobs"])
@@ -55,6 +55,25 @@ def verify_download_token(resource_type: str, resource_id: str, token: str) -> b
         return False
 
 
+async def can_access_job(job_id: str, current_user: dict) -> dict:
+    """Check if user can access a job and return it if so"""
+    if is_admin_user(current_user):
+        return await _db.jobs.find_one({"id": job_id}, {"_id": 0})
+    elif is_mastec_byers_admin(current_user):
+        # Mastec/Byers admin can access jobs from mastec.com and byers.com users
+        job = await _db.jobs.find_one({"id": job_id}, {"_id": 0})
+        if job:
+            # Check if job owner is a mastec/byers user
+            owner = await _db.users.find_one({"id": job.get("user_id")}, {"_id": 0, "email": 1})
+            if owner:
+                email = owner.get("email", "").lower()
+                if email.endswith("@mastec.com") or email.endswith("@byers.com") or job.get("user_id") == current_user["id"]:
+                    return job
+        return None
+    else:
+        return await _db.jobs.find_one({"id": job_id, "user_id": current_user["id"]}, {"_id": 0})
+
+
 @router.post("/jobs", response_model=Job)
 async def create_job(job_data: JobCreate, current_user: dict = Depends(get_current_user)):
     """Create a new job"""
@@ -72,10 +91,26 @@ async def create_job(job_data: JobCreate, current_user: dict = Depends(get_curre
 
 @router.get("/jobs", response_model=List[Job])
 async def get_jobs(current_user: dict = Depends(get_current_user)):
-    """Get all jobs - admin sees all jobs, regular users see only their own"""
+    """Get all jobs - admin sees all jobs, mastec/byers admin sees all mastec/byers jobs, regular users see only their own"""
     if is_admin_user(current_user):
+        # Full admin sees all jobs
         jobs = await _db.jobs.find({}, {"_id": 0}).sort("created_at", -1).to_list(10000)
+    elif is_mastec_byers_admin(current_user):
+        # Mastec/Byers admin sees all jobs from mastec.com and byers.com users
+        # First get all mastec/byers user IDs
+        mastec_byers_users = await _db.users.find(
+            {"$or": [
+                {"email": {"$regex": "@mastec\\.com$", "$options": "i"}},
+                {"email": {"$regex": "@byers\\.com$", "$options": "i"}}
+            ]},
+            {"_id": 0, "id": 1}
+        ).to_list(10000)
+        user_ids = [u["id"] for u in mastec_byers_users]
+        # Include the admin's own jobs too
+        user_ids.append(current_user["id"])
+        jobs = await _db.jobs.find({"user_id": {"$in": user_ids}}, {"_id": 0}).sort("created_at", -1).to_list(10000)
     else:
+        # Regular users see only their own jobs
         jobs = await _db.jobs.find({"user_id": current_user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(1000)
     
     if not jobs:
@@ -109,10 +144,7 @@ async def get_jobs(current_user: dict = Depends(get_current_user)):
 @router.get("/jobs/{job_id}", response_model=Job)
 async def get_job(job_id: str, current_user: dict = Depends(get_current_user)):
     """Get a specific job"""
-    if is_admin_user(current_user):
-        job = await _db.jobs.find_one({"id": job_id}, {"_id": 0})
-    else:
-        job = await _db.jobs.find_one({"id": job_id, "user_id": current_user["id"]}, {"_id": 0})
+    job = await can_access_job(job_id, current_user)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
     job["pole_count"] = await _db.poles.count_documents({"job_id": job_id})
@@ -122,10 +154,7 @@ async def get_job(job_id: str, current_user: dict = Depends(get_current_user)):
 @router.put("/jobs/{job_id}", response_model=Job)
 async def update_job(job_id: str, job_data: JobUpdate, current_user: dict = Depends(get_current_user)):
     """Update a job"""
-    if is_admin_user(current_user):
-        existing = await _db.jobs.find_one({"id": job_id})
-    else:
-        existing = await _db.jobs.find_one({"id": job_id, "user_id": current_user["id"]})
+    existing = await can_access_job(job_id, current_user)
     if not existing:
         raise HTTPException(status_code=404, detail="Job not found")
     
@@ -141,10 +170,7 @@ async def update_job(job_id: str, job_data: JobUpdate, current_user: dict = Depe
 @router.delete("/jobs/{job_id}")
 async def delete_job(job_id: str, current_user: dict = Depends(get_current_user)):
     """Delete a job and all its poles"""
-    if is_admin_user(current_user):
-        existing = await _db.jobs.find_one({"id": job_id})
-    else:
-        existing = await _db.jobs.find_one({"id": job_id, "user_id": current_user["id"]})
+    existing = await can_access_job(job_id, current_user)
     if not existing:
         raise HTTPException(status_code=404, detail="Job not found")
     
@@ -366,12 +392,16 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
         ws.cell(row=current_row, column=1, value="PHOTOS").fill = header_fill
         ws.cell(row=current_row, column=1).font = header_font
         if photo_items:
-            # Single Download Photos link with download token
-            pole_photos_token = generate_download_token("pole_photos", pole.get('id'))
-            photos_zip_url = f"{public_base}/api/poles/{pole.get('id')}/photos-zip?token={pole_photos_token}"
-            download_cell = ws.cell(row=current_row, column=2, value=f"Download {len(photo_items)} photo(s)")
-            download_cell.hyperlink = photos_zip_url
-            download_cell.font = Font(color="2563EB", underline="single", bold=True)
+            # List each photo individually with its own link
+            col_idx = 2
+            for label, photo_url in photo_items:
+                # Generate token for this specific photo
+                photo_token = generate_download_token("photo", f"{pole.get('id')}:{label}")
+                photo_download_url = f"{public_base}/api/poles/{pole.get('id')}/photo/{label.replace(' ', '_').replace('/', '-')}?token={photo_token}"
+                photo_cell = ws.cell(row=current_row, column=col_idx, value=label)
+                photo_cell.hyperlink = photo_download_url
+                photo_cell.font = Font(color="2563EB", underline="single", bold=True)
+                col_idx += 1
         else:
             ws.cell(row=current_row, column=2, value="No photos")
         current_row += 1
@@ -616,5 +646,94 @@ async def export_pole_photos_zip(pole_id: str, token: Optional[str] = Query(None
     return StreamingResponse(
         buffer,
         media_type="application/zip",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+
+@router.get("/poles/{pole_id}/photo/{photo_label}")
+async def get_pole_photo(pole_id: str, photo_label: str, token: Optional[str] = Query(None), request: Request = None):
+    """Get an individual photo from a pole.
+    Access via: valid download token (30 days) OR authenticated mastec.com/byers.com user.
+    """
+    import base64
+    from services.storage import get_object
+    from jose import jwt, JWTError
+    
+    # Normalize photo_label (replace underscores back to spaces, dashes back to slashes)
+    normalized_label = photo_label.replace('_', ' ').replace('-', '/')
+    
+    # Check access: either valid token OR authenticated mastec.com/byers.com user
+    has_access = False
+    
+    # Check token first
+    if token and verify_download_token("photo", f"{pole_id}:{normalized_label}", token):
+        has_access = True
+    
+    # Check for authenticated mastec.com/byers.com user
+    if not has_access and request:
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            try:
+                from services.auth import SECRET_KEY, ALGORITHM
+                jwt_token = auth_header.replace("Bearer ", "")
+                payload = jwt.decode(jwt_token, SECRET_KEY, algorithms=[ALGORITHM])
+                user_id = payload.get("sub")
+                if user_id:
+                    user = await _db.users.find_one({"id": user_id}, {"_id": 0})
+                    if user:
+                        email = user.get("email", "").lower()
+                        if email.endswith("@mastec.com") or email.endswith("@byers.com"):
+                            has_access = True
+            except (JWTError, Exception):
+                pass
+    
+    if not has_access:
+        raise HTTPException(status_code=401, detail="Invalid or expired download link. Please export a new Excel file.")
+    
+    pole = await _db.poles.find_one({"id": pole_id}, {"_id": 0})
+    if not pole:
+        raise HTTPException(status_code=404, detail="Pole not found")
+    
+    # Find the matching photo
+    photo_items = pole_photo_items(pole)
+    photo_url = None
+    for label, url in photo_items:
+        if label == normalized_label:
+            photo_url = url
+            break
+    
+    if not photo_url:
+        raise HTTPException(status_code=404, detail=f"Photo '{normalized_label}' not found")
+    
+    # Get the photo data
+    data = None
+    content_type = "image/jpeg"
+    
+    if photo_url.startswith("data:"):
+        # Parse data URL
+        header, b64_data = photo_url.split(",", 1)
+        data = base64.b64decode(b64_data)
+        if "png" in header:
+            content_type = "image/png"
+        elif "webp" in header:
+            content_type = "image/webp"
+    elif photo_url.startswith("/api/files/"):
+        file_path = photo_url.replace("/api/files/", "")
+        data, content_type = get_object(file_path)
+    elif not photo_url.startswith("http"):
+        data, content_type = get_object(photo_url)
+    
+    if not data:
+        raise HTTPException(status_code=404, detail="Photo data not available")
+    
+    # Create safe filename
+    pole_number = pole.get("pole_number", "unknown")
+    safe_pole = "".join(c for c in pole_number if c.isalnum() or c in (' ', '-', '_')).strip() or "unknown"
+    safe_label = "".join(c for c in normalized_label if c.isalnum() or c in (' ', '-', '_')).strip()
+    filename = f"Pole_{safe_pole}_{safe_label}.jpeg"
+    
+    return StreamingResponse(
+        io.BytesIO(data),
+        media_type=content_type,
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
