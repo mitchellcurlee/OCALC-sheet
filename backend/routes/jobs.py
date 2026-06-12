@@ -199,6 +199,13 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
     img_cell.hyperlink = f"{public_base}/jobs/{job_id}/map?download=1"
     img_cell.font = Font(color="2563EB", underline="single", bold=True)
     
+    # Add Download All Photos link
+    ws.cell(row=1, column=13, value="ALL PHOTOS").fill = header_fill
+    ws.cell(row=1, column=13).font = header_font
+    all_photos_cell = ws.cell(row=1, column=14, value="Download all photos (ZIP)")
+    all_photos_cell.hyperlink = f"{public_base}/api/jobs/{job_id}/export/photos-zip"
+    all_photos_cell.font = Font(color="7C3AED", underline="single", bold=True)
+    
     current_row = 3
     bold9 = Font(bold=True, size=9)
 
@@ -409,7 +416,7 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
 async def export_job_photos_zip(job_id: str, current_user: dict = Depends(get_current_user)):
     """Export all photos from a job as a ZIP file, organized by pole with labels"""
     import zipfile
-    import httpx
+    import base64
     from services.storage import get_object
     
     if is_admin_user(current_user):
@@ -426,35 +433,44 @@ async def export_job_photos_zip(job_id: str, current_user: dict = Depends(get_cu
     with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
         for pole in poles:
             pole_number = pole.get("pole_number", "unknown")
-            safe_pole_name = "".join(c for c in pole_number if c.isalnum() or c in (' ', '-', '_')).strip()
+            safe_pole_name = "".join(c for c in pole_number if c.isalnum() or c in (' ', '-', '_')).strip() or "unknown"
             
             photo_items = pole_photo_items(pole)
             for label, photo_url in photo_items:
                 try:
-                    # Get the file path from URL
-                    if photo_url.startswith("/api/files/"):
-                        file_path = photo_url.replace("/api/files/", "")
-                    elif photo_url.startswith("http"):
-                        # External URL - skip or fetch
-                        continue
-                    else:
-                        file_path = photo_url
-                    
-                    # Get file data from storage
-                    data, content_type = get_object(file_path)
-                    
-                    # Determine extension
+                    data = None
                     ext = ".jpg"
-                    if "png" in content_type:
-                        ext = ".png"
-                    elif "webp" in content_type:
-                        ext = ".webp"
                     
-                    # Create safe filename with label
-                    safe_label = "".join(c for c in label if c.isalnum() or c in (' ', '-', '_')).strip()
-                    filename = f"{safe_pole_name}/{safe_label}{ext}"
+                    # Handle base64 data URLs
+                    if photo_url.startswith("data:"):
+                        # Parse data URL: data:image/jpeg;base64,/9j/4AAQ...
+                        header, b64_data = photo_url.split(",", 1)
+                        data = base64.b64decode(b64_data)
+                        if "png" in header:
+                            ext = ".png"
+                        elif "webp" in header:
+                            ext = ".webp"
+                    # Handle file storage URLs
+                    elif photo_url.startswith("/api/files/"):
+                        file_path = photo_url.replace("/api/files/", "")
+                        data, content_type = get_object(file_path)
+                        if "png" in content_type:
+                            ext = ".png"
+                        elif "webp" in content_type:
+                            ext = ".webp"
+                    elif not photo_url.startswith("http"):
+                        # Direct file path
+                        data, content_type = get_object(photo_url)
+                        if "png" in content_type:
+                            ext = ".png"
+                        elif "webp" in content_type:
+                            ext = ".webp"
                     
-                    zf.writestr(filename, data)
+                    if data:
+                        # Create safe filename with label
+                        safe_label = "".join(c for c in label if c.isalnum() or c in (' ', '-', '_')).strip()
+                        filename = f"Pole_{safe_pole_name}/{safe_label}{ext}"
+                        zf.writestr(filename, data)
                 except Exception:
                     # Skip failed photos
                     continue
@@ -474,6 +490,7 @@ async def export_job_photos_zip(job_id: str, current_user: dict = Depends(get_cu
 async def export_pole_photos_zip(pole_id: str, current_user: dict = Depends(get_current_user)):
     """Export all photos from a single pole as a ZIP file"""
     import zipfile
+    import base64
     from services.storage import get_object
     
     pole = await _db.poles.find_one({"id": pole_id}, {"_id": 0})
@@ -491,7 +508,7 @@ async def export_pole_photos_zip(pole_id: str, current_user: dict = Depends(get_
             raise HTTPException(status_code=403, detail="Access denied")
     
     pole_number = pole.get("pole_number", "unknown")
-    safe_pole_name = "".join(c for c in pole_number if c.isalnum() or c in (' ', '-', '_')).strip()
+    safe_pole_name = "".join(c for c in pole_number if c.isalnum() or c in (' ', '-', '_')).strip() or "unknown"
     
     photo_items = pole_photo_items(pole)
     if not photo_items:
@@ -501,25 +518,36 @@ async def export_pole_photos_zip(pole_id: str, current_user: dict = Depends(get_
     with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
         for label, photo_url in photo_items:
             try:
-                if photo_url.startswith("/api/files/"):
-                    file_path = photo_url.replace("/api/files/", "")
-                elif photo_url.startswith("http"):
-                    continue
-                else:
-                    file_path = photo_url
-                
-                data, content_type = get_object(file_path)
-                
+                data = None
                 ext = ".jpg"
-                if "png" in content_type:
-                    ext = ".png"
-                elif "webp" in content_type:
-                    ext = ".webp"
                 
-                safe_label = "".join(c for c in label if c.isalnum() or c in (' ', '-', '_')).strip()
-                filename = f"{safe_label}{ext}"
+                # Handle base64 data URLs
+                if photo_url.startswith("data:"):
+                    header, b64_data = photo_url.split(",", 1)
+                    data = base64.b64decode(b64_data)
+                    if "png" in header:
+                        ext = ".png"
+                    elif "webp" in header:
+                        ext = ".webp"
+                # Handle file storage URLs
+                elif photo_url.startswith("/api/files/"):
+                    file_path = photo_url.replace("/api/files/", "")
+                    data, content_type = get_object(file_path)
+                    if "png" in content_type:
+                        ext = ".png"
+                    elif "webp" in content_type:
+                        ext = ".webp"
+                elif not photo_url.startswith("http"):
+                    data, content_type = get_object(photo_url)
+                    if "png" in content_type:
+                        ext = ".png"
+                    elif "webp" in content_type:
+                        ext = ".webp"
                 
-                zf.writestr(filename, data)
+                if data:
+                    safe_label = "".join(c for c in label if c.isalnum() or c in (' ', '-', '_')).strip()
+                    filename = f"{safe_label}{ext}"
+                    zf.writestr(filename, data)
             except Exception:
                 continue
     
