@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
-import html2canvas from "html2canvas";
+import domtoimage from "dom-to-image-more";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ListOrdered, ChevronDown, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera } from "lucide-react";
 import { computeRoute, fmtFeet, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, ugWithGps, undergroundAbbr, computeUgConnectors } from "@/lib/poleMapImage";
@@ -340,7 +340,7 @@ const JobMap = () => {
     }
   }, [poles, job, showStops, underground]);
 
-  // Screenshot the visible map frame
+  // Screenshot the visible map frame using dom-to-image-more
   const captureMapScreenshot = useCallback(async () => {
     setScreenshotting(true);
     try {
@@ -348,21 +348,31 @@ const JobMap = () => {
       const mapContainer = document.querySelector(".leaflet-container");
       if (!mapContainer) {
         toast.error("Map container not found");
+        setScreenshotting(false);
         return;
       }
 
       toast.info("Capturing screenshot...");
       
-      // Use html2canvas to capture the map
-      const canvas = await html2canvas(mapContainer, {
-        useCORS: true,
-        allowTaint: true,
-        scale: 2, // Higher resolution
-        logging: false,
+      // Use dom-to-image-more which handles SVG/Canvas overlays better
+      const dataUrl = await domtoimage.toPng(mapContainer, {
+        quality: 1,
+        bgcolor: "#ffffff",
+        style: {
+          // Ensure proper rendering
+          transform: "none",
+        },
+        filter: (node) => {
+          // Include all elements except hidden ones
+          if (node.classList && node.classList.contains("leaflet-control-container")) {
+            // Keep controls but they might be styled differently
+            return true;
+          }
+          return true;
+        },
       });
 
-      // Convert to PNG and download
-      const dataUrl = canvas.toDataURL("image/png");
+      // Download the image
       const link = document.createElement("a");
       link.href = dataUrl;
       link.download = `${(job?.name || "map").replace(/[^a-z0-9-_]+/gi, "_")}_screenshot.png`;
@@ -373,7 +383,7 @@ const JobMap = () => {
       toast.success("Screenshot saved!");
     } catch (e) {
       console.error("Screenshot error:", e);
-      toast.error("Failed to capture screenshot");
+      toast.error("Failed to capture screenshot. Try zooming out slightly.");
     } finally {
       setScreenshotting(false);
     }
