@@ -439,37 +439,23 @@ async def export_job_photos_zip(job_id: str, current_user: dict = Depends(get_cu
             for label, photo_url in photo_items:
                 try:
                     data = None
-                    ext = ".jpg"
                     
                     # Handle base64 data URLs
                     if photo_url.startswith("data:"):
-                        # Parse data URL: data:image/jpeg;base64,/9j/4AAQ...
                         header, b64_data = photo_url.split(",", 1)
                         data = base64.b64decode(b64_data)
-                        if "png" in header:
-                            ext = ".png"
-                        elif "webp" in header:
-                            ext = ".webp"
                     # Handle file storage URLs
                     elif photo_url.startswith("/api/files/"):
                         file_path = photo_url.replace("/api/files/", "")
-                        data, content_type = get_object(file_path)
-                        if "png" in content_type:
-                            ext = ".png"
-                        elif "webp" in content_type:
-                            ext = ".webp"
+                        data, _ = get_object(file_path)
                     elif not photo_url.startswith("http"):
                         # Direct file path
-                        data, content_type = get_object(photo_url)
-                        if "png" in content_type:
-                            ext = ".png"
-                        elif "webp" in content_type:
-                            ext = ".webp"
+                        data, _ = get_object(photo_url)
                     
                     if data:
-                        # Create safe filename with label
+                        # Create safe filename with label - always use .jpeg extension
                         safe_label = "".join(c for c in label if c.isalnum() or c in (' ', '-', '_')).strip()
-                        filename = f"Pole_{safe_pole_name}/{safe_label}{ext}"
+                        filename = f"Pole_{safe_pole_name}/{safe_label}.jpeg"
                         zf.writestr(filename, data)
                 except Exception:
                     # Skip failed photos
@@ -519,34 +505,22 @@ async def export_pole_photos_zip(pole_id: str, current_user: dict = Depends(get_
         for label, photo_url in photo_items:
             try:
                 data = None
-                ext = ".jpg"
                 
                 # Handle base64 data URLs
                 if photo_url.startswith("data:"):
                     header, b64_data = photo_url.split(",", 1)
                     data = base64.b64decode(b64_data)
-                    if "png" in header:
-                        ext = ".png"
-                    elif "webp" in header:
-                        ext = ".webp"
                 # Handle file storage URLs
                 elif photo_url.startswith("/api/files/"):
                     file_path = photo_url.replace("/api/files/", "")
-                    data, content_type = get_object(file_path)
-                    if "png" in content_type:
-                        ext = ".png"
-                    elif "webp" in content_type:
-                        ext = ".webp"
+                    data, _ = get_object(file_path)
                 elif not photo_url.startswith("http"):
-                    data, content_type = get_object(photo_url)
-                    if "png" in content_type:
-                        ext = ".png"
-                    elif "webp" in content_type:
-                        ext = ".webp"
+                    data, _ = get_object(photo_url)
                 
                 if data:
+                    # Always use .jpeg extension
                     safe_label = "".join(c for c in label if c.isalnum() or c in (' ', '-', '_')).strip()
-                    filename = f"{safe_label}{ext}"
+                    filename = f"{safe_label}.jpeg"
                     zf.writestr(filename, data)
             except Exception:
                 continue
