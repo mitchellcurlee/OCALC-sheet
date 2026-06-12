@@ -81,7 +81,11 @@ export const PhotoMarkupEditor = ({ photos = [], onChange, label = "Mark Ups" })
       const canvas = canvasRef.current;
       const ctx = canvas.getContext("2d");
       const img = new Image();
+      
+      // Try loading with crossOrigin for canvas editing support
+      // If CORS fails, we'll still show the image but editing may be limited
       img.crossOrigin = "anonymous";
+      
       img.onload = () => {
         // Scale to fit container while maintaining aspect ratio
         const maxWidth = 800;
@@ -103,8 +107,40 @@ export const PhotoMarkupEditor = ({ photos = [], onChange, label = "Mark Ups" })
         ctx.drawImage(img, 0, 0, width, height);
         imageRef.current = { img, width, height };
         setImageLoaded(true);
-        redrawCanvas();
       };
+      
+      img.onerror = () => {
+        console.error("Failed to load image with CORS, trying without...");
+        // Try loading without crossOrigin as fallback
+        const img2 = new Image();
+        img2.onload = () => {
+          const maxWidth = 800;
+          const maxHeight = 600;
+          let width = img2.width;
+          let height = img2.height;
+          
+          if (width > maxWidth) {
+            height = (height * maxWidth) / width;
+            width = maxWidth;
+          }
+          if (height > maxHeight) {
+            width = (width * maxHeight) / height;
+            height = maxHeight;
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          ctx.drawImage(img2, 0, 0, width, height);
+          imageRef.current = { img: img2, width, height };
+          setImageLoaded(true);
+        };
+        img2.onerror = () => {
+          console.error("Failed to load image completely");
+          setImageLoaded(false);
+        };
+        img2.src = currentPhoto;
+      };
+      
       img.src = currentPhoto;
     }
   }, [currentPhoto]);
@@ -327,7 +363,13 @@ export const PhotoMarkupEditor = ({ photos = [], onChange, label = "Mark Ups" })
   };
 
   const openEditor = (photo, index) => {
-    setCurrentPhoto(photo);
+    // Ensure full URL for canvas loading
+    let photoUrl = photo;
+    if (photo && photo.startsWith('/api/')) {
+      // Convert relative URL to full URL
+      photoUrl = `${window.location.origin}${photo}`;
+    }
+    setCurrentPhoto(photoUrl);
     setCurrentPhotoIndex(index);
     setAnnotations([]);
     setHistory([]);
@@ -597,13 +639,19 @@ export const PhotoMarkupEditor = ({ photos = [], onChange, label = "Mark Ups" })
 
             {/* Canvas area */}
             <div ref={containerRef} className="flex-1 bg-zinc-900 flex items-center justify-center p-4 overflow-auto">
+              {!imageLoaded && currentPhoto && (
+                <div className="text-white text-center">
+                  <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2" />
+                  <p>Loading image...</p>
+                </div>
+              )}
               <canvas
                 ref={canvasRef}
                 onMouseDown={handleMouseDown}
                 onMouseMove={handleMouseMove}
                 onMouseUp={handleMouseUp}
                 onMouseLeave={handleMouseUp}
-                className="bg-white shadow-lg cursor-crosshair"
+                className={`bg-white shadow-lg cursor-crosshair ${!imageLoaded ? 'hidden' : ''}`}
                 style={{ maxWidth: "100%", maxHeight: "100%" }}
               />
             </div>
