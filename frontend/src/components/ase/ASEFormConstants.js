@@ -79,6 +79,7 @@ export const INITIAL_FORM_DATA = {
   // Employee Info
   employee_info: "",
   date_of_site_visit: "",
+  site_id: "",
   
   // Address Section
   address: "",
@@ -102,9 +103,15 @@ export const INITIAL_FORM_DATA = {
   occupancy_type: "",
   number_of_floors: "",
   number_of_business_units: "",
+  number_of_tenants: "",
   how_many_dmarcs: "",
   additional_dmarcs_location: "",
   proposed_nte_common_space: "",
+  multi_tenant: "",
+  disable_nte_auto_assign: "",
+  multi_tenant_eligibility: "",
+  router_on_same_floor: "",
+  router_within_300ft: "",
   
   // FIBER ATTRIBUTES
   existing_inc: "",

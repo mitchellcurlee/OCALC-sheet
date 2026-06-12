@@ -8,7 +8,10 @@ const ASEChecklistTab = ({ formData, handleChange }) => {
     <div className="space-y-4" data-testid="content-ase-cklist">
       {/* Employee Info */}
       <Section title="Employee Info">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <FieldRow label="Site ID">
+            <StyledInput value={formData.site_id} onChange={(e) => handleChange("site_id", e.target.value)} filled={isFilled(formData.site_id)} placeholder="Enter Site ID" />
+          </FieldRow>
           <FieldRow label="Employee Info">
             <DropdownSelect value={formData.employee_info} onChange={(v) => handleChange("employee_info", v)} options={ASE_OPTIONS.employees} filled={isFilled(formData.employee_info)} />
           </FieldRow>
@@ -99,6 +102,24 @@ const ASEChecklistTab = ({ formData, handleChange }) => {
           </FieldRow>
           <FieldRow label="Number of business units">
             <StyledInput type="number" value={formData.number_of_business_units} onChange={(e) => handleChange("number_of_business_units", e.target.value)} filled={isFilled(formData.number_of_business_units)} />
+          </FieldRow>
+          <FieldRow label="Number of Tenants">
+            <StyledInput type="number" value={formData.number_of_tenants} onChange={(e) => handleChange("number_of_tenants", e.target.value)} filled={isFilled(formData.number_of_tenants)} />
+          </FieldRow>
+          <FieldRow label="Multi Tenant">
+            <YesNoSelect value={formData.multi_tenant} onChange={(v) => handleChange("multi_tenant", v)} filled={isFilled(formData.multi_tenant)} />
+          </FieldRow>
+          <FieldRow label="Disable NTE Auto-Assign">
+            <YesNoSelect value={formData.disable_nte_auto_assign} onChange={(v) => handleChange("disable_nte_auto_assign", v)} filled={isFilled(formData.disable_nte_auto_assign)} />
+          </FieldRow>
+          <FieldRow label="Multi Tenant Eligibility">
+            <YesNoSelect value={formData.multi_tenant_eligibility} onChange={(v) => handleChange("multi_tenant_eligibility", v)} filled={isFilled(formData.multi_tenant_eligibility)} />
+          </FieldRow>
+          <FieldRow label="Router on Same Floor">
+            <YesNoSelect value={formData.router_on_same_floor} onChange={(v) => handleChange("router_on_same_floor", v)} filled={isFilled(formData.router_on_same_floor)} />
+          </FieldRow>
+          <FieldRow label="Router Within 300ft">
+            <YesNoSelect value={formData.router_within_300ft} onChange={(v) => handleChange("router_within_300ft", v)} filled={isFilled(formData.router_within_300ft)} />
           </FieldRow>
           <FieldRow label="How many DMARCs?">
             <StyledInput type="number" value={formData.how_many_dmarcs} onChange={(e) => handleChange("how_many_dmarcs", e.target.value)} filled={isFilled(formData.how_many_dmarcs)} />

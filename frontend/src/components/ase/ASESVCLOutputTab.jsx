@@ -13,9 +13,6 @@ const ASESVCLOutputTab = ({ formData, handleChange }) => {
           <FieldRow label="Building Contact Email">
             <StyledInput value={formData.building_contact_email} onChange={(e) => handleChange("building_contact_email", e.target.value)} filled={isFilled(formData.building_contact_email)} />
           </FieldRow>
-          <FieldRow label="SOW Notes" wide>
-            <StyledTextarea value={formData.sow_notes} onChange={(e) => handleChange("sow_notes", e.target.value)} rows={3} filled={isFilled(formData.sow_notes)} />
-          </FieldRow>
         </div>
       </Section>
 
@@ -35,10 +32,10 @@ const ASESVCLOutputTab = ({ formData, handleChange }) => {
             <StyledInput value={formData.occupancy_type} readOnly filled={isFilled(formData.occupancy_type)} className="bg-zinc-50" />
           </FieldRow>
           <FieldRow label="Multi-Tenant">
-            <StyledInput value={isFilled(formData.number_of_business_units) ? (parseInt(formData.number_of_business_units) > 1 ? "YES" : "NO") : ""} readOnly filled={isFilled(formData.number_of_business_units)} className="bg-zinc-50" />
+            <StyledInput value={formData.multi_tenant || ""} readOnly filled={isFilled(formData.multi_tenant)} className="bg-zinc-50" />
           </FieldRow>
           <FieldRow label="Number of Tenants">
-            <StyledInput value={formData.number_of_business_units} readOnly filled={isFilled(formData.number_of_business_units)} className="bg-zinc-50" />
+            <StyledInput value={formData.number_of_tenants || ""} readOnly filled={isFilled(formData.number_of_tenants)} className="bg-zinc-50" />
           </FieldRow>
           <FieldRow label="Number of Floors in Building">
             <StyledInput value={formData.number_of_floors} readOnly filled={isFilled(formData.number_of_floors)} className="bg-zinc-50" />
@@ -47,7 +44,7 @@ const ASESVCLOutputTab = ({ formData, handleChange }) => {
             <StyledInput value={isFilled(formData.how_many_dmarcs) ? (parseInt(formData.how_many_dmarcs) === 1 ? "Single MPOE/Terminal" : "Multiple MPOE/Terminal") : ""} readOnly filled={isFilled(formData.how_many_dmarcs)} className="bg-zinc-50" />
           </FieldRow>
           <FieldRow label="Disable NTE Auto-Assignment">
-            <StyledInput value={isFilled(formData.number_of_business_units) ? (parseInt(formData.number_of_business_units) > 1 ? "NO" : "YES") : ""} readOnly filled={isFilled(formData.number_of_business_units)} className="bg-zinc-50" />
+            <StyledInput value={formData.disable_nte_auto_assign || ""} readOnly filled={isFilled(formData.disable_nte_auto_assign)} className="bg-zinc-50" />
           </FieldRow>
         </div>
       </Section>
@@ -116,7 +113,7 @@ const ASESVCLOutputTab = ({ formData, handleChange }) => {
       <Section title="Multi Tenant Eligibility (MTEI)">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FieldRow label="Multi-Tenant Eligibility">
-            <StyledInput value={isFilled(formData.proposed_nte_common_space) ? (formData.proposed_nte_common_space === "YES" ? "YES" : "NO") : ""} readOnly filled={isFilled(formData.proposed_nte_common_space)} className="bg-zinc-50" />
+            <StyledInput value={formData.multi_tenant_eligibility || ""} readOnly filled={isFilled(formData.multi_tenant_eligibility)} className="bg-zinc-50" />
           </FieldRow>
           <FieldRow label="Customer Handoff Panel Location">
             <StyledInput value={formData.customer_handoff_panel_location} onChange={(e) => handleChange("customer_handoff_panel_location", e.target.value)} filled={isFilled(formData.customer_handoff_panel_location)} placeholder={isFilled(formData.nte_at_terminal) ? (formData.nte_at_terminal === "Terminal" ? "COMMON AREA/MPOE" : "SUITE") : ""} />
@@ -125,13 +122,13 @@ const ASESVCLOutputTab = ({ formData, handleChange }) => {
             <StyledInput value={formData.est_fiber_drop_length} onChange={(e) => handleChange("est_fiber_drop_length", e.target.value)} filled={isFilled(formData.est_fiber_drop_length)} placeholder={formData.distance_fbt_to_nte || ""} />
           </FieldRow>
           <FieldRow label="Router on Same Floor">
-            <StyledInput value={formData.it_same_floor_as_nte} readOnly filled={isFilled(formData.it_same_floor_as_nte)} className="bg-zinc-50" />
+            <StyledInput value={formData.router_on_same_floor || ""} readOnly filled={isFilled(formData.router_on_same_floor)} className="bg-zinc-50" />
           </FieldRow>
           <FieldRow label="Router Within 300 (ft)">
-            <StyledInput value={formData.distance_nte_to_it} readOnly filled={isFilled(formData.distance_nte_to_it)} className="bg-zinc-50" />
+            <StyledInput value={formData.router_within_300ft || ""} readOnly filled={isFilled(formData.router_within_300ft)} className="bg-zinc-50" />
           </FieldRow>
           <FieldRow label="Ceiling Height">
-            <StyledInput value={isFilled(formData.ceiling_height) ? (parseInt(formData.ceiling_height) < 10 ? "YES" : "NO") : ""} readOnly filled={isFilled(formData.ceiling_height)} className="bg-zinc-50" />
+            <StyledInput value={formData.ceiling_height || ""} onChange={(e) => handleChange("ceiling_height", e.target.value)} filled={isFilled(formData.ceiling_height)} />
           </FieldRow>
         </div>
       </Section>
@@ -159,10 +156,10 @@ const ASESVCLOutputTab = ({ formData, handleChange }) => {
           </FieldRow>
           <FieldRow label="Other Requirements" wide>
             <StyledTextarea 
-              value={isFilled(formData.employee_info) ? `NOTE: FOR ANY QUESTIONS CONCERNING YOUR SITE VISIT REQUIREMENTS IN THIS LETTER PLEASE CONTACT: ${formData.employee_info}` : ""} 
+              value={(isFilled(formData.site_id) || isFilled(formData.employee_info)) ? `NOTE: FOR ANY QUESTIONS CONCERNING YOUR SITE VISIT REQUIREMENTS IN THIS LETTER PLEASE CONTACT: REFERENCE SITE ID ${formData.site_id || ""} ${formData.employee_info || ""}`.trim() : ""} 
               readOnly 
               rows={2} 
-              filled={isFilled(formData.employee_info)} 
+              filled={isFilled(formData.site_id) || isFilled(formData.employee_info)} 
               className="bg-zinc-50" 
             />
           </FieldRow>
