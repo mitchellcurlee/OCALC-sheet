@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useParams, useSearchParams, Link } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
@@ -7,8 +7,8 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import domtoimage from "dom-to-image-more";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ListOrdered, ChevronDown, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera } from "lucide-react";
-import { computeRoute, fmtFeet, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, ugWithGps, undergroundAbbr, computeUgConnectors } from "@/lib/poleMapImage";
+import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ListOrdered, ChevronDown, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera, Hash } from "lucide-react";
+import { computeRoute, fmtFeet, feetToStation, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, ugWithGps, undergroundAbbr, computeUgConnectors } from "@/lib/poleMapImage";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -156,6 +156,7 @@ const JobMap = () => {
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
   const [showStops, setShowStops] = useState(false);
+  const [showStationNumbers, setShowStationNumbers] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [addingType, setAddingType] = useState(null); // "note" or "measurement"
   const [saving, setSaving] = useState(false);
@@ -249,6 +250,69 @@ const JobMap = () => {
       }),
     [segments]
   );
+
+  // Calculate station numbers (cumulative distances) for all map items
+  const stationNumbers = useMemo(() => {
+    // Helper function to convert feet to station format
+    const toStation = (feet) => {
+      const stations = Math.floor(feet / 100);
+      const remainder = Math.round(feet % 100);
+      return `${stations}+${remainder.toString().padStart(2, '0')}`;
+    };
+    
+    // Helper function to calculate distance in feet between two GPS coordinates
+    const distanceFeet = (p1, p2) => {
+      const R = 6371000;
+      const lat1 = (p1[0] * Math.PI) / 180;
+      const lat2 = (p2[0] * Math.PI) / 180;
+      const dLat = lat2 - lat1;
+      const dLng = ((p2[1] - p1[1]) * Math.PI) / 180;
+      const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) * 3.28084;
+    };
+    
+    // Build ordered list of all items by sort_order
+    const allItems = [];
+    
+    // Add underground items
+    ug.forEach(item => {
+      allItems.push({
+        id: item.id,
+        type: 'underground',
+        pos: item.pos,
+        sortOrder: item.sort_order ?? Infinity
+      });
+    });
+    
+    // Add poles
+    route.forEach(pole => {
+      allItems.push({
+        id: pole.id,
+        type: 'pole',
+        pos: pole.pos,
+        sortOrder: pole.sort_order ?? Infinity
+      });
+    });
+    
+    // Sort by sort_order
+    allItems.sort((a, b) => a.sortOrder - b.sortOrder);
+    
+    // Calculate cumulative station numbers
+    const stations = {};
+    let runningDistance = 0;
+    let prevItem = null;
+    
+    allItems.forEach(item => {
+      if (prevItem) {
+        const dist = distanceFeet(prevItem.pos, item.pos);
+        runningDistance += dist;
+      }
+      stations[item.id] = toStation(runningDistance);
+      prevItem = item;
+    });
+    
+    return stations;
+  }, [route, ug]);
 
   // Detect clustered poles and compute label offsets
   // A pole is "clustered" if another pole is within 100ft
@@ -489,6 +553,10 @@ const JobMap = () => {
               <ListOrdered className="w-4 h-4 mr-2" />
               Stop #{"'"}s
             </Button>
+            <Button onClick={() => setShowStationNumbers((v) => !v)} disabled={route.length === 0 && ug.length === 0} aria-pressed={showStationNumbers} variant="outline" className={showStationNumbers ? "bg-indigo-600 border-indigo-600 hover:bg-indigo-700 text-white" : "bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900"} data-testid="toggle-station-btn">
+              <Hash className="w-4 h-4 mr-2" />
+              Sta #{"'"}s
+            </Button>
             <Button
               onClick={captureMapScreenshot}
               disabled={screenshotting || allPoints.length === 0}
@@ -682,31 +750,50 @@ const JobMap = () => {
               })}
               {poleDisplayInfo.map((p, i) => {
                 const label = markerLabel(p, i, showStops);
+                // Show station number if enabled
+                const stationLabel = showStationNumbers && stationNumbers[p.id] ? stationNumbers[p.id] : null;
                 const icon = p.isCluster 
                   ? poleIconWithArrow(label, p.labelAngle, 45)
                   : poleIcon(label, p.labelDir);
                 return (
-                  <Marker key={p.id} position={p.pos} icon={icon}>
-                    <Popup>
-                      <div className="min-w-[180px] font-mono" data-testid={`pole-popup-${p.id}`}>
-                        <div className="text-base font-bold text-zinc-900">{p.pole_number || "(unnumbered)"}</div>
-                        <div className="mt-1 text-xs text-zinc-600 space-y-0.5">
-                          <div><span className="text-zinc-400">Size:</span> {p.pole_size ? `${p.pole_size}'` : "—"}</div>
-                          <div><span className="text-zinc-400">Class:</span> {p.pole_class || "—"}</div>
-                          <div><span className="text-zinc-400">Condition:</span> {p.condition || "—"}</div>
-                          {p.risers && <div><span className="text-zinc-400">Risers:</span> {p.risers}{p.riser_height ? ` @ ${formatRiserHeight(p.riser_height)}` : ""}</div>}
+                  <React.Fragment key={p.id}>
+                    <Marker position={p.pos} icon={icon}>
+                      <Popup>
+                        <div className="min-w-[180px] font-mono" data-testid={`pole-popup-${p.id}`}>
+                          <div className="text-base font-bold text-zinc-900">{p.pole_number || "(unnumbered)"}</div>
+                          {stationLabel && <div className="text-xs text-indigo-600 font-bold">Station: {stationLabel}</div>}
+                          <div className="mt-1 text-xs text-zinc-600 space-y-0.5">
+                            <div><span className="text-zinc-400">Size:</span> {p.pole_size ? `${p.pole_size}'` : "—"}</div>
+                            <div><span className="text-zinc-400">Class:</span> {p.pole_class || "—"}</div>
+                            <div><span className="text-zinc-400">Condition:</span> {p.condition || "—"}</div>
+                            {p.risers && <div><span className="text-zinc-400">Risers:</span> {p.risers}{p.riser_height ? ` @ ${formatRiserHeight(p.riser_height)}` : ""}</div>}
+                          </div>
+                          <div className="mt-2 flex gap-2">
+                            <Link to={`/jobs/${jobId}/view/${p.id}`} className="flex-1">
+                              <Button size="sm" className="w-full h-8 bg-red-600 hover:bg-red-700 text-white" data-testid={`popup-view-${p.id}`}>Open</Button>
+                            </Link>
+                            <Link to={`/jobs/${jobId}/edit/${p.id}`} className="flex-1">
+                              <Button size="sm" variant="outline" className="w-full h-8 bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900" data-testid={`popup-edit-${p.id}`}>Edit</Button>
+                            </Link>
+                          </div>
                         </div>
-                        <div className="mt-2 flex gap-2">
-                          <Link to={`/jobs/${jobId}/view/${p.id}`} className="flex-1">
-                            <Button size="sm" className="w-full h-8 bg-red-600 hover:bg-red-700 text-white" data-testid={`popup-view-${p.id}`}>Open</Button>
-                          </Link>
-                          <Link to={`/jobs/${jobId}/edit/${p.id}`} className="flex-1">
-                            <Button size="sm" variant="outline" className="w-full h-8 bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900" data-testid={`popup-edit-${p.id}`}>Edit</Button>
-                          </Link>
-                        </div>
-                      </div>
-                    </Popup>
-                  </Marker>
+                      </Popup>
+                    </Marker>
+                    {/* Station number label below pole marker */}
+                    {stationLabel && (
+                      <Marker 
+                        position={[p.pos[0] - 0.00008, p.pos[1]]} 
+                        icon={L.divIcon({
+                          className: "station-label",
+                          html: `<div style="background:#4f46e5;color:#fff;border:1px solid #fff;border-radius:4px;padding:1px 4px;font:600 8px/1.2 ui-monospace,monospace;white-space:nowrap;box-shadow:0 1px 2px rgba(0,0,0,.3);">${stationLabel}</div>`,
+                          iconSize: [40, 16],
+                          iconAnchor: [20, 0],
+                        })}
+                        interactive={false}
+                        zIndexOffset={850}
+                      />
+                    )}
+                  </React.Fragment>
                 );
               })}
               {/* Direction arrows (only in non-edit mode) */}
@@ -718,19 +805,37 @@ const JobMap = () => {
                 // Items AFTER MPOE should be red, MPOE itself stays red, items before stay green
                 const ugIsAfterMPOE = isAfterMPOE.underground[ugIdx] || false;
                 const isRed = isMPOE || ugIsAfterMPOE;
+                const stationLabel = showStationNumbers && stationNumbers[u.id] ? stationNumbers[u.id] : null;
                 return (
-                <Marker key={u.id} position={u.pos} icon={ugIcon(undergroundAbbr(u.type), isRed)}>
-                  <Popup>
-                    <div className="min-w-[170px] font-mono" data-testid={`ug-popup-${u.id}`}>
-                      <div className={`text-sm font-bold ${isRed ? 'text-red-700' : 'text-green-700'}`}>{undergroundAbbr(u.type)} · {u.type}</div>
-                      {u.label && <div className="text-xs text-zinc-600 mt-1">{u.label}</div>}
-                      {u.notes && <div className="text-xs text-zinc-500 mt-1">{u.notes}</div>}
-                      <Link to={`/jobs/${jobId}/underground/edit/${u.id}`}>
-                        <Button size="sm" className={`w-full h-8 mt-2 ${isRed ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'} text-white`} data-testid={`ug-edit-${u.id}`}>Edit</Button>
-                      </Link>
-                    </div>
-                  </Popup>
-                </Marker>
+                <React.Fragment key={u.id}>
+                  <Marker position={u.pos} icon={ugIcon(undergroundAbbr(u.type), isRed)}>
+                    <Popup>
+                      <div className="min-w-[170px] font-mono" data-testid={`ug-popup-${u.id}`}>
+                        <div className={`text-sm font-bold ${isRed ? 'text-red-700' : 'text-green-700'}`}>{undergroundAbbr(u.type)} · {u.type}</div>
+                        {stationLabel && <div className="text-xs text-indigo-600 font-bold">Station: {stationLabel}</div>}
+                        {u.label && <div className="text-xs text-zinc-600 mt-1">{u.label}</div>}
+                        {u.notes && <div className="text-xs text-zinc-500 mt-1">{u.notes}</div>}
+                        <Link to={`/jobs/${jobId}/underground/edit/${u.id}`}>
+                          <Button size="sm" className={`w-full h-8 mt-2 ${isRed ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'} text-white`} data-testid={`ug-edit-${u.id}`}>Edit</Button>
+                        </Link>
+                      </div>
+                    </Popup>
+                  </Marker>
+                  {/* Station number label below underground marker */}
+                  {stationLabel && (
+                    <Marker 
+                      position={[u.pos[0] - 0.00008, u.pos[1]]} 
+                      icon={L.divIcon({
+                        className: "station-label",
+                        html: `<div style="background:#4f46e5;color:#fff;border:1px solid #fff;border-radius:4px;padding:1px 4px;font:600 8px/1.2 ui-monospace,monospace;white-space:nowrap;box-shadow:0 1px 2px rgba(0,0,0,.3);">${stationLabel}</div>`,
+                        iconSize: [40, 16],
+                        iconAnchor: [20, 0],
+                      })}
+                      interactive={false}
+                      zIndexOffset={850}
+                    />
+                  )}
+                </React.Fragment>
               )})}
               {/* Map annotations (notes and measurements) */}
               <MapAnnotations

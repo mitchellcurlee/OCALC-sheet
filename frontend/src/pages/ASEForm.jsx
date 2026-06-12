@@ -210,70 +210,89 @@ const ASEForm = () => {
             return `${stations}+${remainder.toString().padStart(2, '0')}`;
           };
           
-          // Build path with station numbers
-          const pathSegments = [];
-          let runningDistance = 0; // Start at 0+00
+          // Helper function to calculate distance in feet between two GPS coordinates
+          const distanceFeet = (lat1, lng1, lat2, lng2) => {
+            const R = 6371000; // Earth radius in meters
+            const lat1Rad = (lat1 * Math.PI) / 180;
+            const lat2Rad = (lat2 * Math.PI) / 180;
+            const dLat = lat2Rad - lat1Rad;
+            const dLng = ((lng2 - lng1) * Math.PI) / 180;
+            const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1Rad) * Math.cos(lat2Rad) * Math.sin(dLng / 2) ** 2;
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) * 3.28084; // meters to feet
+          };
           
-          // Sort items by order if available
-          const sortedItems = [...ugData, ...polesData].sort((a, b) => (a.order || 0) - (b.order || 0));
+          // Build ordered list of all items with GPS
+          const allItems = [];
           
-          // Group by underground items first, then poles
-          const ugItems = ugData.sort((a, b) => (a.order || 0) - (b.order || 0));
-          const poleItems = polesData.sort((a, b) => (a.order || 0) - (b.order || 0));
-          
-          // Process underground items first
-          ugItems.forEach((item, idx) => {
-            const itemName = item.label || item.type;
-            const startStation = feetToStation(runningDistance);
-            
-            // Get distance to next item if available
-            let distance = 0;
-            if (item.span_distance) {
-              distance = parseFloat(item.span_distance) || 0;
-            } else if (item.distance) {
-              distance = parseFloat(item.distance) || 0;
+          // Add underground items with GPS
+          ugData.forEach(item => {
+            if (item.latitude && item.longitude) {
+              allItems.push({
+                type: 'underground',
+                name: item.label || item.type,
+                lat: parseFloat(item.latitude),
+                lng: parseFloat(item.longitude),
+                order: item.order || 0,
+                ugType: item.type
+              });
             }
-            
-            if (idx === 0) {
-              pathSegments.push(`${itemName} ${startStation}`);
-            } else {
-              pathSegments.push(`${itemName} ${startStation}`);
-            }
-            
-            runningDistance += distance;
           });
           
-          // Process poles with aerial notation
-          if (poleItems.length > 0) {
-            const firstPole = poleItems[0];
-            const lastPole = poleItems[poleItems.length - 1];
+          // Add poles with GPS
+          polesData.forEach((pole, idx) => {
+            if (pole.latitude && pole.longitude) {
+              allItems.push({
+                type: 'pole',
+                name: pole.pole_number || pole.pole_tag || `P${idx + 1}`,
+                lat: parseFloat(pole.latitude),
+                lng: parseFloat(pole.longitude),
+                order: pole.order || (100 + idx), // Poles come after underground by default
+                spanDistance: pole.span1_distance ? parseFloat(pole.span1_distance) : 0
+              });
+            }
+          });
+          
+          // Sort by order
+          allItems.sort((a, b) => a.order - b.order);
+          
+          // Build path with cumulative station numbers
+          const pathSegments = [];
+          let runningDistance = 0;
+          let prevItem = null;
+          let firstPoleIdx = -1;
+          let lastPoleIdx = -1;
+          
+          // Find first and last pole indices
+          allItems.forEach((item, idx) => {
+            if (item.type === 'pole') {
+              if (firstPoleIdx === -1) firstPoleIdx = idx;
+              lastPoleIdx = idx;
+            }
+          });
+          
+          allItems.forEach((item, idx) => {
+            // Calculate distance from previous item using GPS
+            if (prevItem && item.lat && item.lng && prevItem.lat && prevItem.lng) {
+              const dist = distanceFeet(prevItem.lat, prevItem.lng, item.lat, item.lng);
+              runningDistance += dist;
+            }
             
-            // Get direction from first pole span
-            const direction = firstPole.span1_direction || 'to';
+            const stationNum = feetToStation(runningDistance);
             
-            // Calculate pole distances
-            poleItems.forEach((pole, idx) => {
-              const poleId = pole.pole_number || pole.pole_tag || `P${idx + 1}`;
-              const startStation = feetToStation(runningDistance);
-              
-              // Get span distance to next pole
-              let spanDistance = 0;
-              if (pole.span1_distance) {
-                spanDistance = parseFloat(pole.span1_distance) || 0;
+            if (item.type === 'underground') {
+              pathSegments.push(`${item.name} ${stationNum}`);
+            } else if (item.type === 'pole') {
+              if (idx === firstPoleIdx) {
+                pathSegments.push(`aerial ${item.name} ${stationNum}`);
+              } else if (idx === lastPoleIdx) {
+                pathSegments.push(`to ${item.name} ${stationNum}`);
               }
-              
-              if (idx === 0) {
-                pathSegments.push(`aerial ${poleId} ${startStation}`);
-              } else if (idx === poleItems.length - 1) {
-                pathSegments.push(`to ${poleId} ${startStation}`);
-              }
-              
-              runningDistance += spanDistance;
-            });
-          }
+            }
+            
+            prevItem = item;
+          });
           
           if (pathSegments.length > 0) {
-            // Format: "HH 1 0+00 east to P1 0+56, aerial P1 to P2 3+50"
             updated.path_of_approach = pathSegments.join(', ');
           }
         }

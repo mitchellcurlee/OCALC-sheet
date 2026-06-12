@@ -44,6 +44,13 @@ export const fmtFeet = (ft) => {
   }
 };
 
+// Convert feet to station format (0+00)
+export const feetToStation = (feet) => {
+  const stations = Math.floor(feet / 100);
+  const remainder = Math.round(feet % 100);
+  return `${stations}+${remainder.toString().padStart(2, '0')}`;
+};
+
 // Underground attribute abbreviations for map labels
 export const UNDERGROUND_ABBR = {
   Handhole: "HH",
