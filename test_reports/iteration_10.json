@@ -1,0 +1,39 @@
+{
+  "summary": "Tested ASE Site Walk Survey form/export, Job Type field (OCALC/SVCL/FS), and multi-photo upload. Backend: 6/6 pytest cases pass after applying a 1-line fix in routes/jobs.py:create_job to pass through job_type. Frontend: ASE Form renders all sections, Save + ASE Export buttons present, JobsList Create dialog exposes Job Type dropdown with OCALC + SVCL/FS, Job Detail shows ASE Form button alongside OCALC Export & Add Pole. MultiPhotoUpload component code confirms 'multiple' attribute on file inputs (lines 85, 198 of MultiPhotoUpload.jsx).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "ASE Form > Employee Info > Date of Site Visit", "issues": ["Uses native browser date picker (mm/dd/yyyy input) instead of shadcn Calendar/Popover component used elsewhere - inconsistent UX"]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_ase_and_job_type.py",
+    "/app/test_reports/pytest/pytest_ase.xml"
+  ],
+  "action_items": [
+    "RESOLVED by testing agent: POST /api/jobs was dropping the job_type field (handler did not forward job_data.job_type to the Job model). Fixed in /app/backend/routes/jobs.py:create_job. Main agent should review the fix and consider if any other JobCreate fields are similarly being dropped.",
+    "Consider replacing native date input in ASE Form (date_of_site_visit) with the shadcn Calendar component for UX consistency."
+  ],
+  "critical_code_review_comments": [
+    "BUG (now fixed): create_job in /app/backend/routes/jobs.py constructed Job(...) without passing job_data.job_type, so user-supplied job_type was silently ignored and every job defaulted to OCALC. This made the SVCL/FS option non-functional via the API. Recommend mirroring full-field passthrough or use Job(**job_data.model_dump(), user_id=..., user_email=..., pole_count=0).",
+    "PUT /api/jobs/{job_id}/ase-data accepts an arbitrary dict with no Pydantic validation - any payload shape is stored verbatim under job.ase_data. Consider an ASEData pydantic model with the documented ~70 fields for better validation, typing and OpenAPI docs.",
+    "ASE Excel export does NOT include the Job # field that other exports use (poles export pulls job_number from poles[0]). For an ASE-only job with no poles, Job # is therefore not shown. Optional: also surface job.id or first pole's job_number in the ASE workbook header.",
+    "ASE form section 'EF REQUIREMENTS - DETAIL' iterates ef_items but has no entry for 'need_eyebolt' qty_key (empty string) and 'need_outlet' qty_key (empty string) - acceptable but the empty 'Length/Qty:' label still renders for those rows; consider conditional skipping for cleaner export."
+  ],
+  "updated_files": [
+    "/app/backend/routes/jobs.py (1-line fix in create_job to pass job_type)",
+    "/app/backend/tests/test_ase_and_job_type.py (new)"
+  ],
+  "success_rate": {"backend": "100% (6/6 after fix)", "frontend": "100% - ASE Form, ASE button, Job Type dropdown, multi-file attribute all verified"},
+  "test_credentials": "admin@mastecbyers.com / Mastecbyers12345",
+  "seed_data_creation": "Test jobs TEST_ASE_JOB, TEST_JT_SVCL, TEST_JT_DEFAULT, TEST_JT_UPDATE created and cleaned up within fixtures.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend tests at /app/backend/tests/test_ase_and_job_type.py cover: POST /api/jobs with job_type=SVCL/FS (was failing pre-fix), POST default OCALC, PUT job_type update + GET persistence, PUT /api/jobs/{id}/ase-data + GET round-trip, GET /api/jobs/{id}/export/ase returns valid xlsx with expected section headers (ASE SITE WALK SURVEY, EMPLOYEE INFO, BUILDING CHARACTERISTICS, FIBER ATTRIBUTES, NTE - EQUIPMENT ATTRIBUTES, EF REQUIREMENTS - DETAIL), and 404 for unknown job. Frontend route /jobs/{id}/ase renders ASEForm.jsx with sections EMPLOYEE INFO, ADDRESS INFORMATION, ACCESS/CUSTOMER INFORMATION, BUILDING CHARACTERISTICS, FIBER ATTRIBUTES, NTE - EQUIPMENT ATTRIBUTES, PATH OF APPROACH, EF OFFER/REQUIREMENTS, EF REQUIREMENTS - DETAIL, SITE REQUIREMENTS, ADDITIONAL INFORMATION + Save/ASE Export buttons in header. JobsList Create dialog has Job Type combobox with OCALC + SVCL/FS, Edit dialog also (JobsList.jsx line 362). MultiPhotoUpload has 'multiple' on both upload and camera file inputs.",
+  "rca of the issue": "Pre-fix RCA: backend/routes/jobs.py:create_job hand-rolled the Job() constructor and forgot to forward job_data.job_type, so any client payload containing job_type was discarded and the model default 'OCALC' applied. Reproduction: POST /api/jobs {\"name\":\"x\",\"job_type\":\"SVCL/FS\"} -> GET /api/jobs/{id} returns job_type='OCALC'. Mitigation: added job_type=job_data.job_type or 'OCALC' in the Job(...) call. Verified by re-running pytest - 6/6 green."
+}

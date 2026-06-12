@@ -11,6 +11,7 @@ import {
 
 /**
  * MultiPhotoUpload - Allows capturing/uploading multiple photos
+ * Supports selecting MULTIPLE files at once from the file picker
  * @param {string} label - Field label
  * @param {string[]} value - Array of photo URLs
  * @param {function} onChange - Callback with updated array
@@ -21,39 +22,49 @@ export const MultiPhotoUpload = ({ label, value = [], onChange, testId, compact 
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadCount, setUploadCount] = useState(0);
   const [lightboxPhoto, setLightboxPhoto] = useState(null);
 
   const photos = Array.isArray(value) ? value : (value ? [value] : []);
 
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      processFile(file);
-    }
-    e.target.value = "";
-  };
-
-  const processFile = async (file) => {
-    if (file.size > 25 * 1024 * 1024) {
-      toast.error("Image size must be less than 25MB");
-      return;
-    }
+  // Handle multiple files at once
+  const handleFileChange = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    
     setUploading(true);
-    try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const res = await axios.post("/upload-photo", fd, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      // Add new photo to array
-      onChange([...photos, res.data.url]);
-      toast.success("Photo added");
-    } catch (err) {
-      console.error("Photo upload failed", err);
-      toast.error("Photo upload failed. Please try again.");
-    } finally {
-      setUploading(false);
+    setUploadCount(files.length);
+    
+    const newPhotos = [...photos];
+    let successCount = 0;
+    
+    for (const file of files) {
+      if (file.size > 25 * 1024 * 1024) {
+        toast.error(`${file.name} is too large (max 25MB)`);
+        continue;
+      }
+      try {
+        const fd = new FormData();
+        fd.append("file", file);
+        const res = await axios.post("/upload-photo", fd, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        newPhotos.push(res.data.url);
+        successCount++;
+      } catch (err) {
+        console.error("Photo upload failed", err);
+        toast.error(`Failed to upload ${file.name}`);
+      }
     }
+    
+    if (successCount > 0) {
+      onChange(newPhotos);
+      toast.success(`${successCount} photo${successCount > 1 ? 's' : ''} added`);
+    }
+    
+    setUploading(false);
+    setUploadCount(0);
+    e.target.value = "";
   };
 
   const removePhoto = (index) => {
@@ -71,6 +82,7 @@ export const MultiPhotoUpload = ({ label, value = [], onChange, testId, compact 
             type="file"
             ref={fileInputRef}
             accept="image/*"
+            multiple
             onChange={handleFileChange}
             className="hidden"
             data-testid={`${testId}-file-input`}
@@ -102,6 +114,7 @@ export const MultiPhotoUpload = ({ label, value = [], onChange, testId, compact 
                 onClick={() => fileInputRef.current?.click()}
                 className="h-9 px-2 bg-zinc-100 hover:bg-zinc-200 text-zinc-600 border border-zinc-300"
                 data-testid={`${testId}-upload`}
+                title="Select multiple photos"
               >
                 <Upload className="w-4 h-4" />
               </Button>
@@ -134,7 +147,10 @@ export const MultiPhotoUpload = ({ label, value = [], onChange, testId, compact 
                 ))}
               </div>
             )}
-            {photos.length > 0 && (
+            {uploading && uploadCount > 1 && (
+              <span className="text-xs text-zinc-500 font-mono">Uploading {uploadCount}...</span>
+            )}
+            {photos.length > 0 && !uploading && (
               <span className="text-xs text-zinc-500 font-mono">{photos.length}</span>
             )}
           </div>
@@ -179,6 +195,7 @@ export const MultiPhotoUpload = ({ label, value = [], onChange, testId, compact 
           type="file"
           ref={fileInputRef}
           accept="image/*"
+          multiple
           onChange={handleFileChange}
           className="hidden"
           data-testid={`${testId}-file-input`}
@@ -204,7 +221,7 @@ export const MultiPhotoUpload = ({ label, value = [], onChange, testId, compact 
               data-testid={`${testId}-camera`}
             >
               {uploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Camera className="w-5 h-5" />}
-              <span className="text-[10px] font-mono">{uploading ? "..." : "CAM"}</span>
+              <span className="text-[10px] font-mono">{uploading ? `${uploadCount}...` : "CAM"}</span>
             </Button>
             <Button
               type="button"
@@ -212,6 +229,7 @@ export const MultiPhotoUpload = ({ label, value = [], onChange, testId, compact 
               onClick={() => fileInputRef.current?.click()}
               className="h-16 w-16 bg-zinc-100 hover:bg-zinc-200 text-zinc-600 border border-zinc-300 flex flex-col items-center justify-center gap-1"
               data-testid={`${testId}-upload`}
+              title="Select multiple photos at once"
             >
               <Upload className="w-4 h-4" />
               <span className="text-[10px]">Gallery</span>

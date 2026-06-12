@@ -38,6 +38,7 @@ import {
   GripVertical,
   Check,
   X,
+  FileText,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -403,8 +404,18 @@ const JobDetail = () => {
                 data-testid="export-btn"
               >
                 <FileSpreadsheet className="w-4 h-4 mr-2" />
-                Export
+                OCALC Export
               </Button>
+              <Link to={`/jobs/${jobId}/ase`} className="flex-1 sm:flex-initial">
+                <Button
+                  variant="outline"
+                  className="w-full h-11 sm:h-10 bg-blue-50 border-blue-300 hover:bg-blue-100 text-blue-800 text-sm"
+                  data-testid="ase-form-btn"
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  ASE Form
+                </Button>
+              </Link>
               <Link to={`/jobs/${jobId}/add`} className="flex-1 sm:flex-initial">
                 <Button className="w-full h-11 sm:h-10 bg-red-600 hover:bg-red-700 text-white text-sm" data-testid="add-pole-btn">
                   <Plus className="w-4 h-4 mr-2" />

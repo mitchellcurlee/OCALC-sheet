@@ -1,19 +1,26 @@
 from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional
+from typing import Optional, Dict, Any
 from datetime import datetime, timezone
 import uuid
+
+
+# Job Types
+JOB_TYPES = ["OCALC", "SVCL/FS"]
 
 
 class JobCreate(BaseModel):
     name: str
     description: Optional[str] = None
     location: Optional[str] = None
+    job_type: Optional[str] = "OCALC"
 
 
 class JobUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     location: Optional[str] = None
+    job_type: Optional[str] = None
+    ase_data: Optional[Dict[str, Any]] = None  # ASE Site Walk Survey data
 
 
 class Job(BaseModel):
@@ -22,8 +29,10 @@ class Job(BaseModel):
     name: str
     description: Optional[str] = None
     location: Optional[str] = None
+    job_type: Optional[str] = "OCALC"
     user_id: str
     user_email: Optional[str] = None
     pole_count: int = 0
+    ase_data: Optional[Dict[str, Any]] = None  # ASE Site Walk Survey data
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())

@@ -82,6 +82,7 @@ async def create_job(job_data: JobCreate, current_user: dict = Depends(get_curre
         name=job_data.name,
         description=job_data.description,
         location=job_data.location,
+        job_type=job_data.job_type or "OCALC",
         user_id=current_user["id"],
         user_email=current_user.get("email", ""),
         pole_count=0
@@ -922,5 +923,245 @@ async def get_pole_photo(pole_id: str, photo_label: str, token: Optional[str] = 
     return StreamingResponse(
         io.BytesIO(data),
         media_type=content_type,
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+
+# ASE Site Walk Survey endpoints
+
+@router.put("/jobs/{job_id}/ase-data")
+async def save_ase_data(job_id: str, ase_data: dict, current_user: dict = Depends(get_current_user)):
+    """Save ASE Site Walk Survey data for a job"""
+    job = await can_access_job(job_id, current_user)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    now = datetime.now(timezone.utc).isoformat()
+    await _db.jobs.update_one(
+        {"id": job_id},
+        {"$set": {"ase_data": ase_data, "updated_at": now}}
+    )
+    return {"message": "ASE data saved successfully"}
+
+
+@router.get("/jobs/{job_id}/ase-data")
+async def get_ase_data(job_id: str, current_user: dict = Depends(get_current_user)):
+    """Get ASE Site Walk Survey data for a job"""
+    job = await can_access_job(job_id, current_user)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    return {"ase_data": job.get("ase_data", {})}
+
+
+@router.get("/jobs/{job_id}/export/ase")
+async def export_ase_excel(job_id: str, current_user: dict = Depends(get_current_user)):
+    """Export ASE Site Walk Survey data to Excel"""
+    job = await can_access_job(job_id, current_user)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    ase = job.get("ase_data", {})
+    
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "ASE Site Walk Survey"
+    
+    # Styles
+    header_fill = PatternFill(start_color="1f2937", end_color="1f2937", fill_type="solid")
+    header_font = Font(bold=True, color="FFFFFF", size=11)
+    section_fill = PatternFill(start_color="374151", end_color="374151", fill_type="solid")
+    section_font = Font(bold=True, color="FFFFFF", size=10)
+    label_font = Font(bold=True, size=9)
+    value_font = Font(size=9)
+    
+    current_row = 1
+    
+    def add_header(title):
+        nonlocal current_row
+        cell = ws.cell(row=current_row, column=1, value=title)
+        cell.fill = header_fill
+        cell.font = header_font
+        ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=4)
+        current_row += 1
+    
+    def add_section(title):
+        nonlocal current_row
+        cell = ws.cell(row=current_row, column=1, value=title)
+        cell.fill = section_fill
+        cell.font = section_font
+        ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=4)
+        current_row += 1
+    
+    def add_row(label, value, col_offset=0):
+        nonlocal current_row
+        ws.cell(row=current_row, column=1 + col_offset, value=label).font = label_font
+        ws.cell(row=current_row, column=2 + col_offset, value=value or "").font = value_font
+        current_row += 1
+    
+    def add_row_pair(label1, value1, label2, value2):
+        nonlocal current_row
+        ws.cell(row=current_row, column=1, value=label1).font = label_font
+        ws.cell(row=current_row, column=2, value=value1 or "").font = value_font
+        ws.cell(row=current_row, column=3, value=label2).font = label_font
+        ws.cell(row=current_row, column=4, value=value2 or "").font = value_font
+        current_row += 1
+    
+    # Title
+    add_header("ASE SITE WALK SURVEY")
+    current_row += 1
+    
+    # Job Info
+    add_row("Job Name:", job.get("name", ""))
+    add_row("Location:", job.get("location", ""))
+    add_row("Job Type:", job.get("job_type", ""))
+    current_row += 1
+    
+    # Employee Info
+    add_section("EMPLOYEE INFO")
+    add_row("Date of Site Visit:", ase.get("date_of_site_visit", ""))
+    add_row("AT&T Engineer:", ase.get("att_engineer", ""))
+    add_row("Site Walked By:", ase.get("site_walked_by", ""))
+    add_row("Site Walked With:", ase.get("site_walked_with", ""))
+    current_row += 1
+    
+    # Address Info
+    add_section("ADDRESS INFORMATION")
+    add_row("Address:", ase.get("address", ""))
+    add_row("MPOE Address:", ase.get("mpoe_address", ""))
+    add_row("Suite &/or Bldg #:", ase.get("suite_bldg", ""))
+    current_row += 1
+    
+    # Access/Customer Information
+    add_section("ACCESS/CUSTOMER INFORMATION")
+    add_row("Access Contact Name & Phone/Email:", ase.get("access_contact", ""))
+    add_row("Building Owner Name & Phone/Email:", ase.get("building_owner_contact", ""))
+    add_row("SPF Required?:", ase.get("spf_required", ""))
+    add_row("SPF Contact Name & Phone/Email:", ase.get("spf_contact", ""))
+    add_row("Access Notes/Special Instructions:", ase.get("access_notes", ""))
+    current_row += 1
+    
+    # Building Characteristics
+    add_section("BUILDING CHARACTERISTICS")
+    add_row("Occupancy Type:", ase.get("occupancy_type", ""))
+    add_row("Number of Floors:", ase.get("number_of_floors", ""))
+    add_row("Number of Business Units:", ase.get("number_of_business_units", ""))
+    add_row("How many DMARCs?:", ase.get("how_many_dmarcs", ""))
+    add_row("If additional DMARCs, where are they?:", ase.get("additional_dmarcs_location", ""))
+    add_row("Is the Customer Building Owner or Tenant?:", ase.get("owner_or_tenant", ""))
+    add_row("Multi-Tenant:", ase.get("multi_tenant", ""))
+    add_row("Ceiling Height:", ase.get("ceiling_height", ""))
+    current_row += 1
+    
+    # Fiber Attributes
+    add_section("FIBER ATTRIBUTES")
+    add_row("Existing INC:", ase.get("existing_inc", ""))
+    add_row("INC Required:", ase.get("inc_required", ""))
+    add_row("Existing Fiber Terminal:", ase.get("existing_fiber_terminal", ""))
+    add_row("Fiber Terminal Placement:", ase.get("fiber_terminal_placement", ""))
+    add_row("Fiber Terminal LAT/LONG:", ase.get("fiber_terminal_lat_long", ""))
+    add_row("Fiber Terminal FID:", ase.get("fiber_terminal_fid", ""))
+    add_row("Active Ports:", ase.get("fiber_active_ports", ""))
+    add_row("Fiber Reading:", ase.get("fiber_reading", ""))
+    add_row("Describe Existing/Proposed Terminal Location:", ase.get("terminal_location_description", ""))
+    add_row("Terminal Floor #:", ase.get("terminal_floor", ""))
+    add_row("Terminal Mounting Wall:", ase.get("terminal_mounting_wall", ""))
+    add_row("Terminal Rack Bay/Shelf:", ase.get("terminal_rack_bay_shelf", ""))
+    add_row("Nearest Fiber Lat/Long:", ase.get("nearest_fiber_lat_long", ""))
+    add_row("Nearest Fiber FID:", ase.get("nearest_fiber_fid", ""))
+    current_row += 1
+    
+    # NTE Equipment Attributes
+    add_section("NTE - EQUIPMENT ATTRIBUTES")
+    add_row("Existing NTE:", ase.get("existing_nte", ""))
+    add_row("NTE Placement:", ase.get("nte_placement", ""))
+    add_row("NTE Active Ports:", ase.get("nte_active_ports", ""))
+    add_row("NTE CLLI:", ase.get("nte_clli", ""))
+    add_row("NTE at Terminal or Another Location?:", ase.get("nte_at_terminal", ""))
+    add_row("Describe Existing/Proposed NTE Location:", ase.get("nte_location_description", ""))
+    add_row("NTE LAT/LONG:", ase.get("nte_lat_long", ""))
+    add_row("NTE Floor #:", ase.get("nte_floor", ""))
+    add_row("NTE Mounting Wall:", ase.get("nte_mounting_wall", ""))
+    add_row("NTE Rack Bay/Shelf:", ase.get("nte_rack_bay_shelf", ""))
+    add_row("Equipment Power Configuration:", ase.get("equipment_power_config", ""))
+    add_row("Distance From FBT to NTE:", ase.get("distance_fbt_to_nte", ""))
+    add_row("Distance from NTE to Customer IT Space:", ase.get("distance_nte_to_it", ""))
+    add_row("Is Customer IT Space on Same Floor as NTE?:", ase.get("it_same_floor_as_nte", ""))
+    current_row += 1
+    
+    # Path of Approach
+    add_section("PATH OF APPROACH / MEASUREMENTS")
+    add_row("Path of Approach Description:", ase.get("path_of_approach", ""))
+    add_row("Starting FH/MH/POLE Tie-in Measurements:", ase.get("starting_tie_in_measurements", ""))
+    add_row("SOC/POLE LINE START Lat/Long:", ase.get("soc_pole_line_start", ""))
+    add_row("SOC/POLE LINE END Lat/Long:", ase.get("soc_pole_line_end", ""))
+    add_row("SOC START Lat/Long:", ase.get("soc_start_lat_long", ""))
+    add_row("SOC END Lat/Long:", ase.get("soc_end_lat_long", ""))
+    current_row += 1
+    
+    # EF Offer/Requirements
+    add_section("EF OFFER / REQUIREMENTS")
+    add_row("EF Offer:", ase.get("ef_offer", ""))
+    add_row("EF Needed:", ase.get("ef_needed", ""))
+    add_row("EF Qualified:", ase.get("ef_qualified", ""))
+    add_row("EF Disqualification Reason:", ase.get("ef_disqualification_reason", ""))
+    add_row("Are We Placing Conduit and How Long?:", ase.get("placing_conduit_length", ""))
+    current_row += 1
+    
+    # EF Requirements Detail
+    add_section("EF REQUIREMENTS - DETAIL")
+    ef_items = [
+        ("Do we need a buried PVC pipe?", "buried_pvc", "buried_pvc_length"),
+        ("Do we need buried innerduct on customer property?", "buried_innerduct", "buried_innerduct_length"),
+        ("Do we need EMT (metallic bldg pipe)?", "need_emt", "emt_length"),
+        ("Do we need plastic building duct/pipe (Plenum)?", "need_plenum", "plenum_length"),
+        ("Do we need a core drill?", "need_core_drill", "core_drill_qty"),
+        ("Do we need an eye-bolt/weatherhead?", "need_eyebolt", ""),
+        ("Do we need a Pullbox?", "need_pullbox", "pullbox_qty"),
+        ("Do we need a Hoffman box?", "need_hoffman_box", ""),
+        ("Do we need a backboard?", "need_backboard", "backboard_qty"),
+        ("Do we need an outlet?", "need_outlet", ""),
+        ("Do we need a groundbar?", "need_groundbar", "groundbar_qty"),
+    ]
+    for label, key, qty_key in ef_items:
+        answer = ase.get(key, "")
+        qty = ase.get(qty_key, "") if qty_key else ""
+        add_row_pair(label, answer, "Length/Qty:" if qty_key else "", qty)
+    current_row += 1
+    
+    # Site Requirements
+    add_section("SITE REQUIREMENTS")
+    add_row("Site Readiness Evaluation:", ase.get("site_readiness_evaluation", ""))
+    add_row("What Site Requirements are Already Provided?:", ase.get("site_requirements_provided", ""))
+    add_row("Grounding System:", ase.get("grounding_system", ""))
+    add_row("Building Power Source:", ase.get("building_power_source", ""))
+    current_row += 1
+    
+    # Additional Info
+    add_section("ADDITIONAL INFORMATION")
+    add_row("Are there any pipelines in the vicinity?:", ase.get("pipelines_vicinity", ""))
+    add_row("Are there any pipelines in the path?:", ase.get("pipelines_path", ""))
+    add_row("Are there any railroads in the vicinity?:", ase.get("railroads_vicinity", ""))
+    add_row("Are there any railroads in the path?:", ase.get("railroads_path", ""))
+    add_row("Possible Permits:", ase.get("possible_permits", ""))
+    add_row("ROW Width, Pole-Pole, Clear Inside Path Measurements:", ase.get("row_measurements", ""))
+    add_row("Is there anything else we must know?:", ase.get("other_notes", ""))
+    add_row("Additional SOW Notes:", ase.get("additional_sow_notes", ""))
+    
+    # Column widths
+    ws.column_dimensions["A"].width = 45
+    ws.column_dimensions["B"].width = 35
+    ws.column_dimensions["C"].width = 15
+    ws.column_dimensions["D"].width = 25
+    
+    # Save to buffer
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+    
+    filename = f"{job.get('name', 'Job')}_ASE_Export.xlsx".replace(" ", "_")
+    return StreamingResponse(
+        buffer,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )

@@ -13,6 +13,13 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -39,6 +46,8 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { OfflineIndicator } from "@/components/OfflineIndicator";
 
+const JOB_TYPES = ["OCALC", "SVCL/FS"];
+
 const JobsList = () => {
   const navigate = useNavigate();
   const { user, logout, isAdmin } = useAuth();
@@ -48,7 +57,7 @@ const JobsList = () => {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [editingJob, setEditingJob] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
-  const [formData, setFormData] = useState({ name: "", description: "", location: "" });
+  const [formData, setFormData] = useState({ name: "", description: "", location: "", job_type: "OCALC" });
   const [saving, setSaving] = useState(false);
 
   const fetchJobs = useCallback(async () => {
@@ -76,7 +85,7 @@ const JobsList = () => {
       await axios.post("/jobs", formData);
       toast.success("Job created successfully!");
       setShowCreateDialog(false);
-      setFormData({ name: "", description: "", location: "" });
+      setFormData({ name: "", description: "", location: "", job_type: "OCALC" });
       fetchJobs();
     } catch (error) {
       toast.error("Failed to create job");
@@ -96,7 +105,7 @@ const JobsList = () => {
       toast.success("Job updated successfully!");
       setShowEditDialog(false);
       setEditingJob(null);
-      setFormData({ name: "", description: "", location: "" });
+      setFormData({ name: "", description: "", location: "", job_type: "OCALC" });
       fetchJobs();
     } catch (error) {
       toast.error("Failed to update job");
@@ -119,7 +128,7 @@ const JobsList = () => {
   const openEditDialog = (job, e) => {
     e.stopPropagation();
     setEditingJob(job);
-    setFormData({ name: job.name, description: job.description || "", location: job.location || "" });
+    setFormData({ name: job.name, description: job.description || "", location: job.location || "", job_type: job.job_type || "OCALC" });
     setShowEditDialog(true);
   };
 
@@ -291,6 +300,19 @@ const JobsList = () => {
               />
             </div>
             <div className="space-y-2">
+              <Label className="text-xs font-mono text-zinc-500 uppercase">Job Type</Label>
+              <Select value={formData.job_type} onValueChange={(v) => setFormData({ ...formData, job_type: v })}>
+                <SelectTrigger className="bg-white border-zinc-300 text-zinc-900" data-testid="job-type-select">
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent className="bg-zinc-50 border-zinc-300">
+                  {JOB_TYPES.map((type) => (
+                    <SelectItem key={type} value={type}>{type}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
               <Label className="text-xs font-mono text-zinc-500 uppercase">Location</Label>
               <Input
                 value={formData.location}
@@ -334,6 +356,19 @@ const JobsList = () => {
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 className="bg-white border-zinc-300 text-zinc-900"
               />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-mono text-zinc-500 uppercase">Job Type</Label>
+              <Select value={formData.job_type} onValueChange={(v) => setFormData({ ...formData, job_type: v })}>
+                <SelectTrigger className="bg-white border-zinc-300 text-zinc-900">
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent className="bg-zinc-50 border-zinc-300">
+                  {JOB_TYPES.map((type) => (
+                    <SelectItem key={type} value={type}>{type}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label className="text-xs font-mono text-zinc-500 uppercase">Location</Label>
