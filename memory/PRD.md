@@ -333,3 +333,29 @@ Build an app that collects power pole data including: size of the pole, type of 
   - New endpoint GET /api/poles/{pole_id}/photos-zip for single-pole photo ZIP
   - Requires redeploy for production.
 
+- Additional Photos Feature (Jun 12, 2026):
+  - Added `additional_photos` field to Pole model - array of objects with `label` (optional) and `photo` (URL)
+  - Users can now add unlimited extra photos per pole (beyond the fixed OCALC Left/Middle/Right slots)
+  - PoleForm.jsx: New "Additional Photos" section with cyan accent, "Add Photo" button to add rows
+  - Each row has optional label input and photo upload, plus trash icon to remove
+  - ViewPole.jsx displays additional photos in a grid after OCALC Photos
+  - HTML galleries (pole_photo_items helper) now include additional photos with fallback label "Additional N"
+  - Offline sync (localStorage draft) supports the new array
+  - Verified: Backend CRUD, gallery HTML, frontend add/remove flow all working
+  - Requires redeploy for production.
+
+## Prioritized Backlog
+
+### P0 (Critical)
+- None currently
+
+### P1 (High Priority)
+- Bulk import from Excel
+- Verify offline sync with larger additional_photos payloads
+
+### P2 (Medium Priority)
+- Refactor PoleForm.jsx (1100+ lines) and JobMap.jsx (700+ lines) into smaller components
+
+### P3 (Low Priority/Future)
+- localStorage -> httpOnly cookie migration for auth
+

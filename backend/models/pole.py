@@ -36,11 +36,6 @@ class Attachment(BaseModel):
     notes: Optional[str] = None
 
 
-class AdditionalPhoto(BaseModel):
-    label: Optional[str] = None
-    photo: Optional[str] = None
-
-
 class PoleBase(BaseModel):
     job_id: Optional[str] = None
     job_number: Optional[str] = None
