@@ -324,16 +324,11 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
         ws.cell(row=current_row, column=1, value="PHOTOS").fill = header_fill
         ws.cell(row=current_row, column=1).font = header_font
         if photo_items:
-            gallery_url = f"{public_base}/api/poles/{pole.get('id')}/gallery"
-            link_cell = ws.cell(row=current_row, column=2, value=f"View {len(photo_items)} photo(s)")
-            link_cell.hyperlink = gallery_url
-            link_cell.font = Font(color="2563EB", underline="single", bold=True)
-            
-            # Add Photos ZIP link
+            # Single Download Photos link that downloads all photos for this pole as ZIP
             photos_zip_url = f"{public_base}/api/poles/{pole.get('id')}/photos-zip"
-            zip_cell = ws.cell(row=current_row, column=3, value="Photos ZIP")
-            zip_cell.hyperlink = photos_zip_url
-            zip_cell.font = Font(color="7C3AED", underline="single", bold=True)
+            download_cell = ws.cell(row=current_row, column=2, value=f"Download {len(photo_items)} photo(s)")
+            download_cell.hyperlink = photos_zip_url
+            download_cell.font = Font(color="2563EB", underline="single", bold=True)
         else:
             ws.cell(row=current_row, column=2, value="No photos")
         current_row += 1
