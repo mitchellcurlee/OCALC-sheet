@@ -1015,7 +1015,7 @@ async def get_ase_gallery(job_id: str, token: str = None):
 
 @router.get("/jobs/{job_id}/export/ase")
 async def export_ase_excel(job_id: str, current_user: dict = Depends(get_current_user)):
-    """Export ASE Site Walk Survey data to Excel"""
+    """Export ASE Site Walk Survey data to Excel with 3 tabs matching app layout"""
     job = await can_access_job(job_id, current_user)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -1023,188 +1023,168 @@ async def export_ase_excel(job_id: str, current_user: dict = Depends(get_current
     ase = job.get("ase_data", {})
     
     wb = Workbook()
-    ws = wb.active
-    ws.title = "ASE Site Walk Survey"
     
     # Styles
     header_fill = PatternFill(start_color="1f2937", end_color="1f2937", fill_type="solid")
-    header_font = Font(bold=True, color="FFFFFF", size=11)
-    section_fill = PatternFill(start_color="374151", end_color="374151", fill_type="solid")
+    header_font = Font(bold=True, color="FFFFFF", size=12)
+    section_fill = PatternFill(start_color="3b82f6", end_color="3b82f6", fill_type="solid")
     section_font = Font(bold=True, color="FFFFFF", size=10)
     label_font = Font(bold=True, size=9)
     value_font = Font(size=9)
-    filled_fill = PatternFill(start_color="dcfce7", end_color="dcfce7", fill_type="solid")  # Green for filled
-    empty_fill = PatternFill(start_color="fef3c7", end_color="fef3c7", fill_type="solid")  # Yellow for empty
+    filled_fill = PatternFill(start_color="dcfce7", end_color="dcfce7", fill_type="solid")
+    empty_fill = PatternFill(start_color="fef3c7", end_color="fef3c7", fill_type="solid")
     
-    current_row = 1
+    def setup_sheet(ws, title_color):
+        ws.column_dimensions["A"].width = 45
+        ws.column_dimensions["B"].width = 35
+        ws.column_dimensions["C"].width = 20
+        ws.column_dimensions["D"].width = 30
     
-    def add_header(title):
-        nonlocal current_row
-        cell = ws.cell(row=current_row, column=1, value=title)
+    def add_header(ws, row, title):
+        cell = ws.cell(row=row, column=1, value=title)
         cell.fill = header_fill
         cell.font = header_font
-        ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=4)
-        current_row += 1
+        ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=4)
+        return row + 1
     
-    def add_section(title):
-        nonlocal current_row
-        cell = ws.cell(row=current_row, column=1, value=title)
-        cell.fill = section_fill
+    def add_section(ws, row, title, color=None):
+        fill = PatternFill(start_color=color or "3b82f6", end_color=color or "3b82f6", fill_type="solid") if color else section_fill
+        cell = ws.cell(row=row, column=1, value=title)
+        cell.fill = fill
         cell.font = section_font
-        ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=4)
-        current_row += 1
+        ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=4)
+        return row + 1
     
-    def add_row(label, value, col_offset=0):
-        nonlocal current_row
-        ws.cell(row=current_row, column=1 + col_offset, value=label).font = label_font
-        value_cell = ws.cell(row=current_row, column=2 + col_offset, value=value or "")
+    def add_row(ws, row, label, value):
+        ws.cell(row=row, column=1, value=label).font = label_font
+        value_cell = ws.cell(row=row, column=2, value=value or "")
         value_cell.font = value_font
         value_cell.fill = filled_fill if value else empty_fill
-        current_row += 1
+        return row + 1
     
-    def add_row_pair(label1, value1, label2, value2):
-        nonlocal current_row
-        ws.cell(row=current_row, column=1, value=label1).font = label_font
-        v1_cell = ws.cell(row=current_row, column=2, value=value1 or "")
+    def add_row_pair(ws, row, label1, value1, label2, value2):
+        ws.cell(row=row, column=1, value=label1).font = label_font
+        v1_cell = ws.cell(row=row, column=2, value=value1 or "")
         v1_cell.font = value_font
         v1_cell.fill = filled_fill if value1 else empty_fill
-        ws.cell(row=current_row, column=3, value=label2).font = label_font
-        v2_cell = ws.cell(row=current_row, column=4, value=value2 or "")
+        ws.cell(row=row, column=3, value=label2).font = label_font
+        v2_cell = ws.cell(row=row, column=4, value=value2 or "")
         v2_cell.font = value_font
         v2_cell.fill = filled_fill if value2 else empty_fill
-        current_row += 1
+        return row + 1
     
-    # Title
-    add_header("ASE SITE WALK SURVEY")
-    current_row += 1
+    # ========== TAB 1: ASE CKLIST ==========
+    ws1 = wb.active
+    ws1.title = "ASE CKLIST"
+    setup_sheet(ws1, "3b82f6")
+    row = 1
+    
+    row = add_header(ws1, row, "ASE SITE WALK SURVEY - CHECKLIST")
+    row += 1
     
     # Job Info
-    add_row("Job Name:", job.get("name", ""))
-    add_row("Location:", job.get("location", ""))
-    add_row("Job Type:", job.get("job_type", ""))
-    current_row += 1
+    row = add_row(ws1, row, "Job Name:", job.get("name", ""))
+    row = add_row(ws1, row, "Job Number:", job.get("job_number", ""))
+    row = add_row(ws1, row, "Location:", job.get("location", ""))
+    row += 1
     
     # Employee Info
-    add_section("EMPLOYEE INFO")
-    add_row("Date of Site Visit:", ase.get("date_of_site_visit", ""))
-    add_row("Type of Site Visit:", ase.get("type_of_site_visit", ""))
-    add_row("Assigned AT&T Engineer:", ase.get("assigned_att_eng", ""))
-    add_row("Site Walked By:", ase.get("site_walked_by", ""))
-    add_row("Site Walked With:", ase.get("site_walked_with", ""))
-    current_row += 1
+    row = add_section(ws1, row, "EMPLOYEE INFO")
+    row = add_row(ws1, row, "Site ID:", ase.get("site_id", ""))
+    row = add_row(ws1, row, "Employee Info:", ase.get("employee_info", ""))
+    row = add_row(ws1, row, "Date of Site Visit:", ase.get("date_of_site_visit", ""))
+    row += 1
     
-    # Address Info
-    add_section("ADDRESS INFORMATION")
-    add_row("Address:", ase.get("address", ""))
-    add_row("MPOE Address:", ase.get("mpoe_address", ""))
-    add_row("Suite &/or Bldg #:", ase.get("suite_bldg", ""))
-    current_row += 1
-    
-    # Access/Customer Information
-    add_section("ACCESS/CUSTOMER INFORMATION")
-    add_row("Access Contact Name & Phone/Email:", ase.get("access_contact", ""))
-    add_row("Building Owner Name & Phone/Email:", ase.get("building_owner_contact", ""))
-    add_row("SPF Required?:", ase.get("spf_required", ""))
-    add_row("SPF Contact Name & Phone/Email:", ase.get("spf_contact", ""))
-    add_row("Timeframe / Access Hours:", ase.get("timeframe", ""))
-    add_row("Access Notes/Special Instructions:", ase.get("access_notes", ""))
-    current_row += 1
+    # Address
+    row = add_section(ws1, row, "ADDRESS")
+    row = add_row(ws1, row, "Address:", ase.get("address", ""))
+    row = add_row(ws1, row, "MPOE Address:", ase.get("mpoe_address", ""))
+    row = add_row(ws1, row, "Suite &/or Bldg #:", ase.get("suite_bldg", ""))
+    row += 1
     
     # BIDI Retrofit
-    add_section("BIDI RETROFIT")
-    add_row("Does This Qualify for BIDI Retrofit?:", ase.get("bidi_retrofit_qualify", ""))
-    add_row("Did you speak to regarding Retrofit work?:", ase.get("bidi_spoke_to", ""))
-    add_row("What date was agreed to?:", ase.get("bidi_agreed_date", ""))
-    add_row("BIDI Access Notes/Special Instructions:", ase.get("bidi_access_notes", ""))
-    current_row += 1
+    row = add_section(ws1, row, "BIDI RETROFIT")
+    row = add_row(ws1, row, "Does this qualify for BIDI Retrofit?:", ase.get("bidi_retrofit_qualify", ""))
+    row = add_row(ws1, row, "Did you speak to regarding Retrofit work?:", ase.get("bidi_spoke_to", ""))
+    row = add_row(ws1, row, "What date was agreed to?:", ase.get("bidi_agreed_date", ""))
+    row = add_row(ws1, row, "What timeframe?:", ase.get("bidi_timeframe", ""))
+    row = add_row(ws1, row, "BIDI Access Notes/Special Instructions:", ase.get("bidi_access_notes", ""))
+    row += 1
+    
+    # Access/Customer Information
+    row = add_section(ws1, row, "ACCESS/CUSTOMER INFORMATION")
+    row = add_row(ws1, row, "Access contact name & phone/email:", ase.get("access_contact", ""))
+    row = add_row(ws1, row, "Building Owner name & phone/email:", ase.get("building_owner_contact", ""))
+    row = add_row(ws1, row, "Who did you walk the site with?:", ase.get("site_walked_with", ""))
+    row = add_row(ws1, row, "Access Notes/Special Instructions:", ase.get("access_notes", ""))
+    row += 1
     
     # Building Characteristics
-    add_section("BUILDING CHARACTERISTICS")
-    add_row("Occupancy Type:", ase.get("occupancy_type", ""))
-    add_row("Number of Floors:", ase.get("number_of_floors", ""))
-    add_row("Number of Business Units:", ase.get("number_of_business_units", ""))
-    add_row("Number of Tenants:", ase.get("number_of_tenants", ""))
-    add_row("How many DMARCs?:", ase.get("how_many_dmarcs", ""))
-    add_row("If additional DMARCs, where are they?:", ase.get("additional_dmarcs_location", ""))
-    add_row("Is the Customer Building Owner or Tenant?:", ase.get("owner_or_tenant", ""))
-    add_row("Multi-Tenant:", ase.get("multi_tenant", ""))
-    add_row("Ceiling Height:", ase.get("ceiling_height", ""))
-    add_row("Proposed NTE in common space (multi-tenant)?:", ase.get("proposed_nte_common_space", ""))
-    current_row += 1
+    row = add_section(ws1, row, "BUILDING CHARACTERISTICS")
+    row = add_row(ws1, row, "Occupancy Type:", ase.get("occupancy_type", ""))
+    row = add_row(ws1, row, "Number of Floors:", ase.get("number_of_floors", ""))
+    row = add_row(ws1, row, "Number of Business Units:", ase.get("number_of_business_units", ""))
+    row = add_row(ws1, row, "Number of Tenants:", ase.get("number_of_tenants", ""))
+    row = add_row(ws1, row, "Multi Tenant:", ase.get("multi_tenant", ""))
+    row = add_row(ws1, row, "Disable NTE Auto-Assign:", ase.get("disable_nte_auto_assign", ""))
+    row = add_row(ws1, row, "Multi Tenant Eligibility:", ase.get("multi_tenant_eligibility", ""))
+    row = add_row(ws1, row, "Router on Same Floor:", ase.get("router_on_same_floor", ""))
+    row = add_row(ws1, row, "Router Within 300ft:", ase.get("router_within_300ft", ""))
+    row = add_row(ws1, row, "How many DMARCs?:", ase.get("how_many_dmarcs", ""))
+    row = add_row(ws1, row, "If additional DMARCs, where are they?:", ase.get("additional_dmarcs_location", ""))
+    row = add_row(ws1, row, "Is the proposed NTE in a common space?:", ase.get("proposed_nte_common_space", ""))
+    row += 1
     
     # Fiber Attributes
-    add_section("FIBER ATTRIBUTES")
-    add_row("Fiber at Site?:", ase.get("fiber_at_site", ""))
-    add_row("Existing INC:", ase.get("existing_inc", ""))
-    add_row("INC Required:", ase.get("inc_required", ""))
-    add_row("Existing Fiber Terminal:", ase.get("existing_fiber_terminal", ""))
-    add_row("Fiber Terminal Placement:", ase.get("fiber_terminal_placement", ""))
-    add_row("LAT/LONG of Existing/New FBT:", ase.get("fiber_terminal_lat_long", ""))
-    add_row("Fiber Terminal FID:", ase.get("fiber_terminal_fid", ""))
-    add_row("FBT FID if Missing:", ase.get("fbt_fid_if_missing", ""))
-    add_row("Active Ports:", ase.get("fiber_active_ports", ""))
-    add_row("Fiber Reading:", ase.get("fiber_reading", ""))
-    add_row("Describe Existing/Proposed Terminal Location:", ase.get("terminal_location_description", ""))
-    add_row("Terminal Floor #:", ase.get("terminal_floor", ""))
-    add_row("Terminal Mounting Wall:", ase.get("terminal_mounting_wall", ""))
-    add_row("Terminal Rack Bay/Shelf:", ase.get("terminal_rack_bay_shelf", ""))
-    add_row("LAT/LONG of Nearest Fiber:", ase.get("nearest_fiber_lat_long", ""))
-    add_row("Nearest Fiber FID:", ase.get("nearest_fiber_fid", ""))
-    current_row += 1
+    row = add_section(ws1, row, "FIBER ATTRIBUTES")
+    row = add_row(ws1, row, "Existing INC:", ase.get("existing_inc", ""))
+    row = add_row(ws1, row, "INC Required:", ase.get("inc_required", ""))
+    row = add_row(ws1, row, "Existing Fiber Terminal:", ase.get("existing_fiber_terminal", ""))
+    row = add_row(ws1, row, "Fiber Terminal Placement:", ase.get("fiber_terminal_placement", ""))
+    row = add_row(ws1, row, "Fiber Terminal LAT/LONG:", ase.get("fiber_terminal_lat_long", ""))
+    row = add_row(ws1, row, "Fiber Terminal FID:", ase.get("fiber_terminal_fid", ""))
+    row = add_row(ws1, row, "Active Ports (FOR EXISTING):", ase.get("fiber_active_ports", ""))
+    row = add_row(ws1, row, "Fiber Reading (FOR EXISTING):", ase.get("fiber_reading", ""))
+    row = add_row(ws1, row, "Describe existing/proposed terminal location:", ase.get("terminal_location_description", ""))
+    row = add_row(ws1, row, "Floor #:", ase.get("terminal_floor", ""))
+    row = add_row(ws1, row, "Mounting Wall:", ase.get("terminal_mounting_wall", ""))
+    row = add_row(ws1, row, "Rack Bay:", ase.get("terminal_rack_bay", ""))
+    row = add_row(ws1, row, "Rack Shelf:", ase.get("terminal_rack_shelf", ""))
+    row += 1
     
     # NTE Equipment Attributes
-    add_section("NTE - EQUIPMENT ATTRIBUTES")
-    add_row("Existing NTE/EMTs @ Site?:", ase.get("existing_nte_emts_at_site", ""))
-    add_row("Existing NTE:", ase.get("existing_nte", ""))
-    add_row("NTE Placement:", ase.get("nte_placement", ""))
-    add_row("NTE Active Ports:", ase.get("nte_active_ports", ""))
-    add_row("NTE CLLI:", ase.get("nte_clli", ""))
-    add_row("Ports/Band Available:", ase.get("nte_ports_band_ava", ""))
-    add_row("Not Using Due To:", ase.get("nte_not_using_due_to", ""))
-    add_row("NTE at Terminal or Another Location?:", ase.get("nte_at_terminal", ""))
-    add_row("Describe Existing/Proposed NTE Location:", ase.get("nte_location_description", ""))
-    add_row("NTE LAT/LONG:", ase.get("nte_lat_long", ""))
-    add_row("NTE Floor #:", ase.get("nte_floor", ""))
-    add_row("NTE Mounting Wall:", ase.get("nte_mounting_wall", ""))
-    add_row("NTE Rack Bay/Shelf:", ase.get("nte_rack_bay_shelf", ""))
-    add_row("Equipment Environment:", ase.get("equipment_environment", ""))
-    add_row("Equipment Mounting:", ase.get("equipment_mounting", ""))
-    add_row("Equipment Power Configuration:", ase.get("equipment_power_config", ""))
-    add_row("Distance From FBT to NTE:", ase.get("distance_fbt_to_nte", ""))
-    add_row("Distance from NTE to Customer IT Space:", ase.get("distance_nte_to_it", ""))
-    add_row("Is Customer IT Space on Same Floor as NTE?:", ase.get("it_same_floor_as_nte", ""))
-    add_row("Router Within 300ft?:", ase.get("router_within_300ft", ""))
-    add_row("Proposed Equipment:", ase.get("proposed_equipment", ""))
-    add_row("Proposed Equipment Location:", ase.get("proposed_equipment_location", ""))
-    add_row("Proposed Equipment LAT/LONG:", ase.get("proposed_equipment_lat_long", ""))
-    current_row += 1
+    row = add_section(ws1, row, "NTE - EQUIPMENT ATTRIBUTES")
+    row = add_row(ws1, row, "Existing NTE:", ase.get("existing_nte", ""))
+    row = add_row(ws1, row, "NTE Placement:", ase.get("nte_placement", ""))
+    row = add_row(ws1, row, "Active Ports (FOR EXISTING):", ase.get("nte_active_ports", ""))
+    row = add_row(ws1, row, "CLLI (FOR EXISTING):", ase.get("nte_clli", ""))
+    row = add_row(ws1, row, "NTE at Terminal or another location?:", ase.get("nte_at_terminal", ""))
+    row = add_row(ws1, row, "Describe existing/proposed NTE location:", ase.get("nte_location_description", ""))
+    row = add_row(ws1, row, "NTE LAT/LONG:", ase.get("nte_lat_long", ""))
+    row = add_row(ws1, row, "Floor #:", ase.get("nte_floor", ""))
+    row = add_row(ws1, row, "Mounting Wall:", ase.get("nte_mounting_wall", ""))
+    row = add_row(ws1, row, "Rack Bay:", ase.get("nte_rack_bay", ""))
+    row = add_row(ws1, row, "Rack Shelf:", ase.get("nte_rack_shelf", ""))
+    row = add_row(ws1, row, "Equipment Power Configuration:", ase.get("equipment_power_config", ""))
+    row = add_row(ws1, row, "Distance From FBT to NTE:", ase.get("distance_fbt_to_nte", ""))
+    row = add_row(ws1, row, "Distance from NTE to Customer IT space:", ase.get("distance_nte_to_it", ""))
+    row = add_row(ws1, row, "Is Customer IT space on same floor as NTE?:", ase.get("it_same_floor_as_nte", ""))
+    row = add_row(ws1, row, "Ceiling Height:", ase.get("ceiling_height", ""))
+    row += 1
     
-    # Path of Approach
-    add_section("PATH OF APPROACH / MEASUREMENTS")
-    add_row("Path of Approach Description:", ase.get("path_of_approach", ""))
-    add_row("Proposed Location:", ase.get("proposed_location", ""))
-    add_row("Starting FH/MH/POLE Tie-in Measurements:", ase.get("starting_tie_in_measurements", ""))
-    add_row("POLE LINE START Lat/Long:", ase.get("soc_pole_line_start", ""))
-    add_row("POLE LINE END Lat/Long:", ase.get("soc_pole_line_end", ""))
-    add_row("SOC START Lat/Long:", ase.get("soc_start_lat_long", ""))
-    add_row("SOC END Lat/Long:", ase.get("soc_end_lat_long", ""))
-    add_row("Proposed Pole and Building:", ase.get("proposed_pole_and_bldg", ""))
-    current_row += 1
+    # EF Offer
+    row = add_section(ws1, row, "EF OFFER")
+    row = add_row(ws1, row, "EF NEEDED:", ase.get("ef_needed", ""))
+    row = add_row(ws1, row, "EF Qualified:", ase.get("ef_qualified", ""))
+    row = add_row(ws1, row, "EF Disqualification Reason:", ase.get("ef_disqualification_reason", ""))
+    row = add_row(ws1, row, "Is the Customer Building Owner or Tenant?:", ase.get("owner_or_tenant", ""))
+    row = add_row(ws1, row, "SPF Required?:", ase.get("spf_required", ""))
+    row = add_row(ws1, row, "SPF contact name & phone/email:", ase.get("spf_contact", ""))
+    row = add_row(ws1, row, "Are we placing conduit and how long?:", ase.get("placing_conduit_length", ""))
+    row += 1
     
-    # EF Offer/Requirements
-    add_section("EF OFFER / REQUIREMENTS")
-    add_row("EF Requirements:", ase.get("ef_requirements", ""))
-    add_row("EF Needed:", ase.get("ef_needed", ""))
-    add_row("EF Qualified:", ase.get("ef_qualified", ""))
-    add_row("Customer EF Aware:", ase.get("customer_ef_aware", ""))
-    add_row("End User Acceptance:", ase.get("end_user_acceptance", ""))
-    add_row("EF Disqualification Reason:", ase.get("ef_disqualification_reason", ""))
-    add_row("Are We Placing Conduit and How Long?:", ase.get("placing_conduit_length", ""))
-    add_row("EF Conduit Length Category:", ase.get("ef_conduit_length", ""))
-    current_row += 1
-    
-    # EF Requirements Detail
-    add_section("EF REQUIREMENTS - DETAIL")
+    # EF Requirements
+    row = add_section(ws1, row, "EF REQUIREMENTS")
     ef_items = [
         ("Do we need a buried PVC pipe?", "buried_pvc", "buried_pvc_length"),
         ("Do we need buried innerduct on customer property?", "buried_innerduct", "buried_innerduct_length"),
@@ -1221,104 +1201,195 @@ async def export_ase_excel(job_id: str, current_user: dict = Depends(get_current
     for label, key, qty_key in ef_items:
         answer = ase.get(key, "")
         qty = ase.get(qty_key, "") if qty_key else ""
-        add_row_pair(label, answer, "Length/Qty:" if qty_key else "", qty)
-    current_row += 1
-    
-    # Site Requirements
-    add_section("SITE REQUIREMENTS")
-    add_row("Site Readiness Evaluation:", ase.get("site_readiness_evaluation", ""))
-    add_row("What Site Requirements are Already Provided?:", ase.get("site_requirements_provided", ""))
-    add_row("Grounding System:", ase.get("grounding_system", ""))
-    add_row("Building Power Source:", ase.get("building_power_source", ""))
-    current_row += 1
-    
-    # Multi-Tenant Eligibility
-    add_section("MULTI TENANT ELIGIBILITY (MTEI)")
-    add_row("Multi-Tenant Eligibility:", ase.get("multi_tenant_eligibility", ""))
-    add_row("Customer Handoff Panel Location:", ase.get("customer_handoff_panel_location", ""))
-    add_row("Est. Fiber Drop Length (MIN 10'):", ase.get("est_fiber_drop_length", ""))
-    current_row += 1
+        row = add_row_pair(ws1, row, label, answer, "Length/Qty:" if qty_key else "", qty)
+    row += 1
     
     # Additional Info
-    add_section("ADDITIONAL INFORMATION")
-    add_row("Are there any pipelines in the vicinity?:", ase.get("pipelines_vicinity", ""))
-    add_row("Are there any pipelines in the path?:", ase.get("pipelines_path", ""))
-    add_row("Are there any railroads in the vicinity?:", ase.get("railroads_vicinity", ""))
-    add_row("Are there any railroads in the path?:", ase.get("railroads_path", ""))
-    add_row("Permits Needed:", ase.get("possible_permits", ""))
-    add_row("ROW Width, Pole-Pole, Clear Inside Path Measurements:", ase.get("row_measurements", ""))
-    add_row("Other Info - Is there anything else we must know?:", ase.get("other_notes", ""))
-    add_row("Additional SOW Notes:", ase.get("additional_sow_notes", ""))
-    add_row("Site & Order SOW Notes:", ase.get("site_order_sow_notes", ""))
-    current_row += 1
+    row = add_section(ws1, row, "ADDITIONAL INFO")
+    row = add_row(ws1, row, "Nearest fiber Lat/Long:", ase.get("nearest_fiber_lat_long", ""))
+    row = add_row(ws1, row, "Starting FH/MH/POLE tie in measurements:", ase.get("starting_tie_in_measurements", ""))
+    row = add_row(ws1, row, "Nearest fiber FID:", ase.get("nearest_fiber_fid", ""))
+    row = add_row(ws1, row, "Describe path of approach, include SOC length:", ase.get("path_of_approach", ""))
+    row = add_row(ws1, row, "POLE LINE START Lat/Long:", ase.get("soc_pole_line_start", ""))
+    row = add_row(ws1, row, "POLE LINE END Lat/Long:", ase.get("soc_pole_line_end", ""))
+    row = add_row(ws1, row, "SOC START Lat/Long:", ase.get("soc_start_lat_long", ""))
+    row = add_row(ws1, row, "SOC END Lat/Long:", ase.get("soc_end_lat_long", ""))
+    row = add_row(ws1, row, "Proposed POLE and BLDG Height of Attachment:", ase.get("proposed_pole_bldg_height", ""))
+    row = add_row(ws1, row, "What Site Requirements are already provided?:", ase.get("site_requirements_provided", ""))
+    row = add_row(ws1, row, "Are there any pipelines in the vicinity?:", ase.get("pipelines_vicinity", ""))
+    row = add_row(ws1, row, "Are there any pipelines in the path?:", ase.get("pipelines_path", ""))
+    row = add_row(ws1, row, "Are there any railroads in the vicinity?:", ase.get("railroads_vicinity", ""))
+    row = add_row(ws1, row, "Are there any railroads in the Path?:", ase.get("railroads_path", ""))
+    row = add_row(ws1, row, "ROW width, pole-pole, clear inside path measurements:", ase.get("row_measurements", ""))
+    row = add_row(ws1, row, "Is there anything else we must know?:", ase.get("other_notes", ""))
     
-    # Multiple MPOE/Terminal
-    add_section("MULTIPLE MPOE / TERMINAL")
-    add_row("Multiple MPOE/Terminal?:", ase.get("multiple_mpoe_terminal", ""))
-    current_row += 1
+    # ========== TAB 2: COORDINATOR INPUT ==========
+    ws2 = wb.create_sheet(title="Coordinator Input")
+    setup_sheet(ws2, "22c55e")
+    row = 1
     
-    # Photo Gallery Section - collect all photos from ASE form
+    row = add_header(ws2, row, "COORDINATOR INPUT")
+    row += 1
+    
+    row = add_section(ws2, row, "COORDINATOR INPUT", "22c55e")
+    row = add_row(ws2, row, "AT&T Engineer:", ase.get("assigned_att_eng", ""))
+    row = add_row(ws2, row, "Nearest Fiber FID if Missing:", ase.get("nearest_fiber_fid_missing", ""))
+    row = add_row(ws2, row, "FBT FID if Missing:", ase.get("fbt_fid_missing", ""))
+    row = add_row(ws2, row, "Possible Permits:", ase.get("possible_permits", ""))
+    row = add_row(ws2, row, "Additional SOW notes:", ase.get("additional_sow_notes", ""))
+    
+    # ========== TAB 3: SVCL OUTPUT ==========
+    ws3 = wb.create_sheet(title="SVCL Output")
+    setup_sheet(ws3, "7c3aed")
+    row = 1
+    
+    row = add_header(ws3, row, "SVCL OUTPUT")
+    row += 1
+    
+    # Site & Order
+    row = add_section(ws3, row, "SITE & ORDER", "7c3aed")
+    row = add_row(ws3, row, "Building Contact:", ase.get("building_contact", "") or ase.get("building_owner_contact", ""))
+    row = add_row(ws3, row, "Building Contact Email:", ase.get("building_contact_email", ""))
+    row += 1
+    
+    # Site Visit
+    row = add_section(ws3, row, "SITE VISIT", "7c3aed")
+    row = add_row(ws3, row, "Date of Site Visit:", ase.get("date_of_site_visit", ""))
+    row = add_row(ws3, row, "Type of Site Visit:", ase.get("type_of_site_visit", ""))
+    row = add_row(ws3, row, "Qualified Equipment:", ase.get("qualified_equipment", ""))
+    row = add_row(ws3, row, "Occupancy Type:", ase.get("occupancy_type", ""))
+    row = add_row(ws3, row, "Multi-Tenant:", ase.get("multi_tenant", ""))
+    row = add_row(ws3, row, "Number of Tenants:", ase.get("number_of_tenants", ""))
+    row = add_row(ws3, row, "Number of Floors in Building:", ase.get("number_of_floors", ""))
+    # Building Demarcation calculation
+    dmarcs = ase.get("how_many_dmarcs", "")
+    building_demarcation = ""
+    if dmarcs:
+        try:
+            building_demarcation = "Single MPOE/Terminal" if int(dmarcs) == 1 else "Multiple MPOE/Terminal"
+        except:
+            pass
+    row = add_row(ws3, row, "Building Demarcation:", building_demarcation)
+    row = add_row(ws3, row, "Disable NTE Auto-Assignment:", ase.get("disable_nte_auto_assign", ""))
+    row += 1
+    
+    # Fiber Attributes
+    row = add_section(ws3, row, "FIBER ATTRIBUTES", "7c3aed")
+    row = add_row(ws3, row, "Existing INC:", ase.get("existing_inc", ""))
+    row = add_row(ws3, row, "Fiber Riser (INC) required?:", ase.get("inc_required", ""))
+    row = add_row(ws3, row, "Existing Fiber Terminal:", ase.get("existing_fiber_terminal", ""))
+    row = add_row(ws3, row, "Fiber Terminal location:", ase.get("fiber_terminal_placement", ""))
+    row = add_row(ws3, row, "Fiber Terminal Floor:", ase.get("terminal_floor", ""))
+    row = add_row(ws3, row, "Fiber Terminal Aisle:", ase.get("terminal_mounting_wall", ""))
+    row = add_row(ws3, row, "Fiber Terminal Bay:", ase.get("terminal_rack_bay", "") or "00")
+    row = add_row(ws3, row, "Fiber Terminal Shelf:", ase.get("terminal_rack_shelf", "") or "00")
+    row += 1
+    
+    # NTE Equipment Attributes
+    row = add_section(ws3, row, "NTE EQUIPMENT ATTRIBUTES", "7c3aed")
+    row = add_row(ws3, row, "Equipment Environment:", ase.get("nte_placement", ""))
+    # Equipment location calculation
+    nte_at_terminal = ase.get("nte_at_terminal", "")
+    equipment_location = ""
+    if nte_at_terminal:
+        equipment_location = "COMMON AREA/MPOE" if nte_at_terminal == "Terminal" else "SUITE"
+    row = add_row(ws3, row, "Equipment location:", equipment_location)
+    row = add_row(ws3, row, "Equipment Mounting:", ase.get("nte_placement", ""))
+    row = add_row(ws3, row, "Equipment Power Configuration:", ase.get("equipment_power_config", ""))
+    row = add_row(ws3, row, "Equipment Floor:", ase.get("nte_floor", ""))
+    row = add_row(ws3, row, "Equipment Aisle:", ase.get("nte_mounting_wall", ""))
+    row = add_row(ws3, row, "Equipment Bay:", ase.get("nte_rack_bay", "") or "00")
+    row = add_row(ws3, row, "Equipment Shelf:", ase.get("nte_rack_shelf", "") or "00")
+    row += 1
+    
+    # Multi Tenant Eligibility
+    row = add_section(ws3, row, "MULTI TENANT ELIGIBILITY (MTEI)", "7c3aed")
+    row = add_row(ws3, row, "Multi-Tenant Eligibility:", ase.get("multi_tenant_eligibility", ""))
+    row = add_row(ws3, row, "Customer Handoff Panel Location:", ase.get("customer_handoff_panel_location", "") or equipment_location)
+    row = add_row(ws3, row, "Est. Fiber Drop Length (MIN 10'):", ase.get("est_fiber_drop_length", "") or ase.get("distance_fbt_to_nte", ""))
+    row = add_row(ws3, row, "Router on Same Floor:", ase.get("router_on_same_floor", ""))
+    row = add_row(ws3, row, "Router Within 300 (ft):", ase.get("router_within_300ft", ""))
+    row = add_row(ws3, row, "Ceiling Height:", ase.get("ceiling_height", ""))
+    row += 1
+    
+    # Site Requirements
+    row = add_section(ws3, row, "SITE REQUIREMENTS", "7c3aed")
+    row = add_row(ws3, row, "Site Readiness Evaluation:", ase.get("site_readiness_evaluation", ""))
+    row = add_row(ws3, row, "EF Qualified:", ase.get("ef_qualified", ""))
+    row = add_row(ws3, row, "Customer EF Aware:", ase.get("customer_ef_aware", ""))
+    # End User Acceptance calculation
+    ef_qualified = ase.get("ef_qualified", "")
+    end_user_acceptance = ""
+    if ef_qualified:
+        end_user_acceptance = "Yes - EF Offer Accepted" if ef_qualified != "NO" else "No - EF Offer Not Accepted"
+    row = add_row(ws3, row, "End User Acceptance:", end_user_acceptance)
+    row = add_row(ws3, row, "EF Owner or Tenant:", ase.get("owner_or_tenant", ""))
+    row = add_row(ws3, row, "EF Conduit Length:", ase.get("placing_conduit_length", ""))
+    # Other Requirements auto-text
+    site_id = ase.get("site_id", "")
+    employee_info = ase.get("employee_info", "")
+    other_requirements = ""
+    if site_id or employee_info:
+        other_requirements = f"NOTE: FOR ANY QUESTIONS CONCERNING YOUR SITE VISIT REQUIREMENTS IN THIS LETTER PLEASE CONTACT: REFERENCE SITE ID {site_id} {employee_info}".strip()
+    row = add_row(ws3, row, "Other Requirements:", other_requirements)
+    
+    # ========== TAB 4: PHOTOS ==========
+    # Collect all photos
     photo_fields = [
         ("Address", "address_photos"),
-        ("Access Contact", "access_contact_photos"),
-        ("SPF Contact", "spf_contact_photos"),
-        ("Existing INC", "existing_inc_photos"),
-        ("Existing Fiber Terminal", "existing_fiber_terminal_photos"),
-        ("Fiber Terminal Placement", "fiber_terminal_placement_photos"),
-        ("Active Ports", "fiber_active_ports_photos"),
-        ("Fiber Reading", "fiber_reading_photos"),
-        ("Existing NTE", "existing_nte_photos"),
-        ("NTE Placement", "nte_placement_photos"),
-        ("NTE CLLI", "nte_clli_photos"),
-        ("Rack Bay/Shelf", "nte_rack_bay_shelf_photos"),
-        ("Equipment Power Config", "equipment_power_config_photos"),
+        ("Access/Customer", "access_customer_photos"),
+        ("Building Characteristics", "building_characteristics_photos"),
+        ("FBT", "fbt_photos"),
+        ("NTE", "nte_photos"),
+        ("MPOE", "mpoe_photos"),
         ("Pole Line Start", "pole_line_start_photos"),
         ("Pole Line End", "pole_line_end_photos"),
         ("SOC Start", "soc_start_photos"),
         ("SOC End", "soc_end_photos"),
-        ("Pipelines Vicinity", "pipelines_vicinity_photos"),
-        ("Pipelines Path", "pipelines_path_photos"),
-        ("Railroads Vicinity", "railroads_vicinity_photos"),
-        ("Railroads Path", "railroads_path_photos"),
         ("Mark Ups", "markup_photos"),
     ]
     
-    # Collect all photos
     all_photos = []
     for label, field in photo_fields:
         photos = ase.get(field, []) or []
         if photos:
-            for photo in photos:
-                all_photos.append((label, photo))
+            for idx, photo in enumerate(photos):
+                all_photos.append((f"{label} #{idx+1}" if len(photos) > 1 else label, photo))
     
     if all_photos:
-        add_section("PHOTOS")
+        ws4 = wb.create_sheet(title="Photos")
+        setup_sheet(ws4, "f59e0b")
+        row = 1
         
-        # Add a link to the ASE Photo Gallery page
+        row = add_header(ws4, row, "PHOTO GALLERY")
+        row += 1
+        
+        # Add gallery link
         gallery_token = create_gallery_token(job_id, days_valid=30)
         public_base = os.environ.get("PUBLIC_URL", "https://poledatasheet.info")
         gallery_url = f"{public_base}/ase-gallery/{job_id}?token={gallery_token}"
         
-        cell = ws.cell(row=current_row, column=1, value="Photo Gallery (Accessible to everyone):")
-        cell.font = label_font
-        link_cell = ws.cell(row=current_row, column=2, value="View All ASE Photos")
+        ws4.cell(row=row, column=1, value="Photo Gallery (Accessible to everyone):").font = label_font
+        link_cell = ws4.cell(row=row, column=2, value="View All ASE Photos")
         link_cell.hyperlink = gallery_url
         link_cell.font = Font(color="2563EB", underline="single", bold=True, size=10)
-        current_row += 1
+        row += 2
         
-        # List photos with their labels
+        # Photo Download Link
+        download_url = f"{public_base}/api/jobs/{job_id}/export/photos?token={gallery_token}"
+        ws4.cell(row=row, column=1, value="Download All Photos (ZIP):").font = label_font
+        dl_cell = ws4.cell(row=row, column=2, value="Download Photos ZIP")
+        dl_cell.hyperlink = download_url
+        dl_cell.font = Font(color="16a34a", underline="single", bold=True, size=10)
+        row += 2
+        
+        row = add_section(ws4, row, "PHOTO LIST", "f59e0b")
         for label, photo_url in all_photos:
-            ws.cell(row=current_row, column=1, value=f"  • {label}").font = value_font
-            photo_cell = ws.cell(row=current_row, column=2, value="View Photo")
+            ws4.cell(row=row, column=1, value=f"  • {label}").font = value_font
+            photo_cell = ws4.cell(row=row, column=2, value="View Photo")
             photo_cell.hyperlink = photo_url
             photo_cell.font = Font(color="2563EB", underline="single", size=9)
-            current_row += 1
-    
-    # Column widths
-    ws.column_dimensions["A"].width = 50
-    ws.column_dimensions["B"].width = 40
-    ws.column_dimensions["C"].width = 15
-    ws.column_dimensions["D"].width = 30
+            row += 1
     
     # Save to buffer
     buffer = io.BytesIO()
