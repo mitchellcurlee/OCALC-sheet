@@ -7,7 +7,7 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import domtoimage from "dom-to-image-more";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ListOrdered, ChevronDown, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera, Hash, Link2 } from "lucide-react";
+import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ChevronDown, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera, Hash, Link2 } from "lucide-react";
 import { computeRoute, fmtFeet, feetToStation, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, ugWithGps, undergroundAbbr, computeUgConnectors } from "@/lib/poleMapImage";
 import {
   DropdownMenu,
@@ -155,7 +155,6 @@ const JobMap = () => {
   const [annotations, setAnnotations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
-  const [showStops, setShowStops] = useState(false);
   const [showStationNumbers, setShowStationNumbers] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [connectionEditMode, setConnectionEditMode] = useState(false);
@@ -666,20 +665,20 @@ const JobMap = () => {
   const downloadImage = useCallback(async () => {
     setDownloading(true);
     try {
-      await downloadPoleMapImage({ poles, job, showStops, underground });
+      await downloadPoleMapImage({ poles, job, showStops: false, underground });
     } finally {
       setDownloading(false);
     }
-  }, [poles, job, showStops, underground]);
+  }, [poles, job, underground]);
 
   const downloadSegmented = useCallback(async () => {
     setDownloading(true);
     try {
-      await downloadSegmentedMapPages({ poles, job, showStops, underground, targetFeet: 800 });
+      await downloadSegmentedMapPages({ poles, job, showStops: false, underground, targetFeet: 800 });
     } finally {
       setDownloading(false);
     }
-  }, [poles, job, showStops, underground]);
+  }, [poles, job, underground]);
 
   // Screenshot the visible map frame using dom-to-image-more - captures entire app frame
   const captureMapScreenshot = useCallback(async () => {
@@ -777,10 +776,6 @@ const JobMap = () => {
             <Button onClick={recenter} disabled={allPoints.length === 0} variant="outline" className="bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900" data-testid="recenter-btn">
               <Crosshair className="w-4 h-4 mr-2" />
               Fit all
-            </Button>
-            <Button onClick={() => setShowStops((v) => !v)} disabled={route.length === 0} aria-pressed={showStops} variant="outline" className={showStops ? "bg-red-600 border-red-600 hover:bg-red-700 text-white" : "bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900"} data-testid="toggle-stops-btn">
-              <ListOrdered className="w-4 h-4 mr-2" />
-              Stop #{"'"}s
             </Button>
             <Button onClick={() => setShowStationNumbers((v) => !v)} disabled={route.length === 0 && ug.length === 0} aria-pressed={showStationNumbers} variant="outline" className={showStationNumbers ? "bg-indigo-600 border-indigo-600 hover:bg-indigo-700 text-white" : "bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900"} data-testid="toggle-station-btn">
               <Hash className="w-4 h-4 mr-2" />
@@ -1020,7 +1015,7 @@ const JobMap = () => {
               })}
               
               {poleDisplayInfo.map((p, i) => {
-                const label = markerLabel(p, i, showStops);
+                const label = markerLabel(p, i, false);
                 // Show station number if enabled
                 const stationLabel = showStationNumbers && stationNumbers[p.id] ? stationNumbers[p.id] : null;
                 const icon = p.isCluster 
@@ -1118,117 +1113,146 @@ const JobMap = () => {
                 onAnnotationDelete={handleAnnotationDelete}
               />
               {/* Connection edit mode - draggable endpoints */}
-              {connectionEditMode && connections.map(conn => {
-                // Find positions for from and to items
-                const fromItem = allConnectableItems.find(i => i.id === conn.from_item_id);
-                const toItem = allConnectableItems.find(i => i.id === conn.to_item_id);
-                
-                if (!fromItem || !toItem) return null;
-                
-                const lineColor = conn.connection_type === 'aerial' ? '#3b82f6' : 
-                                  conn.connection_type === 'underground' ? '#22c55e' : '#8b5cf6';
-                
-                return (
-                  <React.Fragment key={conn.id}>
-                    {/* Connection line with thicker styling for edit mode */}
-                    <Polyline
-                      positions={[fromItem.pos, toItem.pos]}
-                      pathOptions={{
-                        color: lineColor,
-                        weight: 4,
-                        opacity: 0.8,
-                        dashArray: conn.connection_type === 'custom' ? '8, 8' : undefined
-                      }}
+              {connectionEditMode && (
+                <>
+                  {/* Show target indicators for all connectable items */}
+                  {allConnectableItems.map(item => (
+                    <Marker
+                      key={`target-${item.id}`}
+                      position={item.pos}
+                      icon={L.divIcon({
+                        className: "conn-target",
+                        html: `<div style="width:28px;height:28px;border-radius:50%;background:rgba(139,92,246,0.15);border:2px dashed #8b5cf6;"></div>`,
+                        iconSize: [28, 28],
+                        iconAnchor: [14, 14]
+                      })}
+                      interactive={false}
+                      zIndexOffset={800}
                     />
-                    {/* Draggable "from" endpoint */}
-                    <Marker
-                      position={fromItem.pos}
-                      icon={L.divIcon({
-                        className: "conn-endpoint",
-                        html: `<div style="width:16px;height:16px;border-radius:50%;background:#3b82f6;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.4);cursor:grab;"></div>`,
-                        iconSize: [16, 16],
-                        iconAnchor: [8, 8]
-                      })}
-                      draggable={true}
-                      eventHandlers={{
-                        dragend: async (e) => {
-                          const newPos = [e.target.getLatLng().lat, e.target.getLatLng().lng];
-                          // Find nearest connectable item
-                          let nearest = null;
-                          let minDist = Infinity;
-                          allConnectableItems.forEach(item => {
-                            if (item.id === conn.to_item_id) return; // Can't connect to same endpoint
-                            const dist = Math.sqrt(Math.pow(newPos[0] - item.pos[0], 2) + Math.pow(newPos[1] - item.pos[1], 2));
-                            if (dist < minDist) {
-                              minDist = dist;
-                              nearest = item;
+                  ))}
+                  
+                  {/* Render connection lines with draggable endpoints */}
+                  {connections.map(conn => {
+                    const fromItem = allConnectableItems.find(i => i.id === conn.from_item_id);
+                    const toItem = allConnectableItems.find(i => i.id === conn.to_item_id);
+                    
+                    if (!fromItem || !toItem) return null;
+                    
+                    const lineColor = conn.connection_type === 'aerial' ? '#3b82f6' : 
+                                      conn.connection_type === 'underground' ? '#22c55e' : '#8b5cf6';
+                    
+                    return (
+                      <React.Fragment key={conn.id}>
+                        {/* Connection line */}
+                        <Polyline
+                          positions={[fromItem.pos, toItem.pos]}
+                          pathOptions={{
+                            color: lineColor,
+                            weight: 4,
+                            opacity: 0.8,
+                            dashArray: conn.connection_type === 'custom' ? '8, 8' : undefined
+                          }}
+                        />
+                        {/* Draggable "from" endpoint - BLUE */}
+                        <Marker
+                          position={fromItem.pos}
+                          icon={L.divIcon({
+                            className: "conn-endpoint-from",
+                            html: `<div style="width:20px;height:20px;border-radius:50%;background:#3b82f6;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.5);cursor:grab;z-index:2000;"></div>`,
+                            iconSize: [20, 20],
+                            iconAnchor: [10, 10]
+                          })}
+                          draggable={true}
+                          eventHandlers={{
+                            dragend: async (e) => {
+                              const dropPos = [e.target.getLatLng().lat, e.target.getLatLng().lng];
+                              // Find nearest item to drop position
+                              let nearest = null;
+                              let minDist = Infinity;
+                              allConnectableItems.forEach(item => {
+                                // Can't connect to the "to" endpoint of this same connection
+                                if (item.id === conn.to_item_id) return;
+                                const dist = Math.sqrt(
+                                  Math.pow(dropPos[0] - item.pos[0], 2) + 
+                                  Math.pow(dropPos[1] - item.pos[1], 2)
+                                );
+                                if (dist < minDist) {
+                                  minDist = dist;
+                                  nearest = item;
+                                }
+                              });
+                              
+                              if (nearest && nearest.id !== conn.from_item_id) {
+                                try {
+                                  await handleConnectionUpdate(conn.id, {
+                                    from_item_id: nearest.id,
+                                    from_item_type: nearest.type
+                                  });
+                                  toast.success(`Connected from ${nearest.label}`);
+                                } catch (err) {
+                                  toast.error("Failed to update connection");
+                                }
+                              }
+                              fetchData();
                             }
-                          });
-                          if (nearest && nearest.id !== conn.from_item_id) {
-                            await handleConnectionUpdate(conn.id, {
-                              from_item_id: nearest.id,
-                              from_item_type: nearest.type
-                            });
-                          }
-                          // Refresh to reset marker position
-                          fetchData();
-                        }
-                      }}
-                      zIndexOffset={1100}
-                    >
-                      <Popup>
-                        <div className="text-xs font-mono">
-                          <div className="font-bold">From: {fromItem.label}</div>
-                          <div className="text-zinc-500">Drag to reconnect</div>
-                        </div>
-                      </Popup>
-                    </Marker>
-                    {/* Draggable "to" endpoint */}
-                    <Marker
-                      position={toItem.pos}
-                      icon={L.divIcon({
-                        className: "conn-endpoint",
-                        html: `<div style="width:16px;height:16px;border-radius:50%;background:#ef4444;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.4);cursor:grab;"></div>`,
-                        iconSize: [16, 16],
-                        iconAnchor: [8, 8]
-                      })}
-                      draggable={true}
-                      eventHandlers={{
-                        dragend: async (e) => {
-                          const newPos = [e.target.getLatLng().lat, e.target.getLatLng().lng];
-                          // Find nearest connectable item
-                          let nearest = null;
-                          let minDist = Infinity;
-                          allConnectableItems.forEach(item => {
-                            if (item.id === conn.from_item_id) return; // Can't connect to same endpoint
-                            const dist = Math.sqrt(Math.pow(newPos[0] - item.pos[0], 2) + Math.pow(newPos[1] - item.pos[1], 2));
-                            if (dist < minDist) {
-                              minDist = dist;
-                              nearest = item;
+                          }}
+                          zIndexOffset={1200}
+                        >
+                          <Popup><div className="text-xs font-mono p-1"><strong>From:</strong> {fromItem.label}<br/><span className="text-zinc-500">Drag to another item</span></div></Popup>
+                        </Marker>
+                        
+                        {/* Draggable "to" endpoint - RED */}
+                        <Marker
+                          position={toItem.pos}
+                          icon={L.divIcon({
+                            className: "conn-endpoint-to",
+                            html: `<div style="width:20px;height:20px;border-radius:50%;background:#ef4444;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.5);cursor:grab;z-index:2000;"></div>`,
+                            iconSize: [20, 20],
+                            iconAnchor: [10, 10]
+                          })}
+                          draggable={true}
+                          eventHandlers={{
+                            dragend: async (e) => {
+                              const dropPos = [e.target.getLatLng().lat, e.target.getLatLng().lng];
+                              // Find nearest item to drop position
+                              let nearest = null;
+                              let minDist = Infinity;
+                              allConnectableItems.forEach(item => {
+                                // Can't connect to the "from" endpoint of this same connection
+                                if (item.id === conn.from_item_id) return;
+                                const dist = Math.sqrt(
+                                  Math.pow(dropPos[0] - item.pos[0], 2) + 
+                                  Math.pow(dropPos[1] - item.pos[1], 2)
+                                );
+                                if (dist < minDist) {
+                                  minDist = dist;
+                                  nearest = item;
+                                }
+                              });
+                              
+                              if (nearest && nearest.id !== conn.to_item_id) {
+                                try {
+                                  await handleConnectionUpdate(conn.id, {
+                                    to_item_id: nearest.id,
+                                    to_item_type: nearest.type
+                                  });
+                                  toast.success(`Connected to ${nearest.label}`);
+                                } catch (err) {
+                                  toast.error("Failed to update connection");
+                                }
+                              }
+                              fetchData();
                             }
-                          });
-                          if (nearest && nearest.id !== conn.to_item_id) {
-                            await handleConnectionUpdate(conn.id, {
-                              to_item_id: nearest.id,
-                              to_item_type: nearest.type
-                            });
-                          }
-                          // Refresh to reset marker position
-                          fetchData();
-                        }
-                      }}
-                      zIndexOffset={1100}
-                    >
-                      <Popup>
-                        <div className="text-xs font-mono">
-                          <div className="font-bold">To: {toItem.label}</div>
-                          <div className="text-zinc-500">Drag to reconnect</div>
-                        </div>
-                      </Popup>
-                    </Marker>
-                  </React.Fragment>
-                );
-              })}
+                          }}
+                          zIndexOffset={1200}
+                        >
+                          <Popup><div className="text-xs font-mono p-1"><strong>To:</strong> {toItem.label}<br/><span className="text-zinc-500">Drag to another item</span></div></Popup>
+                        </Marker>
+                      </React.Fragment>
+                    );
+                  })}
+                </>
+              )}
             </MapContainer>
             <div className="absolute bottom-3 right-3 z-[500] bg-white/90 border border-zinc-200 rounded px-3 py-2 text-xs font-mono shadow pointer-events-none max-w-[220px]" data-testid="map-legend">
               <div className="font-bold text-zinc-700 mb-1">LEGEND</div>
