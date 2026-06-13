@@ -94,6 +94,25 @@ export const PhotoMarkupEditor = ({ photos = [], onChange, label = "Mark Ups" })
   const [showLegend, setShowLegend] = useState(false);
   const imageRef = useRef(null);
 
+  // Helper to get full photo URL
+  const getPhotoUrl = (photo) => {
+    if (!photo) return null;
+    // Already a full URL
+    if (photo.startsWith('http://') || photo.startsWith('https://')) {
+      return photo;
+    }
+    // Data URL
+    if (photo.startsWith('data:')) {
+      return photo;
+    }
+    // Relative API path - prepend origin
+    if (photo.startsWith('/api/')) {
+      return `${window.location.origin}${photo}`;
+    }
+    // Other relative path
+    return photo;
+  };
+
   const photoArray = Array.isArray(photos) ? photos : (photos ? [photos] : []);
 
   // Generate legend data from current annotations
@@ -660,10 +679,7 @@ export const PhotoMarkupEditor = ({ photos = [], onChange, label = "Mark Ups" })
   };
 
   const openEditor = (photo, index) => {
-    let photoUrl = photo;
-    if (photo && photo.startsWith('/api/')) {
-      photoUrl = `${window.location.origin}${photo}`;
-    }
+    const photoUrl = getPhotoUrl(photo);
     setCurrentPhoto(photoUrl);
     setCurrentPhotoIndex(index);
     setAnnotations([]);
@@ -686,10 +702,14 @@ export const PhotoMarkupEditor = ({ photos = [], onChange, label = "Mark Ups" })
         {photoArray.map((photo, idx) => (
           <div key={idx} className="relative group">
             <img
-              src={photo}
+              src={getPhotoUrl(photo)}
               alt=""
               className="w-24 h-24 object-cover rounded-lg border-2 border-zinc-200 cursor-pointer hover:border-blue-400 transition-colors"
               onClick={() => openEditor(photo, idx)}
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" fill="%23ccc"><rect width="96" height="96"/><text x="48" y="48" text-anchor="middle" dy=".3em" fill="%23666" font-size="10">No Image</text></svg>';
+              }}
             />
             <button
               type="button"
@@ -708,7 +728,7 @@ export const PhotoMarkupEditor = ({ photos = [], onChange, label = "Mark Ups" })
             </button>
             <button
               type="button"
-              onClick={() => setLightboxPhoto(photo)}
+              onClick={() => setLightboxPhoto(getPhotoUrl(photo))}
               className="absolute bottom-1 left-1 bg-zinc-800 text-white rounded p-1 opacity-0 group-hover:opacity-100 transition-opacity"
               title="View full size"
             >

@@ -508,6 +508,7 @@ Build an app that collects power pole data including: size of the pole, type of 
 
 ### P1 (High Priority)
 - Bulk import from Excel
+- Photo ZIP download for all job photos (labeled, with markups) - Requested by user
 
 ### P2 (Medium Priority)
 - Refactor PoleForm.jsx (1100+ lines) and JobMap.jsx (700+ lines) into smaller components
@@ -518,4 +519,70 @@ Build an app that collects power pole data including: size of the pole, type of 
 ### P3 (Low Priority/Future)
 - localStorage -> httpOnly cookie migration for auth
 - ASEData Pydantic model for better validation
+
+---
+
+## Session Update (Jun 13, 2026)
+
+### ASE Export Data Fix
+- **Fixed ASE data not transferring to export**: The backend was incorrectly parsing the request body structure
+- Backend `/api/jobs/{job_id}/ase-data` endpoint now handles both `{ ase_data: {...} }` wrapper and direct object formats
+- Frontend handleExport now explicitly saves before export and includes error handling
+- Verified: Data saved via API is correctly retrieved and exported to Excel
+
+### Photo Loading in Markups Fix
+- **Fixed photos not loading in PhotoMarkupEditor**: Added `getPhotoUrl()` helper function to handle:
+  - Full URLs (http/https)
+  - Data URLs (base64)
+  - Relative API paths (prepends origin)
+- Added error handling for image load failures with fallback placeholder
+- Added lightbox functionality using the proper URL helper
+
+### Photo Markup Tab Added to Job Detail Page
+- **New Feature**: Added collapsible "PHOTO MARKUP" section at the top of Job Detail page
+- Features:
+  - Expand/collapse toggle with photo count
+  - Photo upload and markup editor
+  - Saves markup photos to job's ASE data
+  - Visual consistency with existing UI
+
+### Underground Attributes in Markup Page
+- **New Feature**: Added collapsible "UNDERGROUND ATTRIBUTES" section to markup pages
+- Features:
+  - Expand/collapse toggle showing count of items
+  - Each underground item shows: type, label, GPS status, coordinates, notes
+  - Type displayed with abbreviated badge (HH, MH, BE, FP, HB, PED, etc.)
+  - Photo thumbnails if available
+
+### Poles Section in Markup Page
+- **New Feature**: Added collapsible "POLES" section to markup pages
+- Features:
+  - Expand/collapse toggle showing count of poles
+  - Each pole shows: number, GPS status, owner, size, class, condition
+  - Photo thumbnails if available
+
+### Load All Job Photos Button
+- **New Feature**: Added "Load All Job Photos (X)" button to markup sections
+- Collects all photos from poles and underground items and adds them to the markup gallery
+- Deduplicates photos automatically
+
+### New Files Created
+- `/app/frontend/src/components/MarkupTab.jsx` - Reusable markup component with poles/underground attributes
+
+### Files Modified
+- `/app/backend/routes/jobs.py` - Fixed ASE data save endpoint to handle both request body formats
+- `/app/frontend/src/pages/ASEForm.jsx` - Improved export with save confirmation and error handling
+- `/app/frontend/src/pages/JobDetail.jsx` - Added Photo Markup section with expand/collapse
+- `/app/frontend/src/components/PhotoMarkupEditor.jsx` - Fixed photo URL handling
+- `/app/frontend/src/components/ase/ASEChecklistTab.jsx` - Integrated MarkupTab with underground/poles
+
+### Verified
+- ASE data saves correctly via API
+- ASE data exports to Excel with 3 tabs (ASE CKLIST, Coordinator Input, SVCL Output)
+- Photo Markup section on Job Detail page works
+- Underground Attributes section expands/collapses with item details
+- Poles section expands/collapses with pole details
+
+### Requires Redeploy
+Changes require redeploy to production (https://poledatasheet.info) to be visible.
 

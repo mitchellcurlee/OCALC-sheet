@@ -2,8 +2,9 @@ import { Section, CollapsibleSection, StyledInput, StyledTextarea, DropdownSelec
 import { ASE_OPTIONS } from "./ASEFormConstants";
 import { PhotoMarkupEditor } from "@/components/PhotoMarkupEditor";
 import { ASEPhotoField } from "@/components/ASEPhotoField";
+import MarkupTab from "@/components/MarkupTab";
 
-const ASEChecklistTab = ({ formData, handleChange }) => {
+const ASEChecklistTab = ({ formData, handleChange, poles = [], underground = [] }) => {
   return (
     <div className="space-y-4" data-testid="content-ase-cklist">
       {/* Employee Info */}
@@ -418,16 +419,16 @@ const ASEChecklistTab = ({ formData, handleChange }) => {
         </div>
       </Section>
 
-      {/* Mark Ups */}
+      {/* Mark Ups with Underground Attributes */}
       <Section title="MARK UPS">
-        <PhotoMarkupEditor 
-          photos={formData.markup_photos || []} 
-          onChange={(v) => handleChange("markup_photos", v)}
+        <MarkupTab
+          photos={formData.markup_photos || []}
+          onPhotosChange={(v) => handleChange("markup_photos", v)}
+          poles={poles}
+          underground={underground}
           label="Mark Ups"
+          showUnderground={true}
         />
-        <p className="text-xs text-zinc-500 mt-2">
-          Upload photos and add annotations using the in-app editor.
-        </p>
       </Section>
     </div>
   );

@@ -934,11 +934,14 @@ async def get_pole_photo(pole_id: str, photo_label: str, token: Optional[str] = 
 # ASE Site Walk Survey endpoints
 
 @router.put("/jobs/{job_id}/ase-data")
-async def save_ase_data(job_id: str, ase_data: dict, current_user: dict = Depends(get_current_user)):
+async def save_ase_data(job_id: str, request_body: dict, current_user: dict = Depends(get_current_user)):
     """Save ASE Site Walk Survey data for a job"""
     job = await can_access_job(job_id, current_user)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
+    
+    # Handle both formats: { ase_data: {...} } or direct {...}
+    ase_data = request_body.get("ase_data", request_body) if isinstance(request_body, dict) else request_body
     
     now = datetime.now(timezone.utc).isoformat()
     await _db.jobs.update_one(

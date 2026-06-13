@@ -392,7 +392,15 @@ const ASEForm = () => {
   const handleExport = async () => {
     setExporting(true);
     try {
-      await axios.put(`/jobs/${jobId}/ase-data`, { ase_data: formData });
+      // Save current form data first and wait for confirmation
+      const saveResponse = await axios.put(`/jobs/${jobId}/ase-data`, { ase_data: formData });
+      if (saveResponse.status !== 200) {
+        throw new Error("Failed to save data before export");
+      }
+      
+      // Small delay to ensure data is persisted
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       const response = await axios.get(`/jobs/${jobId}/export/ase`, { responseType: 'blob' });
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
@@ -403,7 +411,8 @@ const ASEForm = () => {
       link.remove();
       toast.success("ASE Excel exported");
     } catch (error) {
-      toast.error("Export failed");
+      console.error("Export error:", error);
+      toast.error("Export failed - " + (error.message || "Please try again"));
     } finally {
       setExporting(false);
     }
@@ -494,7 +503,7 @@ const ASEForm = () => {
 
           {/* Tab 1: ASE CKLIST */}
           <TabsContent value="ase-cklist">
-            <ASEChecklistTab formData={formData} handleChange={handleChange} />
+            <ASEChecklistTab formData={formData} handleChange={handleChange} poles={poles} underground={underground} />
           </TabsContent>
 
           {/* Tab 2: Coordinator Input */}
