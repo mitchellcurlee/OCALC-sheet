@@ -588,6 +588,79 @@ const JobMap = () => {
     return items;
   }, [route, ug]);
 
+  // Compute ordered segments based on sort_order (for default line rendering)
+  // This replaces the old ugConnectors logic with proper sort_order-based connections
+  const orderedSegments = useMemo(() => {
+    // Combine all items with GPS coordinates
+    const allItems = [];
+    
+    route.forEach(p => {
+      allItems.push({
+        id: p.id,
+        type: "pole",
+        pos: p.pos,
+        sort_order: p.sort_order ?? Infinity,
+        label: p.pole_number || 'Pole'
+      });
+    });
+    
+    ug.forEach(u => {
+      allItems.push({
+        id: u.id,
+        type: "underground",
+        ugType: u.type,
+        pos: u.pos,
+        sort_order: u.sort_order ?? Infinity,
+        label: u.label || u.type
+      });
+    });
+    
+    // Sort by sort_order (matching job page display order)
+    allItems.sort((a, b) => a.sort_order - b.sort_order);
+    
+    // Create segments between consecutive items
+    const segments = [];
+    for (let i = 0; i < allItems.length - 1; i++) {
+      const fromItem = allItems[i];
+      const toItem = allItems[i + 1];
+      
+      // Calculate distance
+      const latDiff = (toItem.pos[0] - fromItem.pos[0]) * 364000;
+      const lngDiff = (toItem.pos[1] - fromItem.pos[1]) * 288200;
+      const distFt = Math.sqrt(latDiff * latDiff + lngDiff * lngDiff);
+      
+      // Calculate midpoint
+      const mid = [
+        (fromItem.pos[0] + toItem.pos[0]) / 2,
+        (fromItem.pos[1] + toItem.pos[1]) / 2
+      ];
+      
+      // Determine segment type and styling
+      const isAerial = fromItem.type === "pole" && toItem.type === "pole";
+      const hasUnderground = fromItem.type === "underground" || toItem.type === "underground";
+      
+      // Check if either item is MPOE or after MPOE
+      const mpoeIndex = allItems.findIndex(item => item.ugType === "MPOE");
+      const isAfterMPOE = mpoeIndex >= 0 && i >= mpoeIndex;
+      const isMPOE = fromItem.ugType === "MPOE" || toItem.ugType === "MPOE";
+      
+      segments.push({
+        from: fromItem,
+        to: toItem,
+        fromPos: fromItem.pos,
+        toPos: toItem.pos,
+        mid,
+        distFt,
+        isAerial,
+        hasUnderground,
+        isRed: isMPOE || isAfterMPOE,
+        segmentType: isAerial ? "aerial" : "underground"
+      });
+    }
+    
+    return segments;
+  }, [route, ug]);
+
   // ======== END CONNECTION MANAGEMENT ========
 
   const downloadImage = useCallback(async () => {
@@ -899,51 +972,53 @@ const JobMap = () => {
               <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}" maxNativeZoom={19} maxZoom={22} />
               <FitBounds points={allPoints} disabled={editMode} />
               <MapRefSetter mapRef={mapRef} />
-              {/* Aerial path segments (BLUE, or RED after MPOE) - editable */}
-              {route.length > 1 && route.slice(0, -1).map((fromPole, i) => {
-                const toPole = route[i + 1];
-                const segmentKey = `${fromPole.id}-${toPole.id}`;
-                const waypoints = customRoutes[segmentKey] || [];
-                const segmentIsAfterMPOE = isAfterMPOE.segments[i] || false;
+              
+              {/* ALL SEGMENTS - rendered in sort_order (job page order) */}
+              {orderedSegments.map((seg, i) => {
+                const segmentKey = `${seg.from.id}-${seg.to.id}`;
+                
+                // For aerial pole-to-pole segments, use EditableRoute with waypoints
+                if (seg.isAerial) {
+                  const waypoints = customRoutes[segmentKey] || [];
+                  return (
+                    <EditableRoute
+                      key={segmentKey}
+                      startPos={seg.fromPos}
+                      endPos={seg.toPos}
+                      waypoints={waypoints}
+                      segmentId={segmentKey}
+                      onWaypointsChange={handleWaypointsChange}
+                      editMode={editMode}
+                      color={seg.isRed ? "#dc2626" : "#2563eb"}
+                      weight={3}
+                      showDistance={true}
+                      isAfterMPOE={seg.isRed}
+                    />
+                  );
+                }
+                
+                // For segments involving underground items, use dashed Polyline
                 return (
-                  <EditableRoute
-                    key={segmentKey}
-                    startPos={fromPole.pos}
-                    endPos={toPole.pos}
-                    waypoints={waypoints}
-                    segmentId={segmentKey}
-                    onWaypointsChange={handleWaypointsChange}
-                    editMode={editMode}
-                    color={segmentIsAfterMPOE ? "#dc2626" : "#2563eb"}
-                    weight={3}
-                    showDistance={true}
-                    isAfterMPOE={segmentIsAfterMPOE}
-                  />
+                  <React.Fragment key={segmentKey}>
+                    <Polyline 
+                      positions={[seg.fromPos, seg.toPos]} 
+                      pathOptions={{ 
+                        color: seg.isRed ? "#dc2626" : "#16a34a", 
+                        weight: 2.5, 
+                        dashArray: "6,4" 
+                      }} 
+                    />
+                    {/* Distance label at midpoint */}
+                    <Marker 
+                      position={seg.mid} 
+                      icon={ugConnectorLabel(fmtFeet(seg.distFt), seg.isRed)} 
+                      interactive={false} 
+                      zIndexOffset={900} 
+                    />
+                  </React.Fragment>
                 );
               })}
-              {/* Underground connectors (GREEN dashed, or RED if MPOE or after MPOE) */}
-              {ugConnectors.map((c, i) => {
-                const isMPOE = c.ugType === "MPOE";
-                // Find the underground item index for this connector
-                const ugItem = ug.find(u => u.type === c.ugType && Math.abs(u.pos[0] - c.from[0]) < 0.0001);
-                const ugIdx = ugItem ? ug.indexOf(ugItem) : -1;
-                const connectorIsAfterMPOE = ugIdx >= 0 ? (isAfterMPOE.underground[ugIdx] || false) : false;
-                const isRed = isMPOE || connectorIsAfterMPOE;
-                return (
-                  <Polyline key={`ug-conn-${i}`} positions={[c.from, c.to]} pathOptions={{ color: isRed ? "#dc2626" : "#16a34a", weight: 2.5, dashArray: "6,4" }} />
-                );
-              })}
-              {/* Underground connector distance labels */}
-              {ugConnectors.map((c, i) => {
-                const isMPOE = c.ugType === "MPOE";
-                const ugItem = ug.find(u => u.type === c.ugType && Math.abs(u.pos[0] - c.from[0]) < 0.0001);
-                const ugIdx = ugItem ? ug.indexOf(ugItem) : -1;
-                const connectorIsAfterMPOE = ugIdx >= 0 ? (isAfterMPOE.underground[ugIdx] || false) : false;
-                const isRed = isMPOE || connectorIsAfterMPOE;
-                return (
-                  <Marker key={`ug-lbl-${i}`} position={c.mid} icon={ugConnectorLabel(fmtFeet(c.ft), isRed)} interactive={false} zIndexOffset={900} />
-                );
-              })}
+              
               {poleDisplayInfo.map((p, i) => {
                 const label = markerLabel(p, i, showStops);
                 // Show station number if enabled
