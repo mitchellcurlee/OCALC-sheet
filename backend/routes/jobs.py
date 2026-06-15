@@ -968,7 +968,7 @@ async def get_ase_gallery(job_id: str, token: str = None):
         raise HTTPException(status_code=401, detail="Token required")
     
     # Verify token
-    if not verify_gallery_token(token, job_id):
+    if not verify_download_token("ase_gallery", job_id, token):
         raise HTTPException(status_code=401, detail="Invalid or expired token")
     
     job = await _db.jobs.find_one({"id": job_id}, {"_id": 0})
@@ -1369,7 +1369,7 @@ async def export_ase_excel(job_id: str, current_user: dict = Depends(get_current
         row += 1
         
         # Add gallery link
-        gallery_token = create_gallery_token(job_id, days_valid=30)
+        gallery_token = generate_download_token("ase_gallery", job_id, expires_days=30)
         public_base = os.environ.get("PUBLIC_URL", "https://poledatasheet.info")
         gallery_url = f"{public_base}/ase-gallery/{job_id}?token={gallery_token}"
         

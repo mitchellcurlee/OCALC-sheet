@@ -15,8 +15,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { MultiPhotoUpload } from "@/components/MultiPhotoUpload";
-import { ArrowLeft, Save, Loader2, MapPin, Search } from "lucide-react";
+import { PhotoMarkupEditor } from "@/components/PhotoMarkupEditor";
+import { ArrowLeft, Save, Loader2, MapPin, Search, Pencil } from "lucide-react";
 
 const MapClickHandler = ({ onSelect }) => {
   useMapEvents({ click: (e) => onSelect(e.latlng.lat, e.latlng.lng) });
@@ -293,7 +293,21 @@ const UndergroundForm = () => {
               </div>
             )}
             
-            <MultiPhotoUpload label="Photos" value={formData.photos} onChange={(v) => setFormData((p) => ({ ...p, photos: v }))} testId="ug-photo" />
+            {/* Photos with Markup Editor */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Pencil className="w-4 h-4 text-green-600" />
+                <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Photos & Markups</Label>
+              </div>
+              <PhotoMarkupEditor 
+                photos={formData.photos || []} 
+                onChange={(v) => setFormData((p) => ({ ...p, photos: v }))}
+                label="Underground Photos"
+              />
+              <p className="text-xs text-zinc-500">
+                Upload photos and add annotations: lines, shapes, text, and measurement markers. Click on a photo to edit.
+              </p>
+            </div>
           </div>
         </form>
       </main>

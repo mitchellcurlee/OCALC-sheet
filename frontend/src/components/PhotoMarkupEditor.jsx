@@ -35,6 +35,8 @@ const UG_MARKERS = [
   { type: "SOC-E", label: "SOC End", color: "#f97316" },
   { type: "RSR", label: "Riser", color: "#8b5cf6" },
   { type: "MPOE", label: "MPOE", color: "#dc2626" },
+  { type: "EOP", label: "Edge of Pavement", color: "#64748b" },
+  { type: "ROW", label: "Right of Way", color: "#64748b" },
 ];
 
 const LINE_COLORS = [
@@ -665,13 +667,18 @@ export const PhotoMarkupEditor = ({
         }
       } else if (ann.type === "text") {
         const fontSize = ann.fontSize || 16;
-        if (x >= ann.x && x <= ann.x + 100 && y >= ann.y - fontSize && y <= ann.y) {
+        // Estimate text width based on character count
+        const textWidth = (ann.text?.length || 5) * fontSize * 0.6;
+        if (x >= ann.x - 5 && x <= ann.x + textWidth + 5 && y >= ann.y - fontSize - 5 && y <= ann.y + 5) {
           return i;
         }
       } else if (ann.type === "label") {
         const fontSize = ann.fontSize || 14;
         const padding = ann.padding || 4;
-        if (x >= ann.x - padding && x <= ann.x + 100 && y >= ann.y - fontSize - padding && y <= ann.y + padding) {
+        // Estimate text width based on character count
+        const textWidth = (ann.text?.length || 5) * fontSize * 0.6;
+        if (x >= ann.x - padding - 5 && x <= ann.x + textWidth + padding + 5 && 
+            y >= ann.y - fontSize - padding - 5 && y <= ann.y + padding + 5) {
           return i;
         }
       } else if (ann.type === "shape") {
@@ -1338,24 +1345,27 @@ export const PhotoMarkupEditor = ({
                   {undergroundItems.length > 0 && (
                     <div className="space-y-1">
                       <Label className="text-[10px] font-mono text-green-700">UNDERGROUND ({undergroundItems.length})</Label>
-                      <div className="grid grid-cols-2 gap-1 max-h-28 overflow-y-auto bg-green-50 p-2 rounded">
+                      <div className="grid grid-cols-1 gap-1 max-h-32 overflow-y-auto bg-green-50 p-2 rounded">
                         {undergroundItems.map((item, idx) => {
                           const abbr = item.type?.substring(0, 2).toUpperCase() || "UG";
-                          const itemLabel = item.label || `${abbr}-${idx + 1}`;
+                          const baseLabel = item.label || `${abbr}-${idx + 1}`;
+                          const stationNum = item.stationNumber || "";
+                          const fullLabel = stationNum ? `${baseLabel} ${stationNum}` : baseLabel;
                           return (
                             <button
                               key={item.id || idx}
                               type="button"
-                              onClick={() => setTextInput(itemLabel)}
-                              className={`p-1.5 text-[10px] font-mono rounded border text-left truncate ${
-                                textInput === itemLabel 
+                              onClick={() => setTextInput(fullLabel)}
+                              className={`p-1.5 text-[10px] font-mono rounded border text-left ${
+                                textInput === fullLabel 
                                   ? 'bg-green-200 border-green-500' 
                                   : 'border-green-300 hover:bg-green-100 bg-white'
                               }`}
-                              title={`${item.type}: ${itemLabel}`}
+                              title={`${item.type}: ${fullLabel}`}
                             >
-                              <span className="font-bold">{itemLabel}</span>
-                              <span className="text-zinc-500 ml-1">({item.type?.substring(0, 3)})</span>
+                              <span className="font-bold">{baseLabel}</span>
+                              {stationNum && <span className="text-green-700 ml-1">{stationNum}</span>}
+                              <span className="text-zinc-400 ml-1">({item.type?.substring(0, 3)})</span>
                             </button>
                           );
                         })}
@@ -1367,22 +1377,25 @@ export const PhotoMarkupEditor = ({
                   {poles.length > 0 && (
                     <div className="space-y-1">
                       <Label className="text-[10px] font-mono text-orange-700">POLES ({poles.length})</Label>
-                      <div className="grid grid-cols-2 gap-1 max-h-28 overflow-y-auto bg-orange-50 p-2 rounded">
+                      <div className="grid grid-cols-1 gap-1 max-h-32 overflow-y-auto bg-orange-50 p-2 rounded">
                         {poles.map((pole, idx) => {
-                          const poleLabel = pole.pole_number || `P-${idx + 1}`;
+                          const baseLabel = pole.pole_number || `P-${idx + 1}`;
+                          const stationNum = pole.stationNumber || "";
+                          const fullLabel = stationNum ? `${baseLabel} ${stationNum}` : baseLabel;
                           return (
                             <button
                               key={pole.id || idx}
                               type="button"
-                              onClick={() => setTextInput(poleLabel)}
-                              className={`p-1.5 text-[10px] font-mono rounded border text-left truncate ${
-                                textInput === poleLabel 
+                              onClick={() => setTextInput(fullLabel)}
+                              className={`p-1.5 text-[10px] font-mono rounded border text-left ${
+                                textInput === fullLabel 
                                   ? 'bg-orange-200 border-orange-500' 
                                   : 'border-orange-300 hover:bg-orange-100 bg-white'
                               }`}
-                              title={`Pole: ${poleLabel}`}
+                              title={`Pole: ${fullLabel}`}
                             >
-                              {poleLabel}
+                              <span className="font-bold">{baseLabel}</span>
+                              {stationNum && <span className="text-orange-700 ml-1">{stationNum}</span>}
                             </button>
                           );
                         })}
@@ -1429,27 +1442,30 @@ export const PhotoMarkupEditor = ({
                   {undergroundItems.length > 0 && (
                     <>
                       <Label className="text-xs font-mono text-green-700">JOB UNDERGROUND ({undergroundItems.length})</Label>
-                      <div className="grid grid-cols-2 gap-1 max-h-24 overflow-y-auto bg-green-50 p-2 rounded">
+                      <div className="grid grid-cols-1 gap-1 max-h-28 overflow-y-auto bg-green-50 p-2 rounded">
                         {undergroundItems.map((item, idx) => {
                           const abbr = item.type?.substring(0, 2).toUpperCase() || "UG";
-                          const itemLabel = item.label || `${abbr}-${idx + 1}`;
+                          const baseLabel = item.label || `${abbr}-${idx + 1}`;
+                          const stationNum = item.stationNumber || "";
+                          const fullLabel = stationNum ? `${baseLabel} ${stationNum}` : baseLabel;
                           return (
                             <button
                               key={item.id || idx}
                               type="button"
                               onClick={() => {
-                                setSelectedMarker(itemLabel);
-                                setTextInput(itemLabel);
+                                setSelectedMarker(fullLabel);
+                                setTextInput(fullLabel);
                               }}
-                              className={`p-1 text-[10px] font-mono rounded border text-left truncate ${
-                                selectedMarker === itemLabel 
+                              className={`p-1 text-[10px] font-mono rounded border text-left ${
+                                selectedMarker === fullLabel 
                                   ? 'bg-green-200 border-green-500' 
                                   : 'border-green-300 hover:bg-green-100 bg-white'
                               }`}
-                              title={`${item.type}: ${itemLabel}`}
+                              title={`${item.type}: ${fullLabel}`}
                             >
-                              <span className="font-bold">{itemLabel}</span>
-                              <span className="text-zinc-500 ml-1">({item.type?.substring(0, 3)})</span>
+                              <span className="font-bold">{baseLabel}</span>
+                              {stationNum && <span className="text-green-700 ml-1">{stationNum}</span>}
+                              <span className="text-zinc-400 ml-1">({item.type?.substring(0, 3)})</span>
                             </button>
                           );
                         })}
@@ -1461,25 +1477,28 @@ export const PhotoMarkupEditor = ({
                   {poles.length > 0 && (
                     <>
                       <Label className="text-xs font-mono text-orange-700">JOB POLES ({poles.length})</Label>
-                      <div className="grid grid-cols-2 gap-1 max-h-24 overflow-y-auto bg-orange-50 p-2 rounded">
+                      <div className="grid grid-cols-1 gap-1 max-h-28 overflow-y-auto bg-orange-50 p-2 rounded">
                         {poles.map((pole, idx) => {
-                          const poleLabel = pole.pole_number || `P-${idx + 1}`;
+                          const baseLabel = pole.pole_number || `P-${idx + 1}`;
+                          const stationNum = pole.stationNumber || "";
+                          const fullLabel = stationNum ? `${baseLabel} ${stationNum}` : baseLabel;
                           return (
                             <button
                               key={pole.id || idx}
                               type="button"
                               onClick={() => {
-                                setSelectedMarker(poleLabel);
-                                setTextInput(poleLabel);
+                                setSelectedMarker(fullLabel);
+                                setTextInput(fullLabel);
                               }}
-                              className={`p-1 text-[10px] font-mono rounded border text-left truncate ${
-                                selectedMarker === poleLabel 
+                              className={`p-1 text-[10px] font-mono rounded border text-left ${
+                                selectedMarker === fullLabel 
                                   ? 'bg-orange-200 border-orange-500' 
                                   : 'border-orange-300 hover:bg-orange-100 bg-white'
                               }`}
-                              title={`Pole: ${poleLabel}`}
+                              title={`Pole: ${fullLabel}`}
                             >
-                              {poleLabel}
+                              <span className="font-bold">{baseLabel}</span>
+                              {stationNum && <span className="text-orange-700 ml-1">{stationNum}</span>}
                             </button>
                           );
                         })}
@@ -1549,9 +1568,11 @@ export const PhotoMarkupEditor = ({
               {tool === "select" && selectedAnnotation !== null && (
                 <div className="space-y-2 p-2 bg-blue-50 rounded">
                   <Label className="text-xs font-mono text-blue-700">SELECTED ITEM</Label>
+                  <p className="text-xs text-blue-600">Drag to move</p>
                   {annotations[selectedAnnotation]?.type === "marker" && (
                     <div className="space-y-1">
-                      <Label className="text-xs">Resize marker:</Label>
+                      <Label className="text-xs">Marker: {annotations[selectedAnnotation]?.label}</Label>
+                      <Label className="text-xs">Resize:</Label>
                       <Slider
                         value={[annotations[selectedAnnotation]?.size || 24]}
                         onValueChange={([v]) => resizeSelectedMarker(v)}
@@ -1563,21 +1584,36 @@ export const PhotoMarkupEditor = ({
                     </div>
                   )}
                   {annotations[selectedAnnotation]?.type === "label" && (
-                    <div className="space-y-1">
-                      <Label className="text-xs">Resize label:</Label>
+                    <div className="space-y-2">
+                      <div className="text-xs bg-white p-1 rounded border">
+                        <span className="font-bold">{annotations[selectedAnnotation]?.text}</span>
+                      </div>
+                      <Label className="text-xs">Resize label: {annotations[selectedAnnotation]?.fontSize || 14}px</Label>
                       <Slider
                         value={[annotations[selectedAnnotation]?.fontSize || 14]}
                         onValueChange={([v]) => resizeSelectedLabel(v)}
                         min={10}
-                        max={32}
+                        max={48}
                         step={1}
                         className="w-full"
                       />
                     </div>
                   )}
+                  {annotations[selectedAnnotation]?.type === "text" && (
+                    <div className="space-y-1">
+                      <div className="text-xs bg-white p-1 rounded border">
+                        <span className="font-bold">{annotations[selectedAnnotation]?.text}</span>
+                      </div>
+                    </div>
+                  )}
                   {annotations[selectedAnnotation]?.type === "polyline" && (
                     <div className="text-xs text-blue-600 bg-blue-100 p-2 rounded">
                       <p>Click and drag vertices to edit the line.</p>
+                    </div>
+                  )}
+                  {annotations[selectedAnnotation]?.type === "straightline" && (
+                    <div className="text-xs text-blue-600 bg-blue-100 p-2 rounded">
+                      <p>Straight line selected.</p>
                     </div>
                   )}
                   <Button

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { PhotoMarkupEditor } from "@/components/PhotoMarkupEditor";
 import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronUp, MapPin, Image as ImageIcon } from "lucide-react";
@@ -26,6 +26,91 @@ const MarkupTab = ({
       [section]: !prev[section]
     }));
   };
+
+  // Calculate station numbers for items
+  const stationNumbers = useMemo(() => {
+    // Helper function to convert feet to station format
+    const toStation = (feet) => {
+      const stations = Math.floor(feet / 100);
+      const remainder = Math.round(feet % 100);
+      return `${stations}+${remainder.toString().padStart(2, '0')}`;
+    };
+    
+    // Helper function to calculate distance in feet between two GPS coordinates
+    const distanceFeet = (lat1, lng1, lat2, lng2) => {
+      if (!lat1 || !lng1 || !lat2 || !lng2) return 0;
+      const R = 6371000;
+      const lat1Rad = (lat1 * Math.PI) / 180;
+      const lat2Rad = (lat2 * Math.PI) / 180;
+      const dLat = lat2Rad - lat1Rad;
+      const dLng = ((lng2 - lng1) * Math.PI) / 180;
+      const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1Rad) * Math.cos(lat2Rad) * Math.sin(dLng / 2) ** 2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) * 3.28084;
+    };
+    
+    // Build ordered list of all items by sort_order
+    const allItems = [];
+    
+    // Add underground items
+    underground.forEach(item => {
+      if (item.latitude && item.longitude) {
+        allItems.push({
+          id: item.id,
+          type: 'underground',
+          lat: parseFloat(item.latitude),
+          lng: parseFloat(item.longitude),
+          sortOrder: item.sort_order ?? Infinity
+        });
+      }
+    });
+    
+    // Add poles
+    poles.forEach(pole => {
+      if (pole.latitude && pole.longitude) {
+        allItems.push({
+          id: pole.id,
+          type: 'pole',
+          lat: parseFloat(pole.latitude),
+          lng: parseFloat(pole.longitude),
+          sortOrder: pole.sort_order ?? Infinity
+        });
+      }
+    });
+    
+    // Sort by sort_order
+    allItems.sort((a, b) => a.sortOrder - b.sortOrder);
+    
+    // Calculate cumulative station numbers
+    const stations = {};
+    let runningDistance = 0;
+    let prevItem = null;
+    
+    allItems.forEach(item => {
+      if (prevItem) {
+        const dist = distanceFeet(prevItem.lat, prevItem.lng, item.lat, item.lng);
+        runningDistance += dist;
+      }
+      stations[item.id] = toStation(runningDistance);
+      prevItem = item;
+    });
+    
+    return stations;
+  }, [poles, underground]);
+
+  // Create items with station numbers for PhotoMarkupEditor
+  const undergroundWithStations = useMemo(() => {
+    return underground.map(item => ({
+      ...item,
+      stationNumber: stationNumbers[item.id] || null
+    }));
+  }, [underground, stationNumbers]);
+
+  const polesWithStations = useMemo(() => {
+    return poles.map(pole => ({
+      ...pole,
+      stationNumber: stationNumbers[pole.id] || null
+    }));
+  }, [poles, stationNumbers]);
 
   // Collect all photos from poles and underground for markup gallery
   const getAllJobPhotos = () => {
@@ -63,7 +148,7 @@ const MarkupTab = ({
       "Handhole": "HH", "Manhole": "MH", "Brooks Enclosure": "BE", "Flowerpot": "FP",
       "Hoffman Box": "HB", "Pedestal": "PED", "Point of Intersection": "PI", "FBT": "FBT",
       "NTE": "NTE", "FBT/NTE": "F/N", "PFP": "PFP", "SOC Start": "SOC-S", 
-      "SOC End": "SOC-E", "Riser": "RSR", "MPOE": "MPOE",
+      "SOC End": "SOC-E", "Riser": "RSR", "MPOE": "MPOE", "EOP": "EOP", "ROW": "ROW",
     };
     return abbrs[type] || type?.substring(0, 3).toUpperCase() || "UG";
   };
@@ -86,8 +171,8 @@ const MarkupTab = ({
           photos={photos} 
           onChange={onPhotosChange}
           label={label}
-          undergroundItems={underground}
-          poles={poles}
+          undergroundItems={undergroundWithStations}
+          poles={polesWithStations}
         />
         <p className="text-xs text-zinc-500 mt-2">
           Upload photos and add annotations using the in-app editor. Use the Marker tool to add job-specific labels.
