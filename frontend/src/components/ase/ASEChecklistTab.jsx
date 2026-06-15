@@ -110,9 +110,6 @@ const ASEChecklistTab = ({ formData, handleChange, poles = [], underground = [] 
           <FieldRow label="Multi Tenant">
             <YesNoSelect value={formData.multi_tenant} onChange={(v) => handleChange("multi_tenant", v)} filled={isFilled(formData.multi_tenant)} />
           </FieldRow>
-          <FieldRow label="Router Within 300ft">
-            <YesNoSelect value={formData.router_within_300ft} onChange={(v) => handleChange("router_within_300ft", v)} filled={isFilled(formData.router_within_300ft)} />
-          </FieldRow>
           <FieldRow label="How many DMARCs?">
             <StyledInput type="number" value={formData.how_many_dmarcs} onChange={(e) => handleChange("how_many_dmarcs", e.target.value)} filled={isFilled(formData.how_many_dmarcs)} />
           </FieldRow>
