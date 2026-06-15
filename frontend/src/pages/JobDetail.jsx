@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
@@ -387,6 +387,47 @@ const JobDetail = () => {
   // Combined items for display
   const combinedItems = getCombinedItems();
 
+  // Calculate station numbers (cumulative distances along route)
+  const stationNumbers = useMemo(() => {
+    const toStation = (feet) => {
+      const stations = Math.floor(feet / 100);
+      const remainder = Math.round(feet % 100);
+      return `${stations}+${remainder.toString().padStart(2, '0')}`;
+    };
+    
+    const distanceFeet = (lat1, lng1, lat2, lng2) => {
+      const R = 6371000;
+      const φ1 = (lat1 * Math.PI) / 180;
+      const φ2 = (lat2 * Math.PI) / 180;
+      const dφ = φ2 - φ1;
+      const dλ = ((lng2 - lng1) * Math.PI) / 180;
+      const a = Math.sin(dφ / 2) ** 2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin(dλ / 2) ** 2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) * 3.28084;
+    };
+    
+    // Sort items by sort_order, then calculate cumulative distances
+    const sortedItems = [...combinedItems].filter(item => item.latitude && item.longitude);
+    sortedItems.sort((a, b) => (a.sort_order ?? Infinity) - (b.sort_order ?? Infinity));
+    
+    const stations = {};
+    let runningDistance = 0;
+    let prevItem = null;
+    
+    sortedItems.forEach(item => {
+      if (prevItem) {
+        const dist = distanceFeet(
+          parseFloat(prevItem.latitude), parseFloat(prevItem.longitude),
+          parseFloat(item.latitude), parseFloat(item.longitude)
+        );
+        runningDistance += dist;
+      }
+      stations[item.id] = toStation(runningDistance);
+      prevItem = item;
+    });
+    
+    return stations;
+  }, [combinedItems]);
+
   // Filter combined items (search poles by pole_number/owner, underground by type/label)
   const filteredItems = combinedItems.filter((item) => {
     if (!searchQuery) return true;
@@ -699,6 +740,11 @@ const JobDetail = () => {
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-zinc-900">{item.pole_number || "No #"}</span>
+                          {stationNumbers[item.id] && (
+                            <span className="text-xs font-mono bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">
+                              {stationNumbers[item.id]}
+                            </span>
+                          )}
                           <Badge className={`${getConditionColor(item.condition)} text-xs`}>
                             {item.condition || "Not set"}
                           </Badge>
@@ -780,7 +826,14 @@ const JobDetail = () => {
                         {undergroundAbbr(item.type)}
                       </div>
                       <div>
-                        <span className="font-bold text-zinc-900">{item.type}{item.label ? ` · ${item.label}` : ""}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-zinc-900">{item.type}{item.label ? ` · ${item.label}` : ""}</span>
+                          {stationNumbers[item.id] && (
+                            <span className="text-xs font-mono bg-green-100 text-green-700 px-1.5 py-0.5 rounded">
+                              {stationNumbers[item.id]}
+                            </span>
+                          )}
+                        </div>
                         <div className="flex items-center gap-3 text-xs text-zinc-500 mt-1">
                           {item.latitude && item.longitude ? (
                             <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />GPS</span>

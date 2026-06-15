@@ -656,4 +656,39 @@ Changes require redeploy to production (https://poledatasheet.info) to be visibl
 ### Requires Redeploy
 Changes require redeploy to production (https://poledatasheet.info) to be visible.
 
+## Session Update (Jun 15, 2026) - Pole Form Reorganization
 
+### Station Numbers Display
+- Added station number calculation to JobDetail.jsx
+- Station numbers now show on each pole and underground item in the job list
+- Format: `0+00`, `1+50`, etc. (stations + feet)
+- Blue badge for poles, green badge for underground items
+
+### PoleForm Reorganization
+- **Moved Birthmark & MGNV** section directly under Basic Information
+- **Removed Pole Mark Ups** section (as requested)
+- **Added R.O.W. Information** notes box between Anchor and Notes sections
+- **Simplified Birthmark Photos** to use MultiPhotoUpload (camera/gallery buttons) instead of full PhotoMarkupEditor
+
+### EF Disqualification Dropdown Update
+- Added "OVER 1000FT" option to EF Disqualification Reason dropdown in ASE Form
+- Full list now: CONSTRUCTION, REMODEL, CWOTS, CONSTRUCTION TRAILER, CELL SITE, OVER 1000FT, N/A
+
+### Backend Model Updates
+- Added `row_information: Optional[str]` field to Pole model (PoleBase and PoleUpdate)
+- Field persists R.O.W. Information notes for each pole
+
+### Files Modified
+- `/app/frontend/src/components/PoleForm.jsx` - Form reorganization, simplified birthmark photos
+- `/app/frontend/src/pages/JobDetail.jsx` - Added station number calculation and display
+- `/app/frontend/src/components/ase/ASEFormConstants.js` - Added OVER 1000FT option
+- `/app/backend/models/pole.py` - Added row_information field
+
+### Verified
+- Birthmark & MGNV section now appears right after Basic Information
+- R.O.W. Information textarea visible at bottom of form (before Notes)
+- Station numbers display on pole/UG cards in job list
+- EF Disqualification dropdown includes all 7 options
+
+### Requires Redeploy
+Changes require redeploy to production (https://poledatasheet.info) to be visible.

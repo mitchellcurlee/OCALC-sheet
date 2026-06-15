@@ -74,6 +74,7 @@ class PoleBase(BaseModel):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     notes: Optional[str] = None
+    row_information: Optional[str] = None  # R.O.W. Information notes
     sort_order: Optional[int] = None  # Custom sort order for manual reordering
 
 
@@ -124,6 +125,7 @@ class PoleUpdate(BaseModel):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     notes: Optional[str] = None
+    row_information: Optional[str] = None
     sort_order: Optional[int] = None
 
 

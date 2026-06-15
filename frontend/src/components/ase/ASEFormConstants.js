@@ -24,7 +24,7 @@ export const ASE_OPTIONS = {
   powerType: ["AC", "DC", "DUEL POWER SUPPLY"],
   
   // Construction Type / EF Disqualification Reason (from SOURCE sheet Column F)  
-  efDisqualificationReason: ["CONSTRUCTION", "REMODEL", "CWOTS", "CONSTRUCTION TRAILER", "CELL SITE", "N/A"],
+  efDisqualificationReason: ["CONSTRUCTION", "REMODEL", "CWOTS", "CONSTRUCTION TRAILER", "CELL SITE", "OVER 1000FT", "N/A"],
   
   // Terminal Location (from data sheet Column F)
   terminalLocation: ["NEW", "EXISTING"],

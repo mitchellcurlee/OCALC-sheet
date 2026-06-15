@@ -32,6 +32,7 @@ import { HeightInput } from "@/components/HeightInput";
 import { SpanDistance } from "@/components/SpanDistance";
 import { ReferenceHeightMeasurer } from "@/components/ReferenceHeightMeasurer";
 import { PhotoMarkupEditor } from "@/components/PhotoMarkupEditor";
+import { MultiPhotoUpload } from "@/components/MultiPhotoUpload";
 
 // Fix Leaflet marker icon issue
 delete L.Icon.Default.prototype._getIconUrl;
@@ -90,9 +91,8 @@ const emptyFormData = () => ({
   span2_direction: "", span2_distance: "", span2_owner: "",
   span3_direction: "", span3_distance: "", span3_owner: "",
   span4_direction: "", span4_distance: "", span4_owner: "",
-  latitude: "", longitude: "-", notes: "",
+  latitude: "", longitude: "-", notes: "", row_information: "",
   hoa_markup_photos: [], // Photos for HOA markup/annotation
-  pole_markup_photos: [], // General pole photos with markup capability
 });
 const emptyDownGuy = () => ({ _key: rowKey(), owner: "", direction: "", size: "", type: "", condition: "", height: "", lead: "" });
 const emptyKnuckle = () => ({ _key: rowKey(), size: "", total_eyes: "", direction: "", condition: "", photos: [] });
@@ -206,9 +206,8 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
       span2_direction: p.span2_direction || "", span2_distance: p.span2_distance?.toString() || "", span2_owner: p.span2_owner || "",
       span3_direction: p.span3_direction || "", span3_distance: p.span3_distance?.toString() || "", span3_owner: p.span3_owner || "",
       span4_direction: p.span4_direction || "", span4_distance: p.span4_distance?.toString() || "", span4_owner: p.span4_owner || "",
-      latitude: p.latitude?.toString() || "", longitude: p.longitude?.toString() || "-", notes: p.notes || "",
+      latitude: p.latitude?.toString() || "", longitude: p.longitude?.toString() || "-", notes: p.notes || "", row_information: p.row_information || "",
       hoa_markup_photos: p.hoa_markup_photos || [],
-      pole_markup_photos: p.pole_markup_photos || [],
     });
     setDownGuys(p.down_guys?.length > 0 ? p.down_guys.map(dg => ({ _key: rowKey(), ...dg, height: dg.height?.toString() || "" })) : [{ _key: rowKey(), owner: "", direction: "", size: "", type: "", condition: "", height: "", lead: "" }]);
     // Convert legacy single photo to photos array for knuckles
@@ -685,6 +684,62 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
             </div>
           </div>
 
+          {/* Birthmark & MGNV */}
+          <div className="industrial-card p-4 sm:p-5">
+            <h2 className="font-heading text-base sm:text-lg font-bold text-zinc-900 mb-3 sm:mb-4 flex items-center gap-2">
+              <div className="w-1 h-5 bg-purple-500"></div>
+              Birthmark & MGNV
+            </h2>
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row items-start gap-6">
+                <div className="space-y-2 w-full sm:w-48">
+                  <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Has Birthmark</Label>
+                  <Select value={formData.has_birthmark ? "Yes" : "No"} onValueChange={(v) => setFormData((prev) => ({ ...prev, has_birthmark: v === "Yes", birthmark_photos: v === "Yes" ? prev.birthmark_photos : [] }))}>
+                    <SelectTrigger className="h-10 bg-white border-zinc-300 text-zinc-900" data-testid="has-birthmark-select"><SelectValue placeholder="Yes / No" /></SelectTrigger>
+                    <SelectContent className="bg-zinc-50 border-zinc-300"><SelectItem value="Yes">Yes</SelectItem><SelectItem value="No">No</SelectItem></SelectContent>
+                  </Select>
+                </div>
+                {formData.has_birthmark && (
+                  <div className="flex-1 w-full sm:w-auto">
+                    <MultiPhotoUpload 
+                      label="Birthmark Photos" 
+                      value={formData.birthmark_photos || []} 
+                      onChange={(v) => setFormData((prev) => ({ ...prev, birthmark_photos: v }))} 
+                      testId="birthmark"
+                    />
+                  </div>
+                )}
+              </div>
+              <div className="pt-4 border-t border-zinc-300">
+                <h3 className="text-sm font-mono text-cyan-700 mb-3">MGNV</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">MGNV Present</Label>
+                    <Select value={formData.mgnv} onValueChange={(v) => handleSelectChange("mgnv", v)}>
+                      <SelectTrigger className="h-10 bg-white border-zinc-300 text-zinc-900" data-testid="mgnv-select"><SelectValue placeholder="Yes / No" /></SelectTrigger>
+                      <SelectContent className="bg-zinc-50 border-zinc-300"><SelectItem value={BLANK} className="text-zinc-500">—</SelectItem><SelectItem value="Yes">Yes</SelectItem><SelectItem value="No">No</SelectItem></SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Condition</Label>
+                    <Select value={formData.mgnv_condition} onValueChange={(v) => handleSelectChange("mgnv_condition", v)}>
+                      <SelectTrigger className="h-10 bg-white border-zinc-300 text-zinc-900" data-testid="mgnv-condition-select"><SelectValue placeholder="Good / Broken" /></SelectTrigger>
+                      <SelectContent className="bg-zinc-50 border-zinc-300"><SelectItem value={BLANK} className="text-zinc-500">—</SelectItem><SelectItem value="Good" className="text-green-700">Good</SelectItem><SelectItem value="Broken" className="text-red-600">Broken</SelectItem></SelectContent>
+                    </Select>
+                  </div>
+                  <div className="col-span-1 sm:col-span-3">
+                    <MultiPhotoUpload 
+                      label="MGNV Photos" 
+                      value={formData.mgnv_photos || []} 
+                      onChange={(v) => setFormData((prev) => ({ ...prev, mgnv_photos: v }))} 
+                      testId="mgnv"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Spans - 4 Rows */}
           <div className="industrial-card p-4 sm:p-5">
             <div className="flex items-center justify-between mb-3 sm:mb-4">
@@ -827,60 +882,6 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
                       />
                     )}
                   </MapContainer>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Birthmark & MGNV */}
-          <div className="industrial-card p-4 sm:p-5">
-            <h2 className="font-heading text-base sm:text-lg font-bold text-zinc-900 mb-3 sm:mb-4 flex items-center gap-2">
-              <div className="w-1 h-5 bg-purple-500"></div>
-              Birthmark & MGNV
-            </h2>
-            <div className="space-y-4">
-              <div className="flex flex-col sm:flex-row items-start gap-6">
-                <div className="space-y-2 w-full sm:w-48">
-                  <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Has Birthmark</Label>
-                  <Select value={formData.has_birthmark ? "Yes" : "No"} onValueChange={(v) => setFormData((prev) => ({ ...prev, has_birthmark: v === "Yes", birthmark_photos: v === "Yes" ? prev.birthmark_photos : [] }))}>
-                    <SelectTrigger className="h-10 bg-white border-zinc-300 text-zinc-900" data-testid="has-birthmark-select"><SelectValue placeholder="Yes / No" /></SelectTrigger>
-                    <SelectContent className="bg-zinc-50 border-zinc-300"><SelectItem value="Yes">Yes</SelectItem><SelectItem value="No">No</SelectItem></SelectContent>
-                  </Select>
-                </div>
-                {formData.has_birthmark && (
-                  <div className="flex-1 w-full sm:w-auto">
-                    <PhotoMarkupEditor 
-                      photos={formData.birthmark_photos || []} 
-                      onChange={(v) => setFormData((prev) => ({ ...prev, birthmark_photos: v }))} 
-                      label="Birthmark Photos"
-                    />
-                  </div>
-                )}
-              </div>
-              <div className="pt-4 border-t border-zinc-300">
-                <h3 className="text-sm font-mono text-cyan-700 mb-3">MGNV</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">MGNV Present</Label>
-                    <Select value={formData.mgnv} onValueChange={(v) => handleSelectChange("mgnv", v)}>
-                      <SelectTrigger className="h-10 bg-white border-zinc-300 text-zinc-900" data-testid="mgnv-select"><SelectValue placeholder="Yes / No" /></SelectTrigger>
-                      <SelectContent className="bg-zinc-50 border-zinc-300"><SelectItem value={BLANK} className="text-zinc-500">—</SelectItem><SelectItem value="Yes">Yes</SelectItem><SelectItem value="No">No</SelectItem></SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Condition</Label>
-                    <Select value={formData.mgnv_condition} onValueChange={(v) => handleSelectChange("mgnv_condition", v)}>
-                      <SelectTrigger className="h-10 bg-white border-zinc-300 text-zinc-900" data-testid="mgnv-condition-select"><SelectValue placeholder="Good / Broken" /></SelectTrigger>
-                      <SelectContent className="bg-zinc-50 border-zinc-300"><SelectItem value={BLANK} className="text-zinc-500">—</SelectItem><SelectItem value="Good" className="text-green-700">Good</SelectItem><SelectItem value="Broken" className="text-red-600">Broken</SelectItem></SelectContent>
-                    </Select>
-                  </div>
-                  <div className="col-span-1 sm:col-span-3">
-                    <PhotoMarkupEditor 
-                      photos={formData.mgnv_photos || []} 
-                      onChange={(v) => setFormData((prev) => ({ ...prev, mgnv_photos: v }))} 
-                      label="MGNV Photos"
-                    />
-                  </div>
                 </div>
               </div>
             </div>
@@ -1042,28 +1043,6 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
             </div>
           </div>
 
-          {/* Pole Mark Ups - General Photo Annotation */}
-          <div className="industrial-card p-4 sm:p-5">
-            <h2 className="font-heading text-base sm:text-lg font-bold text-zinc-900 mb-3 sm:mb-4 flex items-center gap-2">
-              <div className="w-1 h-5 bg-cyan-500"></div>
-              Pole Mark Ups
-            </h2>
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <Pencil className="w-4 h-4 text-cyan-600" />
-                <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">General Pole Photos</Label>
-              </div>
-              <PhotoMarkupEditor 
-                photos={formData.pole_markup_photos || []} 
-                onChange={(v) => setFormData(prev => ({ ...prev, pole_markup_photos: v }))}
-                label="Pole Mark Ups"
-              />
-              <p className="text-xs text-zinc-500">
-                Upload pole photos and add annotations: lines, shapes, text, underground icons, and measurement markers.
-              </p>
-            </div>
-          </div>
-
           {/* Down Guys - Dynamic Rows */}
           <div className="industrial-card p-4 sm:p-5">
             <div className="flex items-center justify-between mb-3 sm:mb-4">
@@ -1195,6 +1174,15 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
                 ))}
               </div>
             </div>
+          </div>
+
+          {/* R.O.W. Information */}
+          <div className="industrial-card p-4 sm:p-5">
+            <h2 className="font-heading text-base sm:text-lg font-bold text-zinc-900 mb-3 sm:mb-4 flex items-center gap-2">
+              <div className="w-1 h-5 bg-amber-500"></div>
+              R.O.W. Information
+            </h2>
+            <Textarea name="row_information" value={formData.row_information} onChange={handleInputChange} placeholder="Right of Way information and measurements..." rows={3} className="bg-white border-zinc-300 text-zinc-900 resize-none" data-testid="row-information-input" />
           </div>
 
           {/* Notes */}
