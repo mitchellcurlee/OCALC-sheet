@@ -7,7 +7,8 @@ import { Slider } from "@/components/ui/slider";
 import { 
   Camera, Upload, X, Pencil, Type, Circle, Square, 
   Minus, Undo, Redo, Trash2, Loader2, ZoomIn,
-  Save, MousePointer, Move, ArrowRight, Triangle, List
+  Save, MousePointer, Move, ArrowRight, Triangle, List,
+  Waypoints, GitBranch
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -55,6 +56,34 @@ const SHAPES = [
   { type: "triangle", icon: Triangle, label: "Triangle" },
 ];
 
+// Helper function: Calculate distance from point to line segment
+const pointToLineDistance = (px, py, x1, y1, x2, y2) => {
+  const A = px - x1;
+  const B = py - y1;
+  const C = x2 - x1;
+  const D = y2 - y1;
+  
+  const dot = A * C + B * D;
+  const lenSq = C * C + D * D;
+  let param = -1;
+  
+  if (lenSq !== 0) param = dot / lenSq;
+  
+  let xx, yy;
+  if (param < 0) {
+    xx = x1;
+    yy = y1;
+  } else if (param > 1) {
+    xx = x2;
+    yy = y2;
+  } else {
+    xx = x1 + param * C;
+    yy = y1 + param * D;
+  }
+  
+  return Math.sqrt((px - xx) ** 2 + (py - yy) ** 2);
+};
+
 /**
  * PhotoMarkupEditor - In-app photo editor for markup annotations
  * Allows adding lines, markers, shapes, and text notes on photos
@@ -78,7 +107,7 @@ export const PhotoMarkupEditor = ({
   const containerRef = useRef(null);
   
   // Editor state
-  const [tool, setTool] = useState("select"); // select, draw, marker, text, shape
+  const [tool, setTool] = useState("select"); // select, draw, marker, text, shape, straightline, polyline
   const [lineColor, setLineColor] = useState("#dc2626");
   const [lineWidth, setLineWidth] = useState(3);
   const [fillShape, setFillShape] = useState(false);
@@ -98,6 +127,12 @@ export const PhotoMarkupEditor = ({
   const [shapeStart, setShapeStart] = useState(null);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [showLegend, setShowLegend] = useState(false);
+  
+  // Polyline state - for multi-point editable lines
+  const [polylinePoints, setPolylinePoints] = useState([]); // Points being added
+  const [editingVertexIndex, setEditingVertexIndex] = useState(null); // Which vertex is being dragged
+  const [straightLineStart, setStraightLineStart] = useState(null); // Start point for straight line
+  const [labelSize, setLabelSize] = useState(14); // Size for insertable text labels
   const imageRef = useRef(null);
 
   // Helper to get full photo URL
@@ -310,6 +345,53 @@ export const PhotoMarkupEditor = ({
           ctx.stroke();
           ctx.setLineDash([]);
         }
+      } else if (ann.type === "straightline") {
+        // Simple point-to-point straight line
+        ctx.beginPath();
+        ctx.strokeStyle = ann.color;
+        ctx.lineWidth = ann.width;
+        ctx.lineCap = "round";
+        ctx.moveTo(ann.startX, ann.startY);
+        ctx.lineTo(ann.endX, ann.endY);
+        ctx.stroke();
+        
+        if (isSelected) {
+          // Draw selection indicators at endpoints
+          ctx.fillStyle = "#3b82f6";
+          ctx.beginPath();
+          ctx.arc(ann.startX, ann.startY, 6, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(ann.endX, ann.endY, 6, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else if (ann.type === "polyline") {
+        // Multi-point editable line
+        if (ann.points && ann.points.length > 1) {
+          ctx.beginPath();
+          ctx.strokeStyle = ann.color;
+          ctx.lineWidth = ann.width;
+          ctx.lineCap = "round";
+          ctx.lineJoin = "round";
+          ctx.moveTo(ann.points[0].x, ann.points[0].y);
+          for (let i = 1; i < ann.points.length; i++) {
+            ctx.lineTo(ann.points[i].x, ann.points[i].y);
+          }
+          ctx.stroke();
+          
+          if (isSelected) {
+            // Draw editable vertices
+            ann.points.forEach((p, pIdx) => {
+              ctx.fillStyle = editingVertexIndex === pIdx ? "#ef4444" : "#3b82f6";
+              ctx.strokeStyle = "#fff";
+              ctx.lineWidth = 2;
+              ctx.beginPath();
+              ctx.arc(p.x, p.y, 6, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.stroke();
+            });
+          }
+        }
       } else if (ann.type === "marker") {
         const size = ann.size || 24;
         const halfSize = size / 2;
@@ -351,6 +433,35 @@ export const PhotoMarkupEditor = ({
           ctx.lineWidth = 1;
           ctx.setLineDash([4, 4]);
           ctx.strokeRect(ann.x - 2, ann.y - (ann.fontSize || 16), metrics.width + 4, (ann.fontSize || 16) + 4);
+          ctx.setLineDash([]);
+        }
+      } else if (ann.type === "label") {
+        // Insertable label with background
+        const fontSize = ann.fontSize || 14;
+        const padding = ann.padding || 4;
+        ctx.font = `bold ${fontSize}px sans-serif`;
+        const metrics = ctx.measureText(ann.text);
+        const textWidth = metrics.width;
+        const textHeight = fontSize;
+        
+        // Draw background
+        ctx.fillStyle = ann.backgroundColor || "#ffffff";
+        ctx.strokeStyle = ann.color || "#18181b";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(ann.x - padding, ann.y - textHeight - padding, textWidth + padding * 2, textHeight + padding * 2, 4);
+        ctx.fill();
+        ctx.stroke();
+        
+        // Draw text
+        ctx.fillStyle = ann.color || "#18181b";
+        ctx.fillText(ann.text, ann.x, ann.y);
+        
+        if (isSelected) {
+          ctx.strokeStyle = "#3b82f6";
+          ctx.lineWidth = 2;
+          ctx.setLineDash([4, 4]);
+          ctx.strokeRect(ann.x - padding - 2, ann.y - textHeight - padding - 2, textWidth + padding * 2 + 4, textHeight + padding * 2 + 4);
           ctx.setLineDash([]);
         }
       } else if (ann.type === "shape") {
@@ -459,13 +570,56 @@ export const PhotoMarkupEditor = ({
       }
       ctx.setLineDash([]);
     }
-  }, [annotations, currentLine, shapeStart, lineColor, lineWidth, fillShape, selectedShape, selectedAnnotation, tool]);
+    
+    // Draw straight line in progress
+    if (straightLineStart && tool === "straightline") {
+      ctx.beginPath();
+      ctx.strokeStyle = lineColor;
+      ctx.lineWidth = lineWidth;
+      ctx.setLineDash([4, 4]);
+      ctx.moveTo(straightLineStart.x, straightLineStart.y);
+      ctx.lineTo(straightLineStart.endX || straightLineStart.x, straightLineStart.endY || straightLineStart.y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      
+      // Draw endpoint indicators
+      ctx.fillStyle = lineColor;
+      ctx.beginPath();
+      ctx.arc(straightLineStart.x, straightLineStart.y, 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    
+    // Draw polyline points in progress
+    if (polylinePoints.length > 0 && tool === "polyline") {
+      ctx.beginPath();
+      ctx.strokeStyle = lineColor;
+      ctx.lineWidth = lineWidth;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.moveTo(polylinePoints[0].x, polylinePoints[0].y);
+      for (let i = 1; i < polylinePoints.length; i++) {
+        ctx.lineTo(polylinePoints[i].x, polylinePoints[i].y);
+      }
+      ctx.stroke();
+      
+      // Draw vertices
+      polylinePoints.forEach((p, idx) => {
+        ctx.fillStyle = idx === 0 ? "#16a34a" : "#3b82f6";
+        ctx.strokeStyle = "#fff";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      });
+    }
+  }, [annotations, currentLine, shapeStart, lineColor, lineWidth, fillShape, selectedShape, selectedAnnotation, tool, straightLineStart, polylinePoints, editingVertexIndex]);
 
   useEffect(() => {
     if (imageLoaded) {
       redrawCanvas();
     }
-  }, [annotations, currentLine, shapeStart, imageLoaded, redrawCanvas, selectedAnnotation]);
+  }, [annotations, currentLine, shapeStart, imageLoaded, redrawCanvas, selectedAnnotation, straightLineStart, polylinePoints]);
 
   const getCanvasCoords = (e) => {
     const canvas = canvasRef.current;
@@ -476,6 +630,19 @@ export const PhotoMarkupEditor = ({
     };
   };
 
+  // Find vertex of polyline near position (for editing)
+  const findPolylineVertexAt = (annIdx, x, y) => {
+    const ann = annotations[annIdx];
+    if (ann.type !== "polyline" || !ann.points) return -1;
+    
+    for (let i = 0; i < ann.points.length; i++) {
+      const p = ann.points[i];
+      const dist = Math.sqrt((x - p.x) ** 2 + (y - p.y) ** 2);
+      if (dist <= 10) return i;
+    }
+    return -1;
+  };
+
   // Find annotation at position
   const findAnnotationAt = (x, y) => {
     for (let i = annotations.length - 1; i >= 0; i--) {
@@ -484,9 +651,27 @@ export const PhotoMarkupEditor = ({
         const size = ann.size || 24;
         const dist = Math.sqrt((x - ann.x) ** 2 + (y - ann.y) ** 2);
         if (dist <= size / 2) return i;
+      } else if (ann.type === "straightline") {
+        // Check if point is near the line segment
+        const dist = pointToLineDistance(x, y, ann.startX, ann.startY, ann.endX, ann.endY);
+        if (dist <= 10) return i;
+      } else if (ann.type === "polyline" && ann.points && ann.points.length > 1) {
+        // Check if point is near any segment of the polyline
+        for (let j = 0; j < ann.points.length - 1; j++) {
+          const p1 = ann.points[j];
+          const p2 = ann.points[j + 1];
+          const dist = pointToLineDistance(x, y, p1.x, p1.y, p2.x, p2.y);
+          if (dist <= 10) return i;
+        }
       } else if (ann.type === "text") {
         const fontSize = ann.fontSize || 16;
         if (x >= ann.x && x <= ann.x + 100 && y >= ann.y - fontSize && y <= ann.y) {
+          return i;
+        }
+      } else if (ann.type === "label") {
+        const fontSize = ann.fontSize || 14;
+        const padding = ann.padding || 4;
+        if (x >= ann.x - padding && x <= ann.x + 100 && y >= ann.y - fontSize - padding && y <= ann.y + padding) {
           return i;
         }
       } else if (ann.type === "shape") {
@@ -506,13 +691,30 @@ export const PhotoMarkupEditor = ({
       setSelectedAnnotation(idx >= 0 ? idx : null);
       
       if (idx >= 0) {
-        setIsDragging(true);
         const ann = annotations[idx];
-        setDragOffset({ x: coords.x - (ann.x || 0), y: coords.y - (ann.y || 0) });
+        
+        // Check if clicking on a polyline vertex for editing
+        if (ann.type === "polyline") {
+          const vertexIdx = findPolylineVertexAt(idx, coords.x, coords.y);
+          if (vertexIdx >= 0) {
+            setEditingVertexIndex(vertexIdx);
+            setIsDragging(true);
+            return;
+          }
+        }
+        
+        setIsDragging(true);
+        setDragOffset({ x: coords.x - (ann.x || ann.startX || 0), y: coords.y - (ann.y || ann.startY || 0) });
       }
     } else if (tool === "draw") {
       setIsDrawing(true);
       setCurrentLine({ type: "draw", color: lineColor, width: lineWidth, points: [coords] });
+    } else if (tool === "straightline") {
+      // Start drawing a straight line
+      setStraightLineStart({ x: coords.x, y: coords.y, endX: coords.x, endY: coords.y });
+    } else if (tool === "polyline") {
+      // Add a point to the polyline
+      setPolylinePoints(prev => [...prev, coords]);
     } else if (tool === "marker" && selectedMarker) {
       const marker = UG_MARKERS.find(m => m.type === selectedMarker);
       if (marker) {
@@ -520,6 +722,16 @@ export const PhotoMarkupEditor = ({
           type: "marker", 
           label: marker.type, 
           color: marker.color, 
+          x: coords.x, 
+          y: coords.y,
+          size: markerSize
+        });
+      } else {
+        // Custom label (from job underground/poles)
+        addAnnotation({ 
+          type: "marker", 
+          label: selectedMarker, 
+          color: lineColor, 
           x: coords.x, 
           y: coords.y,
           size: markerSize
@@ -537,6 +749,18 @@ export const PhotoMarkupEditor = ({
       setTextInput("");
     } else if (tool === "shape") {
       setShapeStart({ x: coords.x, y: coords.y, endX: coords.x, endY: coords.y });
+    } else if (tool === "label" && textInput.trim()) {
+      // Insertable label with adjustable size
+      addAnnotation({ 
+        type: "label", 
+        text: textInput, 
+        color: lineColor, 
+        x: coords.x, 
+        y: coords.y,
+        fontSize: labelSize,
+        backgroundColor: "#ffffff",
+        padding: 4
+      });
     }
   };
 
@@ -546,8 +770,27 @@ export const PhotoMarkupEditor = ({
     if (isDragging && selectedAnnotation !== null) {
       const newAnnotations = [...annotations];
       const ann = newAnnotations[selectedAnnotation];
-      ann.x = coords.x - dragOffset.x;
-      ann.y = coords.y - dragOffset.y;
+      
+      // Handle polyline vertex editing
+      if (ann.type === "polyline" && editingVertexIndex !== null) {
+        ann.points[editingVertexIndex] = coords;
+        setAnnotations(newAnnotations);
+        return;
+      }
+      
+      // Handle straightline dragging
+      if (ann.type === "straightline") {
+        const dx = coords.x - dragOffset.x - ann.startX;
+        const dy = coords.y - dragOffset.y - ann.startY;
+        ann.startX += dx;
+        ann.startY += dy;
+        ann.endX += dx;
+        ann.endY += dy;
+        setDragOffset({ x: coords.x - ann.startX, y: coords.y - ann.startY });
+      } else {
+        ann.x = coords.x - dragOffset.x;
+        ann.y = coords.y - dragOffset.y;
+      }
       setAnnotations(newAnnotations);
     } else if (isDrawing && tool === "draw") {
       setCurrentLine(prev => ({
@@ -556,6 +799,8 @@ export const PhotoMarkupEditor = ({
       }));
     } else if (shapeStart && tool === "shape") {
       setShapeStart(prev => ({ ...prev, endX: coords.x, endY: coords.y }));
+    } else if (straightLineStart && tool === "straightline") {
+      setStraightLineStart(prev => ({ ...prev, endX: coords.x, endY: coords.y }));
     }
   };
 
@@ -564,6 +809,7 @@ export const PhotoMarkupEditor = ({
     
     if (isDragging) {
       setIsDragging(false);
+      setEditingVertexIndex(null);
       saveHistory();
     }
     
@@ -590,6 +836,51 @@ export const PhotoMarkupEditor = ({
         });
       }
       setShapeStart(null);
+    }
+    
+    // Finish straight line
+    if (straightLineStart && tool === "straightline") {
+      const dist = Math.sqrt(
+        (coords.x - straightLineStart.x) ** 2 + 
+        (coords.y - straightLineStart.y) ** 2
+      );
+      if (dist > 10) {
+        addAnnotation({
+          type: "straightline",
+          color: lineColor,
+          width: lineWidth,
+          startX: straightLineStart.x,
+          startY: straightLineStart.y,
+          endX: coords.x,
+          endY: coords.y
+        });
+      }
+      setStraightLineStart(null);
+    }
+  };
+  
+  // Finish polyline (double-click or button)
+  const finishPolyline = () => {
+    if (polylinePoints.length >= 2) {
+      addAnnotation({
+        type: "polyline",
+        color: lineColor,
+        width: lineWidth,
+        points: [...polylinePoints]
+      });
+    }
+    setPolylinePoints([]);
+  };
+  
+  // Cancel polyline
+  const cancelPolyline = () => {
+    setPolylinePoints([]);
+  };
+  
+  // Handle double-click to finish polyline
+  const handleDoubleClick = (e) => {
+    if (tool === "polyline" && polylinePoints.length >= 2) {
+      finishPolyline();
     }
   };
 
@@ -651,6 +942,18 @@ export const PhotoMarkupEditor = ({
     setHistory([]);
     setHistoryIndex(-1);
     setSelectedAnnotation(null);
+  };
+
+  // Resize selected label
+  const resizeSelectedLabel = (newSize) => {
+    if (selectedAnnotation !== null && annotations[selectedAnnotation]?.type === "label") {
+      const newAnnotations = [...annotations];
+      newAnnotations[selectedAnnotation] = {
+        ...newAnnotations[selectedAnnotation],
+        fontSize: newSize
+      };
+      setAnnotations(newAnnotations);
+    }
   };
 
   const saveMarkup = async () => {
@@ -855,9 +1158,29 @@ export const PhotoMarkupEditor = ({
                     variant={tool === "draw" ? "default" : "outline"}
                     onClick={() => setTool("draw")}
                     className="h-8 p-0"
-                    title="Draw"
+                    title="Freehand Draw"
                   >
                     <Pencil className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={tool === "straightline" ? "default" : "outline"}
+                    onClick={() => setTool("straightline")}
+                    className="h-8 p-0"
+                    title="Straight Line"
+                  >
+                    <Minus className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={tool === "polyline" ? "default" : "outline"}
+                    onClick={() => setTool("polyline")}
+                    className="h-8 p-0"
+                    title="Multi-Point Line"
+                  >
+                    <Waypoints className="w-4 h-4" />
                   </Button>
                   <Button
                     type="button"
@@ -869,6 +1192,8 @@ export const PhotoMarkupEditor = ({
                   >
                     <Square className="w-4 h-4" />
                   </Button>
+                </div>
+                <div className="grid grid-cols-5 gap-1">
                   <Button
                     type="button"
                     size="sm"
@@ -882,6 +1207,16 @@ export const PhotoMarkupEditor = ({
                   <Button
                     type="button"
                     size="sm"
+                    variant={tool === "label" ? "default" : "outline"}
+                    onClick={() => setTool("label")}
+                    className="h-8 p-0"
+                    title="Insertable Labels"
+                  >
+                    <GitBranch className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
                     variant={tool === "text" ? "default" : "outline"}
                     onClick={() => setTool("text")}
                     className="h-8 p-0"
@@ -891,6 +1226,44 @@ export const PhotoMarkupEditor = ({
                   </Button>
                 </div>
               </div>
+              
+              {/* Polyline controls */}
+              {tool === "polyline" && (
+                <div className="space-y-2 p-2 bg-blue-50 rounded-lg border border-blue-200">
+                  <Label className="text-xs font-mono text-blue-700">MULTI-POINT LINE</Label>
+                  <p className="text-xs text-blue-600">Click to add points. Double-click to finish.</p>
+                  {polylinePoints.length > 0 && (
+                    <div className="flex gap-1">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="default"
+                        onClick={finishPolyline}
+                        className="flex-1 h-7 text-xs bg-blue-600"
+                        disabled={polylinePoints.length < 2}
+                      >
+                        Finish ({polylinePoints.length} pts)
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={cancelPolyline}
+                        className="h-7 text-xs"
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              {/* Straight line info */}
+              {tool === "straightline" && (
+                <div className="p-2 bg-orange-50 rounded-lg border border-orange-200">
+                  <p className="text-xs text-orange-600">Click and drag to draw a straight line.</p>
+                </div>
+              )}
 
               {/* Shapes */}
               {tool === "shape" && (
@@ -941,7 +1314,7 @@ export const PhotoMarkupEditor = ({
               </div>
 
               {/* Line width */}
-              {(tool === "draw" || tool === "shape") && (
+              {(tool === "draw" || tool === "shape" || tool === "straightline" || tool === "polyline") && (
                 <div className="space-y-2">
                   <Label className="text-xs font-mono">LINE WIDTH: {lineWidth}px</Label>
                   <Slider
@@ -952,6 +1325,100 @@ export const PhotoMarkupEditor = ({
                     step={1}
                     className="w-full"
                   />
+                </div>
+              )}
+              
+              {/* Insertable Labels tool */}
+              {tool === "label" && (
+                <div className="space-y-2">
+                  <Label className="text-xs font-mono text-purple-700">INSERTABLE LABELS</Label>
+                  <p className="text-xs text-zinc-500">Select a label, then click on the image to place it.</p>
+                  
+                  {/* Job Underground Labels */}
+                  {undergroundItems.length > 0 && (
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-mono text-green-700">UNDERGROUND ({undergroundItems.length})</Label>
+                      <div className="grid grid-cols-2 gap-1 max-h-28 overflow-y-auto bg-green-50 p-2 rounded">
+                        {undergroundItems.map((item, idx) => {
+                          const abbr = item.type?.substring(0, 2).toUpperCase() || "UG";
+                          const itemLabel = item.label || `${abbr}-${idx + 1}`;
+                          return (
+                            <button
+                              key={item.id || idx}
+                              type="button"
+                              onClick={() => setTextInput(itemLabel)}
+                              className={`p-1.5 text-[10px] font-mono rounded border text-left truncate ${
+                                textInput === itemLabel 
+                                  ? 'bg-green-200 border-green-500' 
+                                  : 'border-green-300 hover:bg-green-100 bg-white'
+                              }`}
+                              title={`${item.type}: ${itemLabel}`}
+                            >
+                              <span className="font-bold">{itemLabel}</span>
+                              <span className="text-zinc-500 ml-1">({item.type?.substring(0, 3)})</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Job Pole Labels */}
+                  {poles.length > 0 && (
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-mono text-orange-700">POLES ({poles.length})</Label>
+                      <div className="grid grid-cols-2 gap-1 max-h-28 overflow-y-auto bg-orange-50 p-2 rounded">
+                        {poles.map((pole, idx) => {
+                          const poleLabel = pole.pole_number || `P-${idx + 1}`;
+                          return (
+                            <button
+                              key={pole.id || idx}
+                              type="button"
+                              onClick={() => setTextInput(poleLabel)}
+                              className={`p-1.5 text-[10px] font-mono rounded border text-left truncate ${
+                                textInput === poleLabel 
+                                  ? 'bg-orange-200 border-orange-500' 
+                                  : 'border-orange-300 hover:bg-orange-100 bg-white'
+                              }`}
+                              title={`Pole: ${poleLabel}`}
+                            >
+                              {poleLabel}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Custom label input */}
+                  <div className="space-y-1">
+                    <Label className="text-[10px] font-mono">CUSTOM LABEL</Label>
+                    <Input
+                      value={textInput}
+                      onChange={(e) => setTextInput(e.target.value)}
+                      placeholder="Type custom label..."
+                      className="text-xs h-8"
+                    />
+                  </div>
+                  
+                  {/* Label size */}
+                  <div className="space-y-1">
+                    <Label className="text-xs font-mono">LABEL SIZE: {labelSize}px</Label>
+                    <Slider
+                      value={[labelSize]}
+                      onValueChange={([v]) => setLabelSize(v)}
+                      min={10}
+                      max={32}
+                      step={1}
+                      className="w-full"
+                    />
+                  </div>
+                  
+                  {textInput && (
+                    <p className="text-xs text-purple-600 bg-purple-50 p-2 rounded">
+                      Click on image to place: <strong>{textInput}</strong>
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -1095,6 +1562,24 @@ export const PhotoMarkupEditor = ({
                       />
                     </div>
                   )}
+                  {annotations[selectedAnnotation]?.type === "label" && (
+                    <div className="space-y-1">
+                      <Label className="text-xs">Resize label:</Label>
+                      <Slider
+                        value={[annotations[selectedAnnotation]?.fontSize || 14]}
+                        onValueChange={([v]) => resizeSelectedLabel(v)}
+                        min={10}
+                        max={32}
+                        step={1}
+                        className="w-full"
+                      />
+                    </div>
+                  )}
+                  {annotations[selectedAnnotation]?.type === "polyline" && (
+                    <div className="text-xs text-blue-600 bg-blue-100 p-2 rounded">
+                      <p>Click and drag vertices to edit the line.</p>
+                    </div>
+                  )}
                   <Button
                     type="button"
                     size="sm"
@@ -1185,6 +1670,7 @@ export const PhotoMarkupEditor = ({
                 onMouseMove={handleMouseMove}
                 onMouseUp={handleMouseUp}
                 onMouseLeave={handleMouseUp}
+                onDoubleClick={handleDoubleClick}
                 className={`bg-white shadow-lg ${tool === "select" ? 'cursor-default' : 'cursor-crosshair'} ${!imageLoaded ? 'hidden' : ''}`}
                 style={{ maxWidth: "100%", maxHeight: "100%" }}
               />
