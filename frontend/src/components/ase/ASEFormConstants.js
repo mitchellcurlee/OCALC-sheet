@@ -5,6 +5,13 @@ export const ASE_OPTIONS = {
   yesNo: ["YES", "NO"],
   yesNoNA: ["YES", "NO", "N/A"],
   
+  // EF Needed options
+  efNeeded: [
+    "(NOT NEEDED) No Site Requirements- ready for fiber and/or equipment",
+    "(NEED FOR NTE ONLY) Site requirements needed for ONLY equipment",
+    "(NEED FOR TERMINAL ONLY/TERMINAL & NTE) Site Requirements are needed for fiber & equipment, or fiber only"
+  ],
+  
   // Site Visit Type (from data sheet)
   siteVisitType: ["RB", "SITE SURVEY"],
   
@@ -233,9 +240,7 @@ export const INITIAL_FORM_DATA = {
   type_of_site_visit: "",
   qualified_equipment: "",
   
-  // Building info (calculated)
-  multi_tenant: "",
-  number_of_tenants: "",
+  // Building info (calculated) - Note: multi_tenant, number_of_tenants defined in BUILDING CHARACTERISTICS
   building_demarcation: "",
   disable_nte_auto_assignment: "",
   
@@ -256,12 +261,10 @@ export const INITIAL_FORM_DATA = {
   equipment_bay: "",
   equipment_shelf: "",
   
-  // Multi Tenant Eligibility
-  multi_tenant_eligibility: "",
+  // Multi Tenant Eligibility - Note: multi_tenant_eligibility, router_within_300ft defined in BUILDING CHARACTERISTICS
   customer_handoff_panel_location: "",
   est_fiber_drop_length: "",
   router_same_floor: "",
-  router_within_300ft: "",
   ceiling_height_ok: "",
   
   // Site Requirements

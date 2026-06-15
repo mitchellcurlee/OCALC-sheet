@@ -764,3 +764,38 @@ Changes require redeploy to production (https://poledatasheet.info) to be visibl
 
 ### Requires Redeploy
 Changes require redeploy to production (https://poledatasheet.info) to be visible.
+
+
+## Session Update (Jun 15, 2026) - Underground Types & EF Needed Updates
+
+### Underground Attributes - Added DW Start/DW End
+- Added "DW Start" and "DW End" to underground types list
+- Updated in backend: `/app/backend/models/options.py`
+- Updated in frontend markers: `MarkupConstants.js`, `PhotoMarkupEditor.jsx`
+- Updated abbreviation mapping: `poleMapImage.js` (DW-S, DW-E)
+- Color: Cyan (#0891b2) for visual distinction
+
+### EF NEEDED Dropdown Replacement
+- Removed: "YES" and "NO" options
+- Added new descriptive options:
+  1. "(NOT NEEDED) No Site Requirements- ready for fiber and/or equipment"
+  2. "(NEED FOR NTE ONLY) Site requirements needed for ONLY equipment"
+  3. "(NEED FOR TERMINAL ONLY/TERMINAL & NTE) Site Requirements are needed for fiber & equipment, or fiber only"
+- Changed field width to wide (full row) for better visibility of long text
+- Switched from YesNoSelect to DropdownSelect component
+
+### Bug Fix - ASEFormConstants Duplicate Keys
+- Fixed duplicate keys in DEFAULT_ASE_DATA that were causing lint errors:
+  - multi_tenant, number_of_tenants (already in BUILDING CHARACTERISTICS)
+  - multi_tenant_eligibility, router_within_300ft (already in BUILDING CHARACTERISTICS)
+
+### Files Modified
+- `/app/backend/models/options.py` - Added DW Start, DW End to UNDERGROUND_TYPES
+- `/app/frontend/src/components/markup/MarkupConstants.js` - Added DW markers
+- `/app/frontend/src/components/PhotoMarkupEditor.jsx` - Added DW markers
+- `/app/frontend/src/lib/poleMapImage.js` - Added DW abbreviations
+- `/app/frontend/src/components/ase/ASEFormConstants.js` - Added efNeeded options, fixed duplicates
+- `/app/frontend/src/components/ase/ASEChecklistTab.jsx` - Changed EF NEEDED to DropdownSelect
+
+### Requires Redeploy
+Changes require redeploy to production (https://poledatasheet.info) to be visible.

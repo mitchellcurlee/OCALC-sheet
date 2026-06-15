@@ -232,8 +232,8 @@ const ASEChecklistTab = ({ formData, handleChange, poles = [], underground = [] 
       {/* EF OFFER */}
       <Section title="EF OFFER">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <FieldRow label="EF NEEDED">
-            <YesNoSelect value={formData.ef_needed} onChange={(v) => handleChange("ef_needed", v)} filled={isFilled(formData.ef_needed)} />
+          <FieldRow label="EF NEEDED" wide>
+            <DropdownSelect value={formData.ef_needed} onChange={(v) => handleChange("ef_needed", v)} options={ASE_OPTIONS.efNeeded} filled={isFilled(formData.ef_needed)} />
           </FieldRow>
           <FieldRow label="EF Qualified">
             <YesNoSelect value={formData.ef_qualified} onChange={(v) => handleChange("ef_qualified", v)} filled={isFilled(formData.ef_qualified)} />

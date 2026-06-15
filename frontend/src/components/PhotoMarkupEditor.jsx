@@ -37,6 +37,8 @@ const UG_MARKERS = [
   { type: "MPOE", label: "MPOE", color: "#dc2626" },
   { type: "EOP", label: "Edge of Pavement", color: "#64748b" },
   { type: "ROW", label: "Right of Way", color: "#64748b" },
+  { type: "DW-S", label: "DW Start", color: "#0891b2" },
+  { type: "DW-E", label: "DW End", color: "#0891b2" },
 ];
 
 const LINE_COLORS = [
