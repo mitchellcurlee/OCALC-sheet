@@ -109,7 +109,7 @@ export const PhotoMarkupEditor = ({
   const containerRef = useRef(null);
   
   // Editor state
-  const [tool, setTool] = useState("select"); // select, draw, marker, text, shape, straightline, polyline
+  const [tool, setTool] = useState("select"); // select, draw, marker, text, shape, straightline, polyline, label, icon
   const [lineColor, setLineColor] = useState("#dc2626");
   const [lineWidth, setLineWidth] = useState(3);
   const [fillShape, setFillShape] = useState(false);
@@ -117,6 +117,7 @@ export const PhotoMarkupEditor = ({
   const [selectedShape, setSelectedShape] = useState("rectangle");
   const [markerSize, setMarkerSize] = useState(24);
   const [textInput, setTextInput] = useState("");
+  const [textColor, setTextColor] = useState("#18181b"); // Color for text boxes
   const [fontSize, setFontSize] = useState(16);
   const [annotations, setAnnotations] = useState([]); // Array of {type, data}
   const [selectedAnnotation, setSelectedAnnotation] = useState(null);
@@ -135,6 +136,9 @@ export const PhotoMarkupEditor = ({
   const [editingVertexIndex, setEditingVertexIndex] = useState(null); // Which vertex is being dragged
   const [straightLineStart, setStraightLineStart] = useState(null); // Start point for straight line
   const [labelSize, setLabelSize] = useState(14); // Size for insertable text labels
+  const [iconSize, setIconSize] = useState(32); // Size for underground icons
+  const [iconColor, setIconColor] = useState("#16a34a"); // Color for underground icons
+  const [selectedIcon, setSelectedIcon] = useState(null); // Selected underground icon type
   const imageRef = useRef(null);
 
   // Helper to get full photo URL
@@ -425,16 +429,65 @@ export const PhotoMarkupEditor = ({
           ctx.setLineDash([]);
         }
       } else if (ann.type === "text") {
+        // Text with white background box
+        const fontSize = ann.fontSize || 16;
+        const padding = 4;
+        ctx.font = `bold ${fontSize}px sans-serif`;
+        const metrics = ctx.measureText(ann.text);
+        const textWidth = metrics.width;
+        const textHeight = fontSize;
+        
+        // Draw white background
+        ctx.fillStyle = "#ffffff";
+        ctx.strokeStyle = ann.color || "#18181b";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(ann.x - padding, ann.y - textHeight - padding, textWidth + padding * 2, textHeight + padding * 2, 4);
+        ctx.fill();
+        ctx.stroke();
+        
+        // Draw text
         ctx.fillStyle = ann.color || "#18181b";
-        ctx.font = `bold ${ann.fontSize || 16}px sans-serif`;
         ctx.fillText(ann.text, ann.x, ann.y);
         
         if (isSelected) {
-          const metrics = ctx.measureText(ann.text);
           ctx.strokeStyle = "#3b82f6";
-          ctx.lineWidth = 1;
+          ctx.lineWidth = 2;
           ctx.setLineDash([4, 4]);
-          ctx.strokeRect(ann.x - 2, ann.y - (ann.fontSize || 16), metrics.width + 4, (ann.fontSize || 16) + 4);
+          ctx.strokeRect(ann.x - padding - 2, ann.y - textHeight - padding - 2, textWidth + padding * 2 + 4, textHeight + padding * 2 + 4);
+          ctx.setLineDash([]);
+        }
+      } else if (ann.type === "icon") {
+        // Underground attribute icon (circle with text inside)
+        const size = ann.size || 32;
+        const radius = size / 2;
+        
+        // Draw circle background
+        ctx.fillStyle = ann.color || "#16a34a";
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(ann.x, ann.y, radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        
+        // Draw icon text
+        const iconFontSize = Math.max(10, size * 0.4);
+        ctx.font = `bold ${iconFontSize}px sans-serif`;
+        ctx.fillStyle = "#ffffff";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(ann.iconType, ann.x, ann.y);
+        ctx.textAlign = "left";
+        ctx.textBaseline = "alphabetic";
+        
+        if (isSelected) {
+          ctx.strokeStyle = "#3b82f6";
+          ctx.lineWidth = 2;
+          ctx.setLineDash([4, 4]);
+          ctx.beginPath();
+          ctx.arc(ann.x, ann.y, radius + 4, 0, Math.PI * 2);
+          ctx.stroke();
           ctx.setLineDash([]);
         }
       } else if (ann.type === "label") {
@@ -672,6 +725,11 @@ export const PhotoMarkupEditor = ({
         if (x >= ann.x - 5 && x <= ann.x + textWidth + 5 && y >= ann.y - fontSize - 5 && y <= ann.y + 5) {
           return i;
         }
+      } else if (ann.type === "icon") {
+        const size = ann.size || 32;
+        const radius = size / 2;
+        const dist = Math.sqrt((x - ann.x) ** 2 + (y - ann.y) ** 2);
+        if (dist <= radius + 5) return i;
       } else if (ann.type === "label") {
         const fontSize = ann.fontSize || 14;
         const padding = ann.padding || 4;
@@ -748,7 +806,7 @@ export const PhotoMarkupEditor = ({
       addAnnotation({ 
         type: "text", 
         text: textInput, 
-        color: lineColor, 
+        color: textColor, 
         x: coords.x, 
         y: coords.y,
         fontSize: fontSize
@@ -767,6 +825,16 @@ export const PhotoMarkupEditor = ({
         fontSize: labelSize,
         backgroundColor: "#ffffff",
         padding: 4
+      });
+    } else if (tool === "icon" && selectedIcon) {
+      // Underground attribute icon
+      addAnnotation({ 
+        type: "icon", 
+        iconType: selectedIcon, 
+        color: iconColor, 
+        x: coords.x, 
+        y: coords.y,
+        size: iconSize
       });
     }
   };
@@ -958,6 +1026,54 @@ export const PhotoMarkupEditor = ({
       newAnnotations[selectedAnnotation] = {
         ...newAnnotations[selectedAnnotation],
         fontSize: newSize
+      };
+      setAnnotations(newAnnotations);
+    }
+  };
+
+  // Resize selected text
+  const resizeSelectedText = (newSize) => {
+    if (selectedAnnotation !== null && annotations[selectedAnnotation]?.type === "text") {
+      const newAnnotations = [...annotations];
+      newAnnotations[selectedAnnotation] = {
+        ...newAnnotations[selectedAnnotation],
+        fontSize: newSize
+      };
+      setAnnotations(newAnnotations);
+    }
+  };
+
+  // Change color of selected text
+  const changeSelectedTextColor = (newColor) => {
+    if (selectedAnnotation !== null && annotations[selectedAnnotation]?.type === "text") {
+      const newAnnotations = [...annotations];
+      newAnnotations[selectedAnnotation] = {
+        ...newAnnotations[selectedAnnotation],
+        color: newColor
+      };
+      setAnnotations(newAnnotations);
+    }
+  };
+
+  // Resize selected icon
+  const resizeSelectedIcon = (newSize) => {
+    if (selectedAnnotation !== null && annotations[selectedAnnotation]?.type === "icon") {
+      const newAnnotations = [...annotations];
+      newAnnotations[selectedAnnotation] = {
+        ...newAnnotations[selectedAnnotation],
+        size: newSize
+      };
+      setAnnotations(newAnnotations);
+    }
+  };
+
+  // Change color of selected icon
+  const changeSelectedIconColor = (newColor) => {
+    if (selectedAnnotation !== null && annotations[selectedAnnotation]?.type === "icon") {
+      const newAnnotations = [...annotations];
+      newAnnotations[selectedAnnotation] = {
+        ...newAnnotations[selectedAnnotation],
+        color: newColor
       };
       setAnnotations(newAnnotations);
     }
@@ -1230,6 +1346,16 @@ export const PhotoMarkupEditor = ({
                     title="Text"
                   >
                     <Type className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={tool === "icon" ? "default" : "outline"}
+                    onClick={() => setTool("icon")}
+                    className="h-8 p-0"
+                    title="UG Icons"
+                  >
+                    <List className="w-4 h-4" />
                   </Button>
                 </div>
               </div>
@@ -1542,7 +1668,7 @@ export const PhotoMarkupEditor = ({
               {/* Text input */}
               {tool === "text" && (
                 <div className="space-y-2">
-                  <Label className="text-xs font-mono">TEXT</Label>
+                  <Label className="text-xs font-mono">TEXT BOX</Label>
                   <Input
                     value={textInput}
                     onChange={(e) => setTextInput(e.target.value)}
@@ -1560,7 +1686,86 @@ export const PhotoMarkupEditor = ({
                       className="w-full"
                     />
                   </div>
-                  <p className="text-[10px] text-zinc-500">Click on image to place text</p>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-mono">TEXT COLOR</Label>
+                    <div className="flex gap-1 flex-wrap">
+                      {["#18181b", "#dc2626", "#16a34a", "#2563eb", "#9333ea", "#f97316"].map(color => (
+                        <button
+                          key={color}
+                          type="button"
+                          onClick={() => setTextColor(color)}
+                          className={`w-6 h-6 rounded border-2 ${textColor === color ? 'border-blue-500' : 'border-zinc-300'}`}
+                          style={{ backgroundColor: color }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-zinc-500">Click on image to place text with white background box</p>
+                </div>
+              )}
+              
+              {/* Underground Icons tool */}
+              {tool === "icon" && (
+                <div className="space-y-2">
+                  <Label className="text-xs font-mono text-green-700">UNDERGROUND ICONS</Label>
+                  <p className="text-xs text-zinc-500">Select an icon, then click on the image to place it.</p>
+                  
+                  <div className="grid grid-cols-4 gap-1 max-h-32 overflow-y-auto bg-zinc-50 p-2 rounded">
+                    {UG_MARKERS.map(m => (
+                      <button
+                        key={m.type}
+                        type="button"
+                        onClick={() => setSelectedIcon(m.type)}
+                        className={`p-2 text-[10px] font-mono rounded border flex flex-col items-center ${
+                          selectedIcon === m.type 
+                            ? 'bg-green-100 border-green-500' 
+                            : 'border-zinc-300 hover:bg-zinc-100 bg-white'
+                        }`}
+                        title={m.label}
+                      >
+                        <div 
+                          className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[8px] font-bold mb-1"
+                          style={{ backgroundColor: iconColor }}
+                        >
+                          {m.type}
+                        </div>
+                        <span className="text-[8px] text-zinc-500 truncate w-full text-center">{m.label.substring(0, 8)}</span>
+                      </button>
+                    ))}
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <Label className="text-xs font-mono">ICON SIZE: {iconSize}px</Label>
+                    <Slider
+                      value={[iconSize]}
+                      onValueChange={([v]) => setIconSize(v)}
+                      min={20}
+                      max={64}
+                      step={2}
+                      className="w-full"
+                    />
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <Label className="text-xs font-mono">ICON COLOR</Label>
+                    <div className="flex gap-1 flex-wrap">
+                      {["#16a34a", "#2563eb", "#dc2626", "#f97316", "#9333ea", "#64748b", "#18181b"].map(color => (
+                        <button
+                          key={color}
+                          type="button"
+                          onClick={() => setIconColor(color)}
+                          className={`w-6 h-6 rounded border-2 ${iconColor === color ? 'border-blue-500' : 'border-zinc-300'}`}
+                          style={{ backgroundColor: color }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  
+                  {selectedIcon && (
+                    <p className="text-xs text-green-600 bg-green-50 p-2 rounded">
+                      Click on image to place: <strong>{selectedIcon}</strong>
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -1600,10 +1805,19 @@ export const PhotoMarkupEditor = ({
                     </div>
                   )}
                   {annotations[selectedAnnotation]?.type === "text" && (
-                    <div className="space-y-1">
+                    <div className="space-y-2">
                       <div className="text-xs bg-white p-1 rounded border">
                         <span className="font-bold">{annotations[selectedAnnotation]?.text}</span>
                       </div>
+                      <Label className="text-xs">Resize text: {annotations[selectedAnnotation]?.fontSize || 16}px</Label>
+                      <Slider
+                        value={[annotations[selectedAnnotation]?.fontSize || 16]}
+                        onValueChange={([v]) => resizeSelectedText(v)}
+                        min={10}
+                        max={48}
+                        step={1}
+                        className="w-full"
+                      />
                     </div>
                   )}
                   {annotations[selectedAnnotation]?.type === "polyline" && (

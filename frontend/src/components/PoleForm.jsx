@@ -94,6 +94,7 @@ const emptyFormData = () => ({
   span4_direction: "", span4_distance: "", span4_owner: "",
   latitude: "", longitude: "-", notes: "",
   hoa_markup_photos: [], // Photos for HOA markup/annotation
+  pole_markup_photos: [], // General pole photos with markup capability
 });
 const emptyDownGuy = () => ({ _key: rowKey(), owner: "", direction: "", size: "", type: "", condition: "", height: "", lead: "" });
 const emptyKnuckle = () => ({ _key: rowKey(), size: "", total_eyes: "", direction: "", condition: "", photos: [] });
@@ -209,6 +210,7 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
       span4_direction: p.span4_direction || "", span4_distance: p.span4_distance?.toString() || "", span4_owner: p.span4_owner || "",
       latitude: p.latitude?.toString() || "", longitude: p.longitude?.toString() || "-", notes: p.notes || "",
       hoa_markup_photos: p.hoa_markup_photos || [],
+      pole_markup_photos: p.pole_markup_photos || [],
     });
     setDownGuys(p.down_guys?.length > 0 ? p.down_guys.map(dg => ({ _key: rowKey(), ...dg, height: dg.height?.toString() || "" })) : [{ _key: rowKey(), owner: "", direction: "", size: "", type: "", condition: "", height: "", lead: "" }]);
     // Convert legacy single photo to photos array for knuckles
@@ -1002,6 +1004,28 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
               <PhotoUpload label="Left" value={formData.ocalc_left_photo} onChange={(v) => handlePhotoChange("ocalc_left_photo", v)} testId="ocalc-left" />
               <PhotoUpload label="Middle" value={formData.ocalc_middle_photo} onChange={(v) => handlePhotoChange("ocalc_middle_photo", v)} testId="ocalc-middle" />
               <PhotoUpload label="Right" value={formData.ocalc_right_photo} onChange={(v) => handlePhotoChange("ocalc_right_photo", v)} testId="ocalc-right" />
+            </div>
+          </div>
+
+          {/* Pole Mark Ups - General Photo Annotation */}
+          <div className="industrial-card p-4 sm:p-5">
+            <h2 className="font-heading text-base sm:text-lg font-bold text-zinc-900 mb-3 sm:mb-4 flex items-center gap-2">
+              <div className="w-1 h-5 bg-cyan-500"></div>
+              Pole Mark Ups
+            </h2>
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Pencil className="w-4 h-4 text-cyan-600" />
+                <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">General Pole Photos</Label>
+              </div>
+              <PhotoMarkupEditor 
+                photos={formData.pole_markup_photos || []} 
+                onChange={(v) => setFormData(prev => ({ ...prev, pole_markup_photos: v }))}
+                label="Pole Mark Ups"
+              />
+              <p className="text-xs text-zinc-500">
+                Upload pole photos and add annotations: lines, shapes, text, underground icons, and measurement markers.
+              </p>
             </div>
           </div>
 

@@ -672,22 +672,23 @@ function downloadAll(){{
 
 @router.get("/jobs/{job_id}/export/photos-zip")
 async def export_job_photos_zip(job_id: str, token: Optional[str] = Query(None), request: Request = None):
-    """Export all photos from a job as a ZIP file, organized by pole with labels.
-    Access via: valid download token (30 days) OR authenticated mastec.com/byers.com user.
+    """Export all photos from a job as a ZIP file, organized by pole/underground with labels.
+    Access via: valid download token (30 days) OR authenticated user with job access.
     """
     import zipfile
     import base64
     from services.storage import get_object
+    from services.helpers import underground_photo_items
     from jose import jwt, JWTError
     
-    # Check access: either valid token OR authenticated mastec.com/byers.com user
+    # Check access: either valid token OR authenticated user with job access
     has_access = False
     
     # Check token first
     if token and verify_download_token("job_photos", job_id, token):
         has_access = True
     
-    # Check for authenticated mastec.com/byers.com user
+    # Check for authenticated user
     if not has_access and request:
         auth_header = request.headers.get("Authorization", "")
         if auth_header.startswith("Bearer "):
@@ -700,8 +701,15 @@ async def export_job_photos_zip(job_id: str, token: Optional[str] = Query(None),
                     user = await _db.users.find_one({"id": user_id}, {"_id": 0})
                     if user:
                         email = user.get("email", "").lower()
-                        if email.endswith("@mastec.com") or email.endswith("@byers.com"):
+                        is_admin = user.get("is_admin", False)
+                        # Allow: admin users, mastec/byers users, or mastecbyers admin
+                        if is_admin or email.endswith("@mastec.com") or email.endswith("@byers.com") or email.endswith("@mastecbyers.com"):
                             has_access = True
+                        else:
+                            # Also allow if user owns the job
+                            job_check = await _db.jobs.find_one({"id": job_id, "user_id": user_id}, {"_id": 0})
+                            if job_check:
+                                has_access = True
             except (JWTError, Exception):
                 pass
     
@@ -715,8 +723,12 @@ async def export_job_photos_zip(job_id: str, token: Optional[str] = Query(None),
     poles = await _db.poles.find({"job_id": job_id}, {"_id": 0}).to_list(10000)
     poles.sort(key=pole_sort_key)
     
+    # Fetch underground items
+    underground_items = await _db.underground.find({"job_id": job_id}, {"_id": 0}).to_list(10000)
+    
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+        # Add pole photos
         for pole in poles:
             pole_number = pole.get("pole_number", "unknown")
             safe_pole_name = "".join(c for c in pole_number if c.isalnum() or c in (' ', '-', '_')).strip() or "unknown"
@@ -741,7 +753,40 @@ async def export_job_photos_zip(job_id: str, token: Optional[str] = Query(None),
                     if data:
                         # Create safe filename with label - always use .jpeg extension
                         safe_label = "".join(c for c in label if c.isalnum() or c in (' ', '-', '_')).strip()
-                        filename = f"Pole_{safe_pole_name}/{safe_label}.jpeg"
+                        filename = f"Poles/{safe_pole_name}/{safe_label}.jpeg"
+                        zf.writestr(filename, data)
+                except Exception:
+                    # Skip failed photos
+                    continue
+        
+        # Add underground photos
+        for ug in underground_items:
+            ug_type = ug.get("type", "UG")
+            ug_label = ug.get("label", "")
+            safe_folder_name = f"{ug_type}_{ug_label}" if ug_label else ug_type
+            safe_folder_name = "".join(c for c in safe_folder_name if c.isalnum() or c in (' ', '-', '_')).strip() or "Underground"
+            
+            photo_items = underground_photo_items(ug)
+            for label, photo_url in photo_items:
+                try:
+                    data = None
+                    
+                    # Handle base64 data URLs
+                    if photo_url.startswith("data:"):
+                        header, b64_data = photo_url.split(",", 1)
+                        data = base64.b64decode(b64_data)
+                    # Handle file storage URLs
+                    elif photo_url.startswith("/api/files/"):
+                        file_path = photo_url.replace("/api/files/", "")
+                        data, _ = get_object(file_path)
+                    elif not photo_url.startswith("http"):
+                        # Direct file path
+                        data, _ = get_object(photo_url)
+                    
+                    if data:
+                        # Create safe filename with label - always use .jpeg extension
+                        safe_label = "".join(c for c in label if c.isalnum() or c in (' ', '-', '_')).strip()
+                        filename = f"Underground/{safe_folder_name}/{safe_label}.jpeg"
                         zf.writestr(filename, data)
                 except Exception:
                     # Skip failed photos
@@ -1271,7 +1316,7 @@ async def export_ase_excel(job_id: str, current_user: dict = Depends(get_current
     if dmarcs:
         try:
             building_demarcation = "Single MPOE/Terminal" if int(dmarcs) == 1 else "Multiple MPOE/Terminal"
-        except:
+        except (ValueError, TypeError):
             pass
     row = add_row(ws3, row, "Building Demarcation:", building_demarcation)
     row = add_row(ws3, row, "Disable NTE Auto-Assignment:", ase.get("disable_nte_auto_assign", ""))

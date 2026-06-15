@@ -232,8 +232,10 @@ const ASEForm = () => {
                 name: item.label || item.type,
                 lat: parseFloat(item.latitude),
                 lng: parseFloat(item.longitude),
-                order: item.order || 0,
-                ugType: item.type
+                order: item.sort_order ?? item.order ?? 0,
+                ugType: item.type,
+                notes: item.notes || '',
+                tie_in_measurements: item.tie_in_measurements || ''
               });
             }
           });
@@ -246,8 +248,9 @@ const ASEForm = () => {
                 name: pole.pole_number || pole.pole_tag || `P${idx + 1}`,
                 lat: parseFloat(pole.latitude),
                 lng: parseFloat(pole.longitude),
-                order: pole.order || (100 + idx), // Poles come after underground by default
-                spanDistance: pole.span1_distance ? parseFloat(pole.span1_distance) : 0
+                order: pole.sort_order ?? pole.order ?? (100 + idx), // Poles come after underground by default
+                spanDistance: pole.span1_distance ? parseFloat(pole.span1_distance) : 0,
+                notes: pole.notes || ''
               });
             }
           });
@@ -280,12 +283,29 @@ const ASEForm = () => {
             const stationNum = feetToStation(runningDistance);
             
             if (item.type === 'underground') {
-              pathSegments.push(`${item.name} ${stationNum}`);
+              let segment = `${item.name} ${stationNum}`;
+              // Add notes if present
+              if (item.notes) {
+                segment += ` (${item.notes})`;
+              }
+              // Add tie-in measurements if present
+              if (item.tie_in_measurements) {
+                segment += ` [Tie-in: ${item.tie_in_measurements}]`;
+              }
+              pathSegments.push(segment);
             } else if (item.type === 'pole') {
+              let segment = '';
               if (idx === firstPoleIdx) {
-                pathSegments.push(`aerial ${item.name} ${stationNum}`);
+                segment = `aerial ${item.name} ${stationNum}`;
               } else if (idx === lastPoleIdx) {
-                pathSegments.push(`to ${item.name} ${stationNum}`);
+                segment = `to ${item.name} ${stationNum}`;
+              }
+              // Add notes if present
+              if (segment && item.notes) {
+                segment += ` (${item.notes})`;
+              }
+              if (segment) {
+                pathSegments.push(segment);
               }
             }
             

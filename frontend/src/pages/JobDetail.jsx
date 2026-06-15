@@ -41,6 +41,7 @@ import {
   X,
   FileText,
   Image as ImageIcon,
+  Download,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -321,6 +322,27 @@ const JobDetail = () => {
     }
   };
 
+  const handleDownloadPhotos = async () => {
+    try {
+      toast.info("Preparing photo download... This may take a moment.");
+      const response = await axios.get(`/jobs/${jobId}/export/photos-zip`, {
+        responseType: "blob"
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      const filename = response.headers["content-disposition"]?.split("filename=")[1] || `${job?.name || "job"}_photos.zip`;
+      link.setAttribute("download", filename.replace(/"/g, ""));
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      toast.success("Photo ZIP downloaded!");
+    } catch (error) {
+      console.error("Photo download error:", error);
+      toast.error("Failed to download photos. Make sure there are photos to export.");
+    }
+  };
+
   const handleDelete = async () => {
     try {
       if (deleteType === "underground") {
@@ -439,6 +461,15 @@ const JobDetail = () => {
               >
                 <FileSpreadsheet className="w-4 h-4 mr-2" />
                 OCALC Export
+              </Button>
+              <Button
+                onClick={handleDownloadPhotos}
+                variant="outline"
+                className="flex-1 sm:flex-initial h-11 sm:h-10 bg-green-50 border-green-300 hover:bg-green-100 text-green-800 text-sm"
+                data-testid="download-photos-btn"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Photos
               </Button>
               <Link to={`/jobs/${jobId}/ase`} className="flex-1 sm:flex-initial">
                 <Button

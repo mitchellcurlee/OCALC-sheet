@@ -138,7 +138,37 @@ def pole_photo_items(pole: dict):
         for j, photo in enumerate(photos, 1):
             label = f"HOA {i}" if len(photos) == 1 else f"HOA {i}-{j}"
             labeled.append((label, photo))
+    # HOA Markup photos (array with annotations)
+    hoa_markup_photos = pole.get("hoa_markup_photos") or []
+    for i, photo in enumerate(hoa_markup_photos, 1):
+        label = "HOA_Markup" if len(hoa_markup_photos) == 1 else f"HOA_Markup_{i}"
+        labeled.append((label, photo))
+    # General Pole Markup photos (array with annotations)
+    pole_markup_photos = pole.get("pole_markup_photos") or []
+    for i, photo in enumerate(pole_markup_photos, 1):
+        label = "Pole_Markup" if len(pole_markup_photos) == 1 else f"Pole_Markup_{i}"
+        labeled.append((label, photo))
     for label, val in labeled:
         if val:
             items.append((label, val))
+    return items
+
+
+def underground_photo_items(ug: dict):
+    """Return [(label, url)] for every photo present on an underground item."""
+    items = []
+    ug_type = ug.get("type", "UG")
+    ug_label = ug.get("label", "")
+    base_name = f"{ug_type}_{ug_label}" if ug_label else ug_type
+    
+    # Photos array
+    photos = ug.get("photos") or []
+    # Support legacy single photo field
+    if not photos and ug.get("photo"):
+        photos = [ug.get("photo")]
+    
+    for i, photo in enumerate(photos, 1):
+        label = base_name if len(photos) == 1 else f"{base_name}_{i}"
+        items.append((label, photo))
+    
     return items

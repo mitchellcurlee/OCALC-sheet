@@ -1,0 +1,61 @@
+{
+  "summary": "Verified the 3 features in the review_request. Backend: photo ZIP export endpoint returns 200 + valid ZIP (auth required, 401 unauth, 404 invalid job) — 3/4 backend tests pass. CRITICAL BUG FOUND: the new pole_markup_photos field is NOT in the backend Pole/PoleUpdate Pydantic models, so any data sent from the new 'Pole Mark Ups' section in PoleForm.jsx is silently dropped by FastAPI and never persisted. The frontend UI for both new features works (Photos button is green, between OCALC and ASE, downloads a real ZIP; Pole Mark Ups section heading + General Pole Photos label + PhotoMarkupEditor render on the Add Pole page).",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "POST /api/poles (and PUT /api/poles/{id})",
+        "issue": "Pole / PoleUpdate Pydantic models in /app/backend/models/pole.py do NOT include the pole_markup_photos field. The PoleForm.jsx sends pole_markup_photos in the create/update payload, but FastAPI's strict Pydantic validation drops the field before insert. Round-trip test confirms field is missing from GET /api/poles/{id} response (only hoa_markup_photos is present). services/helpers.py:147 already references pole.get('pole_markup_photos') for ZIP export, but data will never be there.",
+        "priority": "HIGH"
+      }
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {
+        "flow": "Add Pole > Pole Mark Ups section",
+        "issue": "Even though the section renders correctly and PhotoMarkupEditor is wired into formData.pole_markup_photos, the saved pole loses all pole-markup photos because the backend Pole model strips the field. End-to-end persistence is broken.",
+        "affected_selectors": ["h2:has-text('Pole Mark Ups')", "PhotoMarkupEditor"]
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_photos_zip_export.py",
+    "/app/test_reports/pytest/pytest_photos_zip.xml"
+  ],
+  "action_items": [
+    "Add pole_markup_photos: Optional[List[str]] = [] to PoleBase in /app/backend/models/pole.py (around line 59, alongside hoa_markup_photos).",
+    "Add pole_markup_photos: Optional[List[str]] = None to PoleUpdate in /app/backend/models/pole.py (around line 108).",
+    "Re-test by creating a pole with pole_markup_photos in payload and verifying GET returns the list, then re-run /app/backend/tests/test_photos_zip_export.py::TestPoleMarkupPhotosField."
+  ],
+  "critical_code_review_comments": [
+    "Model/UI drift: any new photo field added to PoleForm.jsx must also be added to PoleBase AND PoleUpdate in /app/backend/models/pole.py — currently silently dropped by Pydantic. pole_markup_photos is missing.",
+    "services/helpers.py references pole.get('pole_markup_photos') for ZIP export but the value will always be empty/missing until the model is updated.",
+    "/app/frontend/src/pages/JobDetail.jsx is 833 lines — exceeds the >700-line guideline. Consider extracting the reorder/DnD list and the markup section into sub-components.",
+    "Photo ZIP endpoint allows any user with @mastec.com/@byers.com/@mastecbyers.com email to download any job's photos (not just their own jobs). Document this as intended behavior or restrict to job owner + master admin."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_photos_zip_export.py (new)"
+  ],
+  "success_rate": {
+    "backend": "75% (3/4 — photos-zip endpoint fully passing; pole_markup_photos persistence fails)",
+    "frontend": "100% UI presence (Pole Mark Ups section + Photos button render and work as designed; integration with backend is broken due to model bug above)"
+  },
+  "test_credentials": "admin@mastecbyers.com / Mastecbyers@12345 (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "None. Used the first available job for admin (job id e073f087-a71b-45fa-9123-b8ed5d80bbb6). The job '123456' referenced in the request was not located by name; first job was used for UI verification.",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Re-run /app/backend/tests/test_photos_zip_export.py after main agent adds pole_markup_photos to PoleBase and PoleUpdate. All 4 tests should pass. UI verification was performed on the first job in the admin's list, not specifically job '123456'. data-testids confirmed: download-photos-btn (green, between export-btn and ase-form-btn), add-pole-page rendered with 'Pole Mark Ups' h2 heading at the bottom section.",
+  "feature_verification_matrix": {
+    "PoleForm 'Pole Mark Ups' section UI present": "PASS (h2 count=1 on Add Pole page, PhotoMarkupEditor rendered)",
+    "PoleForm 'Pole Mark Ups' end-to-end persistence": "FAIL — backend model drops the field (see HIGH bug)",
+    "JobDetail 'Photos' download button present, green-themed": "PASS (data-testid=download-photos-btn, green classes)",
+    "JobDetail 'Photos' button positioned between OCALC Export and ASE Form": "PASS (x: 781 < 955 < 1079)",
+    "GET /api/jobs/{id}/export/photos-zip authenticated returns 200 ZIP": "PASS (content-type application/zip, valid PK header)",
+    "GET /api/jobs/{id}/export/photos-zip unauthenticated returns 401": "PASS",
+    "GET /api/jobs/{invalid}/export/photos-zip returns 404": "PASS"
+  },
+  "rca of the issue": "Root cause for pole_markup_photos missing in persistence: FastAPI uses Pydantic to validate request bodies against PoleBase (POST) and PoleUpdate (PUT). Both classes in /app/backend/models/pole.py omit pole_markup_photos. By default Pydantic discards unknown fields silently, so when the frontend POSTs {... pole_markup_photos: [...]} the field never reaches the MongoDB insert. Fix: add pole_markup_photos: Optional[List[str]] = [] to PoleBase (line ~59) and Optional[List[str]] = None to PoleUpdate (line ~108). After that, helpers.pole_photo_items() will pick it up and the ZIP export will include Pole_Markup files."
+}
