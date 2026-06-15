@@ -586,3 +586,74 @@ Build an app that collects power pole data including: size of the pole, type of 
 ### Requires Redeploy
 Changes require redeploy to production (https://poledatasheet.info) to be visible.
 
+## Session Update (Jun 15, 2026)
+
+### PhotoMarkupEditor in PoleForm - General Pole Photos
+- **New Feature**: Added "Pole Mark Ups" section to PoleForm.jsx for general pole photo annotations
+- Located between "OCALC Photos" and "Down Guys" sections
+- Uses PhotoMarkupEditor component for full annotation capabilities:
+  - Drawing tools: freehand, straight line, multi-point polyline
+  - Shape tools: rectangle, circle, arrow, line, triangle
+  - Marker tools: underground type markers with station numbers
+  - Label tools: insertable text labels with size adjustment
+  - Icon tools: underground attribute icons with size/color pickers
+  - Text tools: text boxes with white background and color adjustment
+- Added `pole_markup_photos` field to Pole model (PoleBase and PoleUpdate)
+- Integrated into services/helpers.py pole_photo_items() for ZIP export
+
+### Photo ZIP Download Button
+- **New Feature**: Added "Photos" download button to JobDetail page header
+- Green themed button positioned between "OCALC Export" and "ASE Form"
+- Downloads all job photos (poles + underground) as a labeled ZIP file
+- Backend endpoint: GET /api/jobs/{job_id}/export/photos-zip
+- ZIP structure:
+  - `Poles/{pole_number}/{label}.jpeg` - All pole photos organized by pole
+  - `Underground/{type_label}/{photo}.jpeg` - All underground photos
+- Access control: admin users, mastec/byers/mastecbyers domain users, or job owners
+
+### PhotoMarkupEditor for ALL Photo Sections (Jun 15, 2026)
+- **Feature Enhancement**: Replaced ALL photo upload components with PhotoMarkupEditor
+- Now every tab/section that allows taking a picture can use the full markup editor
+- **PoleForm.jsx changes**:
+  - Birthmark Photos: MultiPhotoUpload → PhotoMarkupEditor
+  - MGNV Photos: MultiPhotoUpload → PhotoMarkupEditor
+  - HOA Attachment Photos (per row): MultiPhotoUpload → PhotoMarkupEditor
+  - Anchor Photos (per row): MultiPhotoUpload → PhotoMarkupEditor
+  - OCALC Photos (Left, Middle, Right): PhotoUpload → PhotoMarkupEditor (single photo mode)
+  - HOA Mark Ups: Already using PhotoMarkupEditor
+  - Pole Mark Ups: Already using PhotoMarkupEditor
+- **UndergroundForm.jsx**: Already using PhotoMarkupEditor
+- **ASEPhotoField.jsx**: Updated to include markup editing capability
+  - Camera button for quick photo upload
+  - New "Edit with Markup" button opens full PhotoMarkupEditor in dialog
+  - Works in both compact and expanded modes
+- Removed unused imports (PhotoUpload, MultiPhotoUpload from PoleForm.jsx)
+
+### Files Modified
+- `/app/frontend/src/components/PoleForm.jsx` - Replaced all photo components with PhotoMarkupEditor
+- `/app/frontend/src/components/ASEPhotoField.jsx` - Added markup editor integration
+- `/app/frontend/src/pages/JobDetail.jsx` - Added Photos download button
+- `/app/backend/routes/jobs.py` - Updated photo ZIP export with underground support
+- `/app/backend/services/helpers.py` - Added underground_photo_items, updated pole_photo_items
+- `/app/backend/models/pole.py` - Added pole_markup_photos field
+
+### PhotoMarkupEditor Refactoring (Partial)
+- Created `/app/frontend/src/components/markup/` directory structure:
+  - `MarkupConstants.js` - UG_MARKERS, LINE_COLORS, SHAPES, helper functions
+  - `MarkupToolbar.jsx` - Tool selection panels (extracted from main component)
+  - `MarkupCanvas.jsx` - Canvas rendering area with legend overlay
+  - `MarkupPhotoGallery.jsx` - Photo grid with upload controls
+  - `index.js` - Centralized exports
+- Main PhotoMarkupEditor.jsx still functional (sub-components ready for future integration)
+
+### Verified
+- Pole Mark Ups section renders correctly in PoleForm
+- All photo sections now have PhotoMarkupEditor with Camera/Upload buttons
+- OCALC Photos show Left, Middle, Right with individual markup editors
+- Birthmark, MGNV, HOA, and Anchor photos all have markup capability
+- ASEPhotoField shows edit button when photos exist
+
+### Requires Redeploy
+Changes require redeploy to production (https://poledatasheet.info) to be visible.
+
+

@@ -1,17 +1,20 @@
 import { useState, useRef } from "react";
 import axios from "axios";
 import { Button } from "@/components/ui/button";
-import { Camera, Upload, X, ZoomIn, Loader2 } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Camera, Upload, X, ZoomIn, Loader2, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
+import { PhotoMarkupEditor } from "@/components/PhotoMarkupEditor";
 
 /**
- * ASEPhotoField - Compact photo upload for ASE form fields
- * Shows small camera icon next to field, expands to show photos
- * If compact=true, shows thumbnails inline instead of popup
+ * ASEPhotoField - Photo upload with markup capability for ASE form fields
+ * Shows small camera icon next to field, with edit button to open markup editor
  */
 export const ASEPhotoField = ({ fieldKey, photos = [], onChange, label, compact = false }) => {
   const fileInputRef = useRef(null);
@@ -19,6 +22,7 @@ export const ASEPhotoField = ({ fieldKey, photos = [], onChange, label, compact 
   const [uploading, setUploading] = useState(false);
   const [lightboxPhoto, setLightboxPhoto] = useState(null);
   const [expanded, setExpanded] = useState(false);
+  const [showMarkupEditor, setShowMarkupEditor] = useState(false);
 
   const photoArray = Array.isArray(photos) ? photos : (photos ? [photos] : []);
 
@@ -56,7 +60,7 @@ export const ASEPhotoField = ({ fieldKey, photos = [], onChange, label, compact 
     onChange(newPhotos);
   };
 
-  // Compact mode - show inline thumbnails
+  // Compact mode - show inline thumbnails with edit option
   if (compact) {
     return (
       <div className="flex flex-wrap items-center gap-2">
@@ -88,12 +92,42 @@ export const ASEPhotoField = ({ fieldKey, photos = [], onChange, label, compact 
           {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
         </button>
         
+        {/* Edit button to open markup editor */}
+        {photoArray.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setShowMarkupEditor(true)}
+            className="w-10 h-10 border-2 border-dashed border-green-300 rounded flex items-center justify-center text-green-500 hover:border-green-400 hover:text-green-600 transition-colors"
+            title="Edit with markup tools"
+          >
+            <Pencil className="w-4 h-4" />
+          </button>
+        )}
+        
         <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFileChange} />
         
         {/* Lightbox */}
         <Dialog open={!!lightboxPhoto} onOpenChange={() => setLightboxPhoto(null)}>
           <DialogContent className="max-w-4xl p-0 bg-black/90">
             <img src={lightboxPhoto} alt="" className="w-full h-auto max-h-[80vh] object-contain" />
+          </DialogContent>
+        </Dialog>
+        
+        {/* Markup Editor Dialog */}
+        <Dialog open={showMarkupEditor} onOpenChange={setShowMarkupEditor}>
+          <DialogContent className="max-w-6xl h-[95vh] p-4">
+            <DialogHeader>
+              <DialogTitle className="font-mono text-sm">{label || "Photo Markup Editor"}</DialogTitle>
+            </DialogHeader>
+            <div className="flex-1 overflow-hidden">
+              <PhotoMarkupEditor 
+                photos={photoArray} 
+                onChange={(newPhotos) => {
+                  onChange(newPhotos);
+                }}
+                label={label}
+              />
+            </div>
           </DialogContent>
         </Dialog>
       </div>
@@ -126,6 +160,18 @@ export const ASEPhotoField = ({ fieldKey, photos = [], onChange, label, compact 
             </span>
           )}
         </button>
+        
+        {/* Edit button to open markup editor */}
+        {photoArray.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setShowMarkupEditor(true)}
+            className="p-1.5 rounded bg-green-50 text-green-600 hover:bg-green-100 transition-colors"
+            title="Edit with markup tools"
+          >
+            <Pencil className="w-4 h-4" />
+          </button>
+        )}
 
       {/* Hidden file inputs */}
       <input
@@ -179,7 +225,7 @@ export const ASEPhotoField = ({ fieldKey, photos = [], onChange, label, compact 
           )}
           
           {/* Upload buttons */}
-          <div className="flex gap-2">
+          <div className="flex gap-2 mb-2">
             <Button
               type="button"
               size="sm"
@@ -201,6 +247,23 @@ export const ASEPhotoField = ({ fieldKey, photos = [], onChange, label, compact 
               Upload
             </Button>
           </div>
+          
+          {/* Edit with markup button */}
+          {photoArray.length > 0 && (
+            <Button
+              type="button"
+              size="sm"
+              variant="default"
+              onClick={() => {
+                setExpanded(false);
+                setShowMarkupEditor(true);
+              }}
+              className="w-full h-7 text-xs bg-green-600 hover:bg-green-700"
+            >
+              <Pencil className="w-3 h-3 mr-1" />
+              Edit with Markup
+            </Button>
+          )}
         </div>
       )}
 
@@ -210,6 +273,24 @@ export const ASEPhotoField = ({ fieldKey, photos = [], onChange, label, compact 
           {lightboxPhoto && (
             <img src={lightboxPhoto} alt="" className="max-h-[80vh] w-auto mx-auto object-contain" />
           )}
+        </DialogContent>
+      </Dialog>
+      
+      {/* Markup Editor Dialog */}
+      <Dialog open={showMarkupEditor} onOpenChange={setShowMarkupEditor}>
+        <DialogContent className="max-w-6xl h-[95vh] p-4">
+          <DialogHeader>
+            <DialogTitle className="font-mono text-sm">{label || "Photo Markup Editor"}</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-hidden">
+            <PhotoMarkupEditor 
+              photos={photoArray} 
+              onChange={(newPhotos) => {
+                onChange(newPhotos);
+              }}
+              label={label}
+            />
+          </div>
         </DialogContent>
       </Dialog>
       </div>

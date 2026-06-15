@@ -28,8 +28,6 @@ import {
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
-import { PhotoUpload } from "@/components/PhotoUpload";
-import { MultiPhotoUpload } from "@/components/MultiPhotoUpload";
 import { HeightInput } from "@/components/HeightInput";
 import { SpanDistance } from "@/components/SpanDistance";
 import { ReferenceHeightMeasurer } from "@/components/ReferenceHeightMeasurer";
@@ -851,7 +849,11 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
                 </div>
                 {formData.has_birthmark && (
                   <div className="flex-1 w-full sm:w-auto">
-                    <MultiPhotoUpload label="Birthmark Photos" value={formData.birthmark_photos || []} onChange={(v) => setFormData((prev) => ({ ...prev, birthmark_photos: v }))} testId="birthmark" />
+                    <PhotoMarkupEditor 
+                      photos={formData.birthmark_photos || []} 
+                      onChange={(v) => setFormData((prev) => ({ ...prev, birthmark_photos: v }))} 
+                      label="Birthmark Photos"
+                    />
                   </div>
                 )}
               </div>
@@ -872,7 +874,13 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
                       <SelectContent className="bg-zinc-50 border-zinc-300"><SelectItem value={BLANK} className="text-zinc-500">—</SelectItem><SelectItem value="Good" className="text-green-700">Good</SelectItem><SelectItem value="Broken" className="text-red-600">Broken</SelectItem></SelectContent>
                     </Select>
                   </div>
-                  <MultiPhotoUpload label="MGNV Photos" value={formData.mgnv_photos || []} onChange={(v) => setFormData((prev) => ({ ...prev, mgnv_photos: v }))} testId="mgnv" />
+                  <div className="col-span-1 sm:col-span-3">
+                    <PhotoMarkupEditor 
+                      photos={formData.mgnv_photos || []} 
+                      onChange={(v) => setFormData((prev) => ({ ...prev, mgnv_photos: v }))} 
+                      label="MGNV Photos"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -926,7 +934,13 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
                         <Label className="text-xs font-mono text-zinc-500">Notes</Label>
                         <Input type="text" value={att.notes || ""} onChange={(e) => updateAttachment(index, "notes", e.target.value)} placeholder="Enter notes" className="h-9 bg-white border-zinc-300 text-zinc-900 text-sm" />
                       </div>
-                      <MultiPhotoUpload label="Photos" value={att.photos || []} onChange={(v) => updateAttachment(index, "photos", v)} testId={`attachment${index}`} compact />
+                      <div className="col-span-full">
+                        <PhotoMarkupEditor 
+                          photos={att.photos || []} 
+                          onChange={(v) => updateAttachment(index, "photos", v)} 
+                          label={`HOA ${index + 1} Photos`}
+                        />
+                      </div>
                     </div>
                     {attachments.length > 1 && (
                       <Button type="button" onClick={() => removeAttachment(index)} size="icon" variant="ghost" className="text-red-600 hover:text-red-300 hover:bg-red-500/10 h-8 w-8">
@@ -1001,9 +1015,30 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
               OCALC Photos
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <PhotoUpload label="Left" value={formData.ocalc_left_photo} onChange={(v) => handlePhotoChange("ocalc_left_photo", v)} testId="ocalc-left" />
-              <PhotoUpload label="Middle" value={formData.ocalc_middle_photo} onChange={(v) => handlePhotoChange("ocalc_middle_photo", v)} testId="ocalc-middle" />
-              <PhotoUpload label="Right" value={formData.ocalc_right_photo} onChange={(v) => handlePhotoChange("ocalc_right_photo", v)} testId="ocalc-right" />
+              <div className="space-y-2">
+                <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Left</Label>
+                <PhotoMarkupEditor 
+                  photos={formData.ocalc_left_photo ? [formData.ocalc_left_photo] : []} 
+                  onChange={(v) => handlePhotoChange("ocalc_left_photo", v[0] || "")}
+                  label="OCALC Left"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Middle</Label>
+                <PhotoMarkupEditor 
+                  photos={formData.ocalc_middle_photo ? [formData.ocalc_middle_photo] : []} 
+                  onChange={(v) => handlePhotoChange("ocalc_middle_photo", v[0] || "")}
+                  label="OCALC Middle"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Right</Label>
+                <PhotoMarkupEditor 
+                  photos={formData.ocalc_right_photo ? [formData.ocalc_right_photo] : []} 
+                  onChange={(v) => handlePhotoChange("ocalc_right_photo", v[0] || "")}
+                  label="OCALC Right"
+                />
+              </div>
             </div>
           </div>
 
@@ -1142,7 +1177,13 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
                             </SelectContent>
                           </Select>
                         </div>
-                        <MultiPhotoUpload label="Photos" value={knuckle.photos || []} onChange={(v) => updateKnuckle(index, "photos", v)} testId={`anchor${index}`} compact />
+                        <div className="col-span-full">
+                          <PhotoMarkupEditor 
+                            photos={knuckle.photos || []} 
+                            onChange={(v) => updateKnuckle(index, "photos", v)} 
+                            label={`Anchor ${index + 1} Photos`}
+                          />
+                        </div>
                       </div>
                       {knuckles.length > 1 && (
                         <Button type="button" onClick={() => removeKnuckle(index)} size="icon" variant="ghost" className="text-red-600 hover:text-red-300 hover:bg-red-500/10 h-8 w-8">
