@@ -110,15 +110,6 @@ const ASEChecklistTab = ({ formData, handleChange, poles = [], underground = [] 
           <FieldRow label="Multi Tenant">
             <YesNoSelect value={formData.multi_tenant} onChange={(v) => handleChange("multi_tenant", v)} filled={isFilled(formData.multi_tenant)} />
           </FieldRow>
-          <FieldRow label="Disable NTE Auto-Assign">
-            <YesNoSelect value={formData.disable_nte_auto_assign} onChange={(v) => handleChange("disable_nte_auto_assign", v)} filled={isFilled(formData.disable_nte_auto_assign)} />
-          </FieldRow>
-          <FieldRow label="Multi Tenant Eligibility">
-            <YesNoSelect value={formData.multi_tenant_eligibility} onChange={(v) => handleChange("multi_tenant_eligibility", v)} filled={isFilled(formData.multi_tenant_eligibility)} />
-          </FieldRow>
-          <FieldRow label="Router on Same Floor">
-            <YesNoSelect value={formData.router_on_same_floor} onChange={(v) => handleChange("router_on_same_floor", v)} filled={isFilled(formData.router_on_same_floor)} />
-          </FieldRow>
           <FieldRow label="Router Within 300ft">
             <YesNoSelect value={formData.router_within_300ft} onChange={(v) => handleChange("router_within_300ft", v)} filled={isFilled(formData.router_within_300ft)} />
           </FieldRow>
