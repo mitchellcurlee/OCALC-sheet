@@ -1045,19 +1045,26 @@ const JobMap = () => {
                         </div>
                       </Popup>
                     </Marker>
-                    {/* Station number label below pole marker */}
+                    {/* Station number label with offset and connecting line */}
                     {stationLabel && (
-                      <Marker 
-                        position={[p.pos[0] - 0.00008, p.pos[1]]} 
-                        icon={L.divIcon({
-                          className: "station-label",
-                          html: `<div style="background:#4f46e5;color:#fff;border:1px solid #fff;border-radius:4px;padding:1px 4px;font:600 8px/1.2 ui-monospace,monospace;white-space:nowrap;box-shadow:0 1px 2px rgba(0,0,0,.3);">${stationLabel}</div>`,
-                          iconSize: [40, 16],
-                          iconAnchor: [20, 0],
-                        })}
-                        interactive={false}
-                        zIndexOffset={850}
-                      />
+                      <>
+                        {/* Connecting line from marker to station label */}
+                        <Polyline 
+                          positions={[p.pos, [p.pos[0] - 0.00015, p.pos[1] + 0.00015]]} 
+                          pathOptions={{ color: "#4f46e5", weight: 1.5, dashArray: "3,3", opacity: 0.8 }} 
+                        />
+                        <Marker 
+                          position={[p.pos[0] - 0.00015, p.pos[1] + 0.00015]} 
+                          icon={L.divIcon({
+                            className: "station-label-smart",
+                            html: `<div style="background:#4f46e5;color:#fff;border:2px solid #fff;border-radius:4px;padding:2px 6px;font:700 10px/1.2 ui-monospace,monospace;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,.4);transform:translate(-50%,-50%);">${p.pole_number || 'P'}<br/>${stationLabel}</div>`,
+                            iconSize: [60, 32],
+                            iconAnchor: [30, 16],
+                          })}
+                          interactive={false}
+                          zIndexOffset={850}
+                        />
+                      </>
                     )}
                   </React.Fragment>
                 );
@@ -1087,19 +1094,26 @@ const JobMap = () => {
                       </div>
                     </Popup>
                   </Marker>
-                  {/* Station number label below underground marker */}
+                  {/* Station number label with offset and connecting line */}
                   {stationLabel && (
-                    <Marker 
-                      position={[u.pos[0] - 0.00008, u.pos[1]]} 
-                      icon={L.divIcon({
-                        className: "station-label",
-                        html: `<div style="background:#4f46e5;color:#fff;border:1px solid #fff;border-radius:4px;padding:1px 4px;font:600 8px/1.2 ui-monospace,monospace;white-space:nowrap;box-shadow:0 1px 2px rgba(0,0,0,.3);">${stationLabel}</div>`,
-                        iconSize: [40, 16],
-                        iconAnchor: [20, 0],
-                      })}
-                      interactive={false}
-                      zIndexOffset={850}
-                    />
+                    <>
+                      {/* Connecting line from marker to station label */}
+                      <Polyline 
+                        positions={[u.pos, [u.pos[0] - 0.00015, u.pos[1] - 0.00015]]} 
+                        pathOptions={{ color: isRed ? "#dc2626" : "#16a34a", weight: 1.5, dashArray: "3,3", opacity: 0.8 }} 
+                      />
+                      <Marker 
+                        position={[u.pos[0] - 0.00015, u.pos[1] - 0.00015]} 
+                        icon={L.divIcon({
+                          className: "station-label-smart",
+                          html: `<div style="background:${isRed ? '#dc2626' : '#16a34a'};color:#fff;border:2px solid #fff;border-radius:4px;padding:2px 6px;font:700 10px/1.2 ui-monospace,monospace;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,.4);transform:translate(-50%,-50%);">${undergroundAbbr(u.type)}${u.label ? '-' + u.label : ''}<br/>${stationLabel}</div>`,
+                          iconSize: [70, 32],
+                          iconAnchor: [35, 16],
+                        })}
+                        interactive={false}
+                        zIndexOffset={850}
+                      />
+                    </>
                   )}
                 </React.Fragment>
               )})}

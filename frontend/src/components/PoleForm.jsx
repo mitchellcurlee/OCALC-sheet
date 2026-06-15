@@ -94,9 +94,9 @@ const emptyFormData = () => ({
   latitude: "", longitude: "-", notes: "", row_information: "",
   hoa_markup_photos: [], // Photos for HOA markup/annotation
 });
-const emptyDownGuy = () => ({ _key: rowKey(), owner: "", direction: "", size: "", type: "", condition: "", height: "", lead: "" });
-const emptyKnuckle = () => ({ _key: rowKey(), size: "", total_eyes: "", direction: "", condition: "", photos: [] });
-const emptyAttachment = () => ({ _key: rowKey(), height: "", owner: "", photos: [], notes: "" });
+const emptyDownGuy = () => ({ _key: rowKey(), owner: "", direction: "", size: "", type: "", condition: "", height: "", lead: "", photos: [] });
+const emptyKnuckle = () => ({ _key: rowKey(), size: "", total_eyes: "", direction: "", condition: "" });
+const emptyAttachment = () => ({ _key: rowKey(), height: "", owner: "", notes: "" });
 
 export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, onSubmit, submitting = false, backUrl = "/" }) => {
   const [gpsLoading, setGpsLoading] = useState(false);
@@ -614,6 +614,7 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
                     <SelectItem value="Yes / Side Easement">Yes / Side Easement</SelectItem>
                     <SelectItem value="Yes / Right of Way">Yes / Right of Way</SelectItem>
                     <SelectItem value="No / Rear Easement">No / Rear Easement</SelectItem>
+                    <SelectItem value="No / Side Easement">No / Side Easement</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -800,7 +801,7 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
                       </div>
                       <SpanDistance value={formData[`span${num}_distance`]} onChange={(v) => handleSelectChange(`span${num}_distance`, v)} testId={`span${num}-distance`} />
                       <div className="space-y-1">
-                        <Label className="text-xs font-mono text-zinc-500">Owner</Label>
+                        <Label className="text-xs font-mono text-zinc-500">Attachment Owner</Label>
                         <Select value={formData[`span${num}_owner`]} onValueChange={(v) => handleSelectChange(`span${num}_owner`, v)}>
                           <SelectTrigger className="h-9 bg-white border-zinc-300 text-zinc-900 text-sm"><SelectValue placeholder="Owner" /></SelectTrigger>
                           <SelectContent className="bg-zinc-50 border-zinc-300">
@@ -934,13 +935,6 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
                       <div className="space-y-1">
                         <Label className="text-xs font-mono text-zinc-500">Notes</Label>
                         <Input type="text" value={att.notes || ""} onChange={(e) => updateAttachment(index, "notes", e.target.value)} placeholder="Enter notes" className="h-9 bg-white border-zinc-300 text-zinc-900 text-sm" />
-                      </div>
-                      <div className="col-span-full">
-                        <PhotoMarkupEditor 
-                          photos={att.photos || []} 
-                          onChange={(v) => updateAttachment(index, "photos", v)} 
-                          label={`HOA ${index + 1} Photos`}
-                        />
                       </div>
                     </div>
                     {attachments.length > 1 && (
@@ -1104,6 +1098,13 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
                       </Button>
                     )}
                   </div>
+                  <div className="mt-2 ml-8">
+                    <PhotoMarkupEditor 
+                      photos={guy.photos || []} 
+                      onChange={(v) => updateDownGuy(index, "photos", v)} 
+                      label={`Down Guy ${index + 1} Photos`}
+                    />
+                  </div>
                 </div>
               ))}
             </div>
@@ -1155,13 +1156,6 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
                               <SelectItem value="Buried" className="text-blue-600">Buried</SelectItem>
                             </SelectContent>
                           </Select>
-                        </div>
-                        <div className="col-span-full">
-                          <PhotoMarkupEditor 
-                            photos={knuckle.photos || []} 
-                            onChange={(v) => updateKnuckle(index, "photos", v)} 
-                            label={`Anchor ${index + 1} Photos`}
-                          />
                         </div>
                       </div>
                       {knuckles.length > 1 && (

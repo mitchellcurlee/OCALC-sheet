@@ -692,3 +692,51 @@ Changes require redeploy to production (https://poledatasheet.info) to be visibl
 
 ### Requires Redeploy
 Changes require redeploy to production (https://poledatasheet.info) to be visible.
+
+
+## Session Update (Jun 15, 2026) - Photo Editor & Dropdown Updates
+
+### Photo Upload/Editor Reorganization
+- **Down Guys**: Added PhotoMarkupEditor with camera/upload for each down guy row
+- **Anchor**: REMOVED photos from anchor rows (per user request)
+- **HOA**: REMOVED photos from HOA rows (photos still available in HOA Mark Ups section)
+- **Birthmark**: Camera/Gallery upload buttons confirmed working
+
+### Dropdown Updates
+**Pole Owner** - Added new options:
+- (CNP) Centerpoint
+- Bluebonnet Electric Coop.
+- San Bernard Electric Coop.
+- City Owned
+- (TNMP) Texas-New Mexico Power
+- AEP Texas
+- Oncor Energy
+- Lubbock Power + Light
+- Entergy Texas
+
+**Access** - Added new option:
+- No / Side Easement (now has 5 total options)
+
+### Label Updates
+- **Spans**: Changed "Owner" label to "Attachment Owner"
+
+### Map Station Numbers (Smart Tags)
+- Station numbers moved from Job Page list to Interactive Map only
+- Implemented offset smart tags with connecting lines:
+  - Poles: Purple connecting line to offset label showing pole number + station
+  - Underground: Color-coded (red/green) connecting line to offset label showing type + station
+- Labels show: Item identifier + station number (e.g., "P-1 / 0+00")
+
+### Backend Model Updates
+- Added photos array to down_guy data structure (emptyDownGuy)
+- Removed photos from anchor and HOA attachment rows
+- Updated POLE_OWNERS in `/app/backend/models/options.py` with 11 total options
+
+### Files Modified
+- `/app/frontend/src/components/PoleForm.jsx` - Photo placement changes, dropdown label updates
+- `/app/frontend/src/pages/JobDetail.jsx` - Removed station numbers from item display
+- `/app/frontend/src/pages/JobMap.jsx` - Added smart tag station labels with offset lines
+- `/app/backend/models/options.py` - Added new pole owners
+
+### Requires Redeploy
+Changes require redeploy to production (https://poledatasheet.info) to be visible.

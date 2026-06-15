@@ -1,6 +1,18 @@
 # Dropdown options for forms
 
-POLE_OWNERS = ["Foreign Owned", "ATT"]
+POLE_OWNERS = [
+    "Foreign Owned", 
+    "ATT", 
+    "(CNP) Centerpoint", 
+    "Bluebonnet Electric Coop.", 
+    "San Bernard Electric Coop.", 
+    "City Owned", 
+    "(TNMP) Texas-New Mexico Power", 
+    "AEP Texas", 
+    "Oncor Energy", 
+    "Lubbock Power + Light", 
+    "Entergy Texas"
+]
 POLE_CONDITIONS = ["Excellent", "Good", "Bad"]
 POLE_TYPES = ["Wood", "Steel", "Fiber Glass", "Concrete"]
 POLE_CLASSES = ["H1", "H2", "1", "2", "3", "4", "5", "6"]
