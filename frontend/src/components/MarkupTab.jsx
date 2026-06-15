@@ -86,9 +86,11 @@ const MarkupTab = ({
           photos={photos} 
           onChange={onPhotosChange}
           label={label}
+          undergroundItems={underground}
+          poles={poles}
         />
         <p className="text-xs text-zinc-500 mt-2">
-          Upload photos and add annotations using the in-app editor.
+          Upload photos and add annotations using the in-app editor. Use the Marker tool to add job-specific labels.
         </p>
       </div>
 

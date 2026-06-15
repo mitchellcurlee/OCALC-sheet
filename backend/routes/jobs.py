@@ -1023,7 +1023,8 @@ async def export_ase_excel(job_id: str, current_user: dict = Depends(get_current
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
     
-    ase = job.get("ase_data", {})
+    # Handle None or missing ase_data
+    ase = job.get("ase_data") or {}
     
     wb = Workbook()
     

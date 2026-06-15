@@ -59,7 +59,13 @@ const SHAPES = [
  * PhotoMarkupEditor - In-app photo editor for markup annotations
  * Allows adding lines, markers, shapes, and text notes on photos
  */
-export const PhotoMarkupEditor = ({ photos = [], onChange, label = "Mark Ups" }) => {
+export const PhotoMarkupEditor = ({ 
+  photos = [], 
+  onChange, 
+  label = "Mark Ups",
+  undergroundItems = [],  // Underground items from the job for quick labeling
+  poles = []              // Poles from the job for quick labeling
+}) => {
   const [editorOpen, setEditorOpen] = useState(false);
   const [currentPhoto, setCurrentPhoto] = useState(null);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(-1);
@@ -171,11 +177,20 @@ export const PhotoMarkupEditor = ({ photos = [], onChange, label = "Mark Ups" })
     if (currentPhoto && canvasRef.current) {
       const canvas = canvasRef.current;
       const ctx = canvas.getContext("2d");
-      const img = new Image();
       
-      img.crossOrigin = "anonymous";
+      const loadImage = (url, useCors = true) => {
+        return new Promise((resolve, reject) => {
+          const img = new Image();
+          if (useCors && !url.startsWith('data:')) {
+            img.crossOrigin = "anonymous";
+          }
+          img.onload = () => resolve(img);
+          img.onerror = () => reject(new Error("Failed to load image"));
+          img.src = url;
+        });
+      };
       
-      img.onload = () => {
+      const processImage = (img) => {
         const maxWidth = 800;
         const maxHeight = 600;
         let width = img.width;
@@ -197,38 +212,28 @@ export const PhotoMarkupEditor = ({ photos = [], onChange, label = "Mark Ups" })
         setImageLoaded(true);
       };
       
-      img.onerror = () => {
-        console.error("Failed to load image with CORS, trying without...");
-        const img2 = new Image();
-        img2.onload = () => {
-          const maxWidth = 800;
-          const maxHeight = 600;
-          let width = img2.width;
-          let height = img2.height;
-          
-          if (width > maxWidth) {
-            height = (height * maxWidth) / width;
-            width = maxWidth;
-          }
-          if (height > maxHeight) {
-            width = (width * maxHeight) / height;
-            height = maxHeight;
-          }
-          
-          canvas.width = width;
-          canvas.height = height;
-          ctx.drawImage(img2, 0, 0, width, height);
-          imageRef.current = { img: img2, width, height };
-          setImageLoaded(true);
-        };
-        img2.onerror = () => {
-          console.error("Failed to load image completely");
+      // Try loading with CORS first, then without
+      loadImage(currentPhoto, true)
+        .then(processImage)
+        .catch(() => {
+          console.log("CORS failed, trying without...");
+          return loadImage(currentPhoto, false);
+        })
+        .then(processImage)
+        .catch((err) => {
+          console.error("Failed to load image:", err);
+          // Show error state
+          canvas.width = 400;
+          canvas.height = 300;
+          ctx.fillStyle = "#f3f4f6";
+          ctx.fillRect(0, 0, 400, 300);
+          ctx.fillStyle = "#6b7280";
+          ctx.font = "14px sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText("Failed to load image", 200, 140);
+          ctx.fillText("Please try a different photo", 200, 160);
           setImageLoaded(false);
-        };
-        img2.src = currentPhoto;
-      };
-      
-      img.src = currentPhoto;
+        });
     }
   }, [currentPhoto]);
 
@@ -914,6 +919,68 @@ export const PhotoMarkupEditor = ({ photos = [], onChange, label = "Mark Ups" })
               {/* Underground markers */}
               {tool === "marker" && (
                 <div className="space-y-2">
+                  {/* Job-specific underground labels */}
+                  {undergroundItems.length > 0 && (
+                    <>
+                      <Label className="text-xs font-mono text-green-700">JOB UNDERGROUND ({undergroundItems.length})</Label>
+                      <div className="grid grid-cols-2 gap-1 max-h-24 overflow-y-auto bg-green-50 p-2 rounded">
+                        {undergroundItems.map((item, idx) => {
+                          const abbr = item.type?.substring(0, 2).toUpperCase() || "UG";
+                          const itemLabel = item.label || `${abbr}-${idx + 1}`;
+                          return (
+                            <button
+                              key={item.id || idx}
+                              type="button"
+                              onClick={() => {
+                                setSelectedMarker(itemLabel);
+                                setTextInput(itemLabel);
+                              }}
+                              className={`p-1 text-[10px] font-mono rounded border text-left truncate ${
+                                selectedMarker === itemLabel 
+                                  ? 'bg-green-200 border-green-500' 
+                                  : 'border-green-300 hover:bg-green-100 bg-white'
+                              }`}
+                              title={`${item.type}: ${itemLabel}`}
+                            >
+                              <span className="font-bold">{itemLabel}</span>
+                              <span className="text-zinc-500 ml-1">({item.type?.substring(0, 3)})</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
+                  
+                  {/* Job-specific pole labels */}
+                  {poles.length > 0 && (
+                    <>
+                      <Label className="text-xs font-mono text-orange-700">JOB POLES ({poles.length})</Label>
+                      <div className="grid grid-cols-2 gap-1 max-h-24 overflow-y-auto bg-orange-50 p-2 rounded">
+                        {poles.map((pole, idx) => {
+                          const poleLabel = pole.pole_number || `P-${idx + 1}`;
+                          return (
+                            <button
+                              key={pole.id || idx}
+                              type="button"
+                              onClick={() => {
+                                setSelectedMarker(poleLabel);
+                                setTextInput(poleLabel);
+                              }}
+                              className={`p-1 text-[10px] font-mono rounded border text-left truncate ${
+                                selectedMarker === poleLabel 
+                                  ? 'bg-orange-200 border-orange-500' 
+                                  : 'border-orange-300 hover:bg-orange-100 bg-white'
+                              }`}
+                              title={`Pole: ${poleLabel}`}
+                            >
+                              {poleLabel}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
+                  
                   <Label className="text-xs font-mono">UG MARKERS</Label>
                   <div className="grid grid-cols-3 gap-1 max-h-40 overflow-y-auto">
                     {UG_MARKERS.map(m => (
