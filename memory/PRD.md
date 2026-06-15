@@ -740,3 +740,27 @@ Changes require redeploy to production (https://poledatasheet.info) to be visibl
 
 ### Requires Redeploy
 Changes require redeploy to production (https://poledatasheet.info) to be visible.
+
+
+## Session Update (Jun 15, 2026) - Path of Approach Directions
+
+### Path of Approach Enhancement
+- Added compass direction calculation between consecutive items
+- Direction is computed using GPS bearing between two points
+- Converts bearing to 8-point compass (North, Northeast, East, Southeast, South, Southwest, West, Northwest)
+
+**Example format:**
+- `HH1 0+00 North` - Underground item at station 0+00, heading North
+- `aerial P1 0+69 Northeast` - First pole, heading Northeast  
+- `P1 to P2 North 3+50` - From P1 to P2, heading North, at station 3+50
+
+### Technical Implementation
+- `calculateBearing(lat1, lng1, lat2, lng2)` - Calculates compass bearing in degrees
+- `bearingToDirection(bearing)` - Converts bearing to 8-point compass direction
+- Directions calculated between consecutive items in sort order
+
+### Files Modified
+- `/app/frontend/src/pages/ASEForm.jsx` - Added direction calculation to path of approach
+
+### Requires Redeploy
+Changes require redeploy to production (https://poledatasheet.info) to be visible.

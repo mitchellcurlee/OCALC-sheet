@@ -201,7 +201,7 @@ const ASEForm = () => {
           }
         }
         
-        // Path of approach with station numbers (0+00 format)
+        // Path of approach with station numbers (0+00 format) and directions
         if (!updated.path_of_approach) {
           // Helper function to convert feet to station format
           const feetToStation = (feet) => {
@@ -219,6 +219,27 @@ const ASEForm = () => {
             const dLng = ((lng2 - lng1) * Math.PI) / 180;
             const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1Rad) * Math.cos(lat2Rad) * Math.sin(dLng / 2) ** 2;
             return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) * 3.28084; // meters to feet
+          };
+          
+          // Helper function to calculate compass bearing between two GPS points
+          const calculateBearing = (lat1, lng1, lat2, lng2) => {
+            const lat1Rad = (lat1 * Math.PI) / 180;
+            const lat2Rad = (lat2 * Math.PI) / 180;
+            const dLng = ((lng2 - lng1) * Math.PI) / 180;
+            
+            const y = Math.sin(dLng) * Math.cos(lat2Rad);
+            const x = Math.cos(lat1Rad) * Math.sin(lat2Rad) - Math.sin(lat1Rad) * Math.cos(lat2Rad) * Math.cos(dLng);
+            
+            let bearing = Math.atan2(y, x) * (180 / Math.PI);
+            bearing = (bearing + 360) % 360; // Normalize to 0-360
+            return bearing;
+          };
+          
+          // Helper function to convert bearing to compass direction
+          const bearingToDirection = (bearing) => {
+            const directions = ['North', 'Northeast', 'East', 'Southeast', 'South', 'Southwest', 'West', 'Northwest'];
+            const index = Math.round(bearing / 45) % 8;
+            return directions[index];
           };
           
           // Build ordered list of all items with GPS
@@ -258,7 +279,7 @@ const ASEForm = () => {
           // Sort by order
           allItems.sort((a, b) => a.order - b.order);
           
-          // Build path with cumulative station numbers
+          // Build path with cumulative station numbers and directions
           const pathSegments = [];
           let runningDistance = 0;
           let prevItem = null;
@@ -274,16 +295,23 @@ const ASEForm = () => {
           });
           
           allItems.forEach((item, idx) => {
-            // Calculate distance from previous item using GPS
+            // Calculate distance and direction from previous item using GPS
+            let direction = '';
             if (prevItem && item.lat && item.lng && prevItem.lat && prevItem.lng) {
               const dist = distanceFeet(prevItem.lat, prevItem.lng, item.lat, item.lng);
               runningDistance += dist;
+              const bearing = calculateBearing(prevItem.lat, prevItem.lng, item.lat, item.lng);
+              direction = bearingToDirection(bearing);
             }
             
             const stationNum = feetToStation(runningDistance);
             
             if (item.type === 'underground') {
+              // For first item or after underground, show direction
               let segment = `${item.name} ${stationNum}`;
+              if (direction) {
+                segment += ` ${direction}`;
+              }
               // Add notes if present
               if (item.notes) {
                 segment += ` (${item.notes})`;
@@ -296,9 +324,25 @@ const ASEForm = () => {
             } else if (item.type === 'pole') {
               let segment = '';
               if (idx === firstPoleIdx) {
+                // First pole - show "aerial [pole] [station] [direction]"
                 segment = `aerial ${item.name} ${stationNum}`;
-              } else if (idx === lastPoleIdx) {
-                segment = `to ${item.name} ${stationNum}`;
+                if (direction) {
+                  segment += ` ${direction}`;
+                }
+              } else if (idx === lastPoleIdx && idx !== firstPoleIdx) {
+                // Last pole - show "[prevPole] to [pole] [direction] [station]"
+                const prevPole = allItems.slice(0, idx).reverse().find(i => i.type === 'pole');
+                if (prevPole) {
+                  segment = `${prevPole.name} to ${item.name} ${direction} ${stationNum}`;
+                } else {
+                  segment = `to ${item.name} ${direction} ${stationNum}`;
+                }
+              } else {
+                // Middle pole - show "[prevPole] to [pole] [direction] [station]"
+                const prevPole = allItems.slice(0, idx).reverse().find(i => i.type === 'pole');
+                if (prevPole) {
+                  segment = `${prevPole.name} to ${item.name} ${direction} ${stationNum}`;
+                }
               }
               // Add notes if present
               if (segment && item.notes) {
