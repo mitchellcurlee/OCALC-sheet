@@ -172,20 +172,39 @@ export const PhotoMarkupEditor = ({
     return items;
   }, [annotations]);
 
-  // Load image into canvas
+  // Load image into canvas - also depends on editorOpen since canvas only exists when dialog is open
   useEffect(() => {
-    if (currentPhoto && canvasRef.current) {
+    if (!editorOpen || !currentPhoto) {
+      return;
+    }
+    
+    // Small delay to ensure canvas is rendered after dialog opens
+    const timer = setTimeout(() => {
+      if (!canvasRef.current) {
+        console.log("Canvas ref still null after dialog open");
+        return;
+      }
+      
+      console.log("Starting image load for:", currentPhoto.substring(0, 50) + "...");
+      
       const canvas = canvasRef.current;
       const ctx = canvas.getContext("2d");
       
       const loadImage = (url, useCors = true) => {
         return new Promise((resolve, reject) => {
           const img = new Image();
+          // Don't use CORS for data URLs
           if (useCors && !url.startsWith('data:')) {
             img.crossOrigin = "anonymous";
           }
-          img.onload = () => resolve(img);
-          img.onerror = () => reject(new Error("Failed to load image"));
+          img.onload = () => {
+            console.log("Image loaded successfully, dimensions:", img.width, "x", img.height);
+            resolve(img);
+          };
+          img.onerror = (e) => {
+            console.error("Image load error:", e);
+            reject(new Error("Failed to load image"));
+          };
           img.src = url;
         });
       };
@@ -205,37 +224,57 @@ export const PhotoMarkupEditor = ({
           height = maxHeight;
         }
         
+        console.log("Processing image, canvas dimensions:", width, "x", height);
         canvas.width = width;
         canvas.height = height;
         ctx.drawImage(img, 0, 0, width, height);
         imageRef.current = { img, width, height };
         setImageLoaded(true);
+        console.log("Image loaded state set to true");
       };
       
-      // Try loading with CORS first, then without
-      loadImage(currentPhoto, true)
-        .then(processImage)
-        .catch(() => {
-          console.log("CORS failed, trying without...");
-          return loadImage(currentPhoto, false);
-        })
-        .then(processImage)
-        .catch((err) => {
-          console.error("Failed to load image:", err);
-          // Show error state
-          canvas.width = 400;
-          canvas.height = 300;
-          ctx.fillStyle = "#f3f4f6";
-          ctx.fillRect(0, 0, 400, 300);
-          ctx.fillStyle = "#6b7280";
-          ctx.font = "14px sans-serif";
-          ctx.textAlign = "center";
-          ctx.fillText("Failed to load image", 200, 140);
-          ctx.fillText("Please try a different photo", 200, 160);
-          setImageLoaded(false);
-        });
-    }
-  }, [currentPhoto]);
+      const showError = () => {
+        console.log("Showing error state");
+        canvas.width = 400;
+        canvas.height = 300;
+        ctx.fillStyle = "#f3f4f6";
+        ctx.fillRect(0, 0, 400, 300);
+        ctx.fillStyle = "#6b7280";
+        ctx.font = "14px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("Failed to load image", 200, 140);
+        ctx.fillText("Please try a different photo", 200, 160);
+        setImageLoaded(false);
+      };
+      
+      // For data URLs, load directly without CORS
+      if (currentPhoto.startsWith('data:')) {
+        console.log("Loading data URL image...");
+        loadImage(currentPhoto, false)
+          .then(processImage)
+          .catch((err) => {
+            console.error("Failed to load data URL image:", err);
+            showError();
+          });
+      } else {
+        // For other URLs, try with CORS first, then without
+        console.log("Loading regular URL image...");
+        loadImage(currentPhoto, true)
+          .then(processImage)
+          .catch(() => {
+            console.log("CORS failed, trying without...");
+            return loadImage(currentPhoto, false)
+              .then(processImage)
+              .catch((err) => {
+                console.error("Failed to load image:", err);
+                showError();
+              });
+          });
+      }
+    }, 100); // Small delay for dialog to render
+    
+    return () => clearTimeout(timer);
+  }, [currentPhoto, editorOpen]);
 
   // Redraw canvas with all annotations
   const redrawCanvas = useCallback(() => {
