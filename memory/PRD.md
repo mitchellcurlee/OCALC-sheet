@@ -799,3 +799,41 @@ Changes require redeploy to production (https://poledatasheet.info) to be visibl
 
 ### Requires Redeploy
 Changes require redeploy to production (https://poledatasheet.info) to be visible.
+
+
+## Session Update (Jun 16, 2026) - Path of Approach Notes Integration
+
+### Enhanced Path of Approach Auto-Population
+Notes from job page items now automatically populate into the Path of Approach narrative:
+
+**Underground Items include:**
+- Item name (label or type)
+- Station number (0+00 format)
+- Compass direction
+- Notes field content
+- Tie-in measurements
+
+**Poles include:**
+- Pole number
+- Station number (0+00 format)
+- Compass direction
+- Notes field content
+- R.O.W. Information (if entered)
+- Pole Owner (if not ATT - only shows non-ATT owners)
+
+**Example Output Format:**
+- `HH-1 0+00 North - Handhole near property line; Tie-in: 15ft from edge`
+- `aerial P-1 0+69 Northeast - Good condition pole; R.O.W.: 10ft setback`
+- `P-1 to P-2 North 3+50 - Span crosses driveway; Owner: Foreign Owned`
+
+### Implementation Details
+- Notes are joined with semicolons for readability
+- Dash separator between item info and notes section
+- Pole owner only shown for non-ATT poles (reduces clutter)
+- R.O.W. information prefixed with "R.O.W.:" for clarity
+
+### Files Modified
+- `/app/frontend/src/pages/ASEForm.jsx` - Enhanced path of approach generation with notes integration
+
+### Requires Redeploy
+Changes require redeploy to production (https://poledatasheet.info) to be visible.

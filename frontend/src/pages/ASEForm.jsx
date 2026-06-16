@@ -271,7 +271,10 @@ const ASEForm = () => {
                 lng: parseFloat(pole.longitude),
                 order: pole.sort_order ?? pole.order ?? (100 + idx), // Poles come after underground by default
                 spanDistance: pole.span1_distance ? parseFloat(pole.span1_distance) : 0,
-                notes: pole.notes || ''
+                notes: pole.notes || '',
+                row_information: pole.row_information || '',
+                condition: pole.condition || '',
+                pole_owner: pole.pole_owner || ''
               });
             }
           });
@@ -307,18 +310,21 @@ const ASEForm = () => {
             const stationNum = feetToStation(runningDistance);
             
             if (item.type === 'underground') {
-              // For first item or after underground, show direction
+              // For underground items, include name, station, direction, and all notes
               let segment = `${item.name} ${stationNum}`;
               if (direction) {
                 segment += ` ${direction}`;
               }
-              // Add notes if present
+              // Build notes section combining all note fields
+              const notesParts = [];
               if (item.notes) {
-                segment += ` (${item.notes})`;
+                notesParts.push(item.notes);
               }
-              // Add tie-in measurements if present
               if (item.tie_in_measurements) {
-                segment += ` [Tie-in: ${item.tie_in_measurements}]`;
+                notesParts.push(`Tie-in: ${item.tie_in_measurements}`);
+              }
+              if (notesParts.length > 0) {
+                segment += ` - ${notesParts.join('; ')}`;
               }
               pathSegments.push(segment);
             } else if (item.type === 'pole') {
@@ -344,11 +350,21 @@ const ASEForm = () => {
                   segment = `${prevPole.name} to ${item.name} ${direction} ${stationNum}`;
                 }
               }
-              // Add notes if present
-              if (segment && item.notes) {
-                segment += ` (${item.notes})`;
-              }
+              // Build notes section combining all note fields for poles
               if (segment) {
+                const notesParts = [];
+                if (item.notes) {
+                  notesParts.push(item.notes);
+                }
+                if (item.row_information) {
+                  notesParts.push(`R.O.W.: ${item.row_information}`);
+                }
+                if (item.pole_owner && item.pole_owner !== 'ATT') {
+                  notesParts.push(`Owner: ${item.pole_owner}`);
+                }
+                if (notesParts.length > 0) {
+                  segment += ` - ${notesParts.join('; ')}`;
+                }
                 pathSegments.push(segment);
               }
             }
