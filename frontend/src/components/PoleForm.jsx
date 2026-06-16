@@ -209,21 +209,33 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
       latitude: p.latitude?.toString() || "", longitude: p.longitude?.toString() || "-", notes: p.notes || "", row_information: p.row_information || "",
       hoa_markup_photos: p.hoa_markup_photos || [],
     });
-    setDownGuys(p.down_guys?.length > 0 ? p.down_guys.map(dg => ({ _key: rowKey(), ...dg, height: dg.height?.toString() || "" })) : [{ _key: rowKey(), owner: "", direction: "", size: "", type: "", condition: "", height: "", lead: "" }]);
+    setDownGuys(p.down_guys?.length > 0 ? p.down_guys.map(dg => ({ 
+      _key: rowKey(), 
+      owner: dg.owner || "",
+      direction: dg.direction || "",
+      size: dg.size || "",
+      type: dg.type || "",
+      condition: dg.condition || "",
+      height: dg.height?.toString() || "", 
+      lead: dg.lead?.toString() || "",
+      photos: dg.photos || []
+    })) : [{ _key: rowKey(), owner: "", direction: "", size: "", type: "", condition: "", height: "", lead: "", photos: [] }]);
     // Convert legacy single photo to photos array for knuckles
     setKnuckles(p.knuckles?.length > 0 ? p.knuckles.map(k => ({ 
       _key: rowKey(), 
       ...k, 
       photos: k.photos || (k.photo ? [k.photo] : []) 
-    })) : [{ _key: rowKey(), size: "", total_eyes: "", direction: "", condition: "", photos: [] }]);
-    // Convert legacy single photo to photos array for attachments
+    })) : [{ _key: rowKey(), size: "", total_eyes: "", direction: "", condition: "" }]);
+    // Convert legacy single photo to photos array for attachments and ensure new fields have defaults
     setAttachments(p.attachments?.length > 0 ? p.attachments.map(a => ({ 
       _key: rowKey(), 
-      ...a, 
+      owner: a.owner || "",
+      location: a.location || "",
       height: a.height?.toString() || "", 
+      hoa_type: a.hoa_type || "",
       notes: a.notes || "",
       photos: a.photos || (a.photo ? [a.photo] : [])
-    })) : [{ _key: rowKey(), height: "", owner: "", photos: [], notes: "" }]);
+    })) : [{ _key: rowKey(), owner: "", location: "", height: "", hoa_type: "", notes: "" }]);
   }, [initialPole, options.pole_owners]);
 
   // --- Autosave draft (create mode only) -----------------------------------

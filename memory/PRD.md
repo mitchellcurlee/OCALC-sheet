@@ -886,3 +886,35 @@ Changes require redeploy to production (https://poledatasheet.info) to be visibl
 
 ### Requires Redeploy
 Changes require redeploy to production (https://poledatasheet.info) to be visible.
+
+
+---
+
+## Session Update (Jun 16, 2026) - Backward Compatibility Fix
+
+### Issue Fixed: Edit Pole Page Blank Screen
+**Root Cause:** Two issues combined:
+1. **Backend `passlib/bcrypt` incompatibility**: bcrypt 4.1.3 broke passlib's version detection, causing `AttributeError: module 'bcrypt' has no attribute '__about__'` on every auth request
+2. **Route mismatch**: The edit pole URL pattern was confirmed as `/jobs/:jobId/edit/:id` (not `/jobs/:jobId/poles/edit/:id`)
+
+**Fix Applied:**
+- Downgraded bcrypt from 4.1.3 to 3.2.2 (`pip install bcrypt==3.2.2`)
+- Updated `/app/backend/requirements.txt`
+
+### Backward Compatibility Verified
+- Legacy poles (created before HOA schema changes) load correctly in Edit form
+- Missing `location` and `hoa_type` fields in attachments render as empty dropdowns
+- Missing `type` and `condition` fields in down_guys render as empty dropdowns
+- Full CRUD cycle works: fetch → edit → update with new fields
+
+### Files Modified
+- `/app/backend/requirements.txt` - bcrypt downgraded to 3.2.2
+
+### Test Results
+- Auth API: ✅ Working (token generation successful)
+- Edit Pole Page: ✅ Renders correctly with legacy data
+- API Update: ✅ Legacy data can be updated with new fields
+- No JavaScript console errors
+
+### Requires Redeploy
+Changes require redeploy to production (https://poledatasheet.info) to be visible.
