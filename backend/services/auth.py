@@ -67,7 +67,7 @@ def is_admin_user(user: dict) -> bool:
 def is_mastec_byers_admin(user: dict) -> bool:
     """Check if user is the mastec/byers admin who can see all mastec.com and byers.com jobs"""
     email = user.get("email", "").lower()
-    return email == "admin@mastecbyers.com"
+    return email == "admin@mastec.com"
 
 
 def is_mastec_byers_user(user: dict) -> bool:
