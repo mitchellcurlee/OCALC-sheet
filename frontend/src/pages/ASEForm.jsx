@@ -175,13 +175,35 @@ const ASEForm = () => {
             updated.need_hoffman_box = "YES";
           }
           
-          // Handhole - get tie-in measurements for "Starting FH/MH/Pole tie in measurements"
-          if (item.type === 'Handhole' || item.type?.toLowerCase().includes('handhole')) {
+          // Handhole or Manhole - get tie-in measurements for "Starting FH/MH/Pole tie in measurements"
+          if (item.type === 'Handhole' || item.type?.toLowerCase().includes('handhole') ||
+              item.type === 'Manhole' || item.type?.toLowerCase().includes('manhole')) {
             if (item.tie_in_measurements && !updated.starting_tie_in_measurements) {
               updated.starting_tie_in_measurements = item.tie_in_measurements;
             }
           }
         });
+        
+        // If no handhole/manhole tie-in, check first pole for starting tie-in measurements
+        if (!updated.starting_tie_in_measurements && polesData.length > 0) {
+          const sortedPoles = [...polesData].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+          const firstPole = sortedPoles[0];
+          // Check if first pole has any tie-in or measurement notes
+          if (firstPole.notes && firstPole.notes.toLowerCase().includes('tie')) {
+            updated.starting_tie_in_measurements = firstPole.notes;
+          }
+        }
+        
+        // Also collect all tie-in measurements from underground items for starting measurements
+        if (!updated.starting_tie_in_measurements) {
+          const allTieIns = ugData
+            .filter(item => item.tie_in_measurements)
+            .map(item => `${item.label || item.type}: ${item.tie_in_measurements}`)
+            .join('; ');
+          if (allTieIns) {
+            updated.starting_tie_in_measurements = allTieIns;
+          }
+        }
         
         // Attach pole photos to pole line start/end
         if (polesData.length > 0) {
@@ -310,21 +332,14 @@ const ASEForm = () => {
             const stationNum = feetToStation(runningDistance);
             
             if (item.type === 'underground') {
-              // For underground items, include name, station, direction, and all notes
+              // For underground items, include name, station, direction, and notes
               let segment = `${item.name} ${stationNum}`;
               if (direction) {
                 segment += ` ${direction}`;
               }
-              // Build notes section combining all note fields
-              const notesParts = [];
+              // Add notes if present (exclude tie-in measurements from path)
               if (item.notes) {
-                notesParts.push(item.notes);
-              }
-              if (item.tie_in_measurements) {
-                notesParts.push(`Tie-in: ${item.tie_in_measurements}`);
-              }
-              if (notesParts.length > 0) {
-                segment += ` - ${notesParts.join('; ')}`;
+                segment += ` - ${item.notes}`;
               }
               pathSegments.push(segment);
             } else if (item.type === 'pole') {
@@ -350,21 +365,11 @@ const ASEForm = () => {
                   segment = `${prevPole.name} to ${item.name} ${direction} ${stationNum}`;
                 }
               }
-              // Build notes section combining all note fields for poles
+              // Add notes if present (exclude ROW and owner from path)
+              if (segment && item.notes) {
+                segment += ` - ${item.notes}`;
+              }
               if (segment) {
-                const notesParts = [];
-                if (item.notes) {
-                  notesParts.push(item.notes);
-                }
-                if (item.row_information) {
-                  notesParts.push(`R.O.W.: ${item.row_information}`);
-                }
-                if (item.pole_owner && item.pole_owner !== 'ATT') {
-                  notesParts.push(`Owner: ${item.pole_owner}`);
-                }
-                if (notesParts.length > 0) {
-                  segment += ` - ${notesParts.join('; ')}`;
-                }
                 pathSegments.push(segment);
               }
             }

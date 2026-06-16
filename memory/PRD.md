@@ -837,3 +837,52 @@ Notes from job page items now automatically populate into the Path of Approach n
 
 ### Requires Redeploy
 Changes require redeploy to production (https://poledatasheet.info) to be visible.
+
+
+## Session Update (Jun 16, 2026) - Path of Approach & HOA Updates
+
+### Path of Approach Simplified
+- Removed tie-in measurements from path of approach narrative
+- Removed pole owner from path of approach narrative
+- Removed R.O.W. information from path of approach narrative
+- Now only includes: item name, station number, direction, and notes
+
+### Tie-In Measurements Auto-Population
+- Tie-in measurements now auto-populate "Starting FH/MH/Pole tie in measurements" field
+- Checks Handhole items first for tie_in_measurements field
+- Checks Manhole items if no Handhole tie-in found
+- Falls back to first pole notes if contains "tie"
+- Collects all underground tie-ins as fallback
+
+### HOA Section Restructured
+**Field Order Changed:** Owner → Location → Height → Type → Notes
+
+**Owner Dropdown:**
+- Removed "Midspan" and "Building" from options
+- Kept: Power, ATT, Comcast, Lightwave, Logix, PS, Neutral, Primary, Secondary, No Telco on Pole
+
+**New Location Dropdown:**
+- Options: Midspan, Building, Driveway, St. Crossing
+
+**New Type Dropdown:**
+- Options: Fiber new strand, Fiber over lashed to copper, Copper
+
+### Backend Model Updates
+- Updated Attachment model in `/app/backend/models/pole.py`:
+  - Added `location: Optional[str]` field
+  - Added `hoa_type: Optional[str]` field
+  - Reordered fields: owner, location, height, hoa_type, notes, photos
+
+- Updated `/app/backend/models/options.py`:
+  - Removed Midspan/Building from ATTACHMENT_OWNERS
+  - Added ATTACHMENT_LOCATIONS list
+  - Added ATTACHMENT_TYPES list
+
+### Files Modified
+- `/app/frontend/src/pages/ASEForm.jsx` - Simplified path of approach, enhanced tie-in auto-population
+- `/app/frontend/src/components/PoleForm.jsx` - Restructured HOA section with new dropdowns
+- `/app/backend/models/pole.py` - Updated Attachment model
+- `/app/backend/models/options.py` - Updated attachment options
+
+### Requires Redeploy
+Changes require redeploy to production (https://poledatasheet.info) to be visible.

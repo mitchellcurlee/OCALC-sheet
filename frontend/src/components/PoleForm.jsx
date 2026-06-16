@@ -96,7 +96,7 @@ const emptyFormData = () => ({
 });
 const emptyDownGuy = () => ({ _key: rowKey(), owner: "", direction: "", size: "", type: "", condition: "", height: "", lead: "", photos: [] });
 const emptyKnuckle = () => ({ _key: rowKey(), size: "", total_eyes: "", direction: "", condition: "" });
-const emptyAttachment = () => ({ _key: rowKey(), height: "", owner: "", notes: "" });
+const emptyAttachment = () => ({ _key: rowKey(), owner: "", location: "", height: "", hoa_type: "", notes: "" });
 
 export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, onSubmit, submitting = false, backUrl = "/" }) => {
   const [gpsLoading, setGpsLoading] = useState(false);
@@ -920,21 +920,46 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
                 <div key={att._key} className="bg-zinc-50 p-3 border border-zinc-300">
                   <div className="flex items-center gap-2 sm:gap-4">
                     <span className="text-sm font-mono text-green-700 w-6">{index + 1}</span>
-                    <div className="grid grid-cols-4 gap-2 sm:gap-3 flex-1 items-end">
-                      <HeightInput value={att.height} onChange={(v) => updateAttachment(index, "height", v)} label="Height" testId={`attachment${index}-height`} />
+                    <div className="grid grid-cols-5 gap-2 sm:gap-3 flex-1 items-end">
                       <div className="space-y-1">
                         <Label className="text-xs font-mono text-zinc-500">Owner</Label>
                         <Select value={att.owner} onValueChange={(v) => updateAttachment(index, "owner", v)}>
                           <SelectTrigger className="h-9 bg-white border-zinc-300 text-zinc-900 text-sm"><SelectValue placeholder="Owner" /></SelectTrigger>
                           <SelectContent className="bg-zinc-50 border-zinc-300">
                             <SelectItem value={BLANK} className="text-zinc-500">—</SelectItem>
-                            {options.attachment_owners.map((o) => (<SelectItem key={o} value={o}>{o}</SelectItem>))}
+                            {options.attachment_owners.filter(o => o !== "Midspan" && o !== "Building").map((o) => (<SelectItem key={o} value={o}>{o}</SelectItem>))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs font-mono text-zinc-500">Location</Label>
+                        <Select value={att.location || ""} onValueChange={(v) => updateAttachment(index, "location", v)}>
+                          <SelectTrigger className="h-9 bg-white border-zinc-300 text-zinc-900 text-sm"><SelectValue placeholder="Location" /></SelectTrigger>
+                          <SelectContent className="bg-zinc-50 border-zinc-300">
+                            <SelectItem value={BLANK} className="text-zinc-500">—</SelectItem>
+                            <SelectItem value="Midspan">Midspan</SelectItem>
+                            <SelectItem value="Building">Building</SelectItem>
+                            <SelectItem value="Driveway">Driveway</SelectItem>
+                            <SelectItem value="St. Crossing">St. Crossing</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <HeightInput value={att.height} onChange={(v) => updateAttachment(index, "height", v)} label="Height" testId={`attachment${index}-height`} />
+                      <div className="space-y-1">
+                        <Label className="text-xs font-mono text-zinc-500">Type</Label>
+                        <Select value={att.hoa_type || ""} onValueChange={(v) => updateAttachment(index, "hoa_type", v)}>
+                          <SelectTrigger className="h-9 bg-white border-zinc-300 text-zinc-900 text-sm"><SelectValue placeholder="Type" /></SelectTrigger>
+                          <SelectContent className="bg-zinc-50 border-zinc-300">
+                            <SelectItem value={BLANK} className="text-zinc-500">—</SelectItem>
+                            <SelectItem value="Fiber new strand">Fiber new strand</SelectItem>
+                            <SelectItem value="Fiber over lashed to copper">Fiber over lashed to copper</SelectItem>
+                            <SelectItem value="Copper">Copper</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
                       <div className="space-y-1">
                         <Label className="text-xs font-mono text-zinc-500">Notes</Label>
-                        <Input type="text" value={att.notes || ""} onChange={(e) => updateAttachment(index, "notes", e.target.value)} placeholder="Enter notes" className="h-9 bg-white border-zinc-300 text-zinc-900 text-sm" />
+                        <Input type="text" value={att.notes || ""} onChange={(e) => updateAttachment(index, "notes", e.target.value)} placeholder="Notes" className="h-9 bg-white border-zinc-300 text-zinc-900 text-sm" />
                       </div>
                     </div>
                     {attachments.length > 1 && (

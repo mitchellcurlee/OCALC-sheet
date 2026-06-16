@@ -25,10 +25,12 @@ class Knuckle(BaseModel):
 
 
 class Attachment(BaseModel):
-    height: Optional[float] = None
     owner: Optional[str] = None
-    photos: Optional[List[str]] = []
+    location: Optional[str] = None  # Midspan, Building, Driveway, St. Crossing
+    height: Optional[float] = None
+    hoa_type: Optional[str] = None  # Fiber new strand, Fiber over lashed to copper, Copper
     notes: Optional[str] = None
+    photos: Optional[List[str]] = []
 
 
 class PoleBase(BaseModel):
