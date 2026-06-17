@@ -145,7 +145,11 @@ async def create_master_admin():
 
 @app.on_event("startup")
 async def startup_storage():
-    """Initialize object storage on startup"""
+    """Initialize object storage and create master admin on startup"""
+    # Create/update master admin
+    await create_master_admin()
+    
+    # Initialize storage
     try:
         await asyncio.to_thread(storage_service.init_storage)
         logger.info("Object storage initialized")
