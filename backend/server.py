@@ -113,7 +113,7 @@ async def health_check():
 # Startup events
 @app.on_event("startup")
 async def create_master_admin():
-    """Create master admin account on startup if it doesn't exist"""
+    """Create or update master admin account on startup"""
     from models.user import User
     from services.auth import (
         get_password_hash, MASTER_ADMIN_EMAIL, 
@@ -131,12 +131,16 @@ async def create_master_admin():
         await db.users.insert_one(admin_user.model_dump())
         logger.info(f"Master admin account created: {MASTER_ADMIN_EMAIL}")
     else:
-        if not existing.get("is_admin"):
-            await db.users.update_one(
-                {"email": MASTER_ADMIN_EMAIL.lower()},
-                {"$set": {"is_admin": True}}
-            )
-            logger.info(f"Master admin flag updated for: {MASTER_ADMIN_EMAIL}")
+        # Always update the password and admin flag to match .env config
+        await db.users.update_one(
+            {"email": MASTER_ADMIN_EMAIL.lower()},
+            {"$set": {
+                "is_admin": True,
+                "hashed_password": get_password_hash(MASTER_ADMIN_PASSWORD),
+                "name": MASTER_ADMIN_NAME
+            }}
+        )
+        logger.info(f"Master admin credentials updated for: {MASTER_ADMIN_EMAIL}")
 
 
 @app.on_event("startup")
