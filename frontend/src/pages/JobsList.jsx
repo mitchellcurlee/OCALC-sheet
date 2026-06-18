@@ -46,7 +46,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { OfflineIndicator } from "@/components/OfflineIndicator";
 
-const JOB_TYPES = ["OCALC", "SVCL/FS"];
+const JOB_TYPES = ["OCALC", "SVCL/FS", "DMG", "ABF", "BAU", "ASE", "PBB", "SEAL", "SV", "CELL SITE"];
 
 const JobsList = () => {
   const navigate = useNavigate();
