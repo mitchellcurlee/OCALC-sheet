@@ -1091,12 +1091,14 @@ const JobMap = () => {
               })}
               
               {poleDisplayInfo.map((p, i) => {
-                const label = markerLabel(p, i, false);
+                const poleLabel = markerLabel(p, i, false);
                 // Show station number if enabled
                 const stationLabel = showStationNumbers && stationNumbers[p.id] ? stationNumbers[p.id] : null;
+                // Hide pole number label when station numbers are active
+                const displayLabel = showStationNumbers ? "" : poleLabel;
                 const icon = p.isCluster 
-                  ? poleIconWithArrow(label, p.labelAngle, 45)
-                  : poleIcon(label, p.labelDir);
+                  ? poleIconWithArrow(displayLabel, p.labelAngle, 45)
+                  : poleIcon(displayLabel, p.labelDir);
                 return (
                   <React.Fragment key={p.id}>
                     <DraggableMarker 
@@ -1165,11 +1167,13 @@ const JobMap = () => {
                 const ugIsAfterMPOE = isAfterMPOE.underground[ugIdx] || false;
                 const isRed = isMPOE || ugIsAfterMPOE;
                 const stationLabel = showStationNumbers && stationNumbers[u.id] ? stationNumbers[u.id] : null;
+                // Hide underground type label when station numbers are active
+                const ugDisplayLabel = showStationNumbers ? "" : undergroundAbbr(u.type);
                 return (
                 <React.Fragment key={u.id}>
                   <DraggableMarker 
                     position={u.pos} 
-                    icon={ugIcon(undergroundAbbr(u.type), isRed)}
+                    icon={ugIcon(ugDisplayLabel, isRed)}
                     draggable={positionEditMode}
                     onDragEnd={(lat, lng) => handleUndergroundDragEnd(u.id, lat, lng)}
                   >
