@@ -2,12 +2,12 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from "react"
 import { useParams, useSearchParams, Link } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
-import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import domtoimage from "dom-to-image-more";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ChevronDown, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera, Hash, Link2 } from "lucide-react";
+import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ChevronDown, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera, Hash, Link2, Move } from "lucide-react";
 import { computeRoute, fmtFeet, feetToStation, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, ugWithGps, undergroundAbbr, computeUgConnectors } from "@/lib/poleMapImage";
 import {
   DropdownMenu,
@@ -145,6 +145,34 @@ const MapRefSetter = ({ mapRef }) => {
   return null;
 };
 
+// Draggable marker component for position edit mode
+const DraggableMarker = ({ position, icon, children, draggable, onDragEnd, zIndexOffset = 0 }) => {
+  const markerRef = useRef(null);
+  
+  const eventHandlers = useMemo(() => ({
+    dragend() {
+      const marker = markerRef.current;
+      if (marker && onDragEnd) {
+        const newPos = marker.getLatLng();
+        onDragEnd(newPos.lat, newPos.lng);
+      }
+    },
+  }), [onDragEnd]);
+
+  return (
+    <Marker 
+      position={position} 
+      icon={icon} 
+      draggable={draggable}
+      eventHandlers={eventHandlers}
+      ref={markerRef}
+      zIndexOffset={zIndexOffset}
+    >
+      {children}
+    </Marker>
+  );
+};
+
 const JobMap = () => {
   const { jobId } = useParams();
   const [searchParams] = useSearchParams();
@@ -158,6 +186,7 @@ const JobMap = () => {
   const [showStationNumbers, setShowStationNumbers] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [connectionEditMode, setConnectionEditMode] = useState(false);
+  const [positionEditMode, setPositionEditMode] = useState(false);
   const [connections, setConnections] = useState([]);
   const [addingType, setAddingType] = useState(null); // "note" or "measurement"
   const [saving, setSaving] = useState(false);
@@ -436,6 +465,45 @@ const JobMap = () => {
       toast.error("Failed to delete annotation");
     }
   }, [jobId]);
+
+  // ======== POSITION EDIT MODE - Drag poles/underground items ========
+  const handlePoleDragEnd = useCallback(async (poleId, newLat, newLng) => {
+    try {
+      // Update local state immediately for responsive UI
+      setPoles(prev => prev.map(p => 
+        p.id === poleId ? { ...p, latitude: newLat, longitude: newLng } : p
+      ));
+      
+      // Save to backend
+      await axios.put(`/poles/${poleId}`, {
+        latitude: newLat,
+        longitude: newLng
+      });
+      toast.success("Pole position updated");
+    } catch (e) {
+      toast.error("Failed to update pole position");
+      fetchData(); // Revert on error
+    }
+  }, [fetchData]);
+
+  const handleUndergroundDragEnd = useCallback(async (ugId, newLat, newLng) => {
+    try {
+      // Update local state immediately for responsive UI
+      setUnderground(prev => prev.map(u => 
+        u.id === ugId ? { ...u, latitude: newLat, longitude: newLng } : u
+      ));
+      
+      // Save to backend
+      await axios.put(`/jobs/${jobId}/underground/${ugId}`, {
+        latitude: newLat,
+        longitude: newLng
+      });
+      toast.success("Underground position updated");
+    } catch (e) {
+      toast.error("Failed to update underground position");
+      fetchData(); // Revert on error
+    }
+  }, [jobId, fetchData]);
 
   // ======== CONNECTION MANAGEMENT ========
   // Initialize default connections based on sort_order (matching job page order)
@@ -818,8 +886,19 @@ const JobMap = () => {
               </DropdownMenuContent>
             </DropdownMenu>
             {/* Edit mode toggle */}
-            {!editMode && !connectionEditMode ? (
+            {!editMode && !connectionEditMode && !positionEditMode ? (
               <div className="flex gap-2">
+                <Button
+                  onClick={() => setPositionEditMode(true)}
+                  disabled={route.length === 0 && ug.length === 0}
+                  variant="outline"
+                  className="bg-green-50 border-green-300 hover:bg-green-100 text-green-700"
+                  data-testid="edit-positions-btn"
+                  title="Drag markers to move poles/underground items"
+                >
+                  <Move className="w-4 h-4 mr-2" />
+                  Move Items
+                </Button>
                 <Button
                   onClick={() => setEditMode(true)}
                   disabled={route.length < 2}
@@ -920,6 +999,22 @@ const JobMap = () => {
                 </Button>
               </div>
             )}
+            {/* Position Edit Mode UI */}
+            {positionEditMode && (
+              <div className="flex gap-2">
+                <span className="flex items-center px-3 py-1 bg-green-100 text-green-800 rounded text-sm font-medium">
+                  Drag markers to reposition poles and underground items
+                </span>
+                <Button
+                  onClick={() => setPositionEditMode(false)}
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                  data-testid="done-position-edit-btn"
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  Done
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       </header>
@@ -949,6 +1044,11 @@ const JobMap = () => {
             {connectionEditMode && (
               <div className="absolute top-2 left-2 z-[1000] bg-violet-600 text-white px-3 py-1.5 rounded text-sm font-medium shadow-lg">
                 Connection Edit: Drag blue endpoint handles to reconnect lines between items
+              </div>
+            )}
+            {positionEditMode && (
+              <div className="absolute top-2 left-2 z-[1000] bg-green-600 text-white px-3 py-1.5 rounded text-sm font-medium shadow-lg">
+                Position Edit: Drag pole/underground markers to move them. Measurements update automatically.
               </div>
             )}
             <MapContainer 
@@ -1023,7 +1123,12 @@ const JobMap = () => {
                   : poleIcon(label, p.labelDir);
                 return (
                   <React.Fragment key={p.id}>
-                    <Marker position={p.pos} icon={icon}>
+                    <DraggableMarker 
+                      position={p.pos} 
+                      icon={icon}
+                      draggable={positionEditMode}
+                      onDragEnd={(lat, lng) => handlePoleDragEnd(p.id, lat, lng)}
+                    >
                       <Popup>
                         <div className="min-w-[180px] font-mono" data-testid={`pole-popup-${p.id}`}>
                           <div className="text-base font-bold text-zinc-900">{p.pole_number || "(unnumbered)"}</div>
@@ -1034,17 +1139,22 @@ const JobMap = () => {
                             <div><span className="text-zinc-400">Condition:</span> {p.condition || "—"}</div>
                             {p.risers && <div><span className="text-zinc-400">Risers:</span> {p.risers}{p.riser_height ? ` @ ${formatRiserHeight(p.riser_height)}` : ""}</div>}
                           </div>
-                          <div className="mt-2 flex gap-2">
-                            <Link to={`/jobs/${jobId}/view/${p.id}`} className="flex-1">
-                              <Button size="sm" className="w-full h-8 bg-red-600 hover:bg-red-700 text-white" data-testid={`popup-view-${p.id}`}>Open</Button>
-                            </Link>
-                            <Link to={`/jobs/${jobId}/edit/${p.id}`} className="flex-1">
-                              <Button size="sm" variant="outline" className="w-full h-8 bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900" data-testid={`popup-edit-${p.id}`}>Edit</Button>
-                            </Link>
-                          </div>
+                          {!positionEditMode && (
+                            <div className="mt-2 flex gap-2">
+                              <Link to={`/jobs/${jobId}/view/${p.id}`} className="flex-1">
+                                <Button size="sm" className="w-full h-8 bg-red-600 hover:bg-red-700 text-white" data-testid={`popup-view-${p.id}`}>Open</Button>
+                              </Link>
+                              <Link to={`/jobs/${jobId}/edit/${p.id}`} className="flex-1">
+                                <Button size="sm" variant="outline" className="w-full h-8 bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900" data-testid={`popup-edit-${p.id}`}>Edit</Button>
+                              </Link>
+                            </div>
+                          )}
+                          {positionEditMode && (
+                            <div className="mt-2 text-xs text-green-600 font-medium">Drag marker to reposition</div>
+                          )}
                         </div>
                       </Popup>
-                    </Marker>
+                    </DraggableMarker>
                     {/* Station number label with offset and connecting line */}
                     {stationLabel && (
                       <>
@@ -1081,19 +1191,29 @@ const JobMap = () => {
                 const stationLabel = showStationNumbers && stationNumbers[u.id] ? stationNumbers[u.id] : null;
                 return (
                 <React.Fragment key={u.id}>
-                  <Marker position={u.pos} icon={ugIcon(undergroundAbbr(u.type), isRed)}>
+                  <DraggableMarker 
+                    position={u.pos} 
+                    icon={ugIcon(undergroundAbbr(u.type), isRed)}
+                    draggable={positionEditMode}
+                    onDragEnd={(lat, lng) => handleUndergroundDragEnd(u.id, lat, lng)}
+                  >
                     <Popup>
                       <div className="min-w-[170px] font-mono" data-testid={`ug-popup-${u.id}`}>
                         <div className={`text-sm font-bold ${isRed ? 'text-red-700' : 'text-green-700'}`}>{undergroundAbbr(u.type)} · {u.type}</div>
                         {stationLabel && <div className="text-xs text-indigo-600 font-bold">Station: {stationLabel}</div>}
                         {u.label && <div className="text-xs text-zinc-600 mt-1">{u.label}</div>}
                         {u.notes && <div className="text-xs text-zinc-500 mt-1">{u.notes}</div>}
-                        <Link to={`/jobs/${jobId}/underground/edit/${u.id}`}>
-                          <Button size="sm" className={`w-full h-8 mt-2 ${isRed ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'} text-white`} data-testid={`ug-edit-${u.id}`}>Edit</Button>
-                        </Link>
+                        {!positionEditMode && (
+                          <Link to={`/jobs/${jobId}/underground/edit/${u.id}`}>
+                            <Button size="sm" className={`w-full h-8 mt-2 ${isRed ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'} text-white`} data-testid={`ug-edit-${u.id}`}>Edit</Button>
+                          </Link>
+                        )}
+                        {positionEditMode && (
+                          <div className="mt-2 text-xs text-green-600 font-medium">Drag marker to reposition</div>
+                        )}
                       </div>
                     </Popup>
-                  </Marker>
+                  </DraggableMarker>
                   {/* Station number label with offset and connecting line */}
                   {stationLabel && (
                     <>
