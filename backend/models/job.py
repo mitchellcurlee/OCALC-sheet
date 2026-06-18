@@ -5,7 +5,7 @@ import uuid
 
 
 # Job Types
-JOB_TYPES = ["OCALC", "SVCL/FS", "DMG", "ABF", "BAU", "ASE", "PBB", "SEAL", "SV", "CELL SITE"]
+JOB_TYPES = ["OCALC", "DMG", "ABF", "BAU", "ASE", "PBB", "SEAL", "SV", "CELL SITE"]
 
 
 class JobCreate(BaseModel):
