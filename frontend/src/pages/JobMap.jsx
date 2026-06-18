@@ -888,83 +888,105 @@ const JobMap = () => {
             {/* Edit mode toggle */}
             {!editMode && !connectionEditMode && !positionEditMode ? (
               <div className="flex gap-2">
+                {/* Universal Edit Button - enables all editing features */}
                 <Button
-                  onClick={() => setPositionEditMode(true)}
+                  onClick={() => {
+                    setEditMode(true);
+                    setPositionEditMode(true);
+                    setConnectionEditMode(true);
+                    initializeConnections();
+                  }}
                   disabled={route.length === 0 && ug.length === 0}
-                  variant="outline"
-                  className="bg-green-50 border-green-300 hover:bg-green-100 text-green-700"
-                  data-testid="edit-positions-btn"
-                  title="Drag markers to move poles/underground items"
-                >
-                  <Move className="w-4 h-4 mr-2" />
-                  Move Items
-                </Button>
-                <Button
-                  onClick={() => setEditMode(true)}
-                  disabled={route.length < 2}
-                  variant="outline"
-                  className="bg-blue-50 border-blue-300 hover:bg-blue-100 text-blue-700"
-                  data-testid="edit-routes-btn"
-                  title="Edit route lines"
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  data-testid="universal-edit-btn"
+                  title="Edit map: move items, edit lines, connections, and add measurements"
                 >
                   <Edit3 className="w-4 h-4 mr-2" />
-                  Edit Lines
+                  Edit Map
                 </Button>
+                {/* Note Button - standalone for quick notes */}
                 <Button
-                  onClick={() => { setConnectionEditMode(true); initializeConnections(); }}
-                  disabled={route.length === 0 && ug.length === 0}
+                  onClick={() => { setEditMode(true); setAddingType("note"); }}
                   variant="outline"
-                  className="bg-violet-50 border-violet-300 hover:bg-violet-100 text-violet-700"
-                  data-testid="edit-connections-btn"
-                  title="Edit line connections"
+                  className="bg-amber-50 border-amber-300 hover:bg-amber-100 text-amber-700"
+                  data-testid="add-note-btn"
+                  title="Add a note to the map"
                 >
-                  <Link2 className="w-4 h-4 mr-2" />
-                  Connections
+                  <StickyNote className="w-4 h-4 mr-2" />
+                  Add Note
                 </Button>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="bg-amber-50 border-amber-300 hover:bg-amber-100 text-amber-700" data-testid="add-annotation-btn">
-                      <StickyNote className="w-4 h-4 mr-2" />
-                      Add
-                      <ChevronDown className="w-4 h-4 ml-1" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => { setEditMode(true); setAddingType("note"); }} className="cursor-pointer">
-                      <StickyNote className="w-4 h-4 mr-2" />
-                      <div>
-                        <div className="font-medium">Add Note</div>
-                        <div className="text-xs text-zinc-500">Click map to place</div>
-                      </div>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => { setEditMode(true); setAddingType("measurement"); }} className="cursor-pointer">
-                      <Ruler className="w-4 h-4 mr-2" />
-                      <div>
-                        <div className="font-medium">Add Measurement</div>
-                        <div className="text-xs text-zinc-500">Click start & end points</div>
-                      </div>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
               </div>
             ) : (
               <div className="flex gap-2">
+                {/* Show current mode indicators */}
+                {(editMode || positionEditMode || connectionEditMode) && !addingType && (
+                  <span className="flex items-center px-3 py-1 bg-blue-100 text-blue-800 rounded text-sm font-medium">
+                    Edit Mode: Drag markers, edit lines, reconnect items
+                  </span>
+                )}
                 {addingType && (
                   <span className="flex items-center px-3 py-1 bg-amber-100 text-amber-800 rounded text-sm font-medium">
                     {addingType === "note" ? "Click map to add note" : "Click start point, then end point"}
                   </span>
                 )}
+                {/* Add measurement button while in edit mode */}
+                {(editMode || positionEditMode || connectionEditMode) && !addingType && (
+                  <Button
+                    onClick={() => setAddingType("measurement")}
+                    variant="outline"
+                    className="bg-amber-50 border-amber-300 hover:bg-amber-100 text-amber-700"
+                    data-testid="add-measurement-btn"
+                  >
+                    <Ruler className="w-4 h-4 mr-2" />
+                    Add Measurement
+                  </Button>
+                )}
+                {/* Add note button while in edit mode */}
+                {(editMode || positionEditMode || connectionEditMode) && !addingType && (
+                  <Button
+                    onClick={() => setAddingType("note")}
+                    variant="outline"
+                    className="bg-amber-50 border-amber-300 hover:bg-amber-100 text-amber-700"
+                    data-testid="add-note-edit-btn"
+                  >
+                    <StickyNote className="w-4 h-4 mr-2" />
+                    Add Note
+                  </Button>
+                )}
+                {/* Cancel adding type */}
+                {addingType && (
+                  <Button
+                    onClick={() => setAddingType(null)}
+                    variant="outline"
+                    className="bg-zinc-100 border-zinc-300 hover:bg-zinc-200"
+                  >
+                    <X className="w-4 h-4 mr-2" />
+                    Cancel Add
+                  </Button>
+                )}
+                {/* Save/Done button */}
                 <Button
-                  onClick={saveRouteEdits}
+                  onClick={() => {
+                    saveRouteEdits();
+                    setPositionEditMode(false);
+                    setConnectionEditMode(false);
+                    setAddingType(null);
+                  }}
                   disabled={saving}
                   className="bg-green-600 hover:bg-green-700 text-white"
-                  data-testid="save-routes-btn"
+                  data-testid="save-all-btn"
                 >
                   {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-                  Save
+                  Done
                 </Button>
+                {/* Cancel all editing */}
                 <Button
-                  onClick={cancelEditing}
+                  onClick={() => {
+                    cancelEditing();
+                    setPositionEditMode(false);
+                    setConnectionEditMode(false);
+                    setAddingType(null);
+                  }}
                   disabled={saving}
                   variant="outline"
                   className="bg-zinc-100 border-zinc-300 hover:bg-zinc-200"
@@ -972,46 +994,6 @@ const JobMap = () => {
                 >
                   <X className="w-4 h-4 mr-2" />
                   Cancel
-                </Button>
-              </div>
-            )}
-            {/* Connection Edit Mode UI */}
-            {connectionEditMode && (
-              <div className="flex gap-2">
-                <span className="flex items-center px-3 py-1 bg-violet-100 text-violet-800 rounded text-sm font-medium">
-                  Drag line endpoints to reconnect items
-                </span>
-                <Button
-                  onClick={resetConnections}
-                  variant="outline"
-                  className="bg-amber-50 border-amber-300 hover:bg-amber-100 text-amber-700"
-                  data-testid="reset-connections-btn"
-                >
-                  Reset
-                </Button>
-                <Button
-                  onClick={() => setConnectionEditMode(false)}
-                  className="bg-green-600 hover:bg-green-700 text-white"
-                  data-testid="done-connections-btn"
-                >
-                  <Save className="w-4 h-4 mr-2" />
-                  Done
-                </Button>
-              </div>
-            )}
-            {/* Position Edit Mode UI */}
-            {positionEditMode && (
-              <div className="flex gap-2">
-                <span className="flex items-center px-3 py-1 bg-green-100 text-green-800 rounded text-sm font-medium">
-                  Drag markers to reposition poles and underground items
-                </span>
-                <Button
-                  onClick={() => setPositionEditMode(false)}
-                  className="bg-green-600 hover:bg-green-700 text-white"
-                  data-testid="done-position-edit-btn"
-                >
-                  <Save className="w-4 h-4 mr-2" />
-                  Done
                 </Button>
               </div>
             )}
@@ -1036,19 +1018,13 @@ const JobMap = () => {
           </div>
         ) : (
           <div className="h-[70vh] border border-zinc-300 overflow-hidden rounded relative">
-            {editMode && (
-              <div className="absolute top-2 left-2 z-[1000] bg-blue-600 text-white px-3 py-1.5 rounded text-sm font-medium shadow-lg">
-                Edit Mode: Click blue dots to add waypoints, drag to move, double-click to remove
-              </div>
-            )}
-            {connectionEditMode && (
-              <div className="absolute top-2 left-2 z-[1000] bg-violet-600 text-white px-3 py-1.5 rounded text-sm font-medium shadow-lg">
-                Connection Edit: Drag blue endpoint handles to reconnect lines between items
-              </div>
-            )}
-            {positionEditMode && (
-              <div className="absolute top-2 left-2 z-[1000] bg-green-600 text-white px-3 py-1.5 rounded text-sm font-medium shadow-lg">
-                Position Edit: Drag pole/underground markers to move them. Measurements update automatically.
+            {/* Universal edit mode indicator */}
+            {(editMode || positionEditMode || connectionEditMode) && (
+              <div className="absolute top-2 left-2 z-[1000] bg-blue-600 text-white px-3 py-1.5 rounded text-sm font-medium shadow-lg max-w-md">
+                <div className="font-semibold">Edit Mode Active</div>
+                <div className="text-xs opacity-90 mt-0.5">
+                  • Drag markers to move items • Edit route lines • Reconnect items
+                </div>
               </div>
             )}
             <MapContainer 
