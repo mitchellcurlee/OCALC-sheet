@@ -12,6 +12,7 @@ class DownGuy(BaseModel):
     condition: Optional[str] = None
     height: Optional[float] = None
     lead: Optional[str] = None
+    photos: Optional[List[str]] = []
 
 
 class Knuckle(BaseModel):
@@ -44,6 +45,7 @@ class PoleBase(BaseModel):
     condition: str
     pole_owner: Optional[str] = None
     access: Optional[str] = None
+    pole_photo: Optional[str] = None  # Main pole picture
     ocalc_left_photo: Optional[str] = None
     ocalc_middle_photo: Optional[str] = None
     ocalc_right_photo: Optional[str] = None

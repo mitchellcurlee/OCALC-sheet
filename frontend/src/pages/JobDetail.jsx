@@ -443,6 +443,60 @@ const JobDetail = () => {
               </div>
             </div>
             <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
+              {/* 1. Add Dropdown (Pole + Underground) */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button className="flex-1 sm:flex-initial w-full sm:w-auto h-11 sm:h-10 bg-red-600 hover:bg-red-700 text-white text-sm" data-testid="add-dropdown-btn">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add
+                    <ChevronDown className="w-4 h-4 ml-1" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="bg-white border-zinc-200 w-56 max-h-96 overflow-auto">
+                  <DropdownMenuItem 
+                    onClick={() => navigate(`/jobs/${jobId}/add`)} 
+                    data-testid="add-pole-btn" 
+                    className="cursor-pointer font-semibold text-red-700 border-b border-zinc-200"
+                  >
+                    <Zap className="w-4 h-4 mr-2" />
+                    Add Pole
+                  </DropdownMenuItem>
+                  <div className="px-2 py-1.5 text-xs font-mono text-amber-700 bg-amber-50">Underground</div>
+                  {UNDERGROUND_TYPES.map((t) => (
+                    <DropdownMenuItem key={t} onClick={() => navigate(`/jobs/${jobId}/underground/add?type=${encodeURIComponent(t)}`)} data-testid={`add-ug-${t}`} className="cursor-pointer">
+                      <span className="font-mono text-xs text-amber-700 w-12 inline-block">{undergroundAbbr(t)}</span>
+                      {t}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* 2. Export Dropdown (OCALC Export + ASE Form) */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="flex-1 sm:flex-initial w-full sm:w-auto h-11 sm:h-10 bg-blue-50 border-blue-300 hover:bg-blue-100 text-blue-800 text-sm"
+                    data-testid="export-dropdown-btn"
+                  >
+                    <FileSpreadsheet className="w-4 h-4 mr-2" />
+                    Export
+                    <ChevronDown className="w-4 h-4 ml-1" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="bg-white border-zinc-200 w-48">
+                  <DropdownMenuItem onClick={handleExport} data-testid="export-btn" className="cursor-pointer">
+                    <FileSpreadsheet className="w-4 h-4 mr-2 text-zinc-600" />
+                    OCALC Export
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate(`/jobs/${jobId}/ase`)} data-testid="ase-form-btn" className="cursor-pointer">
+                    <FileText className="w-4 h-4 mr-2 text-blue-600" />
+                    ASE Form
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* 3. Map Button */}
               <Link to={`/jobs/${jobId}/map`} className="flex-1 sm:flex-initial">
                 <Button
                   variant="outline"
@@ -453,15 +507,8 @@ const JobDetail = () => {
                   Map
                 </Button>
               </Link>
-              <Button
-                onClick={handleExport}
-                variant="outline"
-                className="flex-1 sm:flex-initial h-11 sm:h-10 bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900 text-sm"
-                data-testid="export-btn"
-              >
-                <FileSpreadsheet className="w-4 h-4 mr-2" />
-                OCALC Export
-              </Button>
+
+              {/* 4. Photos Button */}
               <Button
                 onClick={handleDownloadPhotos}
                 variant="outline"
@@ -471,39 +518,6 @@ const JobDetail = () => {
                 <Download className="w-4 h-4 mr-2" />
                 Photos
               </Button>
-              <Link to={`/jobs/${jobId}/ase`} className="flex-1 sm:flex-initial">
-                <Button
-                  variant="outline"
-                  className="w-full h-11 sm:h-10 bg-blue-50 border-blue-300 hover:bg-blue-100 text-blue-800 text-sm"
-                  data-testid="ase-form-btn"
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  ASE Form
-                </Button>
-              </Link>
-              <Link to={`/jobs/${jobId}/add`} className="flex-1 sm:flex-initial">
-                <Button className="w-full h-11 sm:h-10 bg-red-600 hover:bg-red-700 text-white text-sm" data-testid="add-pole-btn">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Pole
-                </Button>
-              </Link>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button className="flex-1 sm:flex-initial w-full sm:w-auto h-11 sm:h-10 bg-amber-600 hover:bg-amber-700 text-white text-sm" data-testid="add-underground-btn">
-                    <Layers className="w-4 h-4 mr-2" />
-                    Add Underground
-                    <ChevronDown className="w-4 h-4 ml-1" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-white border-zinc-200 max-h-80 overflow-auto">
-                  {UNDERGROUND_TYPES.map((t) => (
-                    <DropdownMenuItem key={t} onClick={() => navigate(`/jobs/${jobId}/underground/add?type=${encodeURIComponent(t)}`)} data-testid={`add-ug-${t}`} className="cursor-pointer">
-                      <span className="font-mono text-xs text-amber-700 w-12 inline-block">{undergroundAbbr(t)}</span>
-                      {t}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
             </div>
           </div>
         </div>

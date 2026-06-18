@@ -16,12 +16,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Camera, Upload, Ruler, Trash2, Check, RotateCcw, Plus } from "lucide-react";
+import { Camera, Upload, Ruler, Trash2, Check, RotateCcw, Plus, Save } from "lucide-react";
 import axios from "axios";
 import { toast } from "sonner";
 
 // Reference object height options (in feet)
 const REFERENCE_HEIGHT_OPTIONS = [4, 5, 6, 7, 8, 10, 12, 13, 14];
+
+// Local storage key prefix for auto-save
+const STORAGE_KEY_PREFIX = "heightMeasurer_";
 
 // Helper function to convert decimal feet to feet'inches" format
 const formatFeetInches = (decimalFeet) => {
@@ -49,8 +52,11 @@ const toDecimalFeet = (decimalFeet) => {
  * 
  * User places a known-height object (like a 6ft pole) at the base,
  * then marks points on the image to calculate attachment heights.
+ * 
+ * Auto-saves progress to localStorage to prevent data loss if app is closed.
  */
-export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "outline" }) => {
+export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "outline", sessionId = "default" }) => {
+  const storageKey = `${STORAGE_KEY_PREFIX}${sessionId}`;
   const [open, setOpen] = useState(false);
   const [imagePreview, setImagePreview] = useState(null);
   const [imageBase64, setImageBase64] = useState(null);
@@ -63,11 +69,70 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
   });
   const [pixelsPerFoot, setPixelsPerFoot] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [hasRestoredData, setHasRestoredData] = useState(false);
   
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
   const canvasRef = useRef(null);
   const imageRef = useRef(null);
+
+  // Auto-save to localStorage whenever state changes
+  useEffect(() => {
+    if (!imageBase64) return; // Don't save empty state
+    
+    const saveData = {
+      imageBase64,
+      imagePreview,
+      referenceHeight,
+      step,
+      markers,
+      pixelsPerFoot,
+      savedAt: Date.now()
+    };
+    
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(saveData));
+      console.log('[HeightMeasurer] Auto-saved progress');
+    } catch (e) {
+      console.warn('[HeightMeasurer] Failed to auto-save:', e);
+    }
+  }, [imageBase64, markers, step, referenceHeight, pixelsPerFoot, storageKey, imagePreview]);
+
+  // Restore from localStorage when dialog opens
+  useEffect(() => {
+    if (open && !hasRestoredData) {
+      try {
+        const savedData = localStorage.getItem(storageKey);
+        if (savedData) {
+          const data = JSON.parse(savedData);
+          // Only restore if saved within last 24 hours
+          const hoursSinceSave = (Date.now() - data.savedAt) / (1000 * 60 * 60);
+          if (hoursSinceSave < 24) {
+            setImageBase64(data.imageBase64);
+            setImagePreview(data.imagePreview);
+            setReferenceHeight(data.referenceHeight || "6");
+            setStep(data.step || 1);
+            setMarkers(data.markers || { refBottom: null, refTop: null, attachments: [] });
+            setPixelsPerFoot(data.pixelsPerFoot);
+            setHasRestoredData(true);
+            toast.success("Previous session restored!", { duration: 2000 });
+          }
+        }
+      } catch (e) {
+        console.warn('[HeightMeasurer] Failed to restore saved data:', e);
+      }
+    }
+  }, [open, storageKey, hasRestoredData]);
+
+  // Clear saved data when successfully completed
+  const clearSavedData = useCallback(() => {
+    try {
+      localStorage.removeItem(storageKey);
+      console.log('[HeightMeasurer] Cleared saved data');
+    } catch (e) {
+      console.warn('[HeightMeasurer] Failed to clear saved data:', e);
+    }
+  }, [storageKey]);
 
   const handleFileSelect = (e) => {
     const file = e.target.files?.[0];
@@ -386,6 +451,9 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
         toast.success(`Applied ${heights.length} measurement(s) to HOA`);
       }
 
+      // Clear saved data after successful completion
+      clearSavedData();
+      setHasRestoredData(false);
       setOpen(false);
     } catch (err) {
       console.error("Failed to apply measurements:", err);
@@ -401,6 +469,8 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
     setStep(1);
     setMarkers({ refBottom: null, refTop: null, attachments: [] });
     setPixelsPerFoot(null);
+    clearSavedData();
+    setHasRestoredData(false);
   };
 
   return (

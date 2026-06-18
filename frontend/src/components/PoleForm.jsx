@@ -82,6 +82,7 @@ const BLANK = "__none__";
 const emptyFormData = () => ({
   job_number: "", pole_number: "P-", pole_owner: "", access: "", pole_class: "",
   pole_size: "", pole_size_type: "", pole_type: "", condition: "",
+  pole_photo: "", // Main pole picture
   ocalc_left_photo: "", ocalc_middle_photo: "", ocalc_right_photo: "",
   has_birthmark: true, birthmark_photos: [],
   mgnv: "", mgnv_condition: "", mgnv_photos: [],
@@ -95,7 +96,7 @@ const emptyFormData = () => ({
   hoa_markup_photos: [], // Photos for HOA markup/annotation
 });
 const emptyDownGuy = () => ({ _key: rowKey(), owner: "", direction: "", size: "", type: "", condition: "", height: "", lead: "", photos: [] });
-const emptyKnuckle = () => ({ _key: rowKey(), size: "", total_eyes: "", direction: "", condition: "" });
+const emptyKnuckle = () => ({ _key: rowKey(), size: "", total_eyes: "", direction: "", condition: "", photos: [] });
 const emptyAttachment = () => ({ _key: rowKey(), owner: "", location: "", height: "", hoa_type: "", notes: "" });
 
 export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, onSubmit, submitting = false, backUrl = "/" }) => {
@@ -197,6 +198,7 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
       job_number: p.job_number || "", pole_number: p.pole_number || "",
       pole_owner: p.pole_owner || "", access: p.access || "", pole_class: p.pole_class || "",
       pole_size: p.pole_size || "", pole_size_type: p.pole_size_type || "", pole_type: p.pole_type || "", condition: p.condition || "",
+      pole_photo: p.pole_photo || "",
       ocalc_left_photo: p.ocalc_left_photo || "", ocalc_middle_photo: p.ocalc_middle_photo || "", ocalc_right_photo: p.ocalc_right_photo || "",
       has_birthmark: p.has_birthmark !== false, birthmark_photos: birthmarkPhotos,
       mgnv: p.mgnv || "", mgnv_condition: p.mgnv_condition || "", mgnv_photos: mgnvPhotos,
@@ -220,12 +222,15 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
       lead: dg.lead?.toString() || "",
       photos: dg.photos || []
     })) : [{ _key: rowKey(), owner: "", direction: "", size: "", type: "", condition: "", height: "", lead: "", photos: [] }]);
-    // Convert legacy single photo to photos array for knuckles
+    // Convert legacy single photo to photos array for knuckles (anchors)
     setKnuckles(p.knuckles?.length > 0 ? p.knuckles.map(k => ({ 
       _key: rowKey(), 
-      ...k, 
+      size: k.size || "",
+      total_eyes: k.total_eyes || "",
+      direction: k.direction || "",
+      condition: k.condition || "",
       photos: k.photos || (k.photo ? [k.photo] : []) 
-    })) : [{ _key: rowKey(), size: "", total_eyes: "", direction: "", condition: "" }]);
+    })) : [{ _key: rowKey(), size: "", total_eyes: "", direction: "", condition: "", photos: [] }]);
     // Convert legacy single photo to photos array for attachments and ensure new fields have defaults
     setAttachments(p.attachments?.length > 0 ? p.attachments.map(a => ({ 
       _key: rowKey(), 
@@ -921,6 +926,7 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
                     setAttachments(prev => [...prev.filter(a => a.height || a.owner || a.photo || a.notes), ...newAttachments]);
                   }}
                   buttonVariant="outline"
+                  sessionId={`pole_${initialPole?.id || 'new'}_${jobId}`}
                 />
                 <Button type="button" onClick={addAttachment} size="sm" className="bg-green-600 hover:bg-green-700 text-white">
                   <Plus className="w-4 h-4 mr-1" /> Add Row
@@ -1046,6 +1052,19 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
               <div className="w-1 h-5 bg-blue-500"></div>
               OCALC Photos
             </h2>
+            
+            {/* Pole Picture - Main photo at top */}
+            <div className="mb-4 pb-4 border-b border-zinc-200">
+              <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase mb-2 block">Pole Picture</Label>
+              <MultiPhotoUpload 
+                label="Pole Picture" 
+                value={formData.pole_photo ? [formData.pole_photo] : []} 
+                onChange={(v) => setFormData(prev => ({ ...prev, pole_photo: v[0] || "" }))} 
+                testId="pole-photo"
+                maxPhotos={1}
+              />
+            </div>
+            
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Left</Label>
@@ -1200,6 +1219,15 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       )}
+                    </div>
+                    {/* Anchor Photo Upload */}
+                    <div className="mt-2 ml-8">
+                      <MultiPhotoUpload 
+                        label={`Anchor ${index + 1} Photos`}
+                        value={knuckle.photos || []} 
+                        onChange={(v) => updateKnuckle(index, "photos", v)} 
+                        testId={`anchor${index}-photos`}
+                      />
                     </div>
                   </div>
                 ))}
