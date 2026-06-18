@@ -920,10 +920,21 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
                       _key: rowKey(),
                       height: h.height_ft?.toString() || "",
                       owner: "",
+                      location: "",
+                      hoa_type: "",
                       photo: h.photo || "", // Include annotated photo if provided
                       notes: h.description || ""
                     }));
                     setAttachments(prev => [...prev.filter(a => a.height || a.owner || a.photo || a.notes), ...newAttachments]);
+                    
+                    // Also add the annotated photo to HOA gallery if available
+                    const photoUrl = heights[0]?.photo;
+                    if (photoUrl) {
+                      setFormData(prev => ({
+                        ...prev,
+                        hoa_markup_photos: [...(prev.hoa_markup_photos || []), photoUrl]
+                      }));
+                    }
                   }}
                   buttonVariant="outline"
                   sessionId={`pole_${initialPole?.id || 'new'}_${jobId}`}
