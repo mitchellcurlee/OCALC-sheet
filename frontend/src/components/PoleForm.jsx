@@ -518,7 +518,7 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
         height: dg.height ? parseFloat(dg.height) : null
       })),
       knuckles: knuckles.filter(k => k.size || k.total_eyes || k.direction || k.condition || (k.photos && k.photos.length > 0)).map(({ _key, ...k }) => k),
-      attachments: attachments.filter(a => a.height || a.owner || (a.photos && a.photos.length > 0) || a.notes).map(({ _key, ...a }) => ({
+      attachments: attachments.filter(a => a.height || a.owner || a.hoa_type || a.location || (a.photos && a.photos.length > 0) || a.notes).map(({ _key, ...a }) => ({
         ...a,
         height: a.height ? parseFloat(a.height) : null
       })),
