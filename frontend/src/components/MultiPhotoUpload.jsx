@@ -36,8 +36,7 @@ export const MultiPhotoUpload = ({ label, value = [], onChange, testId, compact 
     setUploading(true);
     setUploadCount(files.length);
     
-    const newPhotos = [...photos];
-    let successCount = 0;
+    const uploadedUrls = [];
     
     for (const file of files) {
       // Check if it's an image
@@ -55,22 +54,23 @@ export const MultiPhotoUpload = ({ label, value = [], onChange, testId, compact 
         const res = await axios.post("/upload-photo", fd, {
           headers: { "Content-Type": "multipart/form-data" },
         });
-        newPhotos.push(res.data.url);
-        successCount++;
+        uploadedUrls.push(res.data.url);
       } catch (err) {
         console.error("Photo upload failed", err);
         toast.error(`Failed to upload ${file.name}`);
       }
     }
     
-    if (successCount > 0) {
-      onChange(newPhotos);
-      toast.success(`${successCount} photo${successCount > 1 ? 's' : ''} added`);
+    if (uploadedUrls.length > 0) {
+      // Use current value to avoid stale closure issues
+      const currentPhotos = Array.isArray(value) ? value : (value ? [value] : []);
+      onChange([...currentPhotos, ...uploadedUrls]);
+      toast.success(`${uploadedUrls.length} photo${uploadedUrls.length > 1 ? 's' : ''} added`);
     }
     
     setUploading(false);
     setUploadCount(0);
-  }, [photos, onChange]);
+  }, [value, onChange]);
 
   // Handle file input change
   const handleFileChange = async (e) => {
