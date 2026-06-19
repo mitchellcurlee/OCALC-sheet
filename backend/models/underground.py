@@ -6,6 +6,7 @@ import uuid
 
 class UndergroundBase(BaseModel):
     type: str
+    material_type: Optional[str] = None  # Subtype: Handhole (Concrete/Bi-fold, etc), Hoffman Box (Community/Private), Pedestal (Copper/Fiber)
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     label: Optional[str] = None
@@ -21,6 +22,7 @@ class UndergroundCreate(UndergroundBase):
 
 class UndergroundUpdate(BaseModel):
     type: Optional[str] = None
+    material_type: Optional[str] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     label: Optional[str] = None

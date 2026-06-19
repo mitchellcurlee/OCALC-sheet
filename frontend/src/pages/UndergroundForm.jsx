@@ -49,6 +49,7 @@ const UndergroundForm = () => {
 
   const [formData, setFormData] = useState({
     type: searchParams.get("type") || "",
+    material_type: "", // Subtype for Handhole, Hoffman Box, Pedestal
     latitude: "",
     longitude: "-",
     label: "",
@@ -56,6 +57,16 @@ const UndergroundForm = () => {
     photos: [],
     tie_in_measurements: "", // For Handhole/Pole tie-in measurements
   });
+
+  // Material type options based on underground type
+  const materialTypeOptions = useMemo(() => {
+    const typeMap = {
+      "Handhole": ["Concrete/ Bi-fold Metal", "Concrete/ MH lid", "Fiber Glass", "Plastic"],
+      "Hoffman Box": ["Community", "Private"],
+      "Pedestal": ["Copper", "Fiber"],
+    };
+    return typeMap[formData.type] || [];
+  }, [formData.type]);
 
   const fetchOptions = useCallback(async () => {
     try {
@@ -75,6 +86,7 @@ const UndergroundForm = () => {
       const photos = u.photos || (u.photo ? [u.photo] : []);
       setFormData({
         type: u.type || "",
+        material_type: u.material_type || "",
         latitude: u.latitude?.toString() || "",
         longitude: u.longitude?.toString() || "-",
         label: u.label || "",
@@ -213,7 +225,7 @@ const UndergroundForm = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Type *</Label>
-                <Select value={formData.type} onValueChange={(v) => setFormData((p) => ({ ...p, type: v }))}>
+                <Select value={formData.type} onValueChange={(v) => setFormData((p) => ({ ...p, type: v, material_type: "" }))}>
                   <SelectTrigger className="h-11 sm:h-10 bg-white border-zinc-300 text-zinc-900" data-testid="ug-type-select">
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
@@ -227,6 +239,21 @@ const UndergroundForm = () => {
                 <Input value={formData.label} onChange={(e) => setFormData((p) => ({ ...p, label: e.target.value }))} placeholder="e.g. HH-12" className="h-11 sm:h-10 bg-white border-zinc-300 text-zinc-900" data-testid="ug-label-input" />
               </div>
             </div>
+            {/* Material Type dropdown - shows for Handhole, Hoffman Box, Pedestal */}
+            {materialTypeOptions.length > 0 && (
+              <div className="space-y-2">
+                <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Material / Type</Label>
+                <Select value={formData.material_type || "none"} onValueChange={(v) => setFormData((p) => ({ ...p, material_type: v === "none" ? "" : v }))}>
+                  <SelectTrigger className="h-11 sm:h-10 bg-white border-zinc-300 text-zinc-900" data-testid="ug-material-type-select">
+                    <SelectValue placeholder="Select material type" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-zinc-50 border-zinc-300">
+                    <SelectItem value="none" className="text-zinc-500">—</SelectItem>
+                    {materialTypeOptions.map((t) => (<SelectItem key={t} value={t}>{t}</SelectItem>))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
 
           <div className="industrial-card p-4 sm:p-5">

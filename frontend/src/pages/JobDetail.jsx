@@ -443,7 +443,7 @@ const JobDetail = () => {
               </div>
             </div>
             <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
-              {/* 1. Add Dropdown (Pole + Underground) */}
+              {/* 1. Add Dropdown (Pole + Pole Terminal + Underground) */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button className="flex-1 sm:flex-initial w-full sm:w-auto h-11 sm:h-10 bg-red-600 hover:bg-red-700 text-white text-sm" data-testid="add-dropdown-btn">
@@ -460,6 +460,14 @@ const JobDetail = () => {
                   >
                     <Zap className="w-4 h-4 mr-2" />
                     Add Pole
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={() => navigate(`/jobs/${jobId}/add?terminal=true`)} 
+                    data-testid="add-pole-terminal-btn" 
+                    className="cursor-pointer font-semibold text-blue-700 border-b border-zinc-200"
+                  >
+                    <Zap className="w-4 h-4 mr-2 text-blue-600" />
+                    Pole Terminal
                   </DropdownMenuItem>
                   <div className="px-2 py-1.5 text-xs font-mono text-amber-700 bg-amber-50">Underground</div>
                   {UNDERGROUND_TYPES.map((t) => (

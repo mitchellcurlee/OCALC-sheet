@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -100,6 +100,9 @@ const emptyKnuckle = () => ({ _key: rowKey(), size: "", total_eyes: "", directio
 const emptyAttachment = () => ({ _key: rowKey(), owner: "", location: "", height: "", hoa_type: "", notes: "" });
 
 export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, onSubmit, submitting = false, backUrl = "/" }) => {
+  const [searchParams] = useSearchParams();
+  const isTerminalMode = searchParams.get("terminal") === "true";
+  
   const [gpsLoading, setGpsLoading] = useState(false);
   const [addressSearch, setAddressSearch] = useState("");
   const [searchLoading, setSearchLoading] = useState(false);
@@ -125,8 +128,14 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
     pole_classes: [],
   });
 
-  // Basic form data
-  const [formData, setFormData] = useState(emptyFormData);
+  // Basic form data - pre-set pole_terminal if in terminal mode
+  const [formData, setFormData] = useState(() => {
+    const base = emptyFormData();
+    if (isTerminalMode) {
+      base.pole_terminal = "Yes";
+    }
+    return base;
+  });
 
   // Dynamic arrays - start with 1 row each
   const [downGuys, setDownGuys] = useState(() => [emptyDownGuy()]);
