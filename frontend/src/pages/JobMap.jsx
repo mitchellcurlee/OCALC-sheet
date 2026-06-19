@@ -191,6 +191,7 @@ const JobMap = () => {
   const [addingType, setAddingType] = useState(null); // "note" or "measurement"
   const [saving, setSaving] = useState(false);
   const [screenshotting, setScreenshotting] = useState(false);
+  const [labelOffsets, setLabelOffsets] = useState({}); // Custom offsets for station labels { [itemId]: [latOffset, lngOffset] }
   const mapRef = useRef(null);
   const autoDownloadedRef = useRef(false);
 
@@ -504,6 +505,48 @@ const JobMap = () => {
       fetchData(); // Revert on error
     }
   }, [jobId, fetchData]);
+
+  // ======== STATION LABEL OFFSET MANAGEMENT ========
+  // Load label offsets from localStorage on mount
+  useEffect(() => {
+    const savedOffsets = localStorage.getItem(`labelOffsets_${jobId}`);
+    if (savedOffsets) {
+      try {
+        setLabelOffsets(JSON.parse(savedOffsets));
+      } catch (e) {
+        console.warn('Failed to load label offsets:', e);
+      }
+    }
+  }, [jobId]);
+
+  // Save label offsets to localStorage when changed
+  const saveLabelOffsets = useCallback((offsets) => {
+    try {
+      localStorage.setItem(`labelOffsets_${jobId}`, JSON.stringify(offsets));
+    } catch (e) {
+      console.warn('Failed to save label offsets:', e);
+    }
+  }, [jobId]);
+
+  const handleLabelDragEnd = useCallback((itemId, basePos, newLat, newLng) => {
+    // Calculate the offset from the base position
+    const latOffset = newLat - basePos[0];
+    const lngOffset = newLng - basePos[1];
+    
+    setLabelOffsets(prev => {
+      const updated = { ...prev, [itemId]: [latOffset, lngOffset] };
+      saveLabelOffsets(updated);
+      return updated;
+    });
+    toast.success("Label position saved");
+  }, [saveLabelOffsets]);
+
+  // Get label position for an item (base position + custom offset)
+  const getLabelPosition = useCallback((itemId, basePos) => {
+    const defaultOffset = [-0.00015, 0.00015]; // Default offset: up and to the right
+    const offset = labelOffsets[itemId] || defaultOffset;
+    return [basePos[0] + offset[0], basePos[1] + offset[1]];
+  }, [labelOffsets]);
 
   // ======== CONNECTION MANAGEMENT ========
   // Initialize default connections based on sort_order (matching job page order)
@@ -1118,26 +1161,31 @@ const JobMap = () => {
                       </Popup>
                     </DraggableMarker>
                     {/* Station number label with offset and connecting line */}
-                    {stationLabel && (
-                      <>
-                        {/* Connecting line from marker to station label */}
-                        <Polyline 
-                          positions={[p.pos, [p.pos[0] - 0.00015, p.pos[1] + 0.00015]]} 
-                          pathOptions={{ color: "#4f46e5", weight: 1.5, dashArray: "3,3", opacity: 0.8 }} 
-                        />
-                        <Marker 
-                          position={[p.pos[0] - 0.00015, p.pos[1] + 0.00015]} 
-                          icon={L.divIcon({
-                            className: "station-label-smart",
-                            html: `<div style="background:#4f46e5;color:#fff;border:2px solid #fff;border-radius:4px;padding:2px 6px;font:700 10px/1.2 ui-monospace,monospace;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,.4);transform:translate(-50%,-50%);">${p.pole_number || 'P'}<br/>${stationLabel}</div>`,
-                            iconSize: [60, 32],
-                            iconAnchor: [30, 16],
-                          })}
-                          interactive={false}
-                          zIndexOffset={850}
-                        />
-                      </>
-                    )}
+                    {stationLabel && (() => {
+                      const labelPos = getLabelPosition(p.id, p.pos);
+                      const isEditingLabels = editMode || positionEditMode || connectionEditMode;
+                      return (
+                        <>
+                          {/* Connecting line from marker to station label */}
+                          <Polyline 
+                            positions={[p.pos, labelPos]} 
+                            pathOptions={{ color: "#4f46e5", weight: 1.5, dashArray: "3,3", opacity: 0.8 }} 
+                          />
+                          <DraggableMarker 
+                            position={labelPos} 
+                            icon={L.divIcon({
+                              className: "station-label-smart",
+                              html: `<div style="background:#4f46e5;color:#fff;border:2px solid #fff;border-radius:4px;padding:2px 6px;font:700 10px/1.2 ui-monospace,monospace;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,.4);transform:translate(-50%,-50%);${isEditingLabels ? 'cursor:move;' : ''}">${p.pole_number || 'P'}<br/>${stationLabel}</div>`,
+                              iconSize: [60, 32],
+                              iconAnchor: [30, 16],
+                            })}
+                            draggable={isEditingLabels}
+                            onDragEnd={(lat, lng) => handleLabelDragEnd(p.id, p.pos, lat, lng)}
+                            zIndexOffset={850}
+                          />
+                        </>
+                      );
+                    })()}
                   </React.Fragment>
                 );
               })}
@@ -1179,26 +1227,31 @@ const JobMap = () => {
                     </Popup>
                   </DraggableMarker>
                   {/* Station number label with offset and connecting line */}
-                  {stationLabel && (
-                    <>
-                      {/* Connecting line from marker to station label */}
-                      <Polyline 
-                        positions={[u.pos, [u.pos[0] - 0.00015, u.pos[1] - 0.00015]]} 
-                        pathOptions={{ color: isRed ? "#dc2626" : "#16a34a", weight: 1.5, dashArray: "3,3", opacity: 0.8 }} 
-                      />
-                      <Marker 
-                        position={[u.pos[0] - 0.00015, u.pos[1] - 0.00015]} 
-                        icon={L.divIcon({
-                          className: "station-label-smart",
-                          html: `<div style="background:${isRed ? '#dc2626' : '#16a34a'};color:#fff;border:2px solid #fff;border-radius:4px;padding:2px 6px;font:700 10px/1.2 ui-monospace,monospace;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,.4);transform:translate(-50%,-50%);">${undergroundAbbr(u.type)}${u.label ? '-' + u.label : ''}<br/>${stationLabel}</div>`,
-                          iconSize: [70, 32],
-                          iconAnchor: [35, 16],
-                        })}
-                        interactive={false}
-                        zIndexOffset={850}
-                      />
-                    </>
-                  )}
+                  {stationLabel && (() => {
+                    const labelPos = getLabelPosition(u.id, u.pos);
+                    const isEditingLabels = editMode || positionEditMode || connectionEditMode;
+                    return (
+                      <>
+                        {/* Connecting line from marker to station label */}
+                        <Polyline 
+                          positions={[u.pos, labelPos]} 
+                          pathOptions={{ color: isRed ? "#dc2626" : "#16a34a", weight: 1.5, dashArray: "3,3", opacity: 0.8 }} 
+                        />
+                        <DraggableMarker 
+                          position={labelPos} 
+                          icon={L.divIcon({
+                            className: "station-label-smart",
+                            html: `<div style="background:${isRed ? '#dc2626' : '#16a34a'};color:#fff;border:2px solid #fff;border-radius:4px;padding:2px 6px;font:700 10px/1.2 ui-monospace,monospace;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,.4);transform:translate(-50%,-50%);${isEditingLabels ? 'cursor:move;' : ''}">${undergroundAbbr(u.type)}${u.label ? '-' + u.label : ''}<br/>${stationLabel}</div>`,
+                            iconSize: [70, 32],
+                            iconAnchor: [35, 16],
+                          })}
+                          draggable={isEditingLabels}
+                          onDragEnd={(lat, lng) => handleLabelDragEnd(u.id, u.pos, lat, lng)}
+                          zIndexOffset={850}
+                        />
+                      </>
+                    );
+                  })()}
                 </React.Fragment>
               )})}
               {/* Map annotations (notes and measurements) */}
