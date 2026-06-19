@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import axios from "axios";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -27,6 +27,18 @@ export const MultiPhotoUpload = ({ label, value = [], onChange, testId, compact 
   const [uploadCount, setUploadCount] = useState(0);
   const [lightboxPhoto, setLightboxPhoto] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
+  
+  // Use refs to always have access to latest props (avoids stale closure issues)
+  const valueRef = useRef(value);
+  const onChangeRef = useRef(onChange);
+  const maxPhotosRef = useRef(maxPhotos);
+  
+  // Keep refs updated
+  useEffect(() => {
+    valueRef.current = value;
+    onChangeRef.current = onChange;
+    maxPhotosRef.current = maxPhotos;
+  }, [value, onChange, maxPhotos]);
 
   const photos = Array.isArray(value) ? value : (value ? [value] : []);
 
@@ -64,23 +76,26 @@ export const MultiPhotoUpload = ({ label, value = [], onChange, testId, compact 
     }
     
     if (uploadedUrls.length > 0) {
-      // Use current value to avoid stale closure issues
-      const currentPhotos = Array.isArray(value) ? value : (value ? [value] : []);
+      // Use refs to get the LATEST value, not stale closure value
+      const currentValue = valueRef.current;
+      const currentPhotos = Array.isArray(currentValue) ? currentValue : (currentValue ? [currentValue] : []);
       let newPhotos = [...currentPhotos, ...uploadedUrls];
       
       // If maxPhotos is set, only keep the last maxPhotos
-      if (maxPhotos && newPhotos.length > maxPhotos) {
-        newPhotos = newPhotos.slice(-maxPhotos);
+      const max = maxPhotosRef.current;
+      if (max && newPhotos.length > max) {
+        newPhotos = newPhotos.slice(-max);
       }
       
       console.log('[MultiPhotoUpload] Calling onChange with:', newPhotos);
-      onChange(newPhotos);
+      // Use ref to call the LATEST onChange callback
+      onChangeRef.current(newPhotos);
       toast.success(`${uploadedUrls.length} photo${uploadedUrls.length > 1 ? 's' : ''} added`);
     }
     
     setUploading(false);
     setUploadCount(0);
-  }, [value, onChange, maxPhotos]);
+  }, []); // No dependencies - uses refs instead
 
   // Handle file input change
   const handleFileChange = async (e) => {
