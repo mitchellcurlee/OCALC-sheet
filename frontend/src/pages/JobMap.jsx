@@ -860,31 +860,15 @@ const JobMap = () => {
               {screenshotting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Camera className="w-4 h-4 mr-2" />}
               Screenshot
             </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button disabled={downloading || allPoints.length === 0} className="bg-red-600 hover:bg-red-700 text-white" data-testid="download-map-btn">
-                  {downloading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
-                  Download
-                  <ChevronDown className="w-4 h-4 ml-1" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuItem onClick={downloadImage} className="cursor-pointer" data-testid="download-single-btn">
-                  <FileImage className="w-4 h-4 mr-2" />
-                  <div>
-                    <div className="font-medium">Single Image</div>
-                    <div className="text-xs text-zinc-500">Full map in one file</div>
-                  </div>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={downloadSegmented} className="cursor-pointer" data-testid="download-segmented-btn">
-                  <Files className="w-4 h-4 mr-2" />
-                  <div>
-                    <div className="font-medium">800ft Segments (ZIP)</div>
-                    <div className="text-xs text-zinc-500">Numbered pages, ~800ft each</div>
-                  </div>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <Button 
+              onClick={downloadImage}
+              disabled={downloading || allPoints.length === 0} 
+              className="bg-red-600 hover:bg-red-700 text-white" 
+              data-testid="download-map-btn"
+            >
+              {downloading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+              Download
+            </Button>
             {/* Edit mode toggle */}
             {!editMode && !connectionEditMode && !positionEditMode ? (
               <div className="flex gap-2">
