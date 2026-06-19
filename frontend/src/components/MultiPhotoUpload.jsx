@@ -18,8 +18,9 @@ import {
  * @param {function} onChange - Callback with updated array
  * @param {string} testId - Test ID prefix
  * @param {boolean} compact - Use compact layout
+ * @param {number} maxPhotos - Maximum number of photos allowed (optional)
  */
-export const MultiPhotoUpload = ({ label, value = [], onChange, testId, compact = false }) => {
+export const MultiPhotoUpload = ({ label, value = [], onChange, testId, compact = false, maxPhotos }) => {
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
@@ -54,6 +55,7 @@ export const MultiPhotoUpload = ({ label, value = [], onChange, testId, compact 
         const res = await axios.post("/upload-photo", fd, {
           headers: { "Content-Type": "multipart/form-data" },
         });
+        console.log('[MultiPhotoUpload] Photo uploaded:', res.data.url);
         uploadedUrls.push(res.data.url);
       } catch (err) {
         console.error("Photo upload failed", err);
@@ -64,13 +66,21 @@ export const MultiPhotoUpload = ({ label, value = [], onChange, testId, compact 
     if (uploadedUrls.length > 0) {
       // Use current value to avoid stale closure issues
       const currentPhotos = Array.isArray(value) ? value : (value ? [value] : []);
-      onChange([...currentPhotos, ...uploadedUrls]);
+      let newPhotos = [...currentPhotos, ...uploadedUrls];
+      
+      // If maxPhotos is set, only keep the last maxPhotos
+      if (maxPhotos && newPhotos.length > maxPhotos) {
+        newPhotos = newPhotos.slice(-maxPhotos);
+      }
+      
+      console.log('[MultiPhotoUpload] Calling onChange with:', newPhotos);
+      onChange(newPhotos);
       toast.success(`${uploadedUrls.length} photo${uploadedUrls.length > 1 ? 's' : ''} added`);
     }
     
     setUploading(false);
     setUploadCount(0);
-  }, [value, onChange]);
+  }, [value, onChange, maxPhotos]);
 
   // Handle file input change
   const handleFileChange = async (e) => {
