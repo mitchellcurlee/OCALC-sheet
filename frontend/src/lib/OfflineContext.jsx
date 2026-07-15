@@ -11,6 +11,7 @@ import {
   isOnline as checkOnline, 
   onSyncStatusChange, 
   initSyncListeners,
+  cleanupSyncListeners,
   syncPendingChanges,
   pullAllData,
   getPendingCount
@@ -103,9 +104,12 @@ export function OfflineProvider({ children }) {
     });
 
     // Get initial pending count
-    getPendingCount().then(setPendingChanges);
+    getPendingCount().then(setPendingChanges).catch(console.error);
 
-    return unsubscribe;
+    return () => {
+      unsubscribe();
+      cleanupSyncListeners();
+    };
   }, [dbReady]);
 
   // Manual sync trigger

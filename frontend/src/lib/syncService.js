@@ -16,6 +16,7 @@ const API_URL = process.env.REACT_APP_BACKEND_URL || '';
 // Sync status
 let isSyncing = false;
 let syncListeners = [];
+let listenersInitialized = false;
 
 /**
  * Register a listener for sync status changes
@@ -216,6 +217,12 @@ export async function deleteUndergroundOffline(itemId) {
 export async function syncPendingChanges() {
   if (isSyncing || !isOnline()) return;
   
+  const token = localStorage.getItem('token');
+  if (!token) {
+    console.log('[Sync] No token, skipping sync');
+    return;
+  }
+  
   isSyncing = true;
   notifySyncStatus({ syncing: true, error: null });
   
@@ -228,13 +235,8 @@ export async function syncPendingChanges() {
     }
     
     const lastSync = await db.getLastSyncTime();
-    const token = localStorage.getItem('token');
     
-    if (!token) {
-      throw new Error('Not authenticated');
-    }
-    
-    // Push changes to server
+    // Push changes to server with timeout
     const response = await axios.post(`${API_URL}/api/sync/push`, {
       actions: queue.map(q => ({
         id: q.id,
@@ -246,7 +248,8 @@ export async function syncPendingChanges() {
       })),
       last_sync: lastSync
     }, {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}` },
+      timeout: 30000 // 30 second timeout
     });
     
     const { results, server_time, changes } = response.data;
@@ -311,11 +314,17 @@ export async function syncPendingChanges() {
     });
     
   } catch (error) {
-    console.error('Sync failed:', error);
+    console.error('[Sync] Sync failed:', error);
+    let pendingCount = 0;
+    try {
+      pendingCount = (await db.getSyncQueue()).length;
+    } catch (e) {
+      console.error('[Sync] Failed to get pending count:', e);
+    }
     notifySyncStatus({ 
       syncing: false, 
       error: error.message || 'Sync failed',
-      pending: (await db.getSyncQueue()).length
+      pending: pendingCount
     });
   } finally {
     isSyncing = false;
@@ -339,7 +348,8 @@ export async function pullAllData() {
   
   try {
     const response = await axios.get(`${API_URL}/api/sync/pull`, {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}` },
+      timeout: 60000 // 60 second timeout for large data pulls
     });
     
     const { data, server_time } = response.data;
@@ -359,7 +369,7 @@ export async function pullAllData() {
     
     return data;
   } catch (error) {
-    console.error('Pull failed:', error);
+    console.error('[Sync] Pull failed:', error);
     notifySyncStatus({ 
       syncing: false, 
       error: error.message || 'Pull failed'
@@ -376,31 +386,74 @@ export async function getPendingCount() {
   return queue.length;
 }
 
+// Store references to event handlers so we can remove them
+let onlineHandler = null;
+let offlineHandler = null;
+let swMessageHandler = null;
+
 /**
  * Listen for online/offline events and trigger sync
+ * Idempotent - only initializes once
  */
 export function initSyncListeners() {
-  window.addEventListener('online', () => {
+  // Prevent duplicate initialization
+  if (listenersInitialized) {
+    console.log('[Sync] Listeners already initialized, skipping');
+    return;
+  }
+  listenersInitialized = true;
+  
+  onlineHandler = () => {
     console.log('[Sync] Back online, syncing...');
     syncPendingChanges();
-  });
+  };
   
-  window.addEventListener('offline', () => {
+  offlineHandler = () => {
     console.log('[Sync] Gone offline');
     notifySyncStatus({ online: false });
-  });
+  };
+  
+  window.addEventListener('online', onlineHandler);
+  window.addEventListener('offline', offlineHandler);
   
   // Listen for service worker sync messages
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.addEventListener('message', (event) => {
-      if (event.data.type === 'SYNC_REQUESTED') {
+    swMessageHandler = (event) => {
+      if (event.data && event.data.type === 'SYNC_REQUESTED') {
         syncPendingChanges();
       }
-    });
+    };
+    navigator.serviceWorker.addEventListener('message', swMessageHandler);
   }
   
-  // Initial sync if online
-  if (isOnline()) {
-    syncPendingChanges();
+  // Initial sync if online - but only if user is authenticated
+  const token = localStorage.getItem('token');
+  if (isOnline() && token) {
+    // Delay initial sync slightly to let the app settle
+    setTimeout(() => {
+      syncPendingChanges();
+    }, 1000);
   }
+  
+  console.log('[Sync] Listeners initialized');
+}
+
+/**
+ * Clean up event listeners
+ */
+export function cleanupSyncListeners() {
+  if (onlineHandler) {
+    window.removeEventListener('online', onlineHandler);
+    onlineHandler = null;
+  }
+  if (offlineHandler) {
+    window.removeEventListener('offline', offlineHandler);
+    offlineHandler = null;
+  }
+  if (swMessageHandler && 'serviceWorker' in navigator) {
+    navigator.serviceWorker.removeEventListener('message', swMessageHandler);
+    swMessageHandler = null;
+  }
+  listenersInitialized = false;
+  console.log('[Sync] Listeners cleaned up');
 }
