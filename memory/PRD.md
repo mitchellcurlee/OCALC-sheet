@@ -918,3 +918,60 @@ Changes require redeploy to production (https://poledatasheet.info) to be visibl
 
 ### Requires Redeploy
 Changes require redeploy to production (https://poledatasheet.info) to be visible.
+
+---
+
+## Session Update (Jul 15, 2026) - Bug Fixes & Map Color Options
+
+### P0 Bug Fix: Frontend Freezing After Login
+**Root Cause:** The sync service was registering duplicate event listeners on each app mount and lacked axios timeouts, causing the UI thread to block on stuck sync requests.
+
+**Fixes Applied:**
+1. Made `initSyncListeners()` idempotent with `listenersInitialized` flag
+2. Added `cleanupSyncListeners()` function to remove event listeners on unmount
+3. Added proper cleanup in `OfflineContext.jsx` useEffect return
+4. Added 30-second timeout on `/api/sync/push` requests
+5. Added 60-second timeout on `/api/sync/pull` requests
+6. Delayed initial sync until after token exists
+
+**Files Modified:**
+- `/app/frontend/src/lib/syncService.js` - Idempotent listeners, cleanup function, timeouts
+- `/app/frontend/src/lib/OfflineContext.jsx` - Added cleanup on unmount
+
+### P1 Bug Fix: Drag-and-Drop Photo Saving (Verified)
+**Status:** The useRef fix from previous session was verified working by testing agent.
+- `MultiPhotoUpload.jsx` correctly uses `valueRef` and `onChangeRef` to avoid stale closures
+- New photos correctly appended to existing state instead of overwriting
+
+### New Feature: Path Color Options for Map
+**User Request:** Add color options for aerial and underground paths in the Edit Map menu.
+
+**Implementation:**
+- Default colors: Aerial = Blue, Underground = Green
+- Color options: Blue, Green, Orange, Purple, Yellow
+- "Edit Map" button converted from single button to dropdown menu
+- Edit Map dropdown now contains:
+  - **Path Colors section**: Aerial Path dropdown, Underground Path dropdown
+  - **Edit Actions section**: Move Items & Edit Lines, Add Note, Add Measurement
+- All previous tab-based options converted to dropdowns
+- Map legend dynamically updates to show selected color names
+- Underground markers and connector labels use dynamic color
+
+**Files Modified:**
+- `/app/frontend/src/pages/JobMap.jsx` - Added PATH_COLORS, color state, dropdown menu UI, dynamic colors
+
+### New Feature: Gas Line Underground Type
+- Added "Gas Line" to UNDERGROUND_TYPES list
+- Available in Add Underground dropdown on Job Detail page
+
+**Files Modified:**
+- `/app/backend/models/options.py` - Added "Gas Line" to UNDERGROUND_TYPES
+
+### Test Results
+- Login freeze: ✅ Fixed (verified by testing agent - no freeze, page interactive)
+- Drag-drop photos: ✅ Fixed (verified by testing agent - photos append correctly)
+- Path colors: ✅ Working (colors change dynamically, legend updates)
+- Gas Line type: ✅ Available in dropdown
+
+### Requires Redeploy
+Changes require redeploy to production (https://poledatasheet.info) to be visible.

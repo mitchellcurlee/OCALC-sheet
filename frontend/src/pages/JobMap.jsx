@@ -7,16 +7,41 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import domtoimage from "dom-to-image-more";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ChevronDown, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera, Hash, Link2, Move } from "lucide-react";
+import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ChevronDown, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera, Hash, Link2, Move, Palette } from "lucide-react";
 import { computeRoute, fmtFeet, feetToStation, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, ugWithGps, undergroundAbbr, computeUgConnectors } from "@/lib/poleMapImage";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 } from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import EditableRoute from "@/components/EditableRoute";
 import MapAnnotations from "@/components/MapAnnotations";
+
+// Path color options
+const PATH_COLORS = {
+  blue: { name: "Blue", hex: "#2563eb" },
+  green: { name: "Green", hex: "#16a34a" },
+  orange: { name: "Orange", hex: "#ea580c" },
+  purple: { name: "Purple", hex: "#9333ea" },
+  yellow: { name: "Yellow", hex: "#ca8a04" },
+};
+
+// Default colors
+const DEFAULT_AERIAL_COLOR = "blue";
+const DEFAULT_UNDERGROUND_COLOR = "green";
 
 // Format riser height from decimal feet to feet'inches"
 const formatRiserHeight = (value) => {
@@ -106,20 +131,20 @@ const labelIcon = (text, ox, oy, isAfterMPOE = false) => {
   });
 };
 
-// Underground item marker (GREEN square with abbreviation, RED for MPOE) - smaller
-const ugIcon = (abbr, isRed = false) =>
+// Underground item marker (colored square with abbreviation, RED for MPOE) - smaller
+const ugIcon = (abbr, isRed = false, color = '#16a34a') =>
   L.divIcon({
     className: "ug-marker",
-    html: `<div style="background:${isRed ? '#dc2626' : '#16a34a'};color:#fff;border:1.5px solid #fff;border-radius:3px;min-width:18px;height:18px;padding:0 3px;display:flex;align-items:center;justify-content:center;font:600 9px/1 ui-monospace,monospace;box-shadow:0 1px 3px rgba(0,0,0,.4);white-space:nowrap;">${abbr}</div>`,
+    html: `<div style="background:${isRed ? '#dc2626' : color};color:#fff;border:1.5px solid #fff;border-radius:3px;min-width:18px;height:18px;padding:0 3px;display:flex;align-items:center;justify-content:center;font:600 9px/1 ui-monospace,monospace;box-shadow:0 1px 3px rgba(0,0,0,.4);white-space:nowrap;">${abbr}</div>`,
     iconSize: [18, 18],
     iconAnchor: [9, 9],
   });
 
-// Underground connector distance label (GREEN or RED pill)
-const ugConnectorLabel = (text, isRed = false) =>
+// Underground connector distance label (colored or RED pill)
+const ugConnectorLabel = (text, isRed = false, color = '#16a34a') =>
   L.divIcon({
     className: "ug-connector-label",
-    html: `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;"><span style="background:#fff;border:1.5px solid ${isRed ? '#dc2626' : '#16a34a'};border-radius:11px;padding:1px 7px;font-family:ui-monospace,monospace;font-weight:700;font-size:10px;color:${isRed ? '#dc2626' : '#166534'};white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,.35);">${text}</span></div>`,
+    html: `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;"><span style="background:#fff;border:1.5px solid ${isRed ? '#dc2626' : color};border-radius:11px;padding:1px 7px;font-family:ui-monospace,monospace;font-weight:700;font-size:10px;color:${isRed ? '#dc2626' : color};white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,.35);">${text}</span></div>`,
     iconSize: [64, 20],
     iconAnchor: [32, 10],
   });
@@ -192,8 +217,14 @@ const JobMap = () => {
   const [saving, setSaving] = useState(false);
   const [screenshotting, setScreenshotting] = useState(false);
   const [labelOffsets, setLabelOffsets] = useState({}); // Custom offsets for station labels { [itemId]: [latOffset, lngOffset] }
+  const [aerialColor, setAerialColor] = useState(DEFAULT_AERIAL_COLOR); // Path color for aerial routes
+  const [undergroundColor, setUndergroundColor] = useState(DEFAULT_UNDERGROUND_COLOR); // Path color for underground routes
   const mapRef = useRef(null);
   const autoDownloadedRef = useRef(false);
+
+  // Get the actual hex color for aerial and underground paths
+  const aerialColorHex = PATH_COLORS[aerialColor]?.hex || PATH_COLORS.blue.hex;
+  const undergroundColorHex = PATH_COLORS[undergroundColor]?.hex || PATH_COLORS.green.hex;
 
   const fetchData = useCallback(async () => {
     try {
@@ -915,33 +946,104 @@ const JobMap = () => {
             {/* Edit mode toggle */}
             {!editMode && !connectionEditMode && !positionEditMode ? (
               <div className="flex gap-2">
-                {/* Universal Edit Button - enables all editing features */}
-                <Button
-                  onClick={() => {
-                    setEditMode(true);
-                    setPositionEditMode(true);
-                    setConnectionEditMode(true);
-                    initializeConnections();
-                  }}
-                  disabled={route.length === 0 && ug.length === 0}
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
-                  data-testid="universal-edit-btn"
-                  title="Edit map: move items, edit lines, connections, and add measurements"
-                >
-                  <Edit3 className="w-4 h-4 mr-2" />
-                  Edit Map
-                </Button>
-                {/* Note Button - standalone for quick notes */}
-                <Button
-                  onClick={() => { setEditMode(true); setAddingType("note"); }}
-                  variant="outline"
-                  className="bg-amber-50 border-amber-300 hover:bg-amber-100 text-amber-700"
-                  data-testid="add-note-btn"
-                  title="Add a note to the map"
-                >
-                  <StickyNote className="w-4 h-4 mr-2" />
-                  Add Note
-                </Button>
+                {/* Edit Map Dropdown Menu */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      disabled={route.length === 0 && ug.length === 0}
+                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                      data-testid="edit-map-dropdown-btn"
+                    >
+                      <Edit3 className="w-4 h-4 mr-2" />
+                      Edit Map
+                      <ChevronDown className="w-4 h-4 ml-2" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56 bg-white">
+                    <DropdownMenuLabel className="text-xs text-zinc-500 uppercase tracking-wider">Path Colors</DropdownMenuLabel>
+                    
+                    {/* Aerial Path Color */}
+                    <div className="px-2 py-1.5">
+                      <label className="text-xs text-zinc-600 mb-1 block">Aerial Path</label>
+                      <Select value={aerialColor} onValueChange={setAerialColor}>
+                        <SelectTrigger className="h-8 text-sm" data-testid="aerial-color-select">
+                          <div className="flex items-center gap-2">
+                            <span className="w-3 h-3 rounded-full" style={{ backgroundColor: PATH_COLORS[aerialColor]?.hex }}></span>
+                            <SelectValue />
+                          </div>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(PATH_COLORS).map(([key, { name, hex }]) => (
+                            <SelectItem key={key} value={key}>
+                              <div className="flex items-center gap-2">
+                                <span className="w-3 h-3 rounded-full" style={{ backgroundColor: hex }}></span>
+                                {name}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    {/* Underground Path Color */}
+                    <div className="px-2 py-1.5">
+                      <label className="text-xs text-zinc-600 mb-1 block">Underground Path</label>
+                      <Select value={undergroundColor} onValueChange={setUndergroundColor}>
+                        <SelectTrigger className="h-8 text-sm" data-testid="underground-color-select">
+                          <div className="flex items-center gap-2">
+                            <span className="w-3 h-3 rounded-full" style={{ backgroundColor: PATH_COLORS[undergroundColor]?.hex }}></span>
+                            <SelectValue />
+                          </div>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(PATH_COLORS).map(([key, { name, hex }]) => (
+                            <SelectItem key={key} value={key}>
+                              <div className="flex items-center gap-2">
+                                <span className="w-3 h-3 rounded-full" style={{ backgroundColor: hex }}></span>
+                                {name}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel className="text-xs text-zinc-500 uppercase tracking-wider">Edit Actions</DropdownMenuLabel>
+                    
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setEditMode(true);
+                        setPositionEditMode(true);
+                        setConnectionEditMode(true);
+                        initializeConnections();
+                      }}
+                      className="cursor-pointer"
+                      data-testid="edit-all-btn"
+                    >
+                      <Move className="w-4 h-4 mr-2" />
+                      Move Items & Edit Lines
+                    </DropdownMenuItem>
+                    
+                    <DropdownMenuItem
+                      onClick={() => { setEditMode(true); setAddingType("note"); }}
+                      className="cursor-pointer"
+                      data-testid="dropdown-add-note-btn"
+                    >
+                      <StickyNote className="w-4 h-4 mr-2" />
+                      Add Note
+                    </DropdownMenuItem>
+                    
+                    <DropdownMenuItem
+                      onClick={() => { setEditMode(true); setAddingType("measurement"); }}
+                      className="cursor-pointer"
+                      data-testid="dropdown-add-measurement-btn"
+                    >
+                      <Ruler className="w-4 h-4 mr-2" />
+                      Add Measurement
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             ) : (
               <div className="flex gap-2">
@@ -1087,7 +1189,7 @@ const JobMap = () => {
                       segmentId={segmentKey}
                       onWaypointsChange={handleWaypointsChange}
                       editMode={editMode}
-                      color={seg.isRed ? "#dc2626" : "#2563eb"}
+                      color={seg.isRed ? "#dc2626" : aerialColorHex}
                       weight={3}
                       showDistance={true}
                       isAfterMPOE={seg.isRed}
@@ -1101,7 +1203,7 @@ const JobMap = () => {
                     <Polyline 
                       positions={[seg.fromPos, seg.toPos]} 
                       pathOptions={{ 
-                        color: seg.isRed ? "#dc2626" : "#16a34a", 
+                        color: seg.isRed ? "#dc2626" : undergroundColorHex, 
                         weight: 2.5, 
                         dashArray: "6,4" 
                       }} 
@@ -1109,7 +1211,7 @@ const JobMap = () => {
                     {/* Distance label at midpoint */}
                     <Marker 
                       position={seg.mid} 
-                      icon={ugConnectorLabel(fmtFeet(seg.distFt), seg.isRed)} 
+                      icon={ugConnectorLabel(fmtFeet(seg.distFt), seg.isRed, undergroundColorHex)} 
                       interactive={false} 
                       zIndexOffset={900} 
                     />
@@ -1205,23 +1307,23 @@ const JobMap = () => {
                 <React.Fragment key={u.id}>
                   <DraggableMarker 
                     position={u.pos} 
-                    icon={ugIcon(ugDisplayLabel, isRed)}
+                    icon={ugIcon(ugDisplayLabel, isRed, undergroundColorHex)}
                     draggable={positionEditMode}
                     onDragEnd={(lat, lng) => handleUndergroundDragEnd(u.id, lat, lng)}
                   >
                     <Popup>
                       <div className="min-w-[170px] font-mono" data-testid={`ug-popup-${u.id}`}>
-                        <div className={`text-sm font-bold ${isRed ? 'text-red-700' : 'text-green-700'}`}>{undergroundAbbr(u.type)} · {u.type}</div>
+                        <div className="text-sm font-bold" style={{ color: isRed ? '#dc2626' : undergroundColorHex }}>{undergroundAbbr(u.type)} · {u.type}</div>
                         {stationLabel && <div className="text-xs text-indigo-600 font-bold">Station: {stationLabel}</div>}
                         {u.label && <div className="text-xs text-zinc-600 mt-1">{u.label}</div>}
                         {u.notes && <div className="text-xs text-zinc-500 mt-1">{u.notes}</div>}
                         {!positionEditMode && (
                           <Link to={`/jobs/${jobId}/underground/edit/${u.id}`}>
-                            <Button size="sm" className={`w-full h-8 mt-2 ${isRed ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'} text-white`} data-testid={`ug-edit-${u.id}`}>Edit</Button>
+                            <Button size="sm" className="w-full h-8 mt-2 text-white" style={{ backgroundColor: isRed ? '#dc2626' : undergroundColorHex }} data-testid={`ug-edit-${u.id}`}>Edit</Button>
                           </Link>
                         )}
                         {positionEditMode && (
-                          <div className="mt-2 text-xs text-green-600 font-medium">Drag marker to reposition</div>
+                          <div className="mt-2 text-xs font-medium" style={{ color: undergroundColorHex }}>Drag marker to reposition</div>
                         )}
                       </div>
                     </Popup>
@@ -1235,13 +1337,13 @@ const JobMap = () => {
                         {/* Connecting line from marker to station label */}
                         <Polyline 
                           positions={[u.pos, labelPos]} 
-                          pathOptions={{ color: isRed ? "#dc2626" : "#16a34a", weight: 1.5, dashArray: "3,3", opacity: 0.8 }} 
+                          pathOptions={{ color: isRed ? "#dc2626" : undergroundColorHex, weight: 1.5, dashArray: "3,3", opacity: 0.8 }} 
                         />
                         <DraggableMarker 
                           position={labelPos} 
                           icon={L.divIcon({
                             className: "station-label-smart",
-                            html: `<div style="background:${isRed ? '#dc2626' : '#16a34a'};color:#fff;border:2px solid #fff;border-radius:4px;padding:2px 6px;font:700 10px/1.2 ui-monospace,monospace;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,.4);transform:translate(-50%,-50%);${isEditingLabels ? 'cursor:move;' : ''}">${undergroundAbbr(u.type)}${u.label ? '-' + u.label : ''}<br/>${stationLabel}</div>`,
+                            html: `<div style="background:${isRed ? '#dc2626' : undergroundColorHex};color:#fff;border:2px solid #fff;border-radius:4px;padding:2px 6px;font:700 10px/1.2 ui-monospace,monospace;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,.4);transform:translate(-50%,-50%);${isEditingLabels ? 'cursor:move;' : ''}">${undergroundAbbr(u.type)}${u.label ? '-' + u.label : ''}<br/>${stationLabel}</div>`,
                             iconSize: [70, 32],
                             iconAnchor: [35, 16],
                           })}
@@ -1411,10 +1513,10 @@ const JobMap = () => {
                 <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-red-600 border border-white inline-block flex-shrink-0"></span>Pole (Red)</div>
               )}
               {route.length > 1 && (
-                <div className="flex items-center gap-2 mt-0.5"><span className="w-4 h-0.5 bg-blue-600 inline-block flex-shrink-0"></span>Aerial Path (Blue)</div>
+                <div className="flex items-center gap-2 mt-0.5"><span className="w-4 h-0.5 inline-block flex-shrink-0" style={{ backgroundColor: aerialColorHex }}></span>Aerial Path ({PATH_COLORS[aerialColor]?.name})</div>
               )}
               {ug.length > 0 && (
-                <div className="flex items-center gap-2 mt-0.5"><span className="w-3 h-3 bg-green-600 border border-white inline-block flex-shrink-0"></span>Underground (Green)</div>
+                <div className="flex items-center gap-2 mt-0.5"><span className="w-3 h-3 border border-white inline-block flex-shrink-0" style={{ backgroundColor: undergroundColorHex }}></span>Underground ({PATH_COLORS[undergroundColor]?.name})</div>
               )}
               {annotations.filter(a => a.type === "note").length > 0 && (
                 <div className="flex items-center gap-2 mt-0.5"><span className="w-3 h-3 bg-amber-500 border border-white rounded inline-block flex-shrink-0"></span>Note (Amber)</div>
@@ -1423,7 +1525,7 @@ const JobMap = () => {
                 <div className="flex items-center gap-2 mt-0.5"><span className="w-4 h-0.5 bg-amber-500 inline-block flex-shrink-0" style={{borderStyle: 'dashed'}}></span>Measurement (Amber)</div>
               )}
               {presentUg.map((t) => (
-                <div key={t} className="text-zinc-500 mt-0.5 ml-1"><span className="text-green-700 font-semibold">{undergroundAbbr(t)}</span> {t}</div>
+                <div key={t} className="text-zinc-500 mt-0.5 ml-1"><span style={{ color: undergroundColorHex }} className="font-semibold">{undergroundAbbr(t)}</span> {t}</div>
               ))}
             </div>
           </div>
