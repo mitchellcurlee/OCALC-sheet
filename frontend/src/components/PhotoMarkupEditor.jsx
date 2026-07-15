@@ -722,9 +722,20 @@ export const PhotoMarkupEditor = ({
         }
       } else if (ann.type === "text") {
         const fontSize = ann.fontSize || 16;
-        // Estimate text width based on character count
-        const textWidth = (ann.text?.length || 5) * fontSize * 0.6;
-        if (x >= ann.x - 5 && x <= ann.x + textWidth + 5 && y >= ann.y - fontSize - 5 && y <= ann.y + 5) {
+        const padding = 4;
+        // Use canvas to measure text width accurately if we have context, otherwise estimate
+        let textWidth;
+        if (canvasRef.current) {
+          const ctx = canvasRef.current.getContext("2d");
+          ctx.font = `bold ${fontSize}px sans-serif`;
+          textWidth = ctx.measureText(ann.text || "").width;
+        } else {
+          textWidth = (ann.text?.length || 5) * fontSize * 0.6;
+        }
+        const textHeight = fontSize;
+        // Hit test area includes the white background box
+        if (x >= ann.x - padding - 5 && x <= ann.x + textWidth + padding + 5 && 
+            y >= ann.y - textHeight - padding - 5 && y <= ann.y + padding + 5) {
           return i;
         }
       } else if (ann.type === "icon") {
@@ -978,14 +989,40 @@ export const PhotoMarkupEditor = ({
     setHistoryIndex(newHistory.length - 1);
   };
 
-  const deleteSelectedAnnotation = () => {
+  const deleteSelectedAnnotation = useCallback(() => {
     if (selectedAnnotation !== null) {
       const newAnnotations = annotations.filter((_, i) => i !== selectedAnnotation);
       setAnnotations(newAnnotations);
       setSelectedAnnotation(null);
-      saveHistory();
+      // Save history
+      const newHistory = history.slice(0, historyIndex + 1);
+      newHistory.push(newAnnotations);
+      setHistory(newHistory);
+      setHistoryIndex(newHistory.length - 1);
     }
-  };
+  }, [selectedAnnotation, annotations, history, historyIndex]);
+  
+  // Handle keyboard events for delete and other shortcuts
+  const handleKeyDown = useCallback((e) => {
+    if (e.key === "Delete" || e.key === "Backspace") {
+      if (selectedAnnotation !== null && tool === "select") {
+        e.preventDefault();
+        deleteSelectedAnnotation();
+      }
+    } else if (e.key === "Escape") {
+      setSelectedAnnotation(null);
+      setPolylinePoints([]);
+      setStraightLineStart(null);
+    }
+  }, [selectedAnnotation, tool, deleteSelectedAnnotation]);
+  
+  // Add keyboard event listener when editor is open
+  useEffect(() => {
+    if (editorOpen) {
+      window.addEventListener("keydown", handleKeyDown);
+      return () => window.removeEventListener("keydown", handleKeyDown);
+    }
+  }, [editorOpen, handleKeyDown]);
 
   const resizeSelectedMarker = (newSize) => {
     if (selectedAnnotation !== null && annotations[selectedAnnotation]?.type === "marker") {
@@ -1771,11 +1808,22 @@ export const PhotoMarkupEditor = ({
                 </div>
               )}
 
+              {/* Select tool instructions when nothing selected */}
+              {tool === "select" && selectedAnnotation === null && annotations.length > 0 && (
+                <div className="space-y-2 p-2 bg-zinc-100 rounded border border-zinc-300">
+                  <Label className="text-xs font-mono text-zinc-700">SELECT & EDIT</Label>
+                  <p className="text-xs text-zinc-600">Click on any annotation to select it.</p>
+                  <p className="text-xs text-zinc-500">• Drag to move</p>
+                  <p className="text-xs text-zinc-500">• Press Delete to remove</p>
+                  <p className="text-xs text-zinc-500">• Use controls to resize</p>
+                </div>
+              )}
+
               {/* Selected annotation controls */}
               {tool === "select" && selectedAnnotation !== null && (
                 <div className="space-y-2 p-2 bg-blue-50 rounded">
                   <Label className="text-xs font-mono text-blue-700">SELECTED ITEM</Label>
-                  <p className="text-xs text-blue-600">Drag to move</p>
+                  <p className="text-xs text-blue-600">Drag to move • Press Delete to remove</p>
                   {annotations[selectedAnnotation]?.type === "marker" && (
                     <div className="space-y-1">
                       <Label className="text-xs">Marker: {annotations[selectedAnnotation]?.label}</Label>

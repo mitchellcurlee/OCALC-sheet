@@ -217,6 +217,7 @@ const JobMap = () => {
   const [saving, setSaving] = useState(false);
   const [screenshotting, setScreenshotting] = useState(false);
   const [labelOffsets, setLabelOffsets] = useState({}); // Custom offsets for station labels { [itemId]: [latOffset, lngOffset] }
+  const [measurementOffsets, setMeasurementOffsets] = useState({}); // Custom offsets for measurement labels { [segmentKey]: [latOffset, lngOffset] }
   const [aerialColor, setAerialColor] = useState(DEFAULT_AERIAL_COLOR); // Default color for aerial routes
   const [undergroundColor, setUndergroundColor] = useState(DEFAULT_UNDERGROUND_COLOR); // Default color for underground routes
   const [segmentColors, setSegmentColors] = useState({}); // Per-segment color overrides { [segmentKey]: colorKey }
@@ -608,6 +609,15 @@ const JobMap = () => {
         console.warn('Failed to load label offsets:', e);
       }
     }
+    // Load measurement offsets
+    const savedMeasurementOffsets = localStorage.getItem(`measurementOffsets_${jobId}`);
+    if (savedMeasurementOffsets) {
+      try {
+        setMeasurementOffsets(JSON.parse(savedMeasurementOffsets));
+      } catch (e) {
+        console.warn('Failed to load measurement offsets:', e);
+      }
+    }
   }, [jobId]);
 
   // Save label offsets to localStorage when changed
@@ -616,6 +626,15 @@ const JobMap = () => {
       localStorage.setItem(`labelOffsets_${jobId}`, JSON.stringify(offsets));
     } catch (e) {
       console.warn('Failed to save label offsets:', e);
+    }
+  }, [jobId]);
+
+  // Save measurement offsets to localStorage when changed
+  const saveMeasurementOffsets = useCallback((offsets) => {
+    try {
+      localStorage.setItem(`measurementOffsets_${jobId}`, JSON.stringify(offsets));
+    } catch (e) {
+      console.warn('Failed to save measurement offsets:', e);
     }
   }, [jobId]);
 
@@ -632,12 +651,32 @@ const JobMap = () => {
     toast.success("Label position saved");
   }, [saveLabelOffsets]);
 
+  // Handle measurement label drag end
+  const handleMeasurementDragEnd = useCallback((segmentKey, basePos, newLat, newLng) => {
+    const latOffset = newLat - basePos[0];
+    const lngOffset = newLng - basePos[1];
+    
+    setMeasurementOffsets(prev => {
+      const updated = { ...prev, [segmentKey]: [latOffset, lngOffset] };
+      saveMeasurementOffsets(updated);
+      return updated;
+    });
+    toast.success("Measurement position saved");
+  }, [saveMeasurementOffsets]);
+
   // Get label position for an item (base position + custom offset)
   const getLabelPosition = useCallback((itemId, basePos) => {
     const defaultOffset = [-0.00015, 0.00015]; // Default offset: up and to the right
     const offset = labelOffsets[itemId] || defaultOffset;
     return [basePos[0] + offset[0], basePos[1] + offset[1]];
   }, [labelOffsets]);
+
+  // Get measurement label position (base position at midpoint + custom offset)
+  const getMeasurementLabelPosition = useCallback((segmentKey, basePos) => {
+    const defaultOffset = [-0.00012, 0.00012]; // Default offset: up and to the right
+    const offset = measurementOffsets[segmentKey] || defaultOffset;
+    return [basePos[0] + offset[0], basePos[1] + offset[1]];
+  }, [measurementOffsets]);
 
   // ======== CONNECTION MANAGEMENT ========
   // Initialize default connections based on sort_order (matching job page order)
@@ -1324,6 +1363,7 @@ const JobMap = () => {
                 const segmentKey = `${seg.from.id}-${seg.to.id}`;
                 const isSelected = selectedSegment === segmentKey;
                 const segmentColor = getSegmentColor(segmentKey, seg.isAerial, seg.isRed);
+                const measurementLabelPos = getMeasurementLabelPosition(segmentKey, seg.mid);
                 
                 // For aerial pole-to-pole segments, use EditableRoute with waypoints
                 if (seg.isAerial) {
@@ -1342,6 +1382,8 @@ const JobMap = () => {
                         showDistance={true}
                         isAfterMPOE={seg.isRed}
                         onClick={() => handleSegmentClick(segmentKey)}
+                        measurementLabelPos={measurementLabelPos}
+                        onMeasurementDragEnd={handleMeasurementDragEnd}
                       />
                       {/* Selection highlight */}
                       {isSelected && (
@@ -1397,12 +1439,28 @@ const JobMap = () => {
                         }
                       }}
                     />
-                    {/* Distance label at midpoint */}
-                    <Marker 
-                      position={seg.mid} 
-                      icon={ugConnectorLabel(fmtFeet(seg.distFt), seg.isRed, segmentColor)} 
-                      interactive={false} 
-                      zIndexOffset={900} 
+                    {/* Orange connecting line from measurement label to midpoint */}
+                    <Polyline
+                      positions={[seg.mid, measurementLabelPos]}
+                      pathOptions={{
+                        color: "#ea580c",
+                        weight: 2,
+                        opacity: 0.9,
+                        dashArray: "4,4"
+                      }}
+                    />
+                    {/* Smart measurement label - draggable in edit mode */}
+                    <DraggableMarker 
+                      position={measurementLabelPos}
+                      icon={L.divIcon({
+                        className: "ug-measurement-label",
+                        html: `<div style="background:#fff;border:2px solid #ea580c;border-radius:6px;padding:4px 10px;font:700 12px/1.2 ui-monospace,monospace;color:#c2410c;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,.25);cursor:${editMode ? 'move' : 'default'};">${fmtFeet(seg.distFt)}</div>`,
+                        iconSize: [80, 28],
+                        iconAnchor: [40, 14],
+                      })}
+                      draggable={editMode}
+                      onDragEnd={(lat, lng) => handleMeasurementDragEnd(segmentKey, seg.mid, lat, lng)}
+                      zIndexOffset={900}
                     />
                   </React.Fragment>
                 );
