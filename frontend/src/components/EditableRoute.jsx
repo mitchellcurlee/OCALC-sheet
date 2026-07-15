@@ -65,6 +65,7 @@ const distanceFeet = (p1, p2) => {
  * - onWaypointsChange: callback when waypoints are modified
  * - editMode: boolean - whether editing is enabled
  * - color: line color
+ * - onClick: callback when segment is clicked
  */
 export const EditableRoute = ({ 
   startPos, 
@@ -76,7 +77,8 @@ export const EditableRoute = ({
   color = "#2563eb",
   weight = 4,
   showDistance = true,
-  isAfterMPOE = false
+  isAfterMPOE = false,
+  onClick
 }) => {
   const [localWaypoints, setLocalWaypoints] = useState(waypoints);
   const [isDragging, setIsDragging] = useState(false);
@@ -159,6 +161,24 @@ export const EditableRoute = ({
 
   return (
     <>
+      {/* Invisible wider polyline for easier clicking */}
+      {onClick && (
+        <Polyline
+          positions={fullPath}
+          pathOptions={{
+            color: "transparent",
+            weight: 25,
+            opacity: 0,
+            bubblingMouseEvents: false,
+          }}
+          eventHandlers={{
+            click: (e) => {
+              e.originalEvent.stopPropagation();
+              onClick();
+            }
+          }}
+        />
+      )}
       {/* Main polyline */}
       <Polyline
         positions={fullPath}
@@ -167,6 +187,13 @@ export const EditableRoute = ({
           weight: editMode ? weight + 1 : weight,
           opacity: 0.9,
           dashArray: editMode ? "8, 4" : null,
+          bubblingMouseEvents: false,
+        }}
+        eventHandlers={{
+          click: onClick ? (e) => {
+            e.originalEvent.stopPropagation();
+            onClick();
+          } : undefined
         }}
       />
 

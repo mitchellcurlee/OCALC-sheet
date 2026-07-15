@@ -217,14 +217,74 @@ const JobMap = () => {
   const [saving, setSaving] = useState(false);
   const [screenshotting, setScreenshotting] = useState(false);
   const [labelOffsets, setLabelOffsets] = useState({}); // Custom offsets for station labels { [itemId]: [latOffset, lngOffset] }
-  const [aerialColor, setAerialColor] = useState(DEFAULT_AERIAL_COLOR); // Path color for aerial routes
-  const [undergroundColor, setUndergroundColor] = useState(DEFAULT_UNDERGROUND_COLOR); // Path color for underground routes
+  const [aerialColor, setAerialColor] = useState(DEFAULT_AERIAL_COLOR); // Default color for aerial routes
+  const [undergroundColor, setUndergroundColor] = useState(DEFAULT_UNDERGROUND_COLOR); // Default color for underground routes
+  const [segmentColors, setSegmentColors] = useState({}); // Per-segment color overrides { [segmentKey]: colorKey }
+  const [selectedSegment, setSelectedSegment] = useState(null); // Currently selected segment for color editing
   const mapRef = useRef(null);
   const autoDownloadedRef = useRef(false);
 
   // Get the actual hex color for aerial and underground paths
   const aerialColorHex = PATH_COLORS[aerialColor]?.hex || PATH_COLORS.blue.hex;
   const undergroundColorHex = PATH_COLORS[undergroundColor]?.hex || PATH_COLORS.green.hex;
+  
+  // Get color for a specific segment (uses segment override or default)
+  const getSegmentColor = useCallback((segmentKey, isAerial, isRed) => {
+    if (isRed) return "#dc2626"; // Red for after MPOE
+    if (segmentColors[segmentKey]) {
+      return PATH_COLORS[segmentColors[segmentKey]]?.hex || (isAerial ? aerialColorHex : undergroundColorHex);
+    }
+    return isAerial ? aerialColorHex : undergroundColorHex;
+  }, [segmentColors, aerialColorHex, undergroundColorHex]);
+  
+  // Handle segment click for color selection
+  const handleSegmentClick = useCallback((segmentKey) => {
+    if (editMode) {
+      setSelectedSegment(segmentKey === selectedSegment ? null : segmentKey);
+    }
+  }, [editMode, selectedSegment]);
+  
+  // Apply color to selected segment
+  const applyColorToSegment = useCallback((colorKey) => {
+    if (selectedSegment) {
+      setSegmentColors(prev => ({
+        ...prev,
+        [selectedSegment]: colorKey
+      }));
+    }
+  }, [selectedSegment]);
+  
+  // Apply color to all aerial segments
+  const applyColorToAllAerial = useCallback((colorKey) => {
+    setAerialColor(colorKey);
+    // Clear any segment-specific overrides for aerial segments
+    setSegmentColors(prev => {
+      const newColors = { ...prev };
+      Object.keys(newColors).forEach(key => {
+        // Remove aerial segment overrides (they don't contain 'ug-')
+        if (!key.includes('ug-')) {
+          delete newColors[key];
+        }
+      });
+      return newColors;
+    });
+  }, []);
+  
+  // Apply color to all underground segments
+  const applyColorToAllUnderground = useCallback((colorKey) => {
+    setUndergroundColor(colorKey);
+    // Clear any segment-specific overrides for underground segments
+    setSegmentColors(prev => {
+      const newColors = { ...prev };
+      Object.keys(newColors).forEach(key => {
+        // Remove underground segment overrides (they contain 'ug-')
+        if (key.includes('ug-')) {
+          delete newColors[key];
+        }
+      });
+      return newColors;
+    });
+  }, []);
 
   const fetchData = useCallback(async () => {
     try {
@@ -964,8 +1024,8 @@ const JobMap = () => {
                     
                     {/* Aerial Path Color */}
                     <div className="px-2 py-1.5">
-                      <label className="text-xs text-zinc-600 mb-1 block">Aerial Path</label>
-                      <Select value={aerialColor} onValueChange={setAerialColor}>
+                      <label className="text-xs text-zinc-600 mb-1 block">Aerial Path (All)</label>
+                      <Select value={aerialColor} onValueChange={applyColorToAllAerial}>
                         <SelectTrigger className="h-8 text-sm" data-testid="aerial-color-select">
                           <div className="flex items-center gap-2">
                             <span className="w-3 h-3 rounded-full" style={{ backgroundColor: PATH_COLORS[aerialColor]?.hex }}></span>
@@ -987,8 +1047,8 @@ const JobMap = () => {
                     
                     {/* Underground Path Color */}
                     <div className="px-2 py-1.5">
-                      <label className="text-xs text-zinc-600 mb-1 block">Underground Path</label>
-                      <Select value={undergroundColor} onValueChange={setUndergroundColor}>
+                      <label className="text-xs text-zinc-600 mb-1 block">Underground Path (All)</label>
+                      <Select value={undergroundColor} onValueChange={applyColorToAllUnderground}>
                         <SelectTrigger className="h-8 text-sm" data-testid="underground-color-select">
                           <div className="flex items-center gap-2">
                             <span className="w-3 h-3 rounded-full" style={{ backgroundColor: PATH_COLORS[undergroundColor]?.hex }}></span>
@@ -1023,6 +1083,19 @@ const JobMap = () => {
                     >
                       <Move className="w-4 h-4 mr-2" />
                       Move Items & Edit Lines
+                    </DropdownMenuItem>
+                    
+                    <DropdownMenuItem
+                      onClick={() => { 
+                        setEditMode(true); 
+                        setSelectedSegment(null);
+                        toast.info("Click on any line segment to select it and change its color individually");
+                      }}
+                      className="cursor-pointer"
+                      data-testid="edit-segment-colors-btn"
+                    >
+                      <Palette className="w-4 h-4 mr-2" />
+                      Edit Individual Segment Colors
                     </DropdownMenuItem>
                     
                     <DropdownMenuItem
@@ -1148,11 +1221,84 @@ const JobMap = () => {
         ) : (
           <div className="h-[70vh] border border-zinc-300 overflow-hidden rounded relative">
             {/* Universal edit mode indicator */}
-            {(editMode || positionEditMode || connectionEditMode) && (
+            {(editMode || positionEditMode || connectionEditMode) && !selectedSegment && (
               <div className="absolute top-2 left-2 z-[1000] bg-blue-600 text-white px-3 py-1.5 rounded text-sm font-medium shadow-lg max-w-md">
                 <div className="font-semibold">Edit Mode Active</div>
                 <div className="text-xs opacity-90 mt-0.5">
-                  • Drag markers to move items • Edit route lines • Reconnect items
+                  • Drag markers to move items • Edit route lines • Click line to change its color
+                </div>
+                {/* Segment selector dropdown for easier selection */}
+                {orderedSegments.length > 0 && (
+                  <div className="mt-2 pt-2 border-t border-blue-400">
+                    <div className="text-xs opacity-80 mb-1">Or select segment from list:</div>
+                    <Select value={selectedSegment || ""} onValueChange={(v) => v && setSelectedSegment(v)}>
+                      <SelectTrigger className="h-7 text-xs bg-white text-zinc-900">
+                        <SelectValue placeholder="Select a segment..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {orderedSegments.map((seg, i) => {
+                          const segKey = `${seg.from.id}-${seg.to.id}`;
+                          const fromLabel = seg.from.pole_number || seg.from.type || 'P' + (i+1);
+                          const toLabel = seg.to.pole_number || seg.to.type || 'P' + (i+2);
+                          return (
+                            <SelectItem key={segKey} value={segKey}>
+                              <div className="flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: getSegmentColor(segKey, seg.isAerial, seg.isRed) }}></span>
+                                {fromLabel} → {toLabel} ({seg.isAerial ? 'Aerial' : 'Underground'})
+                              </div>
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {/* Selected segment color picker panel */}
+            {selectedSegment && editMode && (
+              <div className="absolute top-2 left-2 z-[1000] bg-white border border-zinc-300 rounded-lg shadow-lg p-3 min-w-[200px]" data-testid="segment-color-panel">
+                <div className="font-semibold text-sm text-zinc-900 mb-2">Segment Color</div>
+                <div className="text-xs text-zinc-500 mb-3">Click a color to apply to selected segment</div>
+                <div className="flex gap-2 flex-wrap mb-3">
+                  {Object.entries(PATH_COLORS).map(([key, { name, hex }]) => (
+                    <button
+                      key={key}
+                      onClick={() => applyColorToSegment(key)}
+                      className={`w-8 h-8 rounded-full border-2 transition-all hover:scale-110 ${
+                        segmentColors[selectedSegment] === key ? 'border-zinc-900 ring-2 ring-offset-1 ring-zinc-400' : 'border-white'
+                      }`}
+                      style={{ backgroundColor: hex }}
+                      title={name}
+                      data-testid={`segment-color-${key}`}
+                    />
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      // Clear this segment's custom color
+                      setSegmentColors(prev => {
+                        const newColors = { ...prev };
+                        delete newColors[selectedSegment];
+                        return newColors;
+                      });
+                    }}
+                    className="text-xs h-7"
+                  >
+                    Reset to Default
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setSelectedSegment(null)}
+                    className="text-xs h-7"
+                  >
+                    Done
+                  </Button>
                 </div>
               </div>
             )}
@@ -1176,42 +1322,85 @@ const JobMap = () => {
               {/* ALL SEGMENTS - rendered in sort_order (job page order) */}
               {orderedSegments.map((seg, i) => {
                 const segmentKey = `${seg.from.id}-${seg.to.id}`;
+                const isSelected = selectedSegment === segmentKey;
+                const segmentColor = getSegmentColor(segmentKey, seg.isAerial, seg.isRed);
                 
                 // For aerial pole-to-pole segments, use EditableRoute with waypoints
                 if (seg.isAerial) {
                   const waypoints = customRoutes[segmentKey] || [];
                   return (
-                    <EditableRoute
-                      key={segmentKey}
-                      startPos={seg.fromPos}
-                      endPos={seg.toPos}
-                      waypoints={waypoints}
-                      segmentId={segmentKey}
-                      onWaypointsChange={handleWaypointsChange}
-                      editMode={editMode}
-                      color={seg.isRed ? "#dc2626" : aerialColorHex}
-                      weight={3}
-                      showDistance={true}
-                      isAfterMPOE={seg.isRed}
-                    />
+                    <React.Fragment key={segmentKey}>
+                      <EditableRoute
+                        startPos={seg.fromPos}
+                        endPos={seg.toPos}
+                        waypoints={waypoints}
+                        segmentId={segmentKey}
+                        onWaypointsChange={handleWaypointsChange}
+                        editMode={editMode}
+                        color={segmentColor}
+                        weight={isSelected ? 5 : 3}
+                        showDistance={true}
+                        isAfterMPOE={seg.isRed}
+                        onClick={() => handleSegmentClick(segmentKey)}
+                      />
+                      {/* Selection highlight */}
+                      {isSelected && (
+                        <Polyline
+                          positions={waypoints.length > 0 ? [seg.fromPos, ...waypoints, seg.toPos] : [seg.fromPos, seg.toPos]}
+                          pathOptions={{ color: "#fff", weight: 8, opacity: 0.5 }}
+                        />
+                      )}
+                    </React.Fragment>
                   );
                 }
                 
                 // For segments involving underground items, use dashed Polyline
                 return (
                   <React.Fragment key={segmentKey}>
+                    {/* Selection highlight */}
+                    {isSelected && (
+                      <Polyline
+                        positions={[seg.fromPos, seg.toPos]}
+                        pathOptions={{ color: "#fff", weight: 7, opacity: 0.5 }}
+                      />
+                    )}
+                    {/* Invisible wider polyline for easier clicking */}
+                    {editMode && (
+                      <Polyline 
+                        positions={[seg.fromPos, seg.toPos]} 
+                        pathOptions={{ 
+                          color: "transparent", 
+                          weight: 25, 
+                          opacity: 0,
+                          bubblingMouseEvents: false
+                        }}
+                        eventHandlers={{
+                          click: (e) => {
+                            e.originalEvent.stopPropagation();
+                            handleSegmentClick(segmentKey);
+                          }
+                        }}
+                      />
+                    )}
                     <Polyline 
                       positions={[seg.fromPos, seg.toPos]} 
                       pathOptions={{ 
-                        color: seg.isRed ? "#dc2626" : undergroundColorHex, 
-                        weight: 2.5, 
-                        dashArray: "6,4" 
-                      }} 
+                        color: segmentColor, 
+                        weight: isSelected ? 4 : 2.5, 
+                        dashArray: "6,4",
+                        bubblingMouseEvents: false
+                      }}
+                      eventHandlers={{
+                        click: (e) => {
+                          e.originalEvent.stopPropagation();
+                          handleSegmentClick(segmentKey);
+                        }
+                      }}
                     />
                     {/* Distance label at midpoint */}
                     <Marker 
                       position={seg.mid} 
-                      icon={ugConnectorLabel(fmtFeet(seg.distFt), seg.isRed, undergroundColorHex)} 
+                      icon={ugConnectorLabel(fmtFeet(seg.distFt), seg.isRed, segmentColor)} 
                       interactive={false} 
                       zIndexOffset={900} 
                     />
