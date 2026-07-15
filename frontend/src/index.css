@@ -279,6 +279,15 @@ body {
     transition: transform 0.2s ease;
 }
 
+/* Sonner toast - ensure it doesn't block page interactions */
+[data-sonner-toaster] {
+    pointer-events: none !important;
+}
+
+[data-sonner-toaster] [data-sonner-toast] {
+    pointer-events: auto !important;
+}
+
 /* Toast positioning for mobile */
 @media (max-width: 640px) {
     [data-sonner-toaster] {
