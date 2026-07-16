@@ -672,8 +672,12 @@ function downloadAll(){{
 
 @router.get("/jobs/{job_id}/export/photos-zip")
 async def export_job_photos_zip(job_id: str, token: Optional[str] = Query(None), request: Request = None):
-    """Export all photos from a job as a ZIP file, organized by pole/underground with labels.
+    """Export all photos from a job as a ZIP file, organized by pole/underground with descriptive labels.
     Access via: valid download token (30 days) OR authenticated user with job access.
+    
+    ZIP Structure:
+    - {JobName}/Poles/Pole_{number}_{station}/PhotoType.jpeg
+    - {JobName}/Underground/{Type}_{Label}/PhotoType.jpeg
     """
     import zipfile
     import base64
@@ -723,15 +727,31 @@ async def export_job_photos_zip(job_id: str, token: Optional[str] = Query(None),
     poles = await _db.poles.find({"job_id": job_id}, {"_id": 0}).to_list(10000)
     poles.sort(key=pole_sort_key)
     
-    # Fetch underground items
+    # Fetch underground items and sort by sort_order then created_at
     underground_items = await _db.underground.find({"job_id": job_id}, {"_id": 0}).to_list(10000)
+    underground_items.sort(key=lambda x: (x.get("sort_order") or 9999, x.get("created_at") or ""))
+    
+    # Helper to sanitize folder/file names
+    def safe_name(s, default="unknown"):
+        return "".join(c for c in str(s) if c.isalnum() or c in (' ', '-', '_')).strip().replace(' ', '_') or default
+    
+    # Job name for top-level folder
+    job_name = safe_name(job.get("name", "Job"))
     
     buffer = io.BytesIO()
+    photo_count = 0
+    
     with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
         # Add pole photos
-        for pole in poles:
-            pole_number = pole.get("pole_number", "unknown")
-            safe_pole_name = "".join(c for c in pole_number if c.isalnum() or c in (' ', '-', '_')).strip() or "unknown"
+        for idx, pole in enumerate(poles, 1):
+            pole_number = pole.get("pole_number") or f"Pole_{idx}"
+            station_number = pole.get("station_number") or ""
+            
+            # Create descriptive folder name: Pole_1_STA100+50 or just Pole_1
+            if station_number:
+                folder_name = f"Pole_{safe_name(pole_number)}_{safe_name(station_number)}"
+            else:
+                folder_name = f"Pole_{safe_name(pole_number)}"
             
             photo_items = pole_photo_items(pole)
             for label, photo_url in photo_items:
@@ -751,20 +771,25 @@ async def export_job_photos_zip(job_id: str, token: Optional[str] = Query(None),
                         data, _ = get_object(photo_url)
                     
                     if data:
-                        # Create safe filename with label - always use .jpeg extension
-                        safe_label = "".join(c for c in label if c.isalnum() or c in (' ', '-', '_')).strip()
-                        filename = f"Poles/{safe_pole_name}/{safe_label}.jpeg"
+                        # Create descriptive filename: JobName/Poles/Pole_1_STA100/OCALC_Left.jpeg
+                        safe_label = safe_name(label, "Photo")
+                        filename = f"{job_name}/Poles/{folder_name}/{safe_label}.jpeg"
                         zf.writestr(filename, data)
+                        photo_count += 1
                 except Exception:
                     # Skip failed photos
                     continue
         
         # Add underground photos
-        for ug in underground_items:
-            ug_type = ug.get("type", "UG")
-            ug_label = ug.get("label", "")
-            safe_folder_name = f"{ug_type}_{ug_label}" if ug_label else ug_type
-            safe_folder_name = "".join(c for c in safe_folder_name if c.isalnum() or c in (' ', '-', '_')).strip() or "Underground"
+        for idx, ug in enumerate(underground_items, 1):
+            ug_type = ug.get("type") or "Underground"
+            ug_label = ug.get("label") or ""
+            
+            # Create descriptive folder name: Handhole_HH-1 or just Handhole_1
+            if ug_label:
+                folder_name = f"{safe_name(ug_type)}_{safe_name(ug_label)}"
+            else:
+                folder_name = f"{safe_name(ug_type)}_{idx}"
             
             photo_items = underground_photo_items(ug)
             for label, photo_url in photo_items:
@@ -784,22 +809,26 @@ async def export_job_photos_zip(job_id: str, token: Optional[str] = Query(None),
                         data, _ = get_object(photo_url)
                     
                     if data:
-                        # Create safe filename with label - always use .jpeg extension
-                        safe_label = "".join(c for c in label if c.isalnum() or c in (' ', '-', '_')).strip()
-                        filename = f"Underground/{safe_folder_name}/{safe_label}.jpeg"
+                        # Create descriptive filename: JobName/Underground/Handhole_HH-1/Photo_1.jpeg
+                        safe_label = safe_name(label, "Photo")
+                        filename = f"{job_name}/Underground/{folder_name}/{safe_label}.jpeg"
                         zf.writestr(filename, data)
+                        photo_count += 1
                 except Exception:
                     # Skip failed photos
                     continue
     
+    # Check if any photos were added
+    if photo_count == 0:
+        raise HTTPException(status_code=404, detail="No photos found for this job. Add photos to poles or underground items first.")
+    
     buffer.seek(0)
-    safe_name = "".join(c for c in job.get("name", "job") if c.isalnum() or c in (' ', '-', '_')).strip()
-    filename = f"{safe_name}_photos_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip"
+    zip_filename = f"{job_name}_Photos_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip"
     
     return StreamingResponse(
         buffer,
         media_type="application/zip",
-        headers={"Content-Disposition": f"attachment; filename={filename}"}
+        headers={"Content-Disposition": f"attachment; filename={zip_filename}"}
     )
 
 

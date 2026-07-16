@@ -1,0 +1,57 @@
+{
+  "summary": "Both backend and frontend testing of the 'Download Pictures' fix (Photos button on JobDetail). Photo ZIP download works end-to-end with the correct labeling structure {JobName}/Poles/Pole_{number}/PhotoType.jpeg. Verified via pytest (5/5 passing) and Playwright E2E (login -> JobDetail -> Photos button -> real ZIP download saved -> ZIP inspected). MINOR ISSUE: Empty-job error toast falls back to generic 'Download failed: Request failed with status code 404' instead of the intended 'No photos found. Add photos to poles or underground items first.' because axios responseType:'blob' hides the JSON error detail.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "JobDetail.jsx handleDownloadPhotos (lines 364-372)",
+        "issue": "Empty-job error toast shows generic 'Download failed: Request failed with status code 404' instead of the intended user-friendly 'No photos found. Add photos to poles or underground items first.' Root cause: axios responseType:'blob' returns error.response.data as a Blob (not parsed JSON), so error.response.data.detail is undefined and error.message ('Request failed with status code 404') does NOT contain 'No photos', causing the fallback branch to fire. Fix: In the catch block, when error.response?.data is a Blob, await error.response.data.text() then JSON.parse it to extract the detail (mirror the success-path JSON-in-blob handling on lines 335-340).",
+        "selector": "[data-testid='download-photos-btn']",
+        "priority": "MINOR (UX)"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_photos_zip_download.py",
+    "/app/test_reports/pytest/pytest_photos_zip_v2.xml"
+  ],
+  "action_items": [
+    "Improve empty-job error toast in JobDetail.jsx handleDownloadPhotos: parse Blob error response as JSON to surface the backend's 'No photos found...' detail message. Sample fix inside catch: if (error.response?.data instanceof Blob) { const t = await error.response.data.text(); try { const j = JSON.parse(t); errorMsg = j.detail || errorMsg; } catch {} }"
+  ],
+  "critical_code_review_comments": [
+    "Backend /jobs/{id}/export/photos-zip correctly implements the requested labeling: {JobName}/Poles/Pole_{number}/PhotoType.jpeg and {JobName}/Underground/{Type}_{Label}/PhotoType.jpeg. Verified with real download: A050ABC/Poles/Pole_1/OCALC_Middle.jpeg, OCALC_Right.jpeg, Birthmark.jpeg.",
+    "Backend authentication is properly checked (token OR JWT bearer). Unauth returns 401. Empty jobs return 404 with clear detail. All photo sources handled (data URLs, /api/files/, direct storage paths).",
+    "safe_name() in routes/jobs.py replaces spaces with underscores and strips special chars — good for cross-platform filenames.",
+    "Frontend responseType:'blob' error-handling gap (see ui_bugs above) — axios error branch cannot read JSON detail from Blob. Minor UX issue only; user still sees an error toast, just less friendly.",
+    "routes/jobs.py is 1000+ lines — exceeds >700-line guideline. Consider splitting export-related endpoints into routes/exports.py.",
+    "In handleDownloadPhotos success path (lines 334-340), the errorData.detail parsing does exist for the success path when JSON is unexpectedly returned. The same defensive parsing should be added to the catch block."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_photos_zip_download.py (new)"
+  ],
+  "success_rate": {
+    "backend": "100% (5/5 pytest cases pass — auth, invalid-token, admin download, filename format, empty-job 404)",
+    "frontend": "90% — Photos button click triggers correct download with correct filename + ZIP structure + loading + success toasts. Empty-job case fires a generic error toast instead of the intended 'No photos' message."
+  },
+  "test_credentials": "Admin@mastec.com / Mastecbyers12345 (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "Created two temporary empty jobs (TEST_UI_Empty2, TEST_UI_Empty3, TEST_EmptyJobNoPhotos) during testing and deleted them via API/pytest teardown. No residual test data.",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "The Photos-download core feature works. Only remaining issue is UX polish: JobDetail.jsx handleDownloadPhotos catch block cannot read the backend 'No photos found' detail because response is a Blob. Backend endpoint GET /api/jobs/{job_id}/export/photos-zip is fully functional; ZIP verified structurally correct. Pytest file at /app/backend/tests/test_photos_zip_download.py is a stable regression suite. Seed job A050ABC (e5dc0bae-96bb-4cef-8001-7baf4e41d80a) has 3 photos on Pole_1 (OCALC_Middle, OCALC_Right, Birthmark).",
+  "feature_verification_matrix": {
+    "Clicking Photos button initiates ZIP download": "PASS (Playwright expect_download resolved with A050ABC_Photos_20260716_020047.zip, 531,358 bytes)",
+    "ZIP labeling: {JobName}/Poles/Pole_{number}/PhotoType.jpeg": "PASS (A050ABC/Poles/Pole_1/OCALC_Middle.jpeg exactly matches spec)",
+    "ZIP labeling: {JobName}/Underground/{Type}_{Label}/PhotoType.jpeg": "PASS (code path verified; seed job has no underground photos to demonstrate live but backend logic on lines 784-819 mirrors pole path)",
+    "Empty job -> 'No photos found' error message": "PARTIAL — backend returns 404 with correct detail, frontend receives 404 but toast shows generic 'Download failed: Request failed with status code 404' instead of the friendly 'No photos found' message (see ui_bugs)",
+    "Toast: loading then success/error": "PASS (loading toast 'Preparing photo download...' visible; success toast 'Photos downloaded: A050ABC_Photos_...zip' shown after; error toast shown for empty job)",
+    "All pole photo types included (OCALC L/M/R, Birthmark, MGNV, HOA, Anchor, Markup)": "PASS (pole_photo_items helper covers all these fields; seed job proves 3 of them appear in the ZIP with correct labels)",
+    "Underground photos included": "PASS by code review (underground_photo_items + underground loop in the endpoint) — no live UG photos in seed data to render",
+    "Filename format": "PASS (A050ABC_Photos_20260716_020047.zip contains job name + timestamp)"
+  },
+  "rca of the issue": "Original user report: 'Download Pictures fails to download images and pictures need proper labeling.' Backend was already producing a valid ZIP but with minimal labeling (e.g., Poles/1/Photo.jpeg). Main agent's fix now produces {JobName}/Poles/Pole_{number}[_{station}]/{SafeLabel}.jpeg and {JobName}/Underground/{Type}_{Label}/{SafeLabel}.jpeg — verified live. The 'download fails' report was likely because prior UI never showed a loading/success toast so users didn't realize the browser had saved the file. Fix adds toast.loading before the request and toast.success/error after — verified working. One remaining minor gap: axios responseType:'blob' + backend 404 with JSON body means the catch handler can't read the JSON 'detail'; it falls through to a generic message. Straightforward one-line-ish fix in the frontend catch block (parse Blob as text->JSON before deciding on toast text)."
+}

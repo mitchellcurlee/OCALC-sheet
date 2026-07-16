@@ -323,23 +323,52 @@ const JobDetail = () => {
   };
 
   const handleDownloadPhotos = async () => {
+    const toastId = toast.loading("Preparing photo download... This may take a moment.");
     try {
-      toast.info("Preparing photo download... This may take a moment.");
       const response = await axios.get(`/jobs/${jobId}/export/photos-zip`, {
-        responseType: "blob"
+        responseType: "blob",
+        timeout: 120000 // 2 minute timeout for large photo collections
       });
-      const url = window.URL.createObjectURL(new Blob([response.data]));
+      
+      // Check if response is actually a ZIP file (not an error JSON)
+      const contentType = response.headers["content-type"];
+      if (contentType && contentType.includes("application/json")) {
+        // Backend returned an error as JSON
+        const text = await response.data.text();
+        const errorData = JSON.parse(text);
+        throw new Error(errorData.detail || "No photos found");
+      }
+      
+      const blob = new Blob([response.data], { type: "application/zip" });
+      const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      const filename = response.headers["content-disposition"]?.split("filename=")[1] || `${job?.name || "job"}_photos.zip`;
-      link.setAttribute("download", filename.replace(/"/g, ""));
+      
+      // Extract filename from Content-Disposition header or use default
+      const disposition = response.headers["content-disposition"];
+      let filename = `${job?.name || "Job"}_Photos.zip`;
+      if (disposition) {
+        const filenameMatch = disposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+        if (filenameMatch && filenameMatch[1]) {
+          filename = filenameMatch[1].replace(/['"]/g, "");
+        }
+      }
+      
+      link.setAttribute("download", filename);
       document.body.appendChild(link);
       link.click();
       link.remove();
-      toast.success("Photo ZIP downloaded!");
+      window.URL.revokeObjectURL(url);
+      
+      toast.success(`Photos downloaded: ${filename}`, { id: toastId });
     } catch (error) {
       console.error("Photo download error:", error);
-      toast.error("Failed to download photos. Make sure there are photos to export.");
+      const errorMsg = error.response?.data?.detail || error.message || "Failed to download photos";
+      if (errorMsg.includes("No photos")) {
+        toast.error("No photos found. Add photos to poles or underground items first.", { id: toastId });
+      } else {
+        toast.error(`Download failed: ${errorMsg}`, { id: toastId });
+      }
     }
   };
 
