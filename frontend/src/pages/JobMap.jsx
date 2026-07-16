@@ -665,37 +665,90 @@ const JobMap = () => {
   }, [saveMeasurementOffsets]);
 
   // Get label position for an item (base position + custom offset)
-  const getLabelPosition = useCallback((itemId, basePos) => {
-    const defaultOffset = [-0.00015, 0.00015]; // Default offset: up and to the right
-    const offset = labelOffsets[itemId] || defaultOffset;
-    return [basePos[0] + offset[0], basePos[1] + offset[1]];
+  const getLabelPosition = useCallback((itemId, basePos, existingLabels = []) => {
+    // If user has set a custom offset, use that
+    if (labelOffsets[itemId]) {
+      const offset = labelOffsets[itemId];
+      return [basePos[0] + offset[0], basePos[1] + offset[1]];
+    }
+    
+    // Default offset patterns to try (in order of preference)
+    const offsetPatterns = [
+      [-0.00015, 0.00015],   // top-right (default)
+      [-0.00018, -0.00015],  // top-left
+      [0.00015, 0.00018],    // bottom-right
+      [0.00018, -0.00018],   // bottom-left
+      [-0.00025, 0.00008],   // far top-right
+      [-0.00008, 0.00025],   // right
+      [-0.00025, -0.00008],  // far top-left
+      [0.00025, 0.00008],    // far bottom-right
+    ];
+    
+    // Find a position that doesn't overlap with existing labels
+    for (const offset of offsetPatterns) {
+      const pos = [basePos[0] + offset[0], basePos[1] + offset[1]];
+      if (!hasCollision(pos, existingLabels)) {
+        return pos;
+      }
+    }
+    
+    // If all positions collide, use default
+    return [basePos[0] + offsetPatterns[0][0], basePos[1] + offsetPatterns[0][1]];
   }, [labelOffsets]);
 
   // Get measurement label position (base position at midpoint + custom offset)
   // Each segment gets a unique default offset to prevent overlap
-  const getMeasurementLabelPosition = useCallback((segmentKey, basePos, segmentIndex = 0) => {
+  const getMeasurementLabelPosition = useCallback((segmentKey, basePos, segmentIndex = 0, existingLabels = []) => {
     // If user has set a custom position, use that
     if (measurementOffsets[segmentKey]) {
       const offset = measurementOffsets[segmentKey];
       return [basePos[0] + offset[0], basePos[1] + offset[1]];
     }
     
-    // Generate unique default offset based on segment index to prevent overlap
-    // Alternate between different positions: top-right, bottom-right, top-left, bottom-left
+    // Offset patterns based on segment index - spread out in different directions
     const offsetPatterns = [
-      [-0.00018, 0.00020],   // top-right
-      [0.00015, 0.00022],    // bottom-right  
-      [-0.00020, -0.00018],  // top-left
-      [0.00018, -0.00015],   // bottom-left
-      [-0.00025, 0.00010],   // far top-right
-      [0.00022, 0.00012],    // far bottom-right
+      [-0.00020, 0.00025],   // top-right
+      [0.00018, 0.00028],    // bottom-right  
+      [-0.00025, -0.00020],  // top-left
+      [0.00022, -0.00018],   // bottom-left
+      [-0.00030, 0.00012],   // far top-right
+      [0.00028, 0.00015],    // far bottom-right
+      [-0.00012, 0.00030],   // right-top
+      [0.00015, -0.00025],   // far bottom-left
     ];
     
-    const patternIndex = segmentIndex % offsetPatterns.length;
-    const defaultOffset = offsetPatterns[patternIndex];
+    // Start with the pattern based on index
+    const startIndex = segmentIndex % offsetPatterns.length;
     
-    return [basePos[0] + defaultOffset[0], basePos[1] + defaultOffset[1]];
+    // Try patterns starting from the index-based one
+    for (let i = 0; i < offsetPatterns.length; i++) {
+      const patternIndex = (startIndex + i) % offsetPatterns.length;
+      const offset = offsetPatterns[patternIndex];
+      const pos = [basePos[0] + offset[0], basePos[1] + offset[1]];
+      
+      if (!hasCollision(pos, existingLabels)) {
+        return pos;
+      }
+    }
+    
+    // If all positions collide, use the index-based default with extra offset
+    const extraOffset = segmentIndex * 0.00008;
+    const defaultOffset = offsetPatterns[startIndex];
+    return [basePos[0] + defaultOffset[0] + extraOffset, basePos[1] + defaultOffset[1] + extraOffset];
   }, [measurementOffsets]);
+
+  // Check if a position collides with any existing labels
+  const hasCollision = useCallback((pos, existingLabels, threshold = 0.00012) => {
+    for (const label of existingLabels) {
+      const distance = Math.sqrt(
+        Math.pow(pos[0] - label[0], 2) + Math.pow(pos[1] - label[1], 2)
+      );
+      if (distance < threshold) {
+        return true;
+      }
+    }
+    return false;
+  }, []);
 
   // ======== CONNECTION MANAGEMENT ========
   // Initialize default connections based on sort_order (matching job page order)
@@ -919,6 +972,113 @@ const JobMap = () => {
     
     return segments;
   }, [route, ug]);
+
+  // Compute all smart label positions with collision avoidance
+  const computedLabelPositions = useMemo(() => {
+    const positions = {
+      measurements: {}, // segmentKey -> [lat, lng]
+      stations: {},     // itemId -> [lat, lng]
+    };
+    const allLabels = []; // Track all label positions for collision detection
+    
+    // Offset patterns for measurements
+    const measurementPatterns = [
+      [-0.00022, 0.00028],   // top-right
+      [0.00020, 0.00030],    // bottom-right  
+      [-0.00028, -0.00022],  // top-left
+      [0.00025, -0.00020],   // bottom-left
+      [-0.00035, 0.00015],   // far top-right
+      [0.00032, 0.00018],    // far bottom-right
+      [-0.00015, 0.00035],   // right-top
+      [0.00018, -0.00030],   // far bottom-left
+    ];
+    
+    // Offset patterns for station labels
+    const stationPatterns = [
+      [-0.00018, 0.00020],   // top-right
+      [-0.00020, -0.00018],  // top-left
+      [0.00018, 0.00022],    // bottom-right
+      [0.00020, -0.00020],   // bottom-left
+      [-0.00028, 0.00012],   // far top-right
+      [-0.00012, 0.00028],   // right
+      [0.00028, 0.00012],    // far bottom-right
+      [0.00012, -0.00025],   // far bottom-left
+    ];
+    
+    const COLLISION_THRESHOLD = 0.00015;
+    
+    const hasCollision = (pos) => {
+      for (const label of allLabels) {
+        const dist = Math.sqrt(Math.pow(pos[0] - label[0], 2) + Math.pow(pos[1] - label[1], 2));
+        if (dist < COLLISION_THRESHOLD) return true;
+      }
+      return false;
+    };
+    
+    const findNonCollidingPos = (basePos, patterns, startIndex = 0) => {
+      for (let i = 0; i < patterns.length; i++) {
+        const idx = (startIndex + i) % patterns.length;
+        const pos = [basePos[0] + patterns[idx][0], basePos[1] + patterns[idx][1]];
+        if (!hasCollision(pos)) return pos;
+      }
+      // If all collide, add extra offset based on number of existing labels
+      const extraOffset = allLabels.length * 0.00006;
+      const defaultPattern = patterns[startIndex % patterns.length];
+      return [basePos[0] + defaultPattern[0] + extraOffset, basePos[1] + defaultPattern[1] + extraOffset];
+    };
+    
+    // First, compute measurement positions (only when station numbers are OFF)
+    if (!showStationNumbers) {
+      orderedSegments.forEach((seg, i) => {
+        const segmentKey = `${seg.from.id}-${seg.to.id}`;
+        
+        // Check if user has custom offset
+        if (measurementOffsets[segmentKey]) {
+          const offset = measurementOffsets[segmentKey];
+          const pos = [seg.mid[0] + offset[0], seg.mid[1] + offset[1]];
+          positions.measurements[segmentKey] = pos;
+          allLabels.push(pos);
+        } else {
+          const pos = findNonCollidingPos(seg.mid, measurementPatterns, i);
+          positions.measurements[segmentKey] = pos;
+          allLabels.push(pos);
+        }
+      });
+    }
+    
+    // Then compute station label positions (when station numbers are ON)
+    if (showStationNumbers) {
+      // Process poles
+      route.forEach((p, i) => {
+        if (labelOffsets[p.id]) {
+          const offset = labelOffsets[p.id];
+          const pos = [p.pos[0] + offset[0], p.pos[1] + offset[1]];
+          positions.stations[p.id] = pos;
+          allLabels.push(pos);
+        } else {
+          const pos = findNonCollidingPos(p.pos, stationPatterns, i);
+          positions.stations[p.id] = pos;
+          allLabels.push(pos);
+        }
+      });
+      
+      // Process underground items
+      ug.forEach((u, i) => {
+        if (labelOffsets[u.id]) {
+          const offset = labelOffsets[u.id];
+          const pos = [u.pos[0] + offset[0], u.pos[1] + offset[1]];
+          positions.stations[u.id] = pos;
+          allLabels.push(pos);
+        } else {
+          const pos = findNonCollidingPos(u.pos, stationPatterns, i + route.length);
+          positions.stations[u.id] = pos;
+          allLabels.push(pos);
+        }
+      });
+    }
+    
+    return positions;
+  }, [orderedSegments, route, ug, showStationNumbers, measurementOffsets, labelOffsets]);
 
   // ======== END CONNECTION MANAGEMENT ========
 
@@ -1382,7 +1542,8 @@ const JobMap = () => {
                 const segmentKey = `${seg.from.id}-${seg.to.id}`;
                 const isSelected = selectedSegment === segmentKey;
                 const segmentColor = getSegmentColor(segmentKey, seg.isAerial, seg.isRed);
-                const measurementLabelPos = getMeasurementLabelPosition(segmentKey, seg.mid, i);
+                // Use precomputed position with collision avoidance
+                const measurementLabelPos = computedLabelPositions.measurements[segmentKey] || getMeasurementLabelPosition(segmentKey, seg.mid, i);
                 
                 // For aerial pole-to-pole segments, use EditableRoute with waypoints
                 if (seg.isAerial) {
@@ -1535,7 +1696,8 @@ const JobMap = () => {
                     </DraggableMarker>
                     {/* Station number label with offset and connecting line */}
                     {stationLabel && (() => {
-                      const labelPos = getLabelPosition(p.id, p.pos);
+                      // Use precomputed position with collision avoidance
+                      const labelPos = computedLabelPositions.stations[p.id] || getLabelPosition(p.id, p.pos);
                       const isEditingLabels = editMode || positionEditMode || connectionEditMode;
                       return (
                         <>
@@ -1601,7 +1763,8 @@ const JobMap = () => {
                   </DraggableMarker>
                   {/* Station number label with offset and connecting line */}
                   {stationLabel && (() => {
-                    const labelPos = getLabelPosition(u.id, u.pos);
+                    // Use precomputed position with collision avoidance
+                    const labelPos = computedLabelPositions.stations[u.id] || getLabelPosition(u.id, u.pos);
                     const isEditingLabels = editMode || positionEditMode || connectionEditMode;
                     return (
                       <>
