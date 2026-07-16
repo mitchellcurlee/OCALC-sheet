@@ -144,9 +144,9 @@ const ugIcon = (abbr, isRed = false, color = '#16a34a') =>
 const ugConnectorLabel = (text, isRed = false, color = '#16a34a') =>
   L.divIcon({
     className: "ug-connector-label",
-    html: `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;"><span style="background:#fff;border:1.5px solid ${isRed ? '#dc2626' : color};border-radius:11px;padding:1px 7px;font-family:ui-monospace,monospace;font-weight:700;font-size:10px;color:${isRed ? '#dc2626' : color};white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,.35);">${text}</span></div>`,
-    iconSize: [64, 20],
-    iconAnchor: [32, 10],
+    html: `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;"><span style="background:#fff;border:1.5px solid ${isRed ? '#dc2626' : color};border-radius:11px;padding:2px 10px;font-family:ui-monospace,monospace;font-weight:700;font-size:11px;color:${isRed ? '#dc2626' : color};white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,.35);">${text}</span></div>`,
+    iconSize: [100, 28],
+    iconAnchor: [50, 14],
   });
 
 const FitBounds = ({ points, disabled = false }) => {
@@ -1637,9 +1637,9 @@ const JobMap = () => {
                           position={measurementLabelPos}
                           icon={L.divIcon({
                             className: "ug-measurement-label",
-                            html: `<div style="background:#fff;border:2px solid #ea580c;border-radius:6px;padding:4px 10px;font:700 12px/1.2 ui-monospace,monospace;color:#c2410c;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,.25);cursor:${editMode ? 'move' : 'default'};">${fmtFeet(seg.distFt)}</div>`,
-                            iconSize: [80, 28],
-                            iconAnchor: [40, 14],
+                            html: `<div style="background:#fff;border:2px solid #ea580c;border-radius:6px;padding:6px 14px;font:700 13px/1.2 ui-monospace,monospace;color:#c2410c;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,.25);cursor:${editMode ? 'move' : 'default'};">${fmtFeet(seg.distFt)}</div>`,
+                            iconSize: [120, 36],
+                            iconAnchor: [60, 18],
                           })}
                           draggable={editMode}
                           onDragEnd={(lat, lng) => handleMeasurementDragEnd(segmentKey, seg.mid, lat, lng)}
@@ -1710,9 +1710,9 @@ const JobMap = () => {
                             position={labelPos} 
                             icon={L.divIcon({
                               className: "station-label-smart",
-                              html: `<div style="background:#4f46e5;color:#fff;border:2px solid #fff;border-radius:4px;padding:2px 6px;font:700 10px/1.2 ui-monospace,monospace;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,.4);transform:translate(-50%,-50%);${isEditingLabels ? 'cursor:move;' : ''}">${p.pole_number || 'P'}<br/>${stationLabel}</div>`,
-                              iconSize: [60, 32],
-                              iconAnchor: [30, 16],
+                              html: `<div style="background:#4f46e5;color:#fff;border:2px solid #fff;border-radius:6px;padding:4px 10px;font:700 11px/1.3 ui-monospace,monospace;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,.4);${isEditingLabels ? 'cursor:move;' : ''}">${p.pole_number || 'P'}<br/>${stationLabel}</div>`,
+                              iconSize: [140, 48],
+                              iconAnchor: [70, 24],
                             })}
                             draggable={isEditingLabels}
                             onDragEnd={(lat, lng) => handleLabelDragEnd(p.id, p.pos, lat, lng)}
@@ -1777,9 +1777,9 @@ const JobMap = () => {
                           position={labelPos} 
                           icon={L.divIcon({
                             className: "station-label-smart",
-                            html: `<div style="background:${isRed ? '#dc2626' : undergroundColorHex};color:#fff;border:2px solid #fff;border-radius:4px;padding:2px 6px;font:700 10px/1.2 ui-monospace,monospace;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,.4);transform:translate(-50%,-50%);${isEditingLabels ? 'cursor:move;' : ''}">${undergroundAbbr(u.type)}${u.label ? '-' + u.label : ''}<br/>${stationLabel}</div>`,
-                            iconSize: [70, 32],
-                            iconAnchor: [35, 16],
+                            html: `<div style="background:${isRed ? '#dc2626' : undergroundColorHex};color:#fff;border:2px solid #fff;border-radius:6px;padding:4px 10px;font:700 11px/1.3 ui-monospace,monospace;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,.4);${isEditingLabels ? 'cursor:move;' : ''}">${undergroundAbbr(u.type)}${u.label ? '-' + u.label : ''}<br/>${stationLabel}</div>`,
+                            iconSize: [160, 48],
+                            iconAnchor: [80, 24],
                           })}
                           draggable={isEditingLabels}
                           onDragEnd={(lat, lng) => handleLabelDragEnd(u.id, u.pos, lat, lng)}
