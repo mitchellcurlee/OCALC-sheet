@@ -1398,7 +1398,7 @@ const JobMap = () => {
                         editMode={editMode}
                         color={segmentColor}
                         weight={isSelected ? 5 : 3}
-                        showDistance={true}
+                        showDistance={!showStationNumbers}
                         isAfterMPOE={seg.isRed}
                         onClick={() => handleSegmentClick(segmentKey)}
                         measurementLabelPos={measurementLabelPos}
@@ -1458,29 +1458,34 @@ const JobMap = () => {
                         }
                       }}
                     />
-                    {/* Orange connecting line from measurement label to midpoint */}
-                    <Polyline
-                      positions={[seg.mid, measurementLabelPos]}
-                      pathOptions={{
-                        color: "#ea580c",
-                        weight: 2,
-                        opacity: 0.9,
-                        dashArray: "4,4"
-                      }}
-                    />
-                    {/* Smart measurement label - draggable in edit mode */}
-                    <DraggableMarker 
-                      position={measurementLabelPos}
-                      icon={L.divIcon({
-                        className: "ug-measurement-label",
-                        html: `<div style="background:#fff;border:2px solid #ea580c;border-radius:6px;padding:4px 10px;font:700 12px/1.2 ui-monospace,monospace;color:#c2410c;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,.25);cursor:${editMode ? 'move' : 'default'};">${fmtFeet(seg.distFt)}</div>`,
-                        iconSize: [80, 28],
-                        iconAnchor: [40, 14],
-                      })}
-                      draggable={editMode}
-                      onDragEnd={(lat, lng) => handleMeasurementDragEnd(segmentKey, seg.mid, lat, lng)}
-                      zIndexOffset={900}
-                    />
+                    {/* Only show measurement labels when station numbers are OFF */}
+                    {!showStationNumbers && (
+                      <>
+                        {/* Orange connecting line from measurement label to midpoint */}
+                        <Polyline
+                          positions={[seg.mid, measurementLabelPos]}
+                          pathOptions={{
+                            color: "#ea580c",
+                            weight: 2,
+                            opacity: 0.9,
+                            dashArray: "4,4"
+                          }}
+                        />
+                        {/* Smart measurement label - draggable in edit mode */}
+                        <DraggableMarker 
+                          position={measurementLabelPos}
+                          icon={L.divIcon({
+                            className: "ug-measurement-label",
+                            html: `<div style="background:#fff;border:2px solid #ea580c;border-radius:6px;padding:4px 10px;font:700 12px/1.2 ui-monospace,monospace;color:#c2410c;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,.25);cursor:${editMode ? 'move' : 'default'};">${fmtFeet(seg.distFt)}</div>`,
+                            iconSize: [80, 28],
+                            iconAnchor: [40, 14],
+                          })}
+                          draggable={editMode}
+                          onDragEnd={(lat, lng) => handleMeasurementDragEnd(segmentKey, seg.mid, lat, lng)}
+                          zIndexOffset={900}
+                        />
+                      </>
+                    )}
                   </React.Fragment>
                 );
               })}
