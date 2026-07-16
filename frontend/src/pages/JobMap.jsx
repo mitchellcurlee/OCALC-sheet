@@ -171,7 +171,7 @@ const MapRefSetter = ({ mapRef }) => {
 };
 
 // Draggable marker component for position edit mode
-const DraggableMarker = ({ position, icon, children, draggable, onDragEnd, zIndexOffset = 0 }) => {
+const DraggableMarker = ({ position, icon, children, draggable, onDragEnd, onDoubleClick, zIndexOffset = 0 }) => {
   const markerRef = useRef(null);
   
   const eventHandlers = useMemo(() => ({
@@ -182,7 +182,13 @@ const DraggableMarker = ({ position, icon, children, draggable, onDragEnd, zInde
         onDragEnd(newPos.lat, newPos.lng);
       }
     },
-  }), [onDragEnd]);
+    dblclick(e) {
+      if (onDoubleClick) {
+        e.originalEvent.stopPropagation();
+        onDoubleClick();
+      }
+    },
+  }), [onDragEnd, onDoubleClick]);
 
   return (
     <Marker 
@@ -222,6 +228,9 @@ const JobMap = () => {
   const [undergroundColor, setUndergroundColor] = useState(DEFAULT_UNDERGROUND_COLOR); // Default color for underground routes
   const [segmentColors, setSegmentColors] = useState({}); // Per-segment color overrides { [segmentKey]: colorKey }
   const [selectedSegment, setSelectedSegment] = useState(null); // Currently selected segment for color editing
+  const [customLabelTexts, setCustomLabelTexts] = useState({}); // Custom text overrides { [labelId]: text }
+  const [editingLabelId, setEditingLabelId] = useState(null); // Currently editing label ID
+  const [editingLabelText, setEditingLabelText] = useState(""); // Text being edited
   const mapRef = useRef(null);
   const autoDownloadedRef = useRef(false);
 
@@ -663,6 +672,72 @@ const JobMap = () => {
     });
     toast.success("Measurement position saved");
   }, [saveMeasurementOffsets]);
+
+  // ======== CUSTOM LABEL TEXT MANAGEMENT ========
+  // Load custom label texts from localStorage on mount
+  useEffect(() => {
+    const savedTexts = localStorage.getItem(`customLabelTexts_${jobId}`);
+    if (savedTexts) {
+      try {
+        setCustomLabelTexts(JSON.parse(savedTexts));
+      } catch (e) {
+        console.warn('Failed to load custom label texts:', e);
+      }
+    }
+  }, [jobId]);
+
+  // Save custom label texts to localStorage
+  const saveCustomLabelTexts = useCallback((texts) => {
+    try {
+      localStorage.setItem(`customLabelTexts_${jobId}`, JSON.stringify(texts));
+    } catch (e) {
+      console.warn('Failed to save custom label texts:', e);
+    }
+  }, [jobId]);
+
+  // Handle double-click to edit label text
+  const handleLabelDoubleClick = useCallback((labelId, defaultText) => {
+    setEditingLabelId(labelId);
+    setEditingLabelText(customLabelTexts[labelId] || defaultText);
+  }, [customLabelTexts]);
+
+  // Save edited label text
+  const saveEditedLabelText = useCallback(() => {
+    if (editingLabelId && editingLabelText.trim()) {
+      setCustomLabelTexts(prev => {
+        const updated = { ...prev, [editingLabelId]: editingLabelText.trim() };
+        saveCustomLabelTexts(updated);
+        return updated;
+      });
+      toast.success("Label text saved");
+    }
+    setEditingLabelId(null);
+    setEditingLabelText("");
+  }, [editingLabelId, editingLabelText, saveCustomLabelTexts]);
+
+  // Cancel editing
+  const cancelEditingLabel = useCallback(() => {
+    setEditingLabelId(null);
+    setEditingLabelText("");
+  }, []);
+
+  // Reset label to default text
+  const resetLabelToDefault = useCallback((labelId) => {
+    setCustomLabelTexts(prev => {
+      const updated = { ...prev };
+      delete updated[labelId];
+      saveCustomLabelTexts(updated);
+      return updated;
+    });
+    setEditingLabelId(null);
+    setEditingLabelText("");
+    toast.success("Label reset to default");
+  }, [saveCustomLabelTexts]);
+
+  // Get label text (custom or default)
+  const getLabelText = useCallback((labelId, defaultText) => {
+    return customLabelTexts[labelId] || defaultText;
+  }, [customLabelTexts]);
 
   // Get label position for an item (base position + custom offset)
   const getLabelPosition = useCallback((itemId, basePos, existingLabels = []) => {
@@ -1520,6 +1595,51 @@ const JobMap = () => {
                 </div>
               </div>
             )}
+            
+            {/* Label text editing modal */}
+            {editingLabelId && (
+              <div className="absolute top-2 left-2 z-[1001] bg-white border border-zinc-300 rounded-lg shadow-xl p-4 min-w-[280px]" data-testid="label-edit-modal">
+                <div className="font-semibold text-sm text-zinc-900 mb-2">Edit Label Text</div>
+                <div className="text-xs text-zinc-500 mb-3">Double-click any label to edit its text</div>
+                <input
+                  type="text"
+                  value={editingLabelText}
+                  onChange={(e) => setEditingLabelText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') saveEditedLabelText();
+                    if (e.key === 'Escape') cancelEditingLabel();
+                  }}
+                  className="w-full px-3 py-2 border border-zinc-300 rounded text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  autoFocus
+                  data-testid="label-edit-input"
+                />
+                <div className="flex gap-2 mt-3">
+                  <Button
+                    size="sm"
+                    onClick={saveEditedLabelText}
+                    className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-8"
+                  >
+                    Save
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => resetLabelToDefault(editingLabelId)}
+                    className="text-xs h-8"
+                  >
+                    Reset Default
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={cancelEditingLabel}
+                    className="text-xs h-8"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
             <MapContainer 
               center={center} 
               zoom={18} 
@@ -1548,6 +1668,7 @@ const JobMap = () => {
                 // For aerial pole-to-pole segments, use EditableRoute with waypoints
                 if (seg.isAerial) {
                   const waypoints = customRoutes[segmentKey] || [];
+                  const defaultMeasurementText = `${Math.round(seg.distFt)} ft`;
                   return (
                     <React.Fragment key={segmentKey}>
                       <EditableRoute
@@ -1564,6 +1685,8 @@ const JobMap = () => {
                         onClick={() => handleSegmentClick(segmentKey)}
                         measurementLabelPos={measurementLabelPos}
                         onMeasurementDragEnd={handleMeasurementDragEnd}
+                        customLabelText={customLabelTexts[`measurement-${segmentKey}`]}
+                        onLabelDoubleClick={() => handleLabelDoubleClick(`measurement-${segmentKey}`, defaultMeasurementText)}
                       />
                       {/* Selection highlight */}
                       {isSelected && (
@@ -1636,13 +1759,14 @@ const JobMap = () => {
                         <DraggableMarker 
                           position={measurementLabelPos}
                           icon={L.divIcon({
-                            className: "ug-measurement-label",
-                            html: `<div style="background:#fff;border:2px solid #ea580c;border-radius:6px;padding:6px 14px;font:700 13px/1.2 ui-monospace,monospace;color:#c2410c;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,.25);cursor:${editMode ? 'move' : 'default'};">${fmtFeet(seg.distFt)}</div>`,
+                            className: "ug-measurement-label editable-label",
+                            html: `<div style="background:#fff;border:2px solid #ea580c;border-radius:6px;padding:6px 14px;font:700 13px/1.2 ui-monospace,monospace;color:#c2410c;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,.25);cursor:pointer;pointer-events:auto;" title="Double-click to edit">${getLabelText(`measurement-${segmentKey}`, fmtFeet(seg.distFt))}</div>`,
                             iconSize: [120, 36],
                             iconAnchor: [60, 18],
                           })}
                           draggable={editMode}
                           onDragEnd={(lat, lng) => handleMeasurementDragEnd(segmentKey, seg.mid, lat, lng)}
+                          onDoubleClick={() => handleLabelDoubleClick(`measurement-${segmentKey}`, fmtFeet(seg.distFt))}
                           zIndexOffset={900}
                         />
                       </>
@@ -1699,6 +1823,8 @@ const JobMap = () => {
                       // Use precomputed position with collision avoidance
                       const labelPos = computedLabelPositions.stations[p.id] || getLabelPosition(p.id, p.pos);
                       const isEditingLabels = editMode || positionEditMode || connectionEditMode;
+                      const defaultText = `${p.pole_number || 'P'}\n${stationLabel}`;
+                      const displayText = getLabelText(`pole-station-${p.id}`, defaultText).replace(/\n/g, '<br/>');
                       return (
                         <>
                           {/* Connecting line from marker to station label */}
@@ -1709,13 +1835,14 @@ const JobMap = () => {
                           <DraggableMarker 
                             position={labelPos} 
                             icon={L.divIcon({
-                              className: "station-label-smart",
-                              html: `<div style="background:#4f46e5;color:#fff;border:2px solid #fff;border-radius:6px;padding:4px 10px;font:700 11px/1.3 ui-monospace,monospace;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,.4);${isEditingLabels ? 'cursor:move;' : ''}">${p.pole_number || 'P'}<br/>${stationLabel}</div>`,
+                              className: "station-label-smart editable-label",
+                              html: `<div style="background:#4f46e5;color:#fff;border:2px solid #fff;border-radius:6px;padding:4px 10px;font:700 11px/1.3 ui-monospace,monospace;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,.4);cursor:pointer;pointer-events:auto;" title="Double-click to edit">${displayText}</div>`,
                               iconSize: [140, 48],
                               iconAnchor: [70, 24],
                             })}
                             draggable={isEditingLabels}
                             onDragEnd={(lat, lng) => handleLabelDragEnd(p.id, p.pos, lat, lng)}
+                            onDoubleClick={() => handleLabelDoubleClick(`pole-station-${p.id}`, defaultText)}
                             zIndexOffset={850}
                           />
                         </>
@@ -1766,6 +1893,8 @@ const JobMap = () => {
                     // Use precomputed position with collision avoidance
                     const labelPos = computedLabelPositions.stations[u.id] || getLabelPosition(u.id, u.pos);
                     const isEditingLabels = editMode || positionEditMode || connectionEditMode;
+                    const defaultText = `${undergroundAbbr(u.type)}${u.label ? '-' + u.label : ''}\n${stationLabel}`;
+                    const displayText = getLabelText(`ug-station-${u.id}`, defaultText).replace(/\n/g, '<br/>');
                     return (
                       <>
                         {/* Connecting line from marker to station label */}
@@ -1776,13 +1905,14 @@ const JobMap = () => {
                         <DraggableMarker 
                           position={labelPos} 
                           icon={L.divIcon({
-                            className: "station-label-smart",
-                            html: `<div style="background:${isRed ? '#dc2626' : undergroundColorHex};color:#fff;border:2px solid #fff;border-radius:6px;padding:4px 10px;font:700 11px/1.3 ui-monospace,monospace;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,.4);${isEditingLabels ? 'cursor:move;' : ''}">${undergroundAbbr(u.type)}${u.label ? '-' + u.label : ''}<br/>${stationLabel}</div>`,
+                            className: "station-label-smart editable-label",
+                            html: `<div style="background:${isRed ? '#dc2626' : undergroundColorHex};color:#fff;border:2px solid #fff;border-radius:6px;padding:4px 10px;font:700 11px/1.3 ui-monospace,monospace;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,.4);cursor:pointer;pointer-events:auto;" title="Double-click to edit">${displayText}</div>`,
                             iconSize: [160, 48],
                             iconAnchor: [80, 24],
                           })}
                           draggable={isEditingLabels}
                           onDragEnd={(lat, lng) => handleLabelDragEnd(u.id, u.pos, lat, lng)}
+                          onDoubleClick={() => handleLabelDoubleClick(`ug-station-${u.id}`, defaultText)}
                           zIndexOffset={850}
                         />
                       </>

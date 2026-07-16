@@ -288,6 +288,15 @@ body {
     pointer-events: auto !important;
 }
 
+/* Editable map labels - ensure they capture click events */
+.leaflet-marker-icon.editable-label,
+.leaflet-marker-icon.station-label-smart,
+.leaflet-marker-icon.distance-label,
+.leaflet-marker-icon.ug-measurement-label {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+}
+
 /* Toast positioning for mobile */
 @media (max-width: 640px) {
     [data-sonner-toaster] {
