@@ -672,10 +672,29 @@ const JobMap = () => {
   }, [labelOffsets]);
 
   // Get measurement label position (base position at midpoint + custom offset)
-  const getMeasurementLabelPosition = useCallback((segmentKey, basePos) => {
-    const defaultOffset = [-0.00012, 0.00012]; // Default offset: up and to the right
-    const offset = measurementOffsets[segmentKey] || defaultOffset;
-    return [basePos[0] + offset[0], basePos[1] + offset[1]];
+  // Each segment gets a unique default offset to prevent overlap
+  const getMeasurementLabelPosition = useCallback((segmentKey, basePos, segmentIndex = 0) => {
+    // If user has set a custom position, use that
+    if (measurementOffsets[segmentKey]) {
+      const offset = measurementOffsets[segmentKey];
+      return [basePos[0] + offset[0], basePos[1] + offset[1]];
+    }
+    
+    // Generate unique default offset based on segment index to prevent overlap
+    // Alternate between different positions: top-right, bottom-right, top-left, bottom-left
+    const offsetPatterns = [
+      [-0.00018, 0.00020],   // top-right
+      [0.00015, 0.00022],    // bottom-right  
+      [-0.00020, -0.00018],  // top-left
+      [0.00018, -0.00015],   // bottom-left
+      [-0.00025, 0.00010],   // far top-right
+      [0.00022, 0.00012],    // far bottom-right
+    ];
+    
+    const patternIndex = segmentIndex % offsetPatterns.length;
+    const defaultOffset = offsetPatterns[patternIndex];
+    
+    return [basePos[0] + defaultOffset[0], basePos[1] + defaultOffset[1]];
   }, [measurementOffsets]);
 
   // ======== CONNECTION MANAGEMENT ========
@@ -1363,7 +1382,7 @@ const JobMap = () => {
                 const segmentKey = `${seg.from.id}-${seg.to.id}`;
                 const isSelected = selectedSegment === segmentKey;
                 const segmentColor = getSegmentColor(segmentKey, seg.isAerial, seg.isRed);
-                const measurementLabelPos = getMeasurementLabelPosition(segmentKey, seg.mid);
+                const measurementLabelPos = getMeasurementLabelPosition(segmentKey, seg.mid, i);
                 
                 // For aerial pole-to-pole segments, use EditableRoute with waypoints
                 if (seg.isAerial) {
