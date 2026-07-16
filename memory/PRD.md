@@ -975,3 +975,58 @@ Changes require redeploy to production (https://poledatasheet.info) to be visibl
 
 ### Requires Redeploy
 Changes require redeploy to production (https://poledatasheet.info) to be visible.
+
+---
+
+## Session Update (Jul 16, 2026) - Download Pictures Fix
+
+### P0 Bug Fix: "Download Pictures" Feature
+**User Report:** Clicking the Photos button on Job Detail page fails to download images. Also requested proper labeling of downloaded pictures based on job data.
+
+**Root Cause Analysis:**
+The download WAS working but had two issues:
+1. Minimal labeling in ZIP (just `Poles/1/Photo.jpeg`) - not descriptive enough
+2. No clear user feedback (loading/success toasts) - users didn't notice files downloading
+
+**Backend Fix (routes/jobs.py):**
+- Improved ZIP folder structure with job name at top level
+- Added descriptive file naming: `{JobName}/Poles/Pole_{number}[_{station}]/{PhotoType}.jpeg`
+- Underground photos: `{JobName}/Underground/{Type}_{Label}/{PhotoType}.jpeg`
+- Added `safe_name()` helper to sanitize folder/file names (replaces spaces with underscores, strips special chars)
+- Returns HTTP 404 with clear message when no photos exist: "No photos found for this job. Add photos to poles or underground items first."
+- Added photo count tracking to ensure empty jobs return proper error
+
+**Frontend Fix (JobDetail.jsx):**
+- Added `toast.loading()` before API call with "Preparing photo download..." message
+- Added `toast.success()` with downloaded filename after successful download
+- Improved error handling to parse JSON error from Blob response (axios responseType:'blob' returns errors as Blob)
+- User-friendly error messages for: no photos, unauthorized, generic errors
+- Increased timeout to 120 seconds for large photo collections
+- Properly revokes blob URL after download to prevent memory leaks
+
+**ZIP Structure Example:**
+```
+A050ABC_Photos_20260716_020528.zip
+└── A050ABC/
+    └── Poles/
+        └── Pole_1/
+            ├── OCALC_Middle.jpeg
+            ├── OCALC_Right.jpeg
+            └── Birthmark.jpeg
+    └── Underground/
+        └── Handhole_HH-1/
+            └── Photo_1.jpeg
+```
+
+### Files Modified
+- `/app/backend/routes/jobs.py` - Improved `export_job_photos_zip()` endpoint with descriptive labeling
+- `/app/frontend/src/pages/JobDetail.jsx` - Improved `handleDownloadPhotos()` with better toast feedback and error handling
+
+### Test Results (verified by testing_agent_v3_fork)
+- Backend: 5/5 pytest cases pass (auth, invalid-token, admin download, filename format, empty-job 404)
+- Frontend: Photos button click triggers correct download with loading + success toasts
+- ZIP structure: Verified `A050ABC/Poles/Pole_1/OCALC_Middle.jpeg` matches spec
+- Error handling: Empty jobs show "No photos found" toast
+
+### Requires Redeploy
+Changes require redeploy to production (https://poledatasheet.info) to be visible.

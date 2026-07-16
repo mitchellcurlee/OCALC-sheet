@@ -363,9 +363,26 @@ const JobDetail = () => {
       toast.success(`Photos downloaded: ${filename}`, { id: toastId });
     } catch (error) {
       console.error("Photo download error:", error);
-      const errorMsg = error.response?.data?.detail || error.message || "Failed to download photos";
-      if (errorMsg.includes("No photos")) {
+      
+      // Try to extract detailed error message from response blob
+      let errorMsg = error.message || "Failed to download photos";
+      if (error.response?.data instanceof Blob) {
+        try {
+          const text = await error.response.data.text();
+          const jsonError = JSON.parse(text);
+          errorMsg = jsonError.detail || errorMsg;
+        } catch {
+          // Blob wasn't JSON, use default error message
+        }
+      } else if (error.response?.data?.detail) {
+        errorMsg = error.response.data.detail;
+      }
+      
+      // Show user-friendly error messages
+      if (errorMsg.toLowerCase().includes("no photos")) {
         toast.error("No photos found. Add photos to poles or underground items first.", { id: toastId });
+      } else if (errorMsg.includes("401") || errorMsg.toLowerCase().includes("unauthorized")) {
+        toast.error("Please log in again to download photos.", { id: toastId });
       } else {
         toast.error(`Download failed: ${errorMsg}`, { id: toastId });
       }
