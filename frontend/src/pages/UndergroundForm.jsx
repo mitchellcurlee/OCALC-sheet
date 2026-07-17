@@ -174,9 +174,11 @@ const UndergroundForm = () => {
       const payload = {
         job_id: jobId,
         type: formData.type,
+        material_type: formData.material_type || null,
         label: formData.label,
         notes: formData.notes,
         photos: formData.photos,
+        tie_in_measurements: formData.tie_in_measurements || null,
         latitude: Number.isFinite(parseFloat(formData.latitude)) ? parseFloat(formData.latitude) : null,
         longitude: Number.isFinite(parseFloat(formData.longitude)) ? parseFloat(formData.longitude) : null,
       };

@@ -1030,3 +1030,31 @@ A050ABC_Photos_20260716_020528.zip
 
 ### Requires Redeploy
 Changes require redeploy to production (https://poledatasheet.info) to be visible.
+
+---
+
+## Session Update (Jul 17, 2026) - Underground Form Fix
+
+### Bug Fix: Underground Notes/Fields Not Saving
+**User Report:** Notes, tie-in information, and attribute type (material type) were not saving on Underground items.
+
+**Root Cause:** The `handleSubmit` function in `UndergroundForm.jsx` was not including `material_type` and `tie_in_measurements` fields in the payload sent to the backend.
+
+**Fix Applied:**
+Added missing fields to the submit payload:
+```javascript
+const payload = {
+  ...existing fields...,
+  material_type: formData.material_type || null,
+  tie_in_measurements: formData.tie_in_measurements || null,
+};
+```
+
+### Files Modified
+- `/app/frontend/src/pages/UndergroundForm.jsx` - Added `material_type` and `tie_in_measurements` to submit payload
+
+### Photos Download Issue
+**Status:** The preview environment works correctly. The production issue is because the code changes from the previous session haven't been deployed yet. User needs to redeploy to push fixes to production.
+
+### Requires Redeploy
+Changes require redeploy to production (https://poletracker.emergent.host) to be visible.
