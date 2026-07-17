@@ -322,56 +322,10 @@ const JobDetail = () => {
     }
   };
 
-  const handleDownloadPhotos = async () => {
-    const toastId = toast.loading("Downloading photos...");
-    try {
-      const response = await axios.get(`/jobs/${jobId}/export/photos-zip`, {
-        responseType: "blob",
-        timeout: 300000 // 5 minute timeout for large files
-      });
-      
-      // Check if we got an error response (JSON instead of ZIP)
-      if (response.data.type === "application/json") {
-        const text = await response.data.text();
-        const errorData = JSON.parse(text);
-        throw new Error(errorData.detail || "Download failed");
-      }
-      
-      // Create download link
-      const blob = new Blob([response.data], { type: "application/zip" });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `${job?.name || "Job"}_Photos.zip`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-      
-      toast.success("Photos downloaded!", { id: toastId });
-    } catch (error) {
-      console.error("Photo download error:", error);
-      
-      // Try to extract error message from blob response
-      let errorMsg = "Failed to download photos";
-      if (error.response?.data instanceof Blob) {
-        try {
-          const text = await error.response.data.text();
-          const jsonError = JSON.parse(text);
-          errorMsg = jsonError.detail || errorMsg;
-        } catch {
-          // Not JSON, use default
-        }
-      } else if (error.message) {
-        errorMsg = error.message;
-      }
-      
-      if (error.response?.status === 404 || errorMsg.includes("No photos")) {
-        toast.error("No photos found for this job. Add photos to poles or underground items first.", { id: toastId });
-      } else {
-        toast.error(errorMsg, { id: toastId });
-      }
-    }
+  const handleDownloadPhotos = () => {
+    // Open the organized photo gallery page in the browser (same as Excel "All Photos" link)
+    const galleryUrl = `${process.env.REACT_APP_BACKEND_URL}/api/jobs/${jobId}/photos`;
+    window.open(galleryUrl, "_blank", "noopener");
   };
 
   const handleDelete = async () => {

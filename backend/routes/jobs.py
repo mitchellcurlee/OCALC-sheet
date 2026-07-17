@@ -313,7 +313,7 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
     job_photos_token = generate_download_token("job_photos", job_id)
     ws.cell(row=1, column=13, value="ALL PHOTOS").fill = header_fill
     ws.cell(row=1, column=13).font = header_font
-    all_photos_cell = ws.cell(row=1, column=14, value="View all photos")
+    all_photos_cell = ws.cell(row=1, column=14, value=f"{job.get('name', 'Job')} - All Photos")
     all_photos_cell.hyperlink = f"{public_base}/api/jobs/{job_id}/photos?token={job_photos_token}"
     all_photos_cell.font = Font(color="7C3AED", underline="single", bold=True)
     
@@ -442,30 +442,11 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
         ws.cell(row=current_row, column=1, value="PHOTOS").fill = header_fill
         ws.cell(row=current_row, column=1).font = header_font
         if photo_items:
-            # Generate token for pole gallery access
-            pole_gallery_token = generate_download_token("pole_gallery", pole.get('id'))
-            # Link to pole gallery page with token
-            gallery_url = f"{public_base}/api/poles/{pole.get('id')}/gallery?token={pole_gallery_token}"
-            
-            # List each photo with individual clickable links
-            col_idx = 2
-            for i, (label, photo_url) in enumerate(photo_items):
-                photo_cell = ws.cell(row=current_row, column=col_idx, value=label)
-                
-                # Create individual photo link
-                # Normalize label for URL: replace spaces with underscores, slashes with dashes
-                safe_label_url = label.replace(' ', '_').replace('/', '-')
-                photo_token = generate_download_token("photo", f"{pole.get('id')}:{label}")
-                individual_photo_url = f"{public_base}/api/poles/{pole.get('id')}/photo/{safe_label_url}?token={photo_token}"
-                
-                photo_cell.hyperlink = individual_photo_url
-                photo_cell.font = Font(color="2563EB", underline="single", bold=True)
-                col_idx += 1
-            
-            # Add "View All" link at the end that opens gallery
-            view_all_cell = ws.cell(row=current_row, column=col_idx, value=f"View All ({len(photo_items)})")
-            view_all_cell.hyperlink = gallery_url
-            view_all_cell.font = Font(color="7C3AED", underline="single", bold=True)
+            # Single browser link to job gallery, anchored to this pole's section
+            pole_anchor_url = f"{public_base}/api/jobs/{job_id}/photos?token={job_photos_token}#pole-{pole.get('id')}"
+            photo_cell = ws.cell(row=current_row, column=2, value=f"View Photos ({len(photo_items)})")
+            photo_cell.hyperlink = pole_anchor_url
+            photo_cell.font = Font(color="2563EB", underline="single", bold=True)
         else:
             ws.cell(row=current_row, column=2, value="No photos")
         current_row += 1
@@ -520,16 +501,10 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
             # Add Photos for underground items
             ug_photo_items = underground_photo_items(u)
             if ug_photo_items:
-                col_idx = 8
-                for i, (label, photo_url) in enumerate(ug_photo_items):
-                    photo_cell = ws.cell(row=current_row, column=col_idx, value=label)
-                    # Create individual photo link
-                    safe_label_url = label.replace(' ', '_').replace('/', '-')
-                    photo_token = generate_download_token("ug_photo", f"{u.get('id')}:{label}")
-                    individual_photo_url = f"{public_base}/api/underground/{u.get('id')}/photo/{safe_label_url}?token={photo_token}"
-                    photo_cell.hyperlink = individual_photo_url
-                    photo_cell.font = Font(color="2563EB", underline="single", bold=True)
-                    col_idx += 1
+                ug_anchor_url = f"{public_base}/api/jobs/{job_id}/photos?token={job_photos_token}#ug-{u.get('id')}"
+                photo_cell = ws.cell(row=current_row, column=8, value=f"View Photos ({len(ug_photo_items)})")
+                photo_cell.hyperlink = ug_anchor_url
+                photo_cell.font = Font(color="2563EB", underline="single", bold=True)
             else:
                 ws.cell(row=current_row, column=8, value="No photos")
             
@@ -607,6 +582,10 @@ async def job_photos_gallery(job_id: str, token: Optional[str] = Query(None), re
     poles = await _db.poles.find({"job_id": job_id}, {"_id": 0}).to_list(10000)
     poles.sort(key=pole_sort_key)
     
+    # Get all underground items for this job
+    underground = await _db.underground.find({"job_id": job_id}, {"_id": 0}).to_list(10000)
+    underground.sort(key=lambda x: (x.get("sort_order") or 9999, x.get("created_at") or ""))
+    
     job_name = job.get("name", "Job")
     
     def _safe(s):
@@ -620,7 +599,6 @@ async def job_photos_gallery(job_id: str, token: Optional[str] = Query(None), re
     
     sections_html = []
     total_photos = 0
-    all_downloads = []
     
     for pole in poles:
         items = pole_photo_items(pole)
@@ -632,8 +610,6 @@ async def job_photos_gallery(job_id: str, token: Optional[str] = Query(None), re
         
         cards = []
         for label, url in items:
-            fname = f"Pole_{_safe(pole_no)}_{_safe(label)}.{_ext_of(url)}"
-            all_downloads.append({"u": url, "n": fname})
             cards.append(
                 '<figure>'
                 f'<a href="{url}" target="_blank" rel="noopener"><img src="{url}" alt="{label}" loading="lazy"/></a>'
@@ -642,15 +618,40 @@ async def job_photos_gallery(job_id: str, token: Optional[str] = Query(None), re
             )
         
         sections_html.append(
-            f'<section>'
+            f'<section id="pole-{pole.get("id", "")}">'
             f'<h2>Pole {pole_no} <span class="count">({len(items)} photos)</span></h2>'
             f'<div class="grid">{"".join(cards)}</div>'
             f'</section>'
         )
     
+    for ug in underground:
+        ug_items = underground_photo_items(ug)
+        if not ug_items:
+            continue
+        
+        ug_title = f"{ug.get('type', 'Underground')} {ug.get('label', '')}".strip()
+        total_photos += len(ug_items)
+        
+        cards = []
+        for label, url in ug_items:
+            cards.append(
+                '<figure>'
+                f'<a href="{url}" target="_blank" rel="noopener"><img src="{url}" alt="{label}" loading="lazy"/></a>'
+                f'<figcaption>{label}</figcaption>'
+                '</figure>'
+            )
+        
+        sections_html.append(
+            f'<section id="ug-{ug.get("id", "")}">'
+            f'<h2>{ug_title} <span class="count">({len(ug_items)} photos)</span></h2>'
+            f'<div class="grid">{"".join(cards)}</div>'
+            f'</section>'
+        )
+    
     content = "".join(sections_html) or '<p class="empty">No photos found in this job.</p>'
-    dl_json = json.dumps(all_downloads)
-    download_all_btn = f'<button class="dlall" onclick="downloadAll()">Download all {total_photos} photos</button>' if total_photos > 0 else ''
+    zip_token = generate_download_token("job_photos", job_id)
+    zip_url = f"/api/jobs/{job_id}/export/photos-zip?token={zip_token}"
+    download_all_btn = f'<a class="dlall" href="{zip_url}" download>Download all {total_photos} photos (ZIP)</a>' if total_photos > 0 else ''
     
     html = f"""<!doctype html><html lang="en"><head><meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -660,8 +661,9 @@ async def job_photos_gallery(job_id: str, token: Optional[str] = Query(None), re
   header{{padding:16px 24px;border-bottom:1px solid #e4e4e7;position:sticky;top:0;background:rgba(255,255,255,0.98);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;z-index:10;}}
   h1{{margin:0;font-size:18px;letter-spacing:.05em;text-transform:uppercase;}}
   h1 span{{color:#dc2626;}}
-  .dlall{{background:#dc2626;color:#fff;border:0;border-radius:6px;padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;letter-spacing:.03em;}}
+  .dlall{{background:#dc2626;color:#fff;border:0;border-radius:6px;padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;letter-spacing:.03em;text-decoration:none;display:inline-block;}}
   .dlall:hover{{background:#b91c1c;}}
+  section{{scroll-margin-top:80px;}}
   main{{padding:24px;max-width:1400px;margin:0 auto;}}
   section{{background:#fff;border:1px solid #e4e4e7;border-radius:12px;margin-bottom:24px;overflow:hidden;}}
   h2{{margin:0;padding:16px 20px;font-size:16px;letter-spacing:.05em;text-transform:uppercase;background:#18181b;color:#fff;display:flex;align-items:center;justify-content:space-between;}}
@@ -674,18 +676,6 @@ async def job_photos_gallery(job_id: str, token: Optional[str] = Query(None), re
 </style></head><body>
 <header><h1><span>{job_name}</span> &middot; All Photos ({total_photos})</h1>{download_all_btn}</header>
 <main>{content}</main>
-<script>
-var FILES = {dl_json};
-function downloadAll(){{
-  FILES.forEach(function(f, i){{
-    setTimeout(function(){{
-      var a = document.createElement('a');
-      a.href = f.u; a.download = f.n;
-      document.body.appendChild(a); a.click(); a.remove();
-    }}, i * 300);
-  }});
-}}
-</script>
 </body></html>"""
     return HTMLResponse(content=html)
 
