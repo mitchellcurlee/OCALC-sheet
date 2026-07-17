@@ -323,69 +323,35 @@ const JobDetail = () => {
   };
 
   const handleDownloadPhotos = async () => {
-    const toastId = toast.loading("Preparing photo download... This may take a moment.");
+    const toastId = toast.loading("Preparing photo download...");
     try {
-      const response = await axios.get(`/jobs/${jobId}/export/photos-zip`, {
-        responseType: "blob",
-        timeout: 120000 // 2 minute timeout for large photo collections
-      });
-      
-      // Check if response is actually a ZIP file (not an error JSON)
-      const contentType = response.headers["content-type"];
-      if (contentType && contentType.includes("application/json")) {
-        // Backend returned an error as JSON
-        const text = await response.data.text();
-        const errorData = JSON.parse(text);
-        throw new Error(errorData.detail || "No photos found");
+      // Get a fresh token for the download
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast.error("Please log in again to download photos.", { id: toastId });
+        return;
       }
       
-      const blob = new Blob([response.data], { type: "application/zip" });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
+      // Use direct window.open with token in URL for clean file download
+      // This avoids blob issues and lets the browser handle the file type natively
+      const API_BASE = process.env.REACT_APP_BACKEND_URL || '';
+      const downloadUrl = `${API_BASE}/api/jobs/${jobId}/export/photos-zip?auth_token=${encodeURIComponent(token)}`;
       
-      // Extract filename from Content-Disposition header or use default
-      const disposition = response.headers["content-disposition"];
-      let filename = `${job?.name || "Job"}_Photos.zip`;
-      if (disposition) {
-        const filenameMatch = disposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
-        if (filenameMatch && filenameMatch[1]) {
-          filename = filenameMatch[1].replace(/['"]/g, "");
-        }
-      }
+      // Create invisible iframe to trigger download without navigation
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      document.body.appendChild(iframe);
+      iframe.src = downloadUrl;
       
-      link.setAttribute("download", filename);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
+      // Clean up after download starts
+      setTimeout(() => {
+        document.body.removeChild(iframe);
+        toast.success("Photo download started! Check your Downloads folder.", { id: toastId });
+      }, 2000);
       
-      toast.success(`Photos downloaded: ${filename}`, { id: toastId });
     } catch (error) {
       console.error("Photo download error:", error);
-      
-      // Try to extract detailed error message from response blob
-      let errorMsg = error.message || "Failed to download photos";
-      if (error.response?.data instanceof Blob) {
-        try {
-          const text = await error.response.data.text();
-          const jsonError = JSON.parse(text);
-          errorMsg = jsonError.detail || errorMsg;
-        } catch {
-          // Blob wasn't JSON, use default error message
-        }
-      } else if (error.response?.data?.detail) {
-        errorMsg = error.response.data.detail;
-      }
-      
-      // Show user-friendly error messages
-      if (errorMsg.toLowerCase().includes("no photos")) {
-        toast.error("No photos found. Add photos to poles or underground items first.", { id: toastId });
-      } else if (errorMsg.includes("401") || errorMsg.toLowerCase().includes("unauthorized")) {
-        toast.error("Please log in again to download photos.", { id: toastId });
-      } else {
-        toast.error(`Download failed: ${errorMsg}`, { id: toastId });
-      }
+      toast.error("Failed to start download. Please try again.", { id: toastId });
     }
   };
 

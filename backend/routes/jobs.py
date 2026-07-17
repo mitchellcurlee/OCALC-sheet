@@ -674,9 +674,9 @@ function downloadAll(){{
 
 
 @router.get("/jobs/{job_id}/export/photos-zip")
-async def export_job_photos_zip(job_id: str, token: Optional[str] = Query(None), request: Request = None):
+async def export_job_photos_zip(job_id: str, token: Optional[str] = Query(None), auth_token: Optional[str] = Query(None), request: Request = None):
     """Export all photos from a job as a ZIP file, organized by pole/underground with descriptive labels.
-    Access via: valid download token (30 days) OR authenticated user with job access.
+    Access via: valid download token (30 days) OR authenticated user with job access OR auth_token query param.
     
     ZIP Structure:
     - {JobName}/Poles/Pole_{number}_{station}/PhotoType.jpeg
@@ -691,11 +691,31 @@ async def export_job_photos_zip(job_id: str, token: Optional[str] = Query(None),
     # Check access: either valid token OR authenticated user with job access
     has_access = False
     
-    # Check token first
+    # Check download token first
     if token and verify_download_token("job_photos", job_id, token):
         has_access = True
     
-    # Check for authenticated user
+    # Check auth_token query parameter (for direct download links)
+    if not has_access and auth_token:
+        try:
+            from services.auth import SECRET_KEY, ALGORITHM
+            payload = jwt.decode(auth_token, SECRET_KEY, algorithms=[ALGORITHM])
+            user_id = payload.get("sub")
+            if user_id:
+                user = await _db.users.find_one({"id": user_id}, {"_id": 0})
+                if user:
+                    email = user.get("email", "").lower()
+                    is_admin = user.get("is_admin", False)
+                    if is_admin or email.endswith("@mastec.com") or email.endswith("@byers.com") or email.endswith("@mastecbyers.com"):
+                        has_access = True
+                    else:
+                        job_check = await _db.jobs.find_one({"id": job_id, "user_id": user_id}, {"_id": 0})
+                        if job_check:
+                            has_access = True
+        except (JWTError, Exception):
+            pass
+    
+    # Check for authenticated user via Authorization header
     if not has_access and request:
         auth_header = request.headers.get("Authorization", "")
         if auth_header.startswith("Bearer "):
