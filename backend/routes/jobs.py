@@ -278,7 +278,7 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
 
     wb = Workbook()
     ws = wb.active
-    ws.title = "Pole Data"
+    ws.title = "Attribute Data"
     
     header_fill = PatternFill(start_color="374151", end_color="374151", fill_type="solid")
     header_font = Font(bold=True, color="FFFFFF")
@@ -295,7 +295,7 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
     ws.cell(row=1, column=5, value="LOCATION").fill = header_fill
     ws.cell(row=1, column=5).font = header_font
     ws.cell(row=1, column=6, value=job.get("location", ""))
-    ws.cell(row=1, column=7, value="POLES").fill = header_fill
+    ws.cell(row=1, column=7, value="ATTRIBUTES").fill = header_fill
     ws.cell(row=1, column=7).font = header_font
     ws.cell(row=1, column=8, value=len(poles))
     ws.cell(row=1, column=9, value="MAP").fill = header_fill

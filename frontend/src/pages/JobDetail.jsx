@@ -505,7 +505,7 @@ const JobDetail = () => {
                     className="cursor-pointer font-semibold text-red-700 border-b border-zinc-200"
                   >
                     <Zap className="w-4 h-4 mr-2" />
-                    Add Pole
+                    Add Attribute
                   </DropdownMenuItem>
                   <DropdownMenuItem 
                     onClick={() => navigate(`/jobs/${jobId}/add?terminal=true`)} 
@@ -541,7 +541,7 @@ const JobDetail = () => {
                 <DropdownMenuContent align="end" className="bg-white border-zinc-200 w-48">
                   <DropdownMenuItem onClick={handleExport} data-testid="export-btn" className="cursor-pointer">
                     <FileSpreadsheet className="w-4 h-4 mr-2 text-zinc-600" />
-                    OCALC Export
+                    OCALC/JOB Export
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => navigate(`/jobs/${jobId}/ase`)} data-testid="ase-form-btn" className="cursor-pointer">
                     <FileText className="w-4 h-4 mr-2 text-blue-600" />
@@ -627,7 +627,7 @@ const JobDetail = () => {
               <Radio className="w-5 h-5 text-yellow-500" />
               <div>
                 <p className="text-2xl font-bold text-zinc-900">{poles.length}</p>
-                <p className="text-xs text-zinc-500 uppercase font-mono">Total Poles</p>
+                <p className="text-xs text-zinc-500 uppercase font-mono">Total Attributes</p>
               </div>
             </div>
           </div>
