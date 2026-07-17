@@ -330,8 +330,15 @@ const JobDetail = () => {
         timeout: 300000 // 5 minute timeout for large files
       });
       
+      // Check if we got an error response (JSON instead of ZIP)
+      if (response.data.type === "application/json") {
+        const text = await response.data.text();
+        const errorData = JSON.parse(text);
+        throw new Error(errorData.detail || "Download failed");
+      }
+      
       // Create download link
-      const blob = new Blob([response.data], { type: "application/octet-stream" });
+      const blob = new Blob([response.data], { type: "application/zip" });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
@@ -344,10 +351,25 @@ const JobDetail = () => {
       toast.success("Photos downloaded!", { id: toastId });
     } catch (error) {
       console.error("Photo download error:", error);
-      if (error.response?.status === 404) {
-        toast.error("No photos found for this job.", { id: toastId });
+      
+      // Try to extract error message from blob response
+      let errorMsg = "Failed to download photos";
+      if (error.response?.data instanceof Blob) {
+        try {
+          const text = await error.response.data.text();
+          const jsonError = JSON.parse(text);
+          errorMsg = jsonError.detail || errorMsg;
+        } catch {
+          // Not JSON, use default
+        }
+      } else if (error.message) {
+        errorMsg = error.message;
+      }
+      
+      if (error.response?.status === 404 || errorMsg.includes("No photos")) {
+        toast.error("No photos found for this job. Add photos to poles or underground items first.", { id: toastId });
       } else {
-        toast.error("Failed to download photos. Please try again.", { id: toastId });
+        toast.error(errorMsg, { id: toastId });
       }
     }
   };
