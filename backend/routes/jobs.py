@@ -13,7 +13,7 @@ from openpyxl.styles import Font, PatternFill, Border, Side
 from models.job import Job, JobCreate, JobUpdate
 from models.pole import Pole
 from services.auth import get_current_user, is_admin_user, is_mastec_byers_admin
-from services.helpers import pole_sort_key, format_height, pole_photo_items
+from services.helpers import pole_sort_key, format_height, pole_photo_items, underground_photo_items
 
 router = APIRouter(tags=["jobs"])
 
@@ -501,7 +501,7 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
         ws.cell(row=current_row, column=1, value="UNDERGROUND").fill = header_fill
         ws.cell(row=current_row, column=1).font = header_font
         current_row += 1
-        for h_i, h in enumerate(["Abbr", "Type", "Label", "Latitude", "Longitude", "Notes", "Map"], 1):
+        for h_i, h in enumerate(["Abbr", "Type", "Label", "Latitude", "Longitude", "Notes", "Map", "Photos"], 1):
             ws.cell(row=current_row, column=h_i, value=h).font = Font(bold=True, size=9)
         current_row += 1
         for u in underground:
@@ -516,6 +516,23 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
             map_cell = ws.cell(row=current_row, column=7, value="View Map")
             map_cell.hyperlink = map_url
             map_cell.font = Font(color="2563EB", underline="single", bold=True)
+            
+            # Add Photos for underground items
+            ug_photo_items = underground_photo_items(u)
+            if ug_photo_items:
+                col_idx = 8
+                for i, (label, photo_url) in enumerate(ug_photo_items):
+                    photo_cell = ws.cell(row=current_row, column=col_idx, value=label)
+                    # Create individual photo link
+                    safe_label_url = label.replace(' ', '_').replace('/', '-')
+                    photo_token = generate_download_token("ug_photo", f"{u.get('id')}:{label}")
+                    individual_photo_url = f"{public_base}/api/underground/{u.get('id')}/photo/{safe_label_url}?token={photo_token}"
+                    photo_cell.hyperlink = individual_photo_url
+                    photo_cell.font = Font(color="2563EB", underline="single", bold=True)
+                    col_idx += 1
+            else:
+                ws.cell(row=current_row, column=8, value="No photos")
+            
             current_row += 1
     
     for col in ws.columns:
@@ -1029,6 +1046,97 @@ async def get_pole_photo(pole_id: str, photo_label: str, token: Optional[str] = 
     safe_pole = "".join(c for c in pole_number if c.isalnum() or c in (' ', '-', '_')).strip() or "unknown"
     safe_label = "".join(c for c in normalized_label if c.isalnum() or c in (' ', '-', '_')).strip()
     filename = f"Pole_{safe_pole}_{safe_label}.jpeg"
+    
+    return StreamingResponse(
+        io.BytesIO(data),
+        media_type=content_type,
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+
+@router.get("/underground/{ug_id}/photo/{photo_label}")
+async def get_underground_photo(ug_id: str, photo_label: str, token: Optional[str] = Query(None), request: Request = None):
+    """Get an individual photo from an underground item.
+    Access via: valid download token (30 days) OR authenticated mastec.com/byers.com user.
+    """
+    import base64
+    from services.storage import get_object
+    from jose import jwt, JWTError
+    
+    # Normalize photo_label (replace underscores back to spaces, dashes back to slashes)
+    normalized_label = photo_label.replace('_', ' ').replace('-', '/')
+    
+    # Check access: either valid token OR authenticated mastec.com/byers.com user
+    has_access = False
+    
+    # Check token first
+    if token and verify_download_token("ug_photo", f"{ug_id}:{normalized_label}", token):
+        has_access = True
+    
+    # Check for authenticated user
+    if not has_access and request:
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            try:
+                from services.auth import SECRET_KEY, ALGORITHM
+                jwt_token = auth_header.replace("Bearer ", "")
+                payload = jwt.decode(jwt_token, SECRET_KEY, algorithms=[ALGORITHM])
+                user_id = payload.get("sub")
+                if user_id:
+                    user = await _db.users.find_one({"id": user_id}, {"_id": 0})
+                    if user:
+                        email = user.get("email", "").lower()
+                        if email.endswith("@mastec.com") or email.endswith("@byers.com"):
+                            has_access = True
+            except (JWTError, Exception):
+                pass
+    
+    if not has_access:
+        raise HTTPException(status_code=401, detail="Invalid or expired download link. Please export a new Excel file.")
+    
+    ug = await _db.underground.find_one({"id": ug_id}, {"_id": 0})
+    if not ug:
+        raise HTTPException(status_code=404, detail="Underground item not found")
+    
+    # Find the matching photo
+    photo_items = underground_photo_items(ug)
+    photo_url = None
+    for label, url in photo_items:
+        if label == normalized_label:
+            photo_url = url
+            break
+    
+    if not photo_url:
+        raise HTTPException(status_code=404, detail=f"Photo '{normalized_label}' not found")
+    
+    # Get the photo data
+    data = None
+    content_type = "image/jpeg"
+    
+    if photo_url.startswith("data:"):
+        # Parse data URL
+        header, b64_data = photo_url.split(",", 1)
+        data = base64.b64decode(b64_data)
+        if "png" in header:
+            content_type = "image/png"
+        elif "webp" in header:
+            content_type = "image/webp"
+    elif photo_url.startswith("/api/files/"):
+        file_path = photo_url.replace("/api/files/", "")
+        data, content_type = get_object(file_path)
+    elif not photo_url.startswith("http"):
+        data, content_type = get_object(photo_url)
+    
+    if not data:
+        raise HTTPException(status_code=404, detail="Photo data not available")
+    
+    # Create safe filename
+    ug_type = ug.get("type", "Underground")
+    ug_label = ug.get("label", "")
+    safe_ug = f"{ug_type}_{ug_label}" if ug_label else ug_type
+    safe_ug = "".join(c for c in safe_ug if c.isalnum() or c in (' ', '-', '_')).strip() or "Underground"
+    safe_label = "".join(c for c in normalized_label if c.isalnum() or c in (' ', '-', '_')).strip()
+    filename = f"{safe_ug}_{safe_label}.jpeg"
     
     return StreamingResponse(
         io.BytesIO(data),
