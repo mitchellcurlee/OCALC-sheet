@@ -447,19 +447,22 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
             # Link to pole gallery page with token
             gallery_url = f"{public_base}/api/poles/{pole.get('id')}/gallery?token={pole_gallery_token}"
             
-            # List each photo label, first one is a link to the gallery
+            # List each photo with individual clickable links
             col_idx = 2
             for i, (label, photo_url) in enumerate(photo_items):
                 photo_cell = ws.cell(row=current_row, column=col_idx, value=label)
-                if i == 0:
-                    # First photo label links to the gallery
-                    photo_cell.hyperlink = gallery_url
-                    photo_cell.font = Font(color="2563EB", underline="single", bold=True)
-                else:
-                    photo_cell.font = Font(color="52525b")
+                
+                # Create individual photo link
+                # Normalize label for URL: replace spaces with underscores, slashes with dashes
+                safe_label_url = label.replace(' ', '_').replace('/', '-')
+                photo_token = generate_download_token("photo", f"{pole.get('id')}:{label}")
+                individual_photo_url = f"{public_base}/api/poles/{pole.get('id')}/photo/{safe_label_url}?token={photo_token}"
+                
+                photo_cell.hyperlink = individual_photo_url
+                photo_cell.font = Font(color="2563EB", underline="single", bold=True)
                 col_idx += 1
             
-            # Add "View All" link at the end
+            # Add "View All" link at the end that opens gallery
             view_all_cell = ws.cell(row=current_row, column=col_idx, value=f"View All ({len(photo_items)})")
             view_all_cell.hyperlink = gallery_url
             view_all_cell.font = Font(color="7C3AED", underline="single", bold=True)
@@ -741,7 +744,8 @@ async def export_job_photos_zip(job_id: str, token: Optional[str] = Query(None),
     buffer = io.BytesIO()
     photo_count = 0
     
-    with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+    # Use ZIP_STORED (no compression) for better Windows compatibility
+    with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_STORED) as zf:
         # Add pole photos
         for idx, pole in enumerate(poles, 1):
             pole_number = pole.get("pole_number") or f"Pole_{idx}"
@@ -827,8 +831,11 @@ async def export_job_photos_zip(job_id: str, token: Optional[str] = Query(None),
     
     return StreamingResponse(
         buffer,
-        media_type="application/zip",
-        headers={"Content-Disposition": f"attachment; filename={zip_filename}"}
+        media_type="application/x-zip-compressed",
+        headers={
+            "Content-Disposition": f'attachment; filename="{zip_filename}"',
+            "Content-Type": "application/x-zip-compressed"
+        }
     )
 
 
@@ -882,7 +889,8 @@ async def export_pole_photos_zip(pole_id: str, token: Optional[str] = Query(None
         raise HTTPException(status_code=404, detail="No photos found for this pole")
     
     buffer = io.BytesIO()
-    with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+    # Use ZIP_STORED (no compression) for better Windows compatibility
+    with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_STORED) as zf:
         for label, photo_url in photo_items:
             try:
                 data = None
@@ -911,8 +919,11 @@ async def export_pole_photos_zip(pole_id: str, token: Optional[str] = Query(None
     
     return StreamingResponse(
         buffer,
-        media_type="application/zip",
-        headers={"Content-Disposition": f"attachment; filename={filename}"}
+        media_type="application/x-zip-compressed",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Content-Type": "application/x-zip-compressed"
+        }
     )
 
 
