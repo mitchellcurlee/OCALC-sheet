@@ -323,28 +323,32 @@ const JobDetail = () => {
   };
 
   const handleDownloadPhotos = async () => {
-    const toastId = toast.loading("Preparing photo download...");
+    const toastId = toast.loading("Downloading photos...");
     try {
-      // Get token from axios defaults (set by AuthContext on login)
-      const authHeader = axios.defaults.headers.common['Authorization'];
-      if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        toast.error("Please log in again to download photos.", { id: toastId });
-        return;
-      }
-      const token = authHeader.replace('Bearer ', '');
+      const response = await axios.get(`/jobs/${jobId}/export/photos-zip`, {
+        responseType: "blob",
+        timeout: 300000 // 5 minute timeout for large files
+      });
       
-      // Use direct URL for clean file download - browser handles the file type natively
-      const API_BASE = process.env.REACT_APP_BACKEND_URL || '';
-      const downloadUrl = `${API_BASE}/api/jobs/${jobId}/export/photos-zip?auth_token=${encodeURIComponent(token)}`;
+      // Create download link
+      const blob = new Blob([response.data], { type: "application/octet-stream" });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${job?.name || "Job"}_Photos.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
       
-      // Open in new tab/window for direct download
-      window.open(downloadUrl, '_blank');
-      
-      toast.success("Photo download started! Check your Downloads folder.", { id: toastId });
-      
+      toast.success("Photos downloaded!", { id: toastId });
     } catch (error) {
       console.error("Photo download error:", error);
-      toast.error("Failed to start download. Please try again.", { id: toastId });
+      if (error.response?.status === 404) {
+        toast.error("No photos found for this job.", { id: toastId });
+      } else {
+        toast.error("Failed to download photos. Please try again.", { id: toastId });
+      }
     }
   };
 

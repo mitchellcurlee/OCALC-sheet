@@ -847,14 +847,15 @@ async def export_job_photos_zip(job_id: str, token: Optional[str] = Query(None),
         raise HTTPException(status_code=404, detail="No photos found for this job. Add photos to poles or underground items first.")
     
     buffer.seek(0)
-    zip_filename = f"{job_name}_Photos_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip"
+    zip_filename = f"{job_name}_Photos.zip"
     
     return StreamingResponse(
         buffer,
-        media_type="application/x-zip-compressed",
+        media_type="application/zip",
         headers={
             "Content-Disposition": f'attachment; filename="{zip_filename}"',
-            "Content-Type": "application/x-zip-compressed"
+            "Content-Type": "application/zip",
+            "Content-Length": str(buffer.getbuffer().nbytes)
         }
     )
 
