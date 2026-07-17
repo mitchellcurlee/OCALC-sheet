@@ -325,29 +325,22 @@ const JobDetail = () => {
   const handleDownloadPhotos = async () => {
     const toastId = toast.loading("Preparing photo download...");
     try {
-      // Get a fresh token for the download
-      const token = localStorage.getItem('token');
-      if (!token) {
+      // Get token from axios defaults (set by AuthContext on login)
+      const authHeader = axios.defaults.headers.common['Authorization'];
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
         toast.error("Please log in again to download photos.", { id: toastId });
         return;
       }
+      const token = authHeader.replace('Bearer ', '');
       
-      // Use direct window.open with token in URL for clean file download
-      // This avoids blob issues and lets the browser handle the file type natively
+      // Use direct URL for clean file download - browser handles the file type natively
       const API_BASE = process.env.REACT_APP_BACKEND_URL || '';
       const downloadUrl = `${API_BASE}/api/jobs/${jobId}/export/photos-zip?auth_token=${encodeURIComponent(token)}`;
       
-      // Create invisible iframe to trigger download without navigation
-      const iframe = document.createElement('iframe');
-      iframe.style.display = 'none';
-      document.body.appendChild(iframe);
-      iframe.src = downloadUrl;
+      // Open in new tab/window for direct download
+      window.open(downloadUrl, '_blank');
       
-      // Clean up after download starts
-      setTimeout(() => {
-        document.body.removeChild(iframe);
-        toast.success("Photo download started! Check your Downloads folder.", { id: toastId });
-      }, 2000);
+      toast.success("Photo download started! Check your Downloads folder.", { id: toastId });
       
     } catch (error) {
       console.error("Photo download error:", error);
