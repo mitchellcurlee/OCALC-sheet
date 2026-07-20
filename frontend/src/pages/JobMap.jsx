@@ -1366,16 +1366,27 @@ const JobMap = () => {
                     
                     <DropdownMenuItem
                       onClick={() => {
-                        setEditMode(true);
                         setPositionEditMode(true);
-                        setConnectionEditMode(true);
-                        initializeConnections();
+                        toast.info("Move Mode: drag any pole or underground marker to reposition it");
                       }}
                       className="cursor-pointer"
                       data-testid="edit-all-btn"
                     >
                       <Move className="w-4 h-4 mr-2" />
-                      Move Items & Edit Lines
+                      Move Items
+                    </DropdownMenuItem>
+                    
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setEditMode(true);
+                        setConnectionEditMode(true);
+                        initializeConnections();
+                      }}
+                      className="cursor-pointer"
+                      data-testid="edit-lines-btn"
+                    >
+                      <Edit3 className="w-4 h-4 mr-2" />
+                      Edit Lines & Connections
                     </DropdownMenuItem>
                     
                     <DropdownMenuItem
@@ -1416,7 +1427,9 @@ const JobMap = () => {
                 {/* Show current mode indicators */}
                 {(editMode || positionEditMode || connectionEditMode) && !addingType && (
                   <span className="flex items-center px-3 py-1 bg-blue-100 text-blue-800 rounded text-sm font-medium">
-                    Edit Mode: Drag markers, edit lines, reconnect items
+                    {positionEditMode && !editMode && !connectionEditMode
+                      ? "Move Mode: Drag markers to reposition items"
+                      : "Edit Mode: Drag markers, edit lines, reconnect items"}
                   </span>
                 )}
                 {addingType && (
@@ -1791,6 +1804,7 @@ const JobMap = () => {
                       icon={icon}
                       draggable={positionEditMode}
                       onDragEnd={(lat, lng) => handlePoleDragEnd(p.id, lat, lng)}
+                      zIndexOffset={positionEditMode ? 1500 : 0}
                     >
                       <Popup>
                         <div className="min-w-[180px] font-mono" data-testid={`pole-popup-${p.id}`}>

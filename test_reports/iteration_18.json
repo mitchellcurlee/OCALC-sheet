@@ -1,0 +1,37 @@
+{
+  "summary": "Frontend-only verification of the 'item moving tool' bug fix on JobMap /jobs/e5dc0bae-96bb-4cef-8001-7baf4e41d80a/map. POLE drag flow works end-to-end (drag, toast, PUT 200, persistence across reload). UNDERGROUND drag flow is BROKEN — frontend calls a URL that does not exist on the backend, returning 404, so underground markers cannot be moved. Edit Lines & Connections regression and Done/Cancel exits are working.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "PUT /api/jobs/{job_id}/underground/{ug_id}", "issue": "Endpoint does not exist on backend (returns 404). Backend only exposes PUT /api/underground/{item_id} (see /app/backend/routes/underground.py line 40). Frontend handleUndergroundDragEnd (JobMap.jsx line 599) targets the non-existent URL, so every UG drag fails, marker snaps back after refetch, and UG position never persists.", "priority": "CRITICAL"}
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "JobMap floating banner (blue box on map)", "issue": "In Move Items mode the floating banner still reads 'Edit Mode Active — Drag markers to move items • Edit route lines • Click line to change its color'. Route-line/color editing is NOT available in Move Items mode so the copy is misleading. The header pill correctly says 'Move Mode: Drag markers to reposition items'.", "selector": "div.industrial-card containing 'Edit Mode Active' inside .h-[70vh] map wrapper (JobMap.jsx ~line 1530)", "priority": "LOW"}
+    ],
+    "integration_issues": [
+      {"flow": "Underground marker drag in Move Items mode", "issue": "PUT /api/jobs/{jobId}/underground/{ugId} returns 404 — the endpoint does not exist. Toast 'Failed to update underground position' would fire (verified 404 in network + subsequent GET refetch reverting position). Change frontend to axios.put(`/underground/${ugId}`, ...) OR add a job-scoped PUT route on the backend.", "affected_selectors": ["DraggableMarker for underground (JobMap.jsx ~line 1882)", "handleUndergroundDragEnd (JobMap.jsx ~line 599)"]}
+    ],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/tests/test_map_drag.py"],
+  "action_items": [
+    "CRITICAL: Fix underground drag URL. Options: (a) change frontend `axios.put(`/jobs/${jobId}/underground/${ugId}`, ...)` in handleUndergroundDragEnd (JobMap.jsx ~L599) to `axios.put(`/underground/${ugId}`, ...)`, OR (b) add PUT /api/jobs/{job_id}/underground/{item_id} route in /app/backend/routes/underground.py mirroring the existing PUT /underground/{item_id}. The (a) route is simpler and matches existing backend contract.",
+    "LOW: Update the floating 'Edit Mode Active' banner copy (JobMap.jsx ~L1530) to render Move-Mode-specific text when only positionEditMode is true, to avoid confusing users into thinking route lines / colors can be edited."
+  ],
+  "critical_code_review_comments": [
+    "handleUndergroundDragEnd (JobMap.jsx L591) URL does not match backend contract — see /app/backend/routes/underground.py which only exposes PUT /underground/{item_id}. Silent regression: frontend still shows optimistic move, then fetchData() reverts on catch, so the bug is easy to miss without inspecting network calls.",
+    "DraggableMarker for underground (JobMap.jsx ~L1882) does NOT set zIndexOffset when positionEditMode is true (unlike the pole marker which uses zIndexOffset={positionEditMode ? 1500 : 0} on L1807). Even though it currently works because the connection-endpoint overlay is disabled in Move mode, this asymmetry could reintroduce the original 'grabbed the wrong marker' bug if any future code renders overlay markers on top of underground items. Recommend adding the same conditional zIndexOffset={positionEditMode ? 1500 : 0} to the UG DraggableMarker for symmetry.",
+    "JobMap.jsx is 2117 lines — over the 700-line guideline. Consider splitting DraggableMarker, edit-mode banners, and drag handlers into separate modules for maintainability.",
+    "The floating 'Edit Mode Active' banner logic uses a single blob of copy for all three edit modes (editMode || positionEditMode || connectionEditMode). Make its wording mode-specific — the header pill already differentiates."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (frontend-only session; PUT /poles 200 verified, PUT /jobs/{id}/underground/{id} 404 discovered)", "frontend": "83% (5 of 6 scenarios PASS; Underground drag persistence FAILS)"},
+  "test_credentials": "Admin@mastec.com / Mastecbyers12345 (from /app/memory/test_credentials.md) — worked",
+  "seed_data_creation": "None. Test job A050ABC (id=e5dc0bae-96bb-4cef-8001-7baf4e41d80a) was used as-is. Pole '1' (id=65adce93-...) was displaced ~+120 lat-px / +60 lng-px during the test, then dragged back — final coords 30.100484785471505 / -95.73504884065143 (visually identical to original). Underground items were untouched (PUT failed with 404 so position never changed).",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "PRIMARY BUG (pole drag) PASSES end-to-end: opens dropdown, click 'Move Items' (data-testid=edit-all-btn) → header pill 'Move Mode: Drag markers to reposition items' → 4 draggable markers (2 poles + 2 UG, no connection endpoints, measurement labels are NOT draggable) → drag pole via mouse.move/down/step/up → toast 'Pole position updated' fires + PUT /api/poles/{id} 200 + persistence confirmed after reload. Restoring the pole also worked. UG drag: same flow, marker moves visually, but PUT /api/jobs/{job_id}/underground/{ug_id} returns 404 (endpoint doesn't exist — backend has PUT /api/underground/{item_id} only). Frontend correctly reverts via fetchData() on error. Edit Lines & Connections regression: banner 'Edit Mode: Drag markers, edit lines, reconnect items', 3 endpoint markers appear (blue+red endpoints), Cancel/Done exits leave 0 draggable markers. No console errors during any pole flow.",
+  "rca of the issue": "Frontend handleUndergroundDragEnd (JobMap.jsx L599) builds URL `/jobs/${jobId}/underground/${ugId}` but the backend router in /app/backend/routes/underground.py only exposes PUT /underground/{item_id} (L40). FastAPI has no matching route -> 404. The optimistic local-state update makes the marker appear to move; the subsequent axios error triggers fetchData() which re-syncs UG positions from the backend, snapping the marker back. Reproduction: /jobs/e5dc0bae-96bb-4cef-8001-7baf4e41d80a/map -> Edit Map dropdown -> Move Items -> drag any green square (HH-1 or HB-1) marker. Observe Network: 404 PUT + immediate GET refetch. Mitigation: change axios call to `axios.put(`/underground/${ugId}`, {latitude, longitude})` in handleUndergroundDragEnd."
+}
