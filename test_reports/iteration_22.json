@@ -1,0 +1,49 @@
+{
+  "summary": "Iteration 22 - Tested 4 new features. ASE Checklist features (1-5) all PASS end-to-end (Pedestal->FBT toggle with toast + autofill, FBT attribute dropdown, NTE attribute dropdown, nearest_fiber_lat_long auto-populate, persistence to backend). Feature 6 (Mark Complete checkbox on job cards) is BROKEN with an Uncaught runtime error - the function 'handleToggleComplete' is referenced in JobsList.jsx at line 230 but is not defined anywhere in the file or codebase; clicking the checkbox throws ReferenceError and displays the CRA error overlay. Backend PUT /api/jobs/{id} with {completed:true/false} works fine (verified via 8/8 pytest tests passing) - only the frontend handler is missing. Feature 7 (checkbox no-navigation + pin color) cannot be verified because clicking the checkbox crashes the page.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "JobsList.jsx (Mark Complete checkbox)",
+        "issue": "ReferenceError: handleToggleComplete is not defined. The function is invoked in Checkbox.onCheckedChange at line 230 but never declared inside the JobsList component. Clicking the 'Mark Complete' checkbox on any job card throws an uncaught runtime error and shows the full-page CRA error overlay, breaking the entire dashboard. Bundle stack trace: Object.onCheckedChange (bundle.js:123169:33). ESLint confirms: no-undef 'handleToggleComplete'.",
+        "selector": "[data-testid='job-complete-checkbox-{id}']",
+        "priority": "CRITICAL"
+      }
+    ],
+    "integration_issues": [
+      {
+        "flow": "Job complete toggle (Feature 6 & 7)",
+        "issue": "Feature 6 is entirely non-functional in the UI. Because clicking the checkbox crashes, PUT /api/jobs/{id} is never invoked from the UI, no toast, no local state update, folder/border/pin colors do not update, and the regression (Feature 7) that clicking the checkbox should NOT navigate cannot be observed because the error overlay covers the app.",
+        "affected_selectors": ["[data-testid='job-complete-checkbox-*']", "[data-testid='job-card-*']"]
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration22_features.py",
+    "/app/test_reports/pytest/pytest_iteration22.xml"
+  ],
+  "action_items": [
+    "CRITICAL: Add the missing `handleToggleComplete` function in /app/frontend/src/pages/JobsList.jsx (inside the JobsList component, before renderJobCard). Suggested body:\n  const handleToggleComplete = async (job, checked) => {\n    try {\n      await axios.put(`/jobs/${job.id}`, { completed: checked });\n      setJobs(prev => prev.map(j => j.id === job.id ? { ...j, completed: checked } : j));\n      toast.success(checked ? 'Job marked complete' : 'Job marked incomplete');\n    } catch (e) {\n      toast.error('Failed to update job status');\n    }\n  };\nBackend already supports this — PUT /api/jobs/{id} with {completed:true|false} returns 200 and persists (verified via pytest). Once the handler is added, retest Feature 6 & 7 (checkbox click → PUT 200, folder/border/pin turn green, no navigation, reload persists, uncheck reverts to red pin).",
+    "OPTIONAL: The Save button in ASEForm header did not surface a visible success toast during testing (data was persisted correctly though). Consider adding a 'Saved' toast on ASE save for user feedback."
+  ],
+  "critical_code_review_comments": [
+    "JobsList.jsx L230 references `handleToggleComplete` which is never declared — hard runtime crash. This should have been caught by ESLint (`no-undef`) before delivery; recommend enabling CI lint gating.",
+    "ASEChecklistTab.jsx nearest-fiber auto-populate useEffect at L33 uses `attributeOptions` in deps but eslint-disable is used — behavior is correct (only fires once when data first arrives) but suppressed warning suggests missing `handleChange` and `formData.nearest_fiber_lat_long` deps. Currently OK because guard `!formData.nearest_fiber_lat_long` protects against overwrite; leave as-is but document.",
+    "routes/jobs.py L183 filters None values from JobUpdate — this correctly allows `completed:false` through (since False is not None). Good.",
+    "GET /api/jobs/{id}/ase-data returns `{ase_data: {...}}` wrapper while PUT accepts both wrapped and direct — inconsistency documented in code comment; ensure frontend consistently sends wrapped form."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration22_features.py (new)"
+  ],
+  "success_rate": {"backend": "100% (8/8)", "frontend": "71% (5/7 features - ASE features 1,2,3,4,5 PASS; job complete features 6,7 BROKEN)"},
+  "test_credentials": "Admin@mastec.com / Mastecbyers12345",
+  "seed_data_creation": "Created and DELETED temporary Fiber Pedestal in A050ABC (label PED-FIBER-TEST, lat=30.1005, lng=-95.7351). Job A05A123 completed flag toggled True->False during backend tests and left at False (matches original state).",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Feature 6 (Job Mark Complete checkbox) is CRITICAL BLOCKER due to missing `handleToggleComplete` function in JobsList.jsx. Backend PUT /api/jobs/{id} {completed:true|false} verified working via pytest. Once main agent adds the handler, the retest should: (1) log in as Admin@mastec.com, (2) search 'A05A123', (3) click the checkbox with data-testid='job-complete-checkbox-b53859c8-a112-47ce-b9da-bac9a101122d', (4) verify no error overlay + no navigation + label 'COMPLETE' green + card border green + folder icon green + pin in JOB LOCATIONS map turns #16a34a green, (5) reload and verify state persists, (6) uncheck and verify pin returns to #dc2626 red. ASE features (1-5) all verified passing end-to-end.",
+  "rca_of_the_issue": "Root cause of the runtime error: In /app/frontend/src/pages/JobsList.jsx, the Checkbox at line 230 wires onCheckedChange to `(v) => handleToggleComplete(job, !!v)`, but the JobsList functional component never defines a `handleToggleComplete` const/function. Reproduction: (1) navigate to '/', (2) search or open any month folder, (3) click any card's 'Mark Complete' checkbox — the CRA overlay renders 'ReferenceError: handleToggleComplete is not defined at Object.onCheckedChange (bundle.js:123169:33)'. Confirmed by ESLint (no-undef) and by runtime PAGE_ERROR captured in Playwright. Mitigation: add a `handleToggleComplete` async function inside the JobsList component that calls `axios.put('/jobs/' + job.id, { completed })`, updates local `jobs` state, and shows a toast — see action_items for suggested body."
+}

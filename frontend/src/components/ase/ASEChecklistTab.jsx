@@ -1,3 +1,5 @@
+import { useEffect, useMemo } from "react";
+import { toast } from "sonner";
 import { Section, CollapsibleSection, StyledInput, StyledTextarea, DropdownSelect, YesNoSelect, FieldRow, isFilled } from "./ASEFormHelpers";
 import { ASE_OPTIONS } from "./ASEFormConstants";
 import { PhotoMarkupEditor } from "@/components/PhotoMarkupEditor";
@@ -5,6 +7,62 @@ import { ASEPhotoField } from "@/components/ASEPhotoField";
 import MarkupTab from "@/components/MarkupTab";
 
 const ASEChecklistTab = ({ formData, handleChange, poles = [], underground = [] }) => {
+  // All job attributes (poles + underground) with GPS, in job-page order
+  const attributeOptions = useMemo(() => {
+    const items = [];
+    underground.forEach((u) => {
+      if (u.latitude && u.longitude) {
+        items.push({ label: `${u.type}${u.label ? ` ${u.label}` : ""}`, coords: `${u.latitude}, ${u.longitude}`, sort: u.sort_order ?? 9999 });
+      }
+    });
+    poles.forEach((p) => {
+      if (p.latitude && p.longitude) {
+        items.push({ label: `Pole ${p.pole_number || "?"}`, coords: `${p.latitude}, ${p.longitude}`, sort: p.sort_order ?? 9999 });
+      }
+    });
+    items.sort((a, b) => a.sort - b.sort);
+    const seen = {};
+    items.forEach((it) => {
+      seen[it.label] = (seen[it.label] || 0) + 1;
+      if (seen[it.label] > 1) it.label = `${it.label} (${seen[it.label]})`;
+    });
+    return items;
+  }, [poles, underground]);
+
+  // Auto-populate Nearest fiber Lat/Long with the FIRST item on the attributes list
+  useEffect(() => {
+    if (attributeOptions.length > 0 && !formData.nearest_fiber_lat_long) {
+      handleChange("nearest_fiber_lat_long", attributeOptions[0].coords);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [attributeOptions]);
+
+  // Fiber Pedestal -> FBT toggle
+  const handlePedestalFbtToggle = (v) => {
+    handleChange("pedestal_fiber_as_fbt", v);
+    if (v === "YES") {
+      const ped = underground.find(
+        (u) => u.type === "Pedestal" && String(u.material_type || "").toLowerCase().includes("fiber")
+      );
+      if (ped && ped.latitude && ped.longitude) {
+        handleChange("fiber_terminal_placement", "PEDESTAL");
+        handleChange("fiber_terminal_lat_long", `${ped.latitude}, ${ped.longitude}`);
+        toast.success(`FBT set from Fiber Pedestal${ped.label ? ` ${ped.label}` : ""}`);
+      } else {
+        toast.warning("No Fiber Pedestal with GPS coordinates found in this job");
+      }
+    }
+  };
+
+  const applyAttributeCoords = (sourceField, targetField) => (label) => {
+    handleChange(sourceField, label);
+    const item = attributeOptions.find((o) => o.label === label);
+    if (item) {
+      handleChange(targetField, item.coords);
+      toast.success(`Coordinates set from ${item.label}`);
+    }
+  };
+
   return (
     <div className="space-y-4" data-testid="content-ase-cklist">
       {/* Employee Info */}
@@ -142,11 +200,21 @@ const ASEChecklistTab = ({ formData, handleChange, poles = [], underground = [] 
           <FieldRow label="Existing Fiber Terminal">
             <YesNoSelect value={formData.existing_fiber_terminal} onChange={(v) => handleChange("existing_fiber_terminal", v)} filled={isFilled(formData.existing_fiber_terminal)} />
           </FieldRow>
+          <FieldRow label="Fiber Pedestal as FBT?" note="AUTO-FILLS PLACEMENT + LAT/LONG">
+            <div data-testid="pedestal-fiber-as-fbt-select">
+              <YesNoSelect value={formData.pedestal_fiber_as_fbt} onChange={handlePedestalFbtToggle} filled={isFilled(formData.pedestal_fiber_as_fbt)} />
+            </div>
+          </FieldRow>
           <FieldRow label="FIBER TERMINAL placement">
             <DropdownSelect value={formData.fiber_terminal_placement} onChange={(v) => handleChange("fiber_terminal_placement", v)} options={ASE_OPTIONS.fiberTerminalPlacement} filled={isFilled(formData.fiber_terminal_placement)} />
           </FieldRow>
           <FieldRow label="Fiber Terminal LAT/LONG">
             <StyledInput value={formData.fiber_terminal_lat_long} onChange={(e) => handleChange("fiber_terminal_lat_long", e.target.value)} filled={isFilled(formData.fiber_terminal_lat_long)} placeholder="Auto-filled from Underground" />
+          </FieldRow>
+          <FieldRow label="Populate from Job Attribute" note="SETS FBT LAT/LONG">
+            <div data-testid="fbt-attribute-select">
+              <DropdownSelect value={formData.fbt_attribute_source} onChange={applyAttributeCoords("fbt_attribute_source", "fiber_terminal_lat_long")} options={attributeOptions.map((o) => o.label)} placeholder="Select attribute..." filled={isFilled(formData.fbt_attribute_source)} />
+            </div>
           </FieldRow>
           <FieldRow label="Fiber Terminal FID">
             <StyledInput value={formData.fiber_terminal_fid} onChange={(e) => handleChange("fiber_terminal_fid", e.target.value)} filled={isFilled(formData.fiber_terminal_fid)} />
@@ -198,6 +266,11 @@ const ASEChecklistTab = ({ formData, handleChange, poles = [], underground = [] 
           </FieldRow>
           <FieldRow label="NTE LAT/LONG">
             <StyledInput value={formData.nte_lat_long} onChange={(e) => handleChange("nte_lat_long", e.target.value)} filled={isFilled(formData.nte_lat_long)} placeholder="Auto-filled from Underground" />
+          </FieldRow>
+          <FieldRow label="Populate from Job Attribute" note="SETS NTE LAT/LONG">
+            <div data-testid="nte-attribute-select">
+              <DropdownSelect value={formData.nte_attribute_source} onChange={applyAttributeCoords("nte_attribute_source", "nte_lat_long")} options={attributeOptions.map((o) => o.label)} placeholder="Select attribute..." filled={isFilled(formData.nte_attribute_source)} />
+            </div>
           </FieldRow>
           <FieldRow label="Floor #">
             <StyledInput value={formData.nte_floor} onChange={(e) => handleChange("nte_floor", e.target.value)} filled={isFilled(formData.nte_floor)} />

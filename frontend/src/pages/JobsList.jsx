@@ -7,6 +7,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import {
   Dialog,
@@ -56,16 +57,18 @@ import { OfflineIndicator } from "@/components/OfflineIndicator";
 
 const JOB_TYPES = ["OCALC", "DMG", "ABF", "BAU", "ASE", "PBB", "SEAL", "SV", "CELL SITE"];
 
-const jobPinIcon = (name) =>
-  L.divIcon({
+const jobPinIcon = (name, completed = false) => {
+  const color = completed ? "#16a34a" : "#dc2626";
+  return L.divIcon({
     className: "job-pin",
     html: `<div style="display:flex;flex-direction:column;align-items:center;transform:translate(-50%,-100%);">
-      <div style="background:#dc2626;color:#fff;font:700 10px ui-monospace,monospace;padding:2px 6px;border-radius:4px;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.5);white-space:nowrap;">${name}</div>
-      <div style="width:10px;height:10px;background:#dc2626;border:2px solid #fff;border-radius:50%;margin-top:2px;box-shadow:0 1px 3px rgba(0,0,0,.5);"></div>
+      <div style="background:${color};color:#fff;font:700 10px ui-monospace,monospace;padding:2px 6px;border-radius:4px;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.5);white-space:nowrap;">${name}</div>
+      <div style="width:10px;height:10px;background:${color};border:2px solid #fff;border-radius:50%;margin-top:2px;box-shadow:0 1px 3px rgba(0,0,0,.5);"></div>
     </div>`,
     iconSize: [0, 0],
     iconAnchor: [0, 0],
   });
+};
 
 const JobsLocationMap = ({ jobs, onOpenJob }) => {
   const pins = jobs.filter((j) => Number.isFinite(j.latitude) && Number.isFinite(j.longitude));
@@ -82,7 +85,7 @@ const JobsLocationMap = ({ jobs, onOpenJob }) => {
           <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" attribution="&copy; Esri" maxNativeZoom={19} maxZoom={22} />
           <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}" maxNativeZoom={19} maxZoom={22} />
           {pins.map((job) => (
-            <Marker key={job.id} position={[job.latitude, job.longitude]} icon={jobPinIcon(job.name)}>
+            <Marker key={job.id} position={[job.latitude, job.longitude]} icon={jobPinIcon(job.name, !!job.completed)}>
               <Popup>
                 <div className="min-w-[160px] font-mono">
                   <div className="text-sm font-bold text-zinc-900">{job.name}</div>
@@ -216,32 +219,22 @@ const JobsList = () => {
     <div
       key={job.id}
       onClick={() => navigate(`/jobs/${job.id}`)}
-      className="industrial-card p-5 cursor-pointer hover:border-red-500/50 transition-colors group"
+      className={`industrial-card p-5 cursor-pointer transition-colors group ${job.completed ? "border-green-500/50 hover:border-green-600" : "hover:border-red-500/50"}`}
       data-testid={`job-card-${job.id}`}
     >
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-red-600/20 border border-red-500/30 flex items-center justify-center">
-            <Folder className="w-5 h-5 text-red-600" />
-          </div>
-          <div>
-            <h3 className="font-heading text-lg font-bold text-zinc-900 group-hover:text-red-600 transition-colors">
-              {job.name}
-            </h3>
-            {job.location && (
-              <div className="flex items-center gap-1 text-xs text-zinc-500">
-                <MapPin className="w-3 h-3" />
-                {job.location}
-              </div>
-            )}
-            {isAdmin && job.user_email && (
-              <div className="flex items-center gap-1 text-xs text-blue-600 mt-1">
-                <User className="w-3 h-3" />
-                {job.user_email}
-              </div>
-            )}
-          </div>
-        </div>
+      {/* Complete checkbox */}
+      <div className="flex items-center justify-between mb-2" onClick={(e) => e.stopPropagation()}>
+        <label className="flex items-center gap-2 cursor-pointer select-none">
+          <Checkbox
+            checked={!!job.completed}
+            onCheckedChange={(v) => handleToggleComplete(job, !!v)}
+            className="data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600"
+            data-testid={`job-complete-checkbox-${job.id}`}
+          />
+          <span className={`text-xs font-mono uppercase ${job.completed ? "text-green-600 font-bold" : "text-zinc-500"}`}>
+            {job.completed ? "Complete" : "Mark Complete"}
+          </span>
+        </label>
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <Button
             size="icon"
@@ -259,6 +252,30 @@ const JobsList = () => {
           >
             <Trash2 className="w-4 h-4" />
           </Button>
+        </div>
+      </div>
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-center gap-3">
+          <div className={`w-10 h-10 flex items-center justify-center ${job.completed ? "bg-green-600/20 border border-green-500/30" : "bg-red-600/20 border border-red-500/30"}`}>
+            <Folder className={`w-5 h-5 ${job.completed ? "text-green-600" : "text-red-600"}`} />
+          </div>
+          <div>
+            <h3 className={`font-heading text-lg font-bold text-zinc-900 transition-colors ${job.completed ? "group-hover:text-green-600" : "group-hover:text-red-600"}`}>
+              {job.name}
+            </h3>
+            {job.location && (
+              <div className="flex items-center gap-1 text-xs text-zinc-500">
+                <MapPin className="w-3 h-3" />
+                {job.location}
+              </div>
+            )}
+            {isAdmin && job.user_email && (
+              <div className="flex items-center gap-1 text-xs text-blue-600 mt-1">
+                <User className="w-3 h-3" />
+                {job.user_email}
+              </div>
+            )}
+          </div>
         </div>
       </div>
       

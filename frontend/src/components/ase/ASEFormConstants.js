@@ -192,6 +192,9 @@ export const INITIAL_FORM_DATA = {
   
   // ADDITIONAL INFO
   nearest_fiber_lat_long: "",
+  pedestal_fiber_as_fbt: "",
+  fbt_attribute_source: "",
+  nte_attribute_source: "",
   starting_tie_in_measurements: "",
   nearest_fiber_fid: "",
   path_of_approach: "",
