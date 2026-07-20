@@ -47,6 +47,8 @@ import {
   Shield,
   User,
   ChevronLeft,
+  Search,
+  X,
   Map as MapIcon,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
@@ -111,6 +113,16 @@ const JobsList = () => {
   const [formData, setFormData] = useState({ name: "", description: "", location: "", job_type: "OCALC" });
   const [saving, setSaving] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const searchResults = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return [];
+    return jobs.filter((j) =>
+      [j.name, j.location, j.description, j.job_type]
+        .some((f) => (f || "").toLowerCase().includes(q))
+    );
+  }, [jobs, searchQuery]);
 
   // Group jobs into month folders by created_at (newest month first)
   const monthGroups = useMemo(() => {
@@ -200,6 +212,74 @@ const JobsList = () => {
     setShowEditDialog(true);
   };
 
+  const renderJobCard = (job) => (
+    <div
+      key={job.id}
+      onClick={() => navigate(`/jobs/${job.id}`)}
+      className="industrial-card p-5 cursor-pointer hover:border-red-500/50 transition-colors group"
+      data-testid={`job-card-${job.id}`}
+    >
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-red-600/20 border border-red-500/30 flex items-center justify-center">
+            <Folder className="w-5 h-5 text-red-600" />
+          </div>
+          <div>
+            <h3 className="font-heading text-lg font-bold text-zinc-900 group-hover:text-red-600 transition-colors">
+              {job.name}
+            </h3>
+            {job.location && (
+              <div className="flex items-center gap-1 text-xs text-zinc-500">
+                <MapPin className="w-3 h-3" />
+                {job.location}
+              </div>
+            )}
+            {isAdmin && job.user_email && (
+              <div className="flex items-center gap-1 text-xs text-blue-600 mt-1">
+                <User className="w-3 h-3" />
+                {job.user_email}
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-8 w-8 text-zinc-600 hover:text-zinc-900"
+            onClick={(e) => openEditDialog(job, e)}
+          >
+            <Pencil className="w-4 h-4" />
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-8 w-8 text-zinc-600 hover:text-red-600"
+            onClick={(e) => { e.stopPropagation(); setDeleteId(job.id); }}
+          >
+            <Trash2 className="w-4 h-4" />
+          </Button>
+        </div>
+      </div>
+      
+      {job.description && (
+        <p className="text-sm text-zinc-600 mb-3 line-clamp-2">{job.description}</p>
+      )}
+      
+      <div className="flex items-center justify-between pt-3 border-t border-zinc-200">
+        <div className="flex items-center gap-2 text-sm">
+          <Radio className="w-4 h-4 text-yellow-500" />
+          <span className="text-zinc-700 font-mono">{job.pole_count}</span>
+          <span className="text-zinc-500">poles</span>
+        </div>
+        <div className="flex items-center gap-1 text-xs text-zinc-500">
+          <Calendar className="w-3 h-3" />
+          {new Date(job.created_at).toLocaleDateString()}
+        </div>
+      </div>
+    </div>
+  );
+
   if (loading) {
     return (
       <div className="min-h-screen bg-industrial-bg flex items-center justify-center">
@@ -283,7 +363,48 @@ const JobsList = () => {
             {/* Map of all job locations */}
             <JobsLocationMap jobs={jobs} onOpenJob={(id) => navigate(`/jobs/${id}`)} />
 
-            {activeGroup === null ? (
+            {/* Search bar */}
+            <div className="relative mb-6 max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+              <Input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search jobs by name, location, or type..."
+                className="pl-9 pr-9 bg-white border-zinc-300 text-zinc-900 h-11 sm:h-10"
+                data-testid="job-search-input"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-700"
+                  data-testid="job-search-clear-btn"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+
+            {searchQuery.trim() ? (
+              /* Search results view */
+              <>
+                <div className="flex items-center gap-2 mb-4">
+                  <Search className="w-4 h-4 text-red-600" />
+                  <span className="text-sm text-zinc-600 font-mono" data-testid="job-search-results-count">
+                    {searchResults.length} job{searchResults.length === 1 ? "" : "s"} found for "{searchQuery.trim()}"
+                  </span>
+                </div>
+                {searchResults.length === 0 ? (
+                  <div className="industrial-card p-8 text-center text-zinc-500" data-testid="job-search-no-results">
+                    No jobs match your search.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="job-search-results-grid">
+                    {searchResults.map((job) => renderJobCard(job))}
+                  </div>
+                )}
+              </>
+            ) : activeGroup === null ? (
               /* Month folders view */
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" data-testid="month-folders-grid">
                 {monthGroups.map((group) => (
@@ -329,73 +450,7 @@ const JobsList = () => {
                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {activeGroup.jobs.map((job) => (
-              <div
-                key={job.id}
-                onClick={() => navigate(`/jobs/${job.id}`)}
-                className="industrial-card p-5 cursor-pointer hover:border-red-500/50 transition-colors group"
-                data-testid={`job-card-${job.id}`}
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-red-600/20 border border-red-500/30 flex items-center justify-center">
-                      <Folder className="w-5 h-5 text-red-600" />
-                    </div>
-                    <div>
-                      <h3 className="font-heading text-lg font-bold text-zinc-900 group-hover:text-red-600 transition-colors">
-                        {job.name}
-                      </h3>
-                      {job.location && (
-                        <div className="flex items-center gap-1 text-xs text-zinc-500">
-                          <MapPin className="w-3 h-3" />
-                          {job.location}
-                        </div>
-                      )}
-                      {isAdmin && job.user_email && (
-                        <div className="flex items-center gap-1 text-xs text-blue-600 mt-1">
-                          <User className="w-3 h-3" />
-                          {job.user_email}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-8 w-8 text-zinc-600 hover:text-zinc-900"
-                      onClick={(e) => openEditDialog(job, e)}
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-8 w-8 text-zinc-600 hover:text-red-600"
-                      onClick={(e) => { e.stopPropagation(); setDeleteId(job.id); }}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-                
-                {job.description && (
-                  <p className="text-sm text-zinc-600 mb-3 line-clamp-2">{job.description}</p>
-                )}
-                
-                <div className="flex items-center justify-between pt-3 border-t border-zinc-200">
-                  <div className="flex items-center gap-2 text-sm">
-                    <Radio className="w-4 h-4 text-yellow-500" />
-                    <span className="text-zinc-700 font-mono">{job.pole_count}</span>
-                    <span className="text-zinc-500">poles</span>
-                  </div>
-                  <div className="flex items-center gap-1 text-xs text-zinc-500">
-                    <Calendar className="w-3 h-3" />
-                    {new Date(job.created_at).toLocaleDateString()}
-                  </div>
-                </div>
-              </div>
-                  ))}
+                  {activeGroup.jobs.map((job) => renderJobCard(job))}
                 </div>
               </>
             )}

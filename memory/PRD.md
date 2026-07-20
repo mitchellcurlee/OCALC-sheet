@@ -49,6 +49,8 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 - Jobs dashboard (JobsList "/"): new "JOB LOCATIONS" satellite map card with red name-pins for every job with GPS (GET /jobs now returns representative latitude/longitude via aggregation over poles, fallback underground; $sort added for determinism). Pin popup -> Open Job.
 - Jobs grid organized into month folders by created_at (e.g. "June 2026") -> click to view that month's jobs, back button returns.
 
+- Job dashboard search bar (2026-06, self-tested via screenshot flow): data-testid="job-search-input" filters jobs by name/location/description/job_type across all months; shows results grid with count, clear button restores month folders; no-results state.
+
 ## Backlog
 - P1: User verification of new gallery flow on production (needs redeploy).
 - P2: Refactor PhotoMarkupEditor.jsx into /components/markup/* stubs (or delete stubs).
