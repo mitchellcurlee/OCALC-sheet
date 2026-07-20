@@ -596,7 +596,7 @@ const JobMap = () => {
       ));
       
       // Save to backend
-      await axios.put(`/jobs/${jobId}/underground/${ugId}`, {
+      await axios.put(`/underground/${ugId}`, {
         latitude: newLat,
         longitude: newLng
       });
@@ -1529,9 +1529,11 @@ const JobMap = () => {
             {/* Universal edit mode indicator */}
             {(editMode || positionEditMode || connectionEditMode) && !selectedSegment && (
               <div className="absolute top-2 left-2 z-[1000] bg-blue-600 text-white px-3 py-1.5 rounded text-sm font-medium shadow-lg max-w-md">
-                <div className="font-semibold">Edit Mode Active</div>
+                <div className="font-semibold">{positionEditMode && !editMode && !connectionEditMode ? "Move Mode Active" : "Edit Mode Active"}</div>
                 <div className="text-xs opacity-90 mt-0.5">
-                  • Drag markers to move items • Edit route lines • Click line to change its color
+                  {positionEditMode && !editMode && !connectionEditMode
+                    ? "• Drag any pole or underground marker to move it • Position saves automatically"
+                    : "• Edit route lines • Drag endpoints to reconnect items • Click line to change its color"}
                 </div>
                 {/* Segment selector dropdown for easier selection */}
                 {orderedSegments.length > 0 && (
@@ -1884,6 +1886,7 @@ const JobMap = () => {
                     icon={ugIcon(ugDisplayLabel, isRed, undergroundColorHex)}
                     draggable={positionEditMode}
                     onDragEnd={(lat, lng) => handleUndergroundDragEnd(u.id, lat, lng)}
+                    zIndexOffset={positionEditMode ? 1500 : 0}
                   >
                     <Popup>
                       <div className="min-w-[170px] font-mono" data-testid={`ug-popup-${u.id}`}>
