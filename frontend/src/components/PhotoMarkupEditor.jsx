@@ -1451,6 +1451,14 @@ export const PhotoMarkupEditor = ({
                 </div>
               </div>
               
+              {/* Eraser hint */}
+              {tool === "eraser" && (
+                <div className="space-y-1 p-2 bg-red-50 rounded-lg border border-red-200" data-testid="eraser-hint">
+                  <Label className="text-xs font-mono text-red-700">ERASER</Label>
+                  <p className="text-xs text-red-600">Tap or click any item (line, shape, marker, text) to erase it.</p>
+                </div>
+              )}
+              
               {/* Polyline controls */}
               {tool === "polyline" && (
                 <div className="space-y-2 p-2 bg-blue-50 rounded-lg border border-blue-200">

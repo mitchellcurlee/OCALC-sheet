@@ -38,6 +38,12 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
   - Verified by testing_agent: iteration_18 (pole drag pass, UG 404 found) + iteration_19 (100% pass: UG drag persists, pole drag, banner, connections regression).
 - OPEN QUESTION to user (ask_human pending): GPS improvement — offered "GPS Lock" averaging mode / accuracy display; hardware note re external Bluetooth GNSS. Awaiting user's choice.
 
+- Photo Markup Editor enhancements (2026-06, tested iteration_20 100% pass):
+  - Move any item with Select tool, now including freehand drawings and whole polylines (all points translate).
+  - New Eraser tool (data-testid="eraser-tool-btn") — click/tap any annotation to delete it (undo-able); red ERASER hint panel.
+  - Touch support on markup canvas (touchstart/move/end + touchAction none) for tablets.
+  - NOTE: two edits (eraser-hint panel, earlier banner/zIndex edits) silently vanished after successful search_replace during this session — always re-grep to confirm persistence after hot-reload.
+
 ## Backlog
 - P1: User verification of new gallery flow on production (needs redeploy).
 - P2: Refactor PhotoMarkupEditor.jsx into /components/markup/* stubs (or delete stubs).
