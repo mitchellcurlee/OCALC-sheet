@@ -51,6 +51,14 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 
 - Job dashboard search bar (2026-06, self-tested via screenshot flow): data-testid="job-search-input" filters jobs by name/location/description/job_type across all months; shows results grid with count, clear button restores month folders; no-results state.
 
+## 2026-06 Session Updates (part 4, tested iteration_22 + self-retest)
+- ASE Checklist (all verified by testing agent):
+  - "Fiber Pedestal as FBT?" Yes/No toggle -> auto-fills FIBER TERMINAL placement=PEDESTAL + Fiber Terminal LAT/LONG from job's Pedestal with material_type Fiber (warning toast if none).
+  - "Populate from Job Attribute" dropdowns under FBT LAT/LONG and NTE LAT/LONG listing all job attributes (UG + poles with GPS, job order) -> sets coords. New form keys: pedestal_fiber_as_fbt, fbt_attribute_source, nte_attribute_source.
+  - "Nearest fiber Lat/Long" auto-populates from FIRST item on the attributes list when empty.
+- Job completed checkbox: Job.completed field (backend), "Mark Complete" checkbox on job cards -> green folder/border/label + green map pin (#16a34a) on dashboard; persists via PUT /jobs/{id}. Verified end-to-end after fixing missing handleToggleComplete.
+- RECURRING TOOL ANOMALY: three times this session a successful search_replace edit silently disappeared from disk (eraser-hint panel, UG drag URL, handleToggleComplete). ALWAYS grep the file immediately after editing AND after a few seconds to confirm persistence.
+
 ## Backlog
 - P1: User verification of new gallery flow on production (needs redeploy).
 - P2: Refactor PhotoMarkupEditor.jsx into /components/markup/* stubs (or delete stubs).

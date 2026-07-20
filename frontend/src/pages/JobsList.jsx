@@ -215,6 +215,17 @@ const JobsList = () => {
     setShowEditDialog(true);
   };
 
+  const handleToggleComplete = async (job, completed) => {
+    setJobs((prev) => prev.map((j) => (j.id === job.id ? { ...j, completed } : j)));
+    try {
+      await axios.put(`/jobs/${job.id}`, { completed });
+      toast.success(completed ? "Job marked complete" : "Job marked incomplete");
+    } catch (error) {
+      setJobs((prev) => prev.map((j) => (j.id === job.id ? { ...j, completed: !completed } : j)));
+      toast.error("Failed to update job status");
+    }
+  };
+
   const renderJobCard = (job) => (
     <div
       key={job.id}
