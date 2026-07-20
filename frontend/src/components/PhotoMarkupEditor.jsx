@@ -7,7 +7,7 @@ import { Slider } from "@/components/ui/slider";
 import { 
   Camera, Upload, X, Pencil, Type, Circle, Square, 
   Minus, Undo, Redo, Trash2, Loader2, ZoomIn,
-  Save, MousePointer, Move, ArrowRight, Triangle, List,
+  Save, MousePointer, Move, ArrowRight, Triangle, List, Eraser,
   Waypoints, GitBranch
 } from "lucide-react";
 import { toast } from "sonner";
@@ -688,10 +688,11 @@ export const PhotoMarkupEditor = ({
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
     
-    // Get mouse position relative to canvas element and scale to canvas coordinates
+    // Support both mouse and touch events
+    const pt = e.touches?.[0] || e.changedTouches?.[0] || e;
     return {
-      x: (e.clientX - rect.left) * scaleX,
-      y: (e.clientY - rect.top) * scaleY
+      x: (pt.clientX - rect.left) * scaleX,
+      y: (pt.clientY - rect.top) * scaleY
     };
   };
 
@@ -722,6 +723,14 @@ export const PhotoMarkupEditor = ({
         if (dist <= 10) return i;
       } else if (ann.type === "polyline" && ann.points && ann.points.length > 1) {
         // Check if point is near any segment of the polyline
+        for (let j = 0; j < ann.points.length - 1; j++) {
+          const p1 = ann.points[j];
+          const p2 = ann.points[j + 1];
+          const dist = pointToLineDistance(x, y, p1.x, p1.y, p2.x, p2.y);
+          if (dist <= 10) return i;
+        }
+      } else if (ann.type === "draw" && ann.points && ann.points.length > 1) {
+        // Check if point is near any segment of a freehand drawing
         for (let j = 0; j < ann.points.length - 1; j++) {
           const p1 = ann.points[j];
           const p2 = ann.points[j + 1];
@@ -790,7 +799,22 @@ export const PhotoMarkupEditor = ({
         }
         
         setIsDragging(true);
-        setDragOffset({ x: coords.x - (ann.x || ann.startX || 0), y: coords.y - (ann.y || ann.startY || 0) });
+        if ((ann.type === "draw" || ann.type === "polyline") && ann.points?.length) {
+          setDragOffset({ x: coords.x - ann.points[0].x, y: coords.y - ann.points[0].y });
+        } else {
+          setDragOffset({ x: coords.x - (ann.x || ann.startX || 0), y: coords.y - (ann.y || ann.startY || 0) });
+        }
+      }
+    } else if (tool === "eraser") {
+      const idx = findAnnotationAt(coords.x, coords.y);
+      if (idx >= 0) {
+        const newAnnotations = annotations.filter((_, i) => i !== idx);
+        setAnnotations(newAnnotations);
+        setSelectedAnnotation(null);
+        const newHistory = history.slice(0, historyIndex + 1);
+        newHistory.push(newAnnotations);
+        setHistory(newHistory);
+        setHistoryIndex(newHistory.length - 1);
       }
     } else if (tool === "draw") {
       setIsDrawing(true);
@@ -870,6 +894,15 @@ export const PhotoMarkupEditor = ({
       // Handle polyline vertex editing
       if (ann.type === "polyline" && editingVertexIndex !== null) {
         ann.points[editingVertexIndex] = coords;
+        setAnnotations(newAnnotations);
+        return;
+      }
+      
+      // Move entire freehand drawing or polyline (translate all points)
+      if ((ann.type === "draw" || ann.type === "polyline") && ann.points?.length) {
+        const dx = coords.x - dragOffset.x - ann.points[0].x;
+        const dy = coords.y - dragOffset.y - ann.points[0].y;
+        ann.points = ann.points.map(p => ({ x: p.x + dx, y: p.y + dy }));
         setAnnotations(newAnnotations);
         return;
       }
@@ -1404,6 +1437,17 @@ export const PhotoMarkupEditor = ({
                   >
                     <List className="w-4 h-4" />
                   </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={tool === "eraser" ? "default" : "outline"}
+                    onClick={() => { setTool("eraser"); setSelectedAnnotation(null); }}
+                    className={`h-8 p-0 ${tool === "eraser" ? "bg-red-600 hover:bg-red-700" : "text-red-600 hover:bg-red-50"}`}
+                    title="Eraser - click an item to erase it"
+                    data-testid="eraser-tool-btn"
+                  >
+                    <Eraser className="w-4 h-4" />
+                  </Button>
                 </div>
               </div>
               
@@ -1894,6 +1938,7 @@ export const PhotoMarkupEditor = ({
                     variant="destructive"
                     onClick={deleteSelectedAnnotation}
                     className="w-full h-8"
+                    data-testid="delete-selected-annotation-btn"
                   >
                     <Trash2 className="w-4 h-4 mr-1" />
                     Delete
@@ -1979,8 +2024,12 @@ export const PhotoMarkupEditor = ({
                 onMouseUp={handleMouseUp}
                 onMouseLeave={handleMouseUp}
                 onDoubleClick={handleDoubleClick}
-                className={`bg-white shadow-lg ${tool === "select" ? 'cursor-default' : 'cursor-crosshair'} ${!imageLoaded ? 'hidden' : ''}`}
-                style={{ maxWidth: "100%", maxHeight: "100%" }}
+                onTouchStart={handleMouseDown}
+                onTouchMove={handleMouseMove}
+                onTouchEnd={handleMouseUp}
+                data-testid="markup-canvas"
+                className={`bg-white shadow-lg ${tool === "select" ? 'cursor-default' : tool === "eraser" ? 'cursor-pointer' : 'cursor-crosshair'} ${!imageLoaded ? 'hidden' : ''}`}
+                style={{ maxWidth: "100%", maxHeight: "100%", touchAction: "none" }}
               />
               
               {/* Legend overlay */}

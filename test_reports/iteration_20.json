@@ -1,0 +1,32 @@
+{
+  "summary": "Frontend-only test of Photo Markup Editor move/erase feature. All 6 scenarios PASS: text-move, freehand-draw-move (NEW), eraser (NEW), delete-selected-btn, marker regression, close-without-save. No console errors during any interaction. One minor UX gap: review request expected a red ERASER hint panel with data-testid='eraser-hint' when the eraser tool is active, but this element is not implemented in PhotoMarkupEditor.jsx (behaviour still works — clicking the eraser button turns it red, sets cursor to pointer, and clicking annotations deletes them).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Photo Markup Editor - Eraser tool", "issues": ["Missing visible hint/instruction panel when eraser tool is active. The review request expected a red 'ERASER' hint panel (data-testid='eraser-hint') to explain the click-to-erase interaction, but no such panel is rendered in PhotoMarkupEditor.jsx. Only the eraser toolbar button itself turns red and cursor becomes 'pointer'. Consider adding a small info panel similar to the 'MULTI-POINT LINE' or 'straightline' hint panels around L1454-1490 for consistency."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/frontend/src/components/PhotoMarkupEditor.jsx"
+  ],
+  "action_items": [
+    "OPTIONAL UX: Add a red '<eraser hint>' panel with data-testid='eraser-hint' when tool === 'eraser' (e.g., 'ERASER: click any annotation to delete it') to match review-request spec and align with existing hint panels for polyline/straightline tools.",
+    "OPTIONAL a11y: DialogContent for Photo Markup Editor logs a React warning 'Missing Description or aria-describedby={undefined}'. Add a DialogDescription (or aria-describedby='...') to the DialogContent."
+  ],
+  "critical_code_review_comments": [
+    "PhotoMarkupEditor.jsx is 2102 lines — recommend splitting into hooks (useAnnotationHitTest, useDragAndDraw) + subcomponents (Toolbar, Sidebar) for maintainability.",
+    "Line 1864: SELECT & EDIT instructions panel contains the substring 'Drag to move' and Line 1878 SELECTED ITEM panel also contains 'Drag to move'. Any test looking for 'Drag to move' text will match both states, making 'is selected' harder to detect via string match. Consider using distinct copy or add data-testids like 'select-instructions' / 'selected-item-panel' for reliable testing.",
+    "handleMouseMove translate logic (L902-908) recomputes dx/dy from ann.points[0] each frame, so dragOffset never needs updating for draw/polyline — this is correct and does NOT accumulate error (verified by test 2 passing hit at new location and NOT at old). Good.",
+    "handleMouseDown eraser branch (L808-818) correctly pushes to history so undo can restore erased annotation — verified visually (undo button becomes enabled after erase)."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (frontend-only)", "frontend": "100% (6/6 scenarios PASS)"},
+  "test_credentials": "Admin@mastec.com / Mastecbyers12345 — worked",
+  "seed_data_creation": "None saved. Photo Markup Editor was opened on OCALC POLE PICTURE for pole '1' in job A050ABC (e5dc0bae-96bb-4cef-8001-7baf4e41d80a). All annotations added during testing (MOVEME text, freehand stroke, HH marker) were discarded by closing the dialog via the X button WITHOUT clicking Save Markup, per review instructions. The underlying seed photo on disk was NOT modified.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Photo Markup Editor testing evidence: (1) Text tool - button title='Text' inside dialog; sidebar shows 'TEXT BOX' input placeholder='Enter text...' and 'FONT SIZE'/'TEXT COLOR' when active — confirmed. (2) Select tool button title='Select & Move'. When an annotation is selected the sidebar renders a blue 'SELECTED ITEM' panel with 'Drag to move • Press Delete to remove' + delete button data-testid='delete-selected-annotation-btn'. Reliable 'is selected' detector: page.is_visible('text=SELECTED ITEM') — do NOT use 'text=Drag to move' because the SELECT & EDIT instructions panel (shown when nothing selected but annotations exist) also contains that substring. (3) Eraser tool: data-testid='eraser-tool-btn' works and deletes clicked annotations. NOTE: data-testid='eraser-hint' does NOT exist in current code — the red hint panel referenced in the review request was never implemented. (4) Canvas is data-testid='markup-canvas' at 450x600 CSS = 450x600 internal (1:1 for this photo, image 480x640 scaled to fit); getBoundingClientRect scales match canvas.width/height so mouse coordinates map 1:1 to canvas coords. (5) Marker tool: title='Markers'; after activation the sidebar shows a grid of marker type buttons (HH, MH, BE, ...) — click a type, then click canvas to place. (6) Close dialog: button[aria-label='Close'] or first button with lucide-x svg inside dialog. (7) Test uses login → navigate to /jobs/{jobId}/edit/{poleId} → scroll to OCALC POLE PICTURE (2 Edit markup buttons on page, use [0]) → force-click 'Edit markup' → dialog opens with canvas ready. No console errors observed during any of: text placement, text drag, freehand draw, freehand drag, eraser click, delete-selected, marker placement, dialog close.",
+  "rca of the issue": "N/A — new feature verification. All 3 primary review scenarios passed: (a) freehand-draw MOVE (new): draw stroke at canvas ~(300,150)-(350,200) → switch to select tool → hit-tested at midpoint (325,175) → SELECTED ITEM panel appeared → drag +60/+40 → SELECTED ITEM appears at (385,215) but NOT at (325,175) → move works and hit test correctly follows the translated points array (PhotoMarkupEditor.jsx L732-739 + L902-908). (b) Eraser (new): eraser button (data-testid='eraser-tool-btn') turns red when active (L1445 conditional class), clicking a text annotation removed it from the annotations array (L808-818 - filters annotation and pushes to history so undo works). (c) Text-move: unchanged select-tool drag flow (L802-806 uses ann.x/ann.y offset) still works. Minor gap: review referenced a red 'ERASER' hint panel with data-testid='eraser-hint' that is NOT present in code — only the toolbar button styling + cursor:pointer indicate the eraser mode. Functionally OK, cosmetically incomplete."
+}
