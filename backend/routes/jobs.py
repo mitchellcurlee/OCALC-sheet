@@ -144,6 +144,7 @@ async def get_jobs(current_user: dict = Depends(get_current_user)):
     job_coords = {}
     coord_pipeline = [
         {"$match": {"job_id": {"$in": job_ids}, "latitude": {"$nin": [None, ""]}, "longitude": {"$nin": [None, ""]}}},
+        {"$sort": {"created_at": 1}},
         {"$group": {"_id": "$job_id", "lat": {"$first": "$latitude"}, "lng": {"$first": "$longitude"}}}
     ]
     async for doc in _db.poles.aggregate(coord_pipeline):

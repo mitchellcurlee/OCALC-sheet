@@ -44,6 +44,11 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
   - Touch support on markup canvas (touchstart/move/end + touchAction none) for tablets.
   - NOTE: two edits (eraser-hint panel, earlier banner/zIndex edits) silently vanished after successful search_replace during this session — always re-grep to confirm persistence after hot-reload.
 
+## 2026-06 Session Updates (part 3, tested iteration_21 100% backend+frontend)
+- "Aerial Splice" (AS) and "Loop" (LOOP) added as aerial attributes: new "Aerial" section in JobDetail Add dropdown (reuse underground point-item form/model/map plumbing).
+- Jobs dashboard (JobsList "/"): new "JOB LOCATIONS" satellite map card with red name-pins for every job with GPS (GET /jobs now returns representative latitude/longitude via aggregation over poles, fallback underground; $sort added for determinism). Pin popup -> Open Job.
+- Jobs grid organized into month folders by created_at (e.g. "June 2026") -> click to view that month's jobs, back button returns.
+
 ## Backlog
 - P1: User verification of new gallery flow on production (needs redeploy).
 - P2: Refactor PhotoMarkupEditor.jsx into /components/markup/* stubs (or delete stubs).
