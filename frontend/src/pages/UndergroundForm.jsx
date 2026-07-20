@@ -61,7 +61,7 @@ const UndergroundForm = () => {
   // Material type options based on underground type
   const materialTypeOptions = useMemo(() => {
     const typeMap = {
-      "Handhole": ["Concrete/ Bi-fold Metal", "Concrete/ MH lid", "Fiber Glass", "Plastic"],
+      "Handhole": ["Concrete", "Concrete/ Bi-fold Metal", "Concrete/ MH lid", "Fiber Glass", "Plastic"],
       "Hoffman Box": ["Community", "Private"],
       "Pedestal": ["Copper", "Fiber"],
     };
