@@ -140,6 +140,25 @@ async def get_jobs(current_user: dict = Depends(get_current_user)):
         if is_admin_user(current_user) and not job.get("user_email"):
             job["user_email"] = user_emails.get(job["user_id"], "Unknown")
     
+    # Bulk fetch a representative GPS coordinate per job (first pole, else first underground)
+    job_coords = {}
+    coord_pipeline = [
+        {"$match": {"job_id": {"$in": job_ids}, "latitude": {"$nin": [None, ""]}, "longitude": {"$nin": [None, ""]}}},
+        {"$group": {"_id": "$job_id", "lat": {"$first": "$latitude"}, "lng": {"$first": "$longitude"}}}
+    ]
+    async for doc in _db.poles.aggregate(coord_pipeline):
+        job_coords[doc["_id"]] = (doc["lat"], doc["lng"])
+    async for doc in _db.underground.aggregate(coord_pipeline):
+        job_coords.setdefault(doc["_id"], (doc["lat"], doc["lng"]))
+    for job in jobs:
+        coords = job_coords.get(job["id"])
+        if coords:
+            try:
+                job["latitude"] = float(coords[0])
+                job["longitude"] = float(coords[1])
+            except (TypeError, ValueError):
+                pass
+    
     return jobs
 
 
@@ -478,6 +497,7 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
             "Hoffman Box": "HB", "Pedestal": "PED", "Point of Intersection": "PI", "FBT": "FBT",
             "NTE": "NTE", "FBT/NTE": "FBT/NTE", "PFP": "PFP", "SOC Start": "SOC-S", 
             "SOC End": "SOC-E", "Riser": "RSR", "MPOE": "MPOE",
+            "Aerial Splice": "AS", "Loop": "LOOP",
         }
         ws.cell(row=current_row, column=1, value="UNDERGROUND").fill = header_fill
         ws.cell(row=current_row, column=1).font = header_font

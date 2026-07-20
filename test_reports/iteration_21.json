@@ -1,0 +1,31 @@
+{
+  "summary": "Full backend + frontend verification of the 3 new features (Aerial dropdown, Jobs dashboard satellite map, month-folder grid). Backend 8/8 pytest PASS. Frontend all 6 review scenarios PASS: (1) Add dropdown shows Aerial section with Aerial Splice (AS) and Loop (LOOP) above Underground, and NEITHER is duplicated in the Underground section — verified via presence of data-testids add-aerial-Aerial Splice, add-aerial-Loop and absence of add-ug-Aerial Splice, add-ug-Loop. (2) GET /api/poles/options.underground_types includes both new types. (3) Dashboard map card 'JOB LOCATIONS (3)' renders Esri satellite tiles with 3 red pins (A050ABC, A05A123, Test Job for Backward Compat); clicking a pin opens a popup with job name, attribute count and Open Job button (map-open-job-{id}) which navigates to /jobs/{id}. (4) GET /api/jobs returns latitude/longitude floats for jobs with GPS (verified for seed job e5dc0bae-96bb-4cef-8001-7baf4e41d80a). (5) Month folders grid renders month-folder-2026-06 (4 jobs) and month-folder-2026-01 (2 jobs) sorted newest first; clicking opens folder view with matching job cards and back-to-months-btn returns to grid; delete confirm dialog opens on trash click and cancel works. (6) Regression: 'New Job' create still works — created TEST_iter21_ui_regression, it appeared in the current-month folder (July 2026 in server time) then was cleaned up via API. Aerial Splice creation also verified: navigated to /jobs/{id}/underground/add?type=Aerial%20Splice, filled ug-label-input with 'AS-TEST-UI', clicked Save → POST /api/underground 201 → item AS-TEST-UI visible on job detail → cleaned up via DELETE 200.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_aerial_and_map.py",
+    "/app/test_reports/pytest/pytest_iteration21.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "JobsList.jsx (543 lines) is manageable but the JobsLocationMap component (L68-100) is inlined at the top of the same file. Consider extracting to /components/JobsLocationMap.jsx if more map features are planned.",
+    "JobsList.jsx L69 filter `Number.isFinite(j.latitude) && Number.isFinite(j.longitude)` correctly guards against string coords — good defensive coding matching the try/except in backend routes/jobs.py L156-159.",
+    "backend routes/jobs.py L143-160 coord aggregation: uses $group with $first — MongoDB $first inside $group is only deterministic when preceded by $sort. This aggregation has no $sort, so which pole's coords are returned per job is technically implementation-defined. In practice acceptable for a dashboard-pin overview but consider adding {$sort:{created_at:1}} before $group if a stable representative point is desired.",
+    "JobsList.jsx L69: pins array recomputes on every render inside JobsLocationMap. Wrap in useMemo if jobs is large (currently only 6, so fine).",
+    "Month folder key uses local timezone via new Date(j.created_at).getMonth() (L119-120). If a job is created near midnight UTC it may land in a different month for viewers in other timezones vs backend expectations. Acceptable for this app but worth noting."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_aerial_and_map.py (new)"
+  ],
+  "success_rate": {"backend": "100% (8/8)", "frontend": "100% (6/6 review scenarios)"},
+  "test_credentials": "Admin@mastec.com / Mastecbyers12345 — works",
+  "seed_data_creation": "Temporary artifacts created AND cleaned up: (a) underground item AS-TEST-UI (id=35109b46-...) on job A050ABC — DELETE 200. (b) job TEST_iter21_ui_regression (id=19d31d94-...) — DELETE 200. Verified via subsequent GET /api/jobs and /api/jobs/{id}/underground that both are gone.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All 3 new features verified end-to-end. Key selectors observed live: (a) Add dropdown: data-testid='add-dropdown-btn' opens the menu. Aerial items are 'add-aerial-Aerial Splice' and 'add-aerial-Loop' (space is preserved in testid). Underground items are 'add-ug-{Type}'. Menu order: Add Attribute → Pole Terminal → Aerial header → AS/LOOP → Underground header → other UG types. (b) Underground add form fields: data-testid='ug-label-input', 'ug-latitude-input', 'ug-longitude-input', 'ug-notes-input'. Save flow POSTs to /api/underground (returns 201) and then navigates back to /jobs/{id}. (c) Dashboard map: pin div class '.job-pin > div > div' — Playwright cannot click the raw `.job-pin` element directly because it has iconSize:[0,0] and the visible portion is offset via CSS transform; must click via computed bounding rect (see script). Popup content: <job name>, <n attributes>, and a red 'Open Job' button with data-testid='map-open-job-{jobId}'. (d) Folder cards: 'month-folder-YYYY-MM'. Back button: 'back-to-months-btn'. Server clock in preview environment is currently ~July 2026 (created_at for a new job showed 7/20/2026), so the review-request expectations of 'June 2026' and 'January 2026' folders still hold from historical seed data — but new-job regression will land in the current server month (e.g., July 2026). (e) Delete confirm dialog appears via card trash icon (last button in job card); dialog text 'Delete Job?' + Cancel button works — do NOT click 'Delete Job' on any real seed job.",
+  "rca of the issue": "N/A — new feature verification, everything working."
+}

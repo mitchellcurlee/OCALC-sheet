@@ -33,6 +33,8 @@ class Job(BaseModel):
     user_id: str
     user_email: Optional[str] = None
     pole_count: int = 0
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
     ase_data: Optional[Dict[str, Any]] = None  # ASE Site Walk Survey data
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())

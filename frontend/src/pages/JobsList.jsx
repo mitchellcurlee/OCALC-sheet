@@ -1,7 +1,10 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
+import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,6 +36,7 @@ import {
   Plus,
   Zap,
   Folder,
+  FolderOpen,
   MapPin,
   Calendar,
   Trash2,
@@ -42,11 +46,58 @@ import {
   Radio,
   Shield,
   User,
+  ChevronLeft,
+  Map as MapIcon,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { OfflineIndicator } from "@/components/OfflineIndicator";
 
 const JOB_TYPES = ["OCALC", "DMG", "ABF", "BAU", "ASE", "PBB", "SEAL", "SV", "CELL SITE"];
+
+const jobPinIcon = (name) =>
+  L.divIcon({
+    className: "job-pin",
+    html: `<div style="display:flex;flex-direction:column;align-items:center;transform:translate(-50%,-100%);">
+      <div style="background:#dc2626;color:#fff;font:700 10px ui-monospace,monospace;padding:2px 6px;border-radius:4px;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.5);white-space:nowrap;">${name}</div>
+      <div style="width:10px;height:10px;background:#dc2626;border:2px solid #fff;border-radius:50%;margin-top:2px;box-shadow:0 1px 3px rgba(0,0,0,.5);"></div>
+    </div>`,
+    iconSize: [0, 0],
+    iconAnchor: [0, 0],
+  });
+
+const JobsLocationMap = ({ jobs, onOpenJob }) => {
+  const pins = jobs.filter((j) => Number.isFinite(j.latitude) && Number.isFinite(j.longitude));
+  if (pins.length === 0) return null;
+  const bounds = L.latLngBounds(pins.map((j) => [j.latitude, j.longitude]));
+  return (
+    <div className="industrial-card mb-6 overflow-hidden" data-testid="jobs-location-map-card">
+      <div className="px-4 py-2.5 border-b border-zinc-200 bg-zinc-50 flex items-center gap-2">
+        <MapIcon className="w-4 h-4 text-red-600" />
+        <span className="text-xs font-mono tracking-widest text-zinc-600 uppercase">Job Locations ({pins.length})</span>
+      </div>
+      <div className="h-[320px]">
+        <MapContainer bounds={bounds} boundsOptions={{ padding: [40, 40], maxZoom: 15 }} className="h-full w-full" scrollWheelZoom={true}>
+          <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" attribution="&copy; Esri" maxNativeZoom={19} maxZoom={22} />
+          <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}" maxNativeZoom={19} maxZoom={22} />
+          {pins.map((job) => (
+            <Marker key={job.id} position={[job.latitude, job.longitude]} icon={jobPinIcon(job.name)}>
+              <Popup>
+                <div className="min-w-[160px] font-mono">
+                  <div className="text-sm font-bold text-zinc-900">{job.name}</div>
+                  {job.location && <div className="text-xs text-zinc-500">{job.location}</div>}
+                  <div className="text-xs text-zinc-600 mt-1">{job.pole_count} attribute{job.pole_count === 1 ? "" : "s"}</div>
+                  <Button size="sm" className="w-full h-7 mt-2 bg-red-600 hover:bg-red-700 text-white" onClick={() => onOpenJob(job.id)} data-testid={`map-open-job-${job.id}`}>
+                    Open Job
+                  </Button>
+                </div>
+              </Popup>
+            </Marker>
+          ))}
+        </MapContainer>
+      </div>
+    </div>
+  );
+};
 
 const JobsList = () => {
   const navigate = useNavigate();
@@ -59,6 +110,23 @@ const JobsList = () => {
   const [deleteId, setDeleteId] = useState(null);
   const [formData, setFormData] = useState({ name: "", description: "", location: "", job_type: "OCALC" });
   const [saving, setSaving] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState(null);
+
+  // Group jobs into month folders by created_at (newest month first)
+  const monthGroups = useMemo(() => {
+    const groups = {};
+    jobs.forEach((j) => {
+      const d = new Date(j.created_at);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      if (!groups[key]) {
+        groups[key] = { key, label: d.toLocaleString("en-US", { month: "long", year: "numeric" }), jobs: [] };
+      }
+      groups[key].jobs.push(j);
+    });
+    return Object.values(groups).sort((a, b) => b.key.localeCompare(a.key));
+  }, [jobs]);
+
+  const activeGroup = monthGroups.find((g) => g.key === selectedMonth) || null;
 
   const fetchJobs = useCallback(async () => {
     try {
@@ -211,8 +279,57 @@ const JobsList = () => {
             </Button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {jobs.map((job) => (
+          <>
+            {/* Map of all job locations */}
+            <JobsLocationMap jobs={jobs} onOpenJob={(id) => navigate(`/jobs/${id}`)} />
+
+            {activeGroup === null ? (
+              /* Month folders view */
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" data-testid="month-folders-grid">
+                {monthGroups.map((group) => (
+                  <div
+                    key={group.key}
+                    onClick={() => setSelectedMonth(group.key)}
+                    className="industrial-card p-5 cursor-pointer hover:border-red-500/50 transition-colors group"
+                    data-testid={`month-folder-${group.key}`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-red-600/20 border border-red-500/30 flex items-center justify-center flex-shrink-0">
+                        <Folder className="w-6 h-6 text-red-600" />
+                      </div>
+                      <div>
+                        <h3 className="font-heading text-lg font-bold text-zinc-900 group-hover:text-red-600 transition-colors">
+                          {group.label}
+                        </h3>
+                        <p className="text-xs text-zinc-500 font-mono">
+                          {group.jobs.length} job{group.jobs.length === 1 ? "" : "s"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              /* Jobs inside selected month */
+              <>
+                <div className="flex items-center gap-3 mb-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => setSelectedMonth(null)}
+                    className="h-9 bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900"
+                    data-testid="back-to-months-btn"
+                  >
+                    <ChevronLeft className="w-4 h-4 mr-1" />
+                    All Months
+                  </Button>
+                  <div className="flex items-center gap-2">
+                    <FolderOpen className="w-5 h-5 text-red-600" />
+                    <h2 className="font-heading text-lg font-bold text-zinc-900 uppercase">{activeGroup.label}</h2>
+                    <span className="text-xs text-zinc-500 font-mono">({activeGroup.jobs.length} job{activeGroup.jobs.length === 1 ? "" : "s"})</span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {activeGroup.jobs.map((job) => (
               <div
                 key={job.id}
                 onClick={() => navigate(`/jobs/${job.id}`)}
@@ -278,8 +395,11 @@ const JobsList = () => {
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </>
         )}
       </main>
 
