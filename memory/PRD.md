@@ -29,6 +29,15 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 - Seed job A050ABC (e5dc0bae-...) has a 286-byte invalid UG seed photo that renders broken in browser (data issue, not code).
 - Individual photo endpoints (`/api/poles/{id}/photo/{label}`, `/api/underground/{id}/photo/{label}`) still exist but are no longer linked from Excel.
 
+## 2026-06 Session Updates (continued)
+- Added "Concrete" to Handhole material/type dropdown (UndergroundForm.jsx).
+- FIXED user-reported bug "item moving tool on interactive map not working":
+  - Root cause 1: old "Move Items & Edit Lines" enabled connectionEditMode simultaneously; draggable connection endpoints (z 1200) covered item markers and hijacked drags.
+  - Root cause 2: handleUndergroundDragEnd called non-existent PUT /jobs/{jobId}/underground/{ugId} (404) → fixed to PUT /underground/{ugId}.
+  - Fix: Edit Map dropdown split into "Move Items" (positionEditMode only, items z 1500) and "Edit Lines & Connections" (editMode + connectionEditMode). Mode-specific banner copy.
+  - Verified by testing_agent: iteration_18 (pole drag pass, UG 404 found) + iteration_19 (100% pass: UG drag persists, pole drag, banner, connections regression).
+- OPEN QUESTION to user (ask_human pending): GPS improvement — offered "GPS Lock" averaging mode / accuracy display; hardware note re external Bluetooth GNSS. Awaiting user's choice.
+
 ## Backlog
 - P1: User verification of new gallery flow on production (needs redeploy).
 - P2: Refactor PhotoMarkupEditor.jsx into /components/markup/* stubs (or delete stubs).
