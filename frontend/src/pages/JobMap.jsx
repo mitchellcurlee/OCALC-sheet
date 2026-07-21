@@ -1068,6 +1068,16 @@ const JobMap = () => {
     [underground]
   );
 
+  // Numbered station entries (badges + list) when Sta #'s toggle is on
+  const stationEntries = useMemo(() => {
+    const items = [];
+    ug.forEach((u) => items.push({ id: u.id, pos: u.pos, sortOrder: u.sort_order ?? Infinity, name: `${undergroundAbbr(u.type)}${u.label ? `-${u.label}` : ""}` }));
+    route.forEach((p) => items.push({ id: p.id, pos: p.pos, sortOrder: p.sort_order ?? Infinity, name: /^\d/.test(String(p.pole_number || "")) ? `P${p.pole_number}` : (p.pole_number || "Pole") }));
+    items.sort((a, b) => a.sortOrder - b.sortOrder);
+    return items.map((it, idx) => ({ ...it, num: idx + 1, station: stationNumbers[it.id] }));
+  }, [route, ug, stationNumbers]);
+  const stationNumById = useMemo(() => Object.fromEntries(stationEntries.map((e) => [e.id, e.num])), [stationEntries]);
+
   // Display name for a segment endpoint (e.g. "P1", "HH HH-1")
   const segItemName = useCallback((item) => {
     if (item.type === "pole") {
@@ -1911,36 +1921,10 @@ const JobMap = () => {
                         </div>
                       </Popup>
                     </DraggableMarker>
-                    {/* Station number label with offset and connecting line */}
-                    {stationLabel && (() => {
-                      // Use precomputed position with collision avoidance
-                      const labelPos = computedLabelPositions.stations[p.id] || getLabelPosition(p.id, p.pos);
-                      const isEditingLabels = editMode || positionEditMode || connectionEditMode;
-                      const defaultText = `${p.pole_number || 'P'}\n${stationLabel}`;
-                      const displayText = getLabelText(`pole-station-${p.id}`, defaultText).replace(/\n/g, '<br/>');
-                      return (
-                        <>
-                          {/* Connecting line from marker to station label */}
-                          <Polyline 
-                            positions={[p.pos, labelPos]} 
-                            pathOptions={{ color: "#4f46e5", weight: 1.5, dashArray: "3,3", opacity: 0.8 }} 
-                          />
-                          <DraggableMarker 
-                            position={labelPos} 
-                            icon={L.divIcon({
-                              className: "station-label-smart editable-label",
-                              html: `<div style="background:#4f46e5;color:#fff;border:2px solid #fff;border-radius:6px;padding:4px 10px;font:700 11px/1.3 ui-monospace,monospace;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,.4);cursor:pointer;pointer-events:auto;" title="Double-click to edit">${displayText}</div>`,
-                              iconSize: [140, 48],
-                              iconAnchor: [70, 24],
-                            })}
-                            draggable={isEditingLabels}
-                            onDragEnd={(lat, lng) => handleLabelDragEnd(p.id, p.pos, lat, lng)}
-                            onDoubleClick={() => handleLabelDoubleClick(`pole-station-${p.id}`, defaultText)}
-                            zIndexOffset={850}
-                          />
-                        </>
-                      );
-                    })()}
+                    {/* Station number badge — station value is in the list below the map */}
+                    {stationLabel && (
+                      <Marker position={p.pos} icon={numberBadgeIcon(stationNumById[p.id], "#4f46e5", [-6, 32])} interactive={false} zIndexOffset={850} />
+                    )}
                   </React.Fragment>
                 );
               })}
@@ -1982,36 +1966,10 @@ const JobMap = () => {
                       </div>
                     </Popup>
                   </DraggableMarker>
-                  {/* Station number label with offset and connecting line */}
-                  {stationLabel && (() => {
-                    // Use precomputed position with collision avoidance
-                    const labelPos = computedLabelPositions.stations[u.id] || getLabelPosition(u.id, u.pos);
-                    const isEditingLabels = editMode || positionEditMode || connectionEditMode;
-                    const defaultText = `${undergroundAbbr(u.type)}${u.label ? '-' + u.label : ''}\n${stationLabel}`;
-                    const displayText = getLabelText(`ug-station-${u.id}`, defaultText).replace(/\n/g, '<br/>');
-                    return (
-                      <>
-                        {/* Connecting line from marker to station label */}
-                        <Polyline 
-                          positions={[u.pos, labelPos]} 
-                          pathOptions={{ color: isRed ? "#dc2626" : undergroundColorHex, weight: 1.5, dashArray: "3,3", opacity: 0.8 }} 
-                        />
-                        <DraggableMarker 
-                          position={labelPos} 
-                          icon={L.divIcon({
-                            className: "station-label-smart editable-label",
-                            html: `<div style="background:${isRed ? '#dc2626' : undergroundColorHex};color:#fff;border:2px solid #fff;border-radius:6px;padding:4px 10px;font:700 11px/1.3 ui-monospace,monospace;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,.4);cursor:pointer;pointer-events:auto;" title="Double-click to edit">${displayText}</div>`,
-                            iconSize: [160, 48],
-                            iconAnchor: [80, 24],
-                          })}
-                          draggable={isEditingLabels}
-                          onDragEnd={(lat, lng) => handleLabelDragEnd(u.id, u.pos, lat, lng)}
-                          onDoubleClick={() => handleLabelDoubleClick(`ug-station-${u.id}`, defaultText)}
-                          zIndexOffset={850}
-                        />
-                      </>
-                    );
-                  })()}
+                  {/* Station number badge — station value is in the list below the map */}
+                  {stationLabel && (
+                    <Marker position={u.pos} icon={numberBadgeIcon(stationNumById[u.id], isRed ? "#dc2626" : "#4f46e5", [-6, 32])} interactive={false} zIndexOffset={850} />
+                  )}
                 </React.Fragment>
               )})}
               {/* Map annotations (notes and measurements) */}
@@ -2186,6 +2144,23 @@ const JobMap = () => {
                 <div key={t} className="text-zinc-500 mt-0.5 ml-1"><span style={{ color: undergroundColorHex }} className="font-semibold">{undergroundAbbr(t)}</span> {t}</div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Numbered station list (when Sta #'s toggle on) */}
+        {showStationNumbers && stationEntries.length > 0 && (
+          <div className="industrial-card p-4 sm:p-5" data-testid="station-numbers-list">
+            <h2 className="font-heading text-base sm:text-lg font-bold text-zinc-900 mb-3 flex items-center gap-2">
+              <div className="w-1 h-5 bg-indigo-600"></div>
+              STATION NUMBERS
+            </h2>
+            <ol className="space-y-1 font-mono text-sm text-zinc-800">
+              {stationEntries.map((e) => (
+                <li key={e.id} data-testid={`station-entry-${e.num}`}>
+                  <span className="font-bold text-indigo-700">{e.num}.</span> {e.name} — Sta {e.station}
+                </li>
+              ))}
+            </ol>
           </div>
         )}
 
