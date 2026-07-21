@@ -37,7 +37,7 @@ export const ASE_OPTIONS = {
   terminalLocation: ["NEW", "EXISTING"],
   
   // Mounting Wall - directions (removed BACKBOARD)
-  mountingWall: ["NORTH", "SOUTH", "EAST", "WEST", "RACK"],
+  mountingWall: ["NORTH", "SOUTH", "EAST", "WEST", "RACK", "PED"],
   
   // NTE Mounting Wall - includes Desk Mount
   nteMountingWall: ["NORTH", "SOUTH", "EAST", "WEST", "RACK", "DESK MOUNT"],
