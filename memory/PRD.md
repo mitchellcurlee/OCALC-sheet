@@ -59,7 +59,17 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 - Job completed checkbox: Job.completed field (backend), "Mark Complete" checkbox on job cards -> green folder/border/label + green map pin (#16a34a) on dashboard; persists via PUT /jobs/{id}. Verified end-to-end after fixing missing handleToggleComplete.
 - RECURRING TOOL ANOMALY: three times this session a successful search_replace edit silently disappeared from disk (eraser-hint panel, UG drag URL, handleToggleComplete). ALWAYS grep the file immediately after editing AND after a few seconds to confirm persistence.
 
+## 2026-06 Session Updates (part 5, tested iteration_23 100% backend+frontend)
+- Map top summary now includes underground footage AND attribute path measurements: "N pole(s) · N underground · X ft aerial + Y ft underground + Z ft risers + P ft path = T ft total" (JobMap.jsx pathFeet memo).
+- Underground attributes: new fields `fid`, `primary_fid`, `path_measurements` [{direction: In/Over/Up/Down, feet}] (models/underground.py + UndergroundForm.jsx).
+  - FID box + Primary FID toggle shown for: Handhole, FBT, NTE, FBT/NTE, Aerial Splice, Loop, PFP, Manhole, Brooks Enclosure, Flowerpot (FID_TYPES const). Toggle warns if another attribute already has Primary FID on. Default OFF.
+  - Path Measurements: repeatable direction+ft rows with live "Up 25ft, In 15ft — 40 ft total" summary; feet added to map grand total and appended into ASE path_of_approach as "Label: Up 25ft, In 15ft" (ASEForm.jsx, includes-check prevents duplicates).
+- ASE checklist: Nearest fiber FID auto-fills from the Primary FID attribute (first in job order); warning toast if multiple primaries; success toast one-shot via fidSetRef.
+- EF Requirements ↔ "What Site Requirements are already provided?": toggling YES appends the item's shortName (semicolon-separated, no qty per user choice), NO removes it, manual text preserved (handleEfToggle in ASEChecklistTab.jsx).
+- Map fixes: removed stray orange arrow polyline in EditableRoute that pointed to empty space (every measurement connector now ends at a text-box pill). "Move Items" mode now drags ALL smart text boxes: aerial measurement pills (labelsDraggable prop), underground measurement pills, station labels, note/measurement annotations.
+
 ## Backlog
 - P1: User verification of new gallery flow on production (needs redeploy).
+- P2: Replace native <input type='date'> for ASE "Date of site visit" with shadcn date picker (tester UX note).
 - P2: Refactor PhotoMarkupEditor.jsx into /components/markup/* stubs (or delete stubs).
 - P2: Bulk import from Excel.

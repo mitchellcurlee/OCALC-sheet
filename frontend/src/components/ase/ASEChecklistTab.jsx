@@ -39,6 +39,7 @@ const ASEChecklistTab = ({ formData, handleChange, poles = [], underground = [] 
 
   // Auto-populate Nearest fiber FID from the attribute with Primary FID toggled on
   const fidWarnedRef = useRef(false);
+  const fidSetRef = useRef(false);
   useEffect(() => {
     const primaries = underground
       .filter((u) => u.primary_fid && u.fid)
@@ -50,7 +51,10 @@ const ASEChecklistTab = ({ formData, handleChange, poles = [], underground = [] 
     }
     if (!formData.nearest_fiber_fid) {
       handleChange("nearest_fiber_fid", primaries[0].fid);
-      toast.success(`Nearest fiber FID set from ${primaries[0].type}${primaries[0].label ? ` ${primaries[0].label}` : ""} (Primary FID)`);
+      if (!fidSetRef.current) {
+        fidSetRef.current = true;
+        toast.success(`Nearest fiber FID set from ${primaries[0].type}${primaries[0].label ? ` ${primaries[0].label}` : ""} (Primary FID)`);
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [underground]);
