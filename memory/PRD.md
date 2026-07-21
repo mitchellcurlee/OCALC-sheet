@@ -89,6 +89,8 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 
 - EF Requirements rework (2026-06, screenshot verified): YES/NO no longer auto-populates "What Site Requirements are already provided?". Each of the 11 EF rows now has a separate "Provided" Switch (data-testid=ef-provided-{key}, formData key {key}_provided) — on adds shortName to the box, off removes it, manual text preserved (handleEfProvidedToggle in ASEChecklistTab.jsx; defaults in ASEFormConstants.js).
 
+- BUG FIX (verified by bug_testing_agent, iteration_26 100%): SOC Start/End toggles reset after saving an EDIT — root cause: UndergroundUpdate model was missing soc_start/soc_end (an earlier edit silently didn't persist — anomaly struck AGAIN), so PUT dropped them via exclude_unset. Re-added to UndergroundUpdate in models/underground.py. PoleUpdate pole_line_start/end confirmed present. LESSON: always grep-verify model edits after search_replace in this repo.
+
 ## Backlog
 - P1: User verification of new gallery flow on production (needs redeploy).
 - P2: Replace native <input type='date'> for ASE "Date of site visit" with shadcn date picker (tester UX note).
