@@ -58,7 +58,7 @@ export const SpanDistance = ({ value, onChange, label = "Distance (ft)", testId 
           <SelectContent className="bg-zinc-50 border-zinc-300 max-h-60">
             <SelectItem value="__none__" className="text-zinc-500">—</SelectItem>
             {REMAINDER_OPTIONS.map((r) => (
-              <SelectItem key={r} value={String(r)}>{r}</SelectItem>
+              <SelectItem key={r} value={String(r)}>{String(r).padStart(2, "0")}</SelectItem>
             ))}
           </SelectContent>
         </Select>
