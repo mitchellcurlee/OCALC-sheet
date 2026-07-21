@@ -1030,8 +1030,9 @@ const JobMap = () => {
         (fromItem.pos[1] + toItem.pos[1]) / 2
       ];
       
-      // Determine segment type and styling
-      const isAerial = fromItem.type === "pole" && toItem.type === "pole";
+      // Determine segment type and styling (Loop is an aerial attribute)
+      const aerialItem = (it) => it.type === "pole" || it.ugType === "Loop";
+      const isAerial = aerialItem(fromItem) && aerialItem(toItem);
       const hasUnderground = fromItem.type === "underground" || toItem.type === "underground";
       
       // Check if either item is MPOE or after MPOE
@@ -1146,6 +1147,12 @@ const JobMap = () => {
         return `${undergroundAbbr(u.type)}${u.label ? ` ${u.label}` : ""}: ${u.path_measurements.map((m) => `${m.direction} ${m.feet}ft`).join(", ")} = ${fmtFeet(t)}`;
       }),
     [underground]
+  );
+
+  // Total aerial footage from ordered segments (includes Loop spans + waypoint routes)
+  const aerialFeetTotal = useMemo(
+    () => orderedSegments.reduce((sum, seg) => sum + (seg.segmentType === "aerial" ? segListDistance(seg) : 0), 0),
+    [orderedSegments, segListDistance]
   );
 
   // Compute all smart label positions with collision avoidance
@@ -1362,7 +1369,7 @@ const JobMap = () => {
                 {job?.name || "Job"} — Pole Map
               </h1>
               <p className="text-xs font-mono text-zinc-500" data-testid="map-measurements-summary">
-                {route.length} pole(s){ug.length ? ` · ${ug.length} underground` : ""} · {fmtFeet(totalFeet)} aerial{ugFeet > 0 ? ` + ${fmtFeet(ugFeet)} underground` : ""}{totalRiserFeet > 0 ? ` + ${fmtFeet(totalRiserFeet)} risers` : ""}{pathFeet > 0 ? ` + ${fmtFeet(pathFeet)} path` : ""} = {fmtFeet(grandTotalFeet + ugFeet + pathFeet)} total
+                {route.length} pole(s){ug.length ? ` · ${ug.length} underground` : ""} · {fmtFeet(aerialFeetTotal)} aerial{ugFeet > 0 ? ` + ${fmtFeet(ugFeet)} underground` : ""}{totalRiserFeet > 0 ? ` + ${fmtFeet(totalRiserFeet)} risers` : ""}{pathFeet > 0 ? ` + ${fmtFeet(pathFeet)} path` : ""} = {fmtFeet(aerialFeetTotal + totalRiserFeet + ugFeet + pathFeet)} total
                 {usingManualSpans && <span className="ml-2 text-indigo-600">(Manual)</span>}
               </p>
             </div>
@@ -1938,26 +1945,28 @@ const JobMap = () => {
                 const ugIsAfterMPOE = isAfterMPOE.underground[ugIdx] || false;
                 const isRed = isMPOE || ugIsAfterMPOE;
                 const stationLabel = showStationNumbers && stationNumbers[u.id] ? stationNumbers[u.id] : null;
+                // Loop is an aerial attribute — render it blue
+                const itemColor = u.type === "Loop" ? "#2563eb" : undergroundColorHex;
                 // Hide underground type label when station numbers are active
                 const ugDisplayLabel = showStationNumbers ? "" : undergroundAbbr(u.type);
                 return (
                 <React.Fragment key={u.id}>
                   <DraggableMarker 
                     position={u.pos} 
-                    icon={ugIcon(ugDisplayLabel, isRed, undergroundColorHex)}
+                    icon={ugIcon(ugDisplayLabel, isRed, itemColor)}
                     draggable={positionEditMode}
                     onDragEnd={(lat, lng) => handleUndergroundDragEnd(u.id, lat, lng)}
                     zIndexOffset={positionEditMode ? 1500 : 0}
                   >
                     <Popup>
                       <div className="min-w-[170px] font-mono" data-testid={`ug-popup-${u.id}`}>
-                        <div className="text-sm font-bold" style={{ color: isRed ? '#dc2626' : undergroundColorHex }}>{undergroundAbbr(u.type)} · {u.type}</div>
+                        <div className="text-sm font-bold" style={{ color: isRed ? '#dc2626' : itemColor }}>{undergroundAbbr(u.type)} · {u.type}</div>
                         {stationLabel && <div className="text-xs text-indigo-600 font-bold">Station: {stationLabel}</div>}
                         {u.label && <div className="text-xs text-zinc-600 mt-1">{u.label}</div>}
                         {u.notes && <div className="text-xs text-zinc-500 mt-1">{u.notes}</div>}
                         {!positionEditMode && (
                           <Link to={`/jobs/${jobId}/underground/edit/${u.id}`}>
-                            <Button size="sm" className="w-full h-8 mt-2 text-white" style={{ backgroundColor: isRed ? '#dc2626' : undergroundColorHex }} data-testid={`ug-edit-${u.id}`}>Edit</Button>
+                            <Button size="sm" className="w-full h-8 mt-2 text-white" style={{ backgroundColor: isRed ? '#dc2626' : itemColor }} data-testid={`ug-edit-${u.id}`}>Edit</Button>
                           </Link>
                         )}
                         {positionEditMode && (
@@ -2141,7 +2150,7 @@ const JobMap = () => {
                 <div className="flex items-center gap-2 mt-0.5"><span className="w-4 h-0.5 bg-amber-500 inline-block flex-shrink-0" style={{borderStyle: 'dashed'}}></span>Measurement (Amber)</div>
               )}
               {presentUg.map((t) => (
-                <div key={t} className="text-zinc-500 mt-0.5 ml-1"><span style={{ color: undergroundColorHex }} className="font-semibold">{undergroundAbbr(t)}</span> {t}</div>
+                <div key={t} className="text-zinc-500 mt-0.5 ml-1"><span style={{ color: t === "Loop" ? "#2563eb" : undergroundColorHex }} className="font-semibold">{undergroundAbbr(t)}</span> {t}{t === "Loop" ? " (Aerial)" : ""}</div>
               ))}
             </div>
           </div>
@@ -2194,7 +2203,7 @@ const JobMap = () => {
               </div>
             )}
             <div className="mt-3 pt-3 border-t border-zinc-300 font-mono text-sm font-bold text-zinc-900" data-testid="span-measurements-total">
-              Total: {fmtFeet(totalFeet)} aerial{ugFeet > 0 ? ` + ${fmtFeet(ugFeet)} underground` : ""}{totalRiserFeet > 0 ? ` + ${fmtFeet(totalRiserFeet)} risers` : ""}{pathFeet > 0 ? ` + ${fmtFeet(pathFeet)} path` : ""} = {fmtFeet(grandTotalFeet + ugFeet + pathFeet)}
+              Total: {fmtFeet(aerialFeetTotal)} aerial{ugFeet > 0 ? ` + ${fmtFeet(ugFeet)} underground` : ""}{totalRiserFeet > 0 ? ` + ${fmtFeet(totalRiserFeet)} risers` : ""}{pathFeet > 0 ? ` + ${fmtFeet(pathFeet)} path` : ""} = {fmtFeet(aerialFeetTotal + totalRiserFeet + ugFeet + pathFeet)}
             </div>
           </div>
         )}
