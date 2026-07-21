@@ -444,7 +444,7 @@ const JobDetail = () => {
                     className="cursor-pointer font-semibold text-red-700 border-b border-zinc-200"
                   >
                     <Zap className="w-4 h-4 mr-2" />
-                    Add Attribute
+                    Add Pole
                   </DropdownMenuItem>
                   <DropdownMenuItem 
                     onClick={() => navigate(`/jobs/${jobId}/add?terminal=true`)} 

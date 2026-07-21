@@ -67,6 +67,7 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 - ASE checklist: Nearest fiber FID auto-fills from the Primary FID attribute (first in job order); warning toast if multiple primaries; success toast one-shot via fidSetRef.
 - EF Requirements ↔ "What Site Requirements are already provided?": toggling YES appends the item's shortName (semicolon-separated, no qty per user choice), NO removes it, manual text preserved (handleEfToggle in ASEChecklistTab.jsx).
 - Map fixes: removed stray orange arrow polyline in EditableRoute that pointed to empty space (every measurement connector now ends at a text-box pill). "Move Items" mode now drags ALL smart text boxes: aerial measurement pills (labelsDraggable prop), underground measurement pills, station labels, note/measurement annotations.
+- Layout tweaks (2026-06, self-tested via screenshot): FID box moved to TOP of underground attribute form (above Type); Notes box moved to BOTTOM of the form (after Photos); JobDetail Add dropdown first item renamed "Add Attribute" -> "Add Pole".
 
 ## Backlog
 - P1: User verification of new gallery flow on production (needs redeploy).

@@ -263,6 +263,24 @@ const UndergroundForm = () => {
       <main className="max-w-3xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
         <form id="ug-form" onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
           <div className="industrial-card p-4 sm:p-5 space-y-4">
+            {/* FID + Primary FID toggle for fiber-bearing attribute types */}
+            {showFid && (
+              <div className="space-y-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
+                  <div className="space-y-2">
+                    <Label className="text-xs font-mono tracking-widest text-blue-700 uppercase">FID</Label>
+                    <Input value={formData.fid} onChange={(e) => setFormData((p) => ({ ...p, fid: e.target.value }))} placeholder="Enter FID" className="h-11 sm:h-10 bg-white border-blue-300 text-zinc-900" data-testid="ug-fid-input" />
+                  </div>
+                  <div className="flex items-center gap-3 pb-2">
+                    <Switch checked={formData.primary_fid} onCheckedChange={handlePrimaryFidToggle} data-testid="ug-primary-fid-toggle" />
+                    <Label className="text-xs font-mono tracking-widest text-blue-700 uppercase">Primary FID</Label>
+                  </div>
+                </div>
+                <p className="text-xs text-blue-600">
+                  Turn on Primary FID to auto-populate this FID into "Nearest fiber FID" on the ASE checklist.
+                </p>
+              </div>
+            )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Type *</Label>
@@ -335,11 +353,6 @@ const UndergroundForm = () => {
           </div>
 
           <div className="industrial-card p-4 sm:p-5 space-y-4">
-            <div className="space-y-2">
-              <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Notes</Label>
-              <Textarea value={formData.notes} onChange={(e) => setFormData((p) => ({ ...p, notes: e.target.value }))} placeholder="Notes" className="bg-white border-zinc-300 text-zinc-900" data-testid="ug-notes-input" />
-            </div>
-            
             {/* Handhole/Pole Tie-in Measurements - only show for Handhole type */}
             {(formData.type === "Handhole" || formData.type?.toLowerCase().includes("handhole")) && (
               <div className="space-y-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
@@ -361,25 +374,6 @@ const UndergroundForm = () => {
               </div>
             )}
             
-            {/* FID + Primary FID toggle for fiber-bearing attribute types */}
-            {showFid && (
-              <div className="space-y-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
-                  <div className="space-y-2">
-                    <Label className="text-xs font-mono tracking-widest text-blue-700 uppercase">FID</Label>
-                    <Input value={formData.fid} onChange={(e) => setFormData((p) => ({ ...p, fid: e.target.value }))} placeholder="Enter FID" className="h-11 sm:h-10 bg-white border-blue-300 text-zinc-900" data-testid="ug-fid-input" />
-                  </div>
-                  <div className="flex items-center gap-3 pb-2">
-                    <Switch checked={formData.primary_fid} onCheckedChange={handlePrimaryFidToggle} data-testid="ug-primary-fid-toggle" />
-                    <Label className="text-xs font-mono tracking-widest text-blue-700 uppercase">Primary FID</Label>
-                  </div>
-                </div>
-                <p className="text-xs text-blue-600">
-                  Turn on Primary FID to auto-populate this FID into "Nearest fiber FID" on the ASE checklist.
-                </p>
-              </div>
-            )}
-
             {/* Path of Approach Measurements */}
             <div className="space-y-3 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
               <div className="flex items-center justify-between">
@@ -432,6 +426,12 @@ const UndergroundForm = () => {
               <p className="text-xs text-zinc-500">
                 Upload photos and add annotations: lines, shapes, text, and measurement markers. Click on a photo to edit.
               </p>
+            </div>
+
+            {/* Notes - at the bottom */}
+            <div className="space-y-2">
+              <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Notes</Label>
+              <Textarea value={formData.notes} onChange={(e) => setFormData((p) => ({ ...p, notes: e.target.value }))} placeholder="Notes" className="bg-white border-zinc-300 text-zinc-900" data-testid="ug-notes-input" />
             </div>
           </div>
         </form>
