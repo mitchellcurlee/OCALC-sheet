@@ -36,6 +36,7 @@ import {
   ChevronDown,
   ChevronUp,
   RefreshCw,
+  Repeat,
   GripVertical,
   Check,
   X,
@@ -342,6 +343,17 @@ const JobDetail = () => {
       fetchJobAndPoles();
     } catch (error) {
       toast.error(`Failed to delete ${deleteType || "item"}`);
+    }
+  };
+
+  const handleChangeType = async (item, newType) => {
+    if (newType === item.type) return;
+    try {
+      await axios.put(`/underground/${item.id}`, { type: newType });
+      toast.success(`Changed ${item.type}${item.label ? ` ${item.label}` : ""} to ${newType}`);
+      fetchJobAndPoles();
+    } catch (e) {
+      toast.error("Failed to change attribute type");
     }
   };
 
@@ -806,6 +818,21 @@ const JobDetail = () => {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button size="sm" variant="ghost" className="text-zinc-600 hover:text-zinc-900" title="Change attribute type" data-testid={`change-type-${item.id}`}>
+                            <Repeat className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="bg-zinc-50 border-zinc-300 max-h-72 overflow-y-auto">
+                          <div className="px-2 py-1 text-[10px] font-mono uppercase text-zinc-500">Change type to</div>
+                          {UNDERGROUND_TYPES.filter((t) => t !== item.type).map((t) => (
+                            <DropdownMenuItem key={t} onClick={() => handleChangeType(item, t)} data-testid={`change-type-${item.id}-${t}`}>
+                              {t}
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                       <Link to={`/jobs/${jobId}/underground/edit/${item.id}`}>
                         <Button size="sm" variant="ghost" className="text-zinc-600 hover:text-zinc-900" data-testid={`edit-ug-${item.id}`}>
                           <Pencil className="w-4 h-4" />

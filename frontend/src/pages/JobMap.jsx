@@ -1085,18 +1085,36 @@ const JobMap = () => {
     return path.reduce((sum, p, k) => (k === 0 ? 0 : sum + hav(path[k - 1], p)), 0);
   }, [customRoutes]);
 
-  // Riser rows for the measurements list
-  const riserRows = useMemo(() =>
-    route
-      .filter((p) => (parseInt(p.risers) || 0) > 0 && (parseFloat(p.riser_height) || 0) > 0)
-      .map((p) => {
-        const c = parseInt(p.risers) || 0;
-        const h = parseFloat(p.riser_height) || 0;
-        const name = /^\d/.test(String(p.pole_number || "")) ? `P${p.pole_number}` : (p.pole_number || "Pole");
-        return `${name}: ${c} riser${c > 1 ? "s" : ""} × ${formatRiserHeight(h)} = ${fmtFeet(c * h)}`;
-      }),
-    [route]
-  );
+  // Combined numbered measurement entries (spans + inline risers, in route order)
+  const { measurementEntries, spanNums } = useMemo(() => {
+    const entries = [];
+    const nums = {};
+    const added = new Set();
+    const poleName = (label) => (/^\d/.test(String(label || "")) ? `P${label}` : (label || "Pole"));
+    const riserInfo = (item) => {
+      if (item.type !== "pole") return null;
+      const p = route.find((x) => x.id === item.id);
+      if (!p) return null;
+      const c = parseInt(p.risers) || 0;
+      const h = parseFloat(p.riser_height) || 0;
+      return c > 0 && h > 0 ? { c, h } : null;
+    };
+    const pushRiser = (item) => {
+      const r = riserInfo(item);
+      if (r && !added.has(item.id)) {
+        added.add(item.id);
+        entries.push({ kind: "riser", num: entries.length + 1, text: `${poleName(item.label)} Riser${r.c > 1 ? ` ×${r.c}` : ""} = ${fmtFeet(r.c * r.h)}` });
+      }
+    };
+    orderedSegments.forEach((seg, i) => {
+      pushRiser(seg.from);
+      const num = entries.length + 1;
+      nums[i] = num;
+      entries.push({ kind: "span", num, seg });
+    });
+    if (orderedSegments.length > 0) pushRiser(orderedSegments[orderedSegments.length - 1].to);
+    return { measurementEntries: entries, spanNums: nums };
+  }, [orderedSegments, route]);
 
   // Path measurement rows for the measurements list
   const pathRows = useMemo(() =>
@@ -1744,7 +1762,7 @@ const JobMap = () => {
                 // For aerial pole-to-pole segments, use EditableRoute with waypoints
                 if (seg.isAerial) {
                   const waypoints = customRoutes[segmentKey] || [];
-                  const defaultMeasurementText = `${i + 1}. ${Math.round(seg.distFt)} ft`;
+                  const defaultMeasurementText = `${spanNums[i] ?? i + 1}. ${Math.round(seg.distFt)} ft`;
                   return (
                     <React.Fragment key={segmentKey}>
                       <EditableRoute
@@ -1764,7 +1782,7 @@ const JobMap = () => {
                         customLabelText={customLabelTexts[`measurement-${segmentKey}`]}
                         onLabelDoubleClick={() => handleLabelDoubleClick(`measurement-${segmentKey}`, defaultMeasurementText)}
                         labelsDraggable={editMode || positionEditMode}
-                        labelPrefix={`${i + 1}. `}
+                        labelPrefix={`${spanNums[i] ?? i + 1}. `}
                       />
                       {/* Selection highlight */}
                       {isSelected && (
@@ -1838,13 +1856,13 @@ const JobMap = () => {
                           position={measurementLabelPos}
                           icon={L.divIcon({
                             className: "ug-measurement-label editable-label",
-                            html: `<div style="background:#fff;border:2px solid #ea580c;border-radius:6px;padding:6px 14px;font:700 13px/1.2 ui-monospace,monospace;color:#c2410c;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,.25);cursor:pointer;pointer-events:auto;" title="Double-click to edit">${getLabelText(`measurement-${segmentKey}`, `${i + 1}. ${fmtFeet(seg.distFt)}`)}</div>`,
+                            html: `<div style="background:#fff;border:2px solid #ea580c;border-radius:6px;padding:6px 14px;font:700 13px/1.2 ui-monospace,monospace;color:#c2410c;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,.25);cursor:pointer;pointer-events:auto;" title="Double-click to edit">${getLabelText(`measurement-${segmentKey}`, `${spanNums[i] ?? i + 1}. ${fmtFeet(seg.distFt)}`)}</div>`,
                             iconSize: [120, 36],
                             iconAnchor: [60, 18],
                           })}
                           draggable={editMode || positionEditMode}
                           onDragEnd={(lat, lng) => handleMeasurementDragEnd(segmentKey, seg.mid, lat, lng)}
-                          onDoubleClick={() => handleLabelDoubleClick(`measurement-${segmentKey}`, `${i + 1}. ${fmtFeet(seg.distFt)}`)}
+                          onDoubleClick={() => handleLabelDoubleClick(`measurement-${segmentKey}`, `${spanNums[i] ?? i + 1}. ${fmtFeet(seg.distFt)}`)}
                           zIndexOffset={900}
                         />
                       </>
@@ -2183,21 +2201,19 @@ const JobMap = () => {
               SPAN MEASUREMENTS
             </h2>
             <ol className="space-y-1 font-mono text-sm text-zinc-800">
-              {orderedSegments.map((seg, i) => (
-                <li key={`seg-li-${i}`} data-testid={`span-measurement-${i + 1}`}>
-                  <span className="font-bold text-orange-700">{i + 1}.</span> {segItemName(seg.from)} to {segItemName(seg.to)} = {fmtFeet(segListDistance(seg))}
-                  {!seg.isAerial && <span className="text-emerald-700 text-xs ml-1">(UG)</span>}
-                </li>
+              {measurementEntries.map((e) => (
+                e.kind === "span" ? (
+                  <li key={`entry-${e.num}`} data-testid={`span-measurement-${e.num}`}>
+                    <span className="font-bold text-orange-700">{e.num}.</span> {segItemName(e.seg.from)} to {segItemName(e.seg.to)} = {fmtFeet(segListDistance(e.seg))}
+                    {!e.seg.isAerial && <span className="text-emerald-700 text-xs ml-1">(UG)</span>}
+                  </li>
+                ) : (
+                  <li key={`entry-${e.num}`} data-testid={`riser-measurement-${e.num}`}>
+                    <span className="font-bold text-violet-700">{e.num}.</span> {e.text}
+                  </li>
+                )
               ))}
             </ol>
-            {riserRows.length > 0 && (
-              <div className="mt-3 pt-3 border-t border-zinc-200">
-                <div className="text-xs font-mono font-bold text-violet-700 uppercase mb-1">Risers</div>
-                <ul className="space-y-1 font-mono text-sm text-zinc-800" data-testid="riser-measurements-list">
-                  {riserRows.map((r, i) => (<li key={`riser-li-${i}`}>{r}</li>))}
-                </ul>
-              </div>
-            )}
             {pathRows.length > 0 && (
               <div className="mt-3 pt-3 border-t border-zinc-200">
                 <div className="text-xs font-mono font-bold text-emerald-700 uppercase mb-1">Path Measurements</div>
