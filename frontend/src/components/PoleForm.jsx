@@ -993,6 +993,8 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
                             <SelectItem value="Fiber new strand">Fiber new strand</SelectItem>
                             <SelectItem value="Fiber over lashed to copper">Fiber over lashed to copper</SelectItem>
                             <SelectItem value="Copper">Copper</SelectItem>
+                            <SelectItem value="Fiber Drop">Fiber Drop</SelectItem>
+                            <SelectItem value="Copper Drop">Copper Drop</SelectItem>
                             <SelectItem value="No Telco On Pole">No Telco On Pole</SelectItem>
                           </SelectContent>
                         </Select>

@@ -31,7 +31,7 @@ SPAN_OWNERS = ["Power", "ATT", "Comcast", "Lightwave", "Logix", "PS"]
 SPAN_DIRECTIONS = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
 ATTACHMENT_OWNERS = ["Power", "ATT", "Comcast", "Lightwave", "Logix", "PS", "Neutral", "Primary", "Secondary", "No Telco on Pole"]
 ATTACHMENT_LOCATIONS = ["Pole", "Midspan", "Building", "Driveway", "St. Crossing"]
-ATTACHMENT_TYPES = ["Fiber new strand", "Fiber over lashed to copper", "Copper", "No Telco On Pole"]
+ATTACHMENT_TYPES = ["Fiber new strand", "Fiber over lashed to copper", "Copper", "Fiber Drop", "Copper Drop", "No Telco On Pole"]
 RISER_OPTIONS = ["0", "1", "2", "3", "4", "5", "6"]
 UNDERGROUND_TYPES = [
     "Handhole", "Manhole", "Brooks Enclosure", "Flowerpot", "Hoffman Box", "Pedestal",
