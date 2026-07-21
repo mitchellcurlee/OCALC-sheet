@@ -38,6 +38,8 @@ class UndergroundUpdate(BaseModel):
     fid: Optional[str] = None
     primary_fid: Optional[bool] = None
     path_measurements: Optional[List[dict]] = None
+    soc_start: Optional[bool] = None
+    soc_end: Optional[bool] = None
 
 
 class Underground(UndergroundBase):

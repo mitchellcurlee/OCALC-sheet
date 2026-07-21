@@ -1,0 +1,40 @@
+{
+  "verdict": "fixed",
+  "user_reported_bug": "When SOC Start or End toggle is engaged, it doesnt not stay engaged after saving.",
+  "summary": "No relevant testing skill found. Focused verification passed for the underground SOC Start/SOC End persistence bug: UI edit/save/reopen keeps SOC Start and SOC End checked, backend PUT/GET persists true and false values, ASE checklist lat/long auto-populates from toggled UG item, create-flow SOC End persists, and related edit fields still persist.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/test_reports/test_soc_toggle_api.py",
+    "/app/test_reports/test_soc_toggle_ui.py",
+    "/app/test_reports/bug_verification_26.json",
+    "/app/test_reports/iteration_26.json"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Inspected /app/backend/models/underground.py: UndergroundUpdate now includes soc_start and soc_end, matching the root cause. /app/backend/routes/underground.py still uses model_dump(exclude_unset=True), so these fields now survive PUT updates.",
+    "Note: /app/frontend/src/pages/ASEForm.jsx has legacy type-based SOC Start/SOC End logic, but /app/frontend/src/components/ase/ASEChecklistTab.jsx correctly auto-populates from soc_start/soc_end toggles; the tested user-visible ASE checklist result worked."
+  ],
+  "updated_files": [
+    "/app/test_reports/test_soc_toggle_api.py",
+    "/app/test_reports/test_soc_toggle_ui.py",
+    "/app/test_reports/bug_verification_26.json",
+    "/app/test_reports/iteration_26.json"
+  ],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "100%"
+  },
+  "seed_data_creation": "Created temporary underground items on seed job e5dc0bae-96bb-4cef-8001-7baf4e41d80a for API and UI tests; all SOC-UI-* and SOC-API-* test items were deleted. ASE data was temporarily cleared for SOC fields and restored.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Mandatory skill lookup was performed with query 'SOC Start End toggle underground edit save'; no relevant testing skill found. Verified in preview at https://utility-pole-map.preview.emergentagent.com using Admin@mastec.com. Backend, frontend, MongoDB, and API health were running. Remaining SOC-UI-/SOC-API-labeled test items check returned none.",
+  "rca_of_the_issue": "Original RCA confirmed by testing: UndergroundUpdate previously omitted soc_start/soc_end, so PUT /api/underground/{id} dropped toggle changes under exclude_unset. Current code re-adds Optional[bool] fields; API PUT true returns true and subsequent GET returns true, and PUT false turns both off. UI reproduction steps tested: edit existing underground item, turn SOC Start on, save, reopen; then turn SOC End on, save, reopen. Both stayed checked."
+}
