@@ -1054,6 +1054,12 @@ const JobMap = () => {
     [orderedSegments]
   );
 
+  // Total path measurement footage (In/Over/Up/Down entries on attributes)
+  const pathFeet = useMemo(
+    () => underground.reduce((sum, u) => sum + (u.path_measurements || []).reduce((s, m) => s + (parseFloat(m.feet) || 0), 0), 0),
+    [underground]
+  );
+
   // Compute all smart label positions with collision avoidance
   const computedLabelPositions = useMemo(() => {
     const positions = {
@@ -1268,7 +1274,7 @@ const JobMap = () => {
                 {job?.name || "Job"} — Pole Map
               </h1>
               <p className="text-xs font-mono text-zinc-500" data-testid="map-measurements-summary">
-                {route.length} pole(s){ug.length ? ` · ${ug.length} underground` : ""} · {fmtFeet(totalFeet)} aerial{ugFeet > 0 ? ` + ${fmtFeet(ugFeet)} underground` : ""}{totalRiserFeet > 0 ? ` + ${fmtFeet(totalRiserFeet)} risers` : ""} = {fmtFeet(grandTotalFeet + ugFeet)} total
+                {route.length} pole(s){ug.length ? ` · ${ug.length} underground` : ""} · {fmtFeet(totalFeet)} aerial{ugFeet > 0 ? ` + ${fmtFeet(ugFeet)} underground` : ""}{totalRiserFeet > 0 ? ` + ${fmtFeet(totalRiserFeet)} risers` : ""}{pathFeet > 0 ? ` + ${fmtFeet(pathFeet)} path` : ""} = {fmtFeet(grandTotalFeet + ugFeet + pathFeet)} total
                 {usingManualSpans && <span className="ml-2 text-indigo-600">(Manual)</span>}
               </p>
             </div>
@@ -1373,7 +1379,7 @@ const JobMap = () => {
                     <DropdownMenuItem
                       onClick={() => {
                         setPositionEditMode(true);
-                        toast.info("Move Mode: drag any pole or underground marker to reposition it");
+                        toast.info("Move Mode: drag any marker or text box to reposition it");
                       }}
                       className="cursor-pointer"
                       data-testid="edit-all-btn"
@@ -1434,7 +1440,7 @@ const JobMap = () => {
                 {(editMode || positionEditMode || connectionEditMode) && !addingType && (
                   <span className="flex items-center px-3 py-1 bg-blue-100 text-blue-800 rounded text-sm font-medium">
                     {positionEditMode && !editMode && !connectionEditMode
-                      ? "Move Mode: Drag markers to reposition items"
+                      ? "Move Mode: Drag markers & text boxes to reposition"
                       : "Edit Mode: Drag markers, edit lines, reconnect items"}
                   </span>
                 )}
@@ -1538,7 +1544,7 @@ const JobMap = () => {
                 <div className="font-semibold">{positionEditMode && !editMode && !connectionEditMode ? "Move Mode Active" : "Edit Mode Active"}</div>
                 <div className="text-xs opacity-90 mt-0.5">
                   {positionEditMode && !editMode && !connectionEditMode
-                    ? "• Drag any pole or underground marker to move it • Position saves automatically"
+                    ? "• Drag any pole or underground marker to move it • Drag measurement & label text boxes to reposition them • Saves automatically"
                     : "• Edit route lines • Drag endpoints to reconnect items • Click line to change its color"}
                 </div>
                 {/* Segment selector dropdown for easier selection */}
@@ -1708,6 +1714,7 @@ const JobMap = () => {
                         onMeasurementDragEnd={handleMeasurementDragEnd}
                         customLabelText={customLabelTexts[`measurement-${segmentKey}`]}
                         onLabelDoubleClick={() => handleLabelDoubleClick(`measurement-${segmentKey}`, defaultMeasurementText)}
+                        labelsDraggable={editMode || positionEditMode}
                       />
                       {/* Selection highlight */}
                       {isSelected && (
@@ -1785,7 +1792,7 @@ const JobMap = () => {
                             iconSize: [120, 36],
                             iconAnchor: [60, 18],
                           })}
-                          draggable={editMode}
+                          draggable={editMode || positionEditMode}
                           onDragEnd={(lat, lng) => handleMeasurementDragEnd(segmentKey, seg.mid, lat, lng)}
                           onDoubleClick={() => handleLabelDoubleClick(`measurement-${segmentKey}`, fmtFeet(seg.distFt))}
                           zIndexOffset={900}
@@ -1946,7 +1953,7 @@ const JobMap = () => {
               {/* Map annotations (notes and measurements) */}
               <MapAnnotations
                 annotations={annotations}
-                editMode={editMode}
+                editMode={editMode || positionEditMode}
                 addingType={addingType}
                 onAnnotationAdd={handleAnnotationAdd}
                 onAnnotationUpdate={handleAnnotationUpdate}

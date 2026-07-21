@@ -1,0 +1,36 @@
+{
+  "summary": "Iteration 23 — Verified all 10 features from the review request across backend + frontend. ALL PASSED. Backend: FID/primary_fid/path_measurements persist correctly across POST/GET/PUT/list (6/6 pytest). Frontend: FID input + Primary FID toggle (default OFF) + Path Measurements rows all render on Handhole/FBT etc, live summary 'Up 25ft, In 15ft — 40 ft total' correct, warning toast when toggling Primary FID ON while another item already has it, Map top summary includes '+ 40.0 ft path' and grand total incremented by 40, ASE Nearest fiber FID auto-populates from primary_fid item + success toast, multi-primary warning toast shown, path_of_approach appends 'TEST-HH-A: Up 25ft, In 15ft', EF Requirements ↔ 'What Site Requirements are already provided?' semicolon-joined sync (add/remove/preserve custom text) works, Move Items mode activates with 'Move Mode Active' overlay and 11 draggable markers (poles+underground+measurement pills+labels). Visual regression: 5 orange measurement pills all connect properly, no stray dangling connectors. Backend regression: EOP (non-FID type) saves cleanly with no FID field.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "ASE Form — Employee Info", "issues": ["'DATE OF SITE VISIT' still uses the browser-default <input type='date'> picker instead of the shadcn Calendar/Popover date picker used elsewhere. Minor UX inconsistency."]},
+      {"screen": "ASE Form — auto-populate toasts on load", "issues": ["'Nearest fiber FID set from Handhole TEST-HH-A (Primary FID)' toast fires twice on initial load (React 18 StrictMode double-invocation / useEffect re-run). Not a functional bug but produces duplicate user-visible toasts. Consider guarding with a ref-based one-shot in ASEChecklistTab.jsx (mirror the existing fidWarnedRef pattern for the success toast too)."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_underground_fid_path.py",
+    "/app/test_reports/pytest/pytest_iter23.xml"
+  ],
+  "action_items": [
+    "OPTIONAL: Debounce/one-shot the 'Nearest fiber FID set from …' success toast in ASEChecklistTab.jsx to avoid the duplicate toast on initial mount (add a ref like fidSetRef alongside fidWarnedRef).",
+    "OPTIONAL: Replace the native <input type='date'> for 'DATE OF SITE VISIT' in ASEForm with the app's shadcn calendar/date picker for UI consistency."
+  ],
+  "critical_code_review_comments": [
+    "ASEChecklistTab.jsx L42-56: useEffect depends on [underground] with eslint-disable — success toast fires on every underground change, not once. The fidWarnedRef only gates the multi-primary warning, not the success toast. Cheap improvement: add a matching ref (e.g. fidSetRef) to fire the success toast at most once per session, or track last-set FID.",
+    "UndergroundForm.jsx: FID_TYPES const is duplicated (imported list) — fine for now, but if the underground type list grows, extract to a shared constants file to keep FID_TYPES in sync.",
+    "JobMap.jsx L1058 pathFeet reducer + L1277 summary render is correct and uses fmtFeet consistently; grand total math (grandTotalFeet + ugFeet + pathFeet) is right.",
+    "underground.py model: path_measurements is List[dict] rather than a typed submodel — losing schema validation on {direction, feet}. Consider PathMeasurement(BaseModel){direction:str, feet:float} for stricter validation (nice-to-have)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_underground_fid_path.py (new)"
+  ],
+  "success_rate": {"backend": "100% (6/6)", "frontend": "100% (10/10 scenarios verified)"},
+  "test_credentials": "Admin@mastec.com / Mastecbyers12345",
+  "seed_data_creation": "Temporarily created 2 underground items on job A050ABC (TEST-HH-A Handhole with primary_fid=true, TESTFID-001, path_measurements=[Up 25, In 15]; TEST-FBT-B FBT with primary_fid=true, TESTFID-002). Both DELETED at end of run. Verified via GET /api/jobs/{id}/underground — back to original 2 seed items (HH-1, HB-1). ASE data on seed job unchanged (Save button not clicked during EF Requirements test).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All requested features verified end-to-end. Data-testids in place: ug-fid-input, ug-primary-fid-toggle, add-path-measurement-btn, path-direction-select-{i}, path-feet-input-{i}, path-measurements-summary, remove-path-measurement-{i}, map-measurements-summary, edit-map-dropdown-btn, edit-all-btn. Path measurements totaling 40 ft on TEST-HH-A produced summary '2 pole(s) · 4 underground · 358 ft aerial + 1,284 ft underground + 36.0 ft risers + 40.0 ft path = 1,718 ft total'. Move Mode gives 11 leaflet-marker-draggable elements (poles + underground + measurement pills + labels).",
+  "rca_of_the_issue": "No functional bugs found. Two minor UX observations (duplicate success toast on ASE mount, native date input) — non-blocking, documented in design_issues and action_items."
+}

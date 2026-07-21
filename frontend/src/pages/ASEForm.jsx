@@ -382,6 +382,20 @@ const ASEForm = () => {
           }
         }
         
+        // Append attribute path measurements (In/Over/Up/Down + ft) into path of approach
+        {
+          const pmTexts = ugData
+            .filter((i) => (i.path_measurements || []).length > 0)
+            .map((i) => `${i.label || i.type}: ${i.path_measurements.map((m) => `${m.direction} ${m.feet}ft`).join(', ')}`);
+          pmTexts.forEach((t) => {
+            if (!updated.path_of_approach) {
+              updated.path_of_approach = t;
+            } else if (!updated.path_of_approach.includes(t)) {
+              updated.path_of_approach += `, ${t}`;
+            }
+          });
+        }
+        
         // Auto-calculate SVCL Output fields
         // Multi-tenant based on business units
         if (updated.number_of_business_units) {

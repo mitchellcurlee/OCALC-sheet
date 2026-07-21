@@ -14,6 +14,9 @@ class UndergroundBase(BaseModel):
     photos: Optional[List[str]] = []
     sort_order: Optional[int] = None
     tie_in_measurements: Optional[str] = None  # For Handhole/Pole tie-in measurements
+    fid: Optional[str] = None
+    primary_fid: Optional[bool] = False
+    path_measurements: Optional[List[dict]] = []  # [{direction: In/Over/Up/Down, feet: float}]
 
 
 class UndergroundCreate(UndergroundBase):
@@ -30,6 +33,9 @@ class UndergroundUpdate(BaseModel):
     photos: Optional[List[str]] = None
     sort_order: Optional[int] = None
     tie_in_measurements: Optional[str] = None
+    fid: Optional[str] = None
+    primary_fid: Optional[bool] = None
+    path_measurements: Optional[List[dict]] = None
 
 
 class Underground(UndergroundBase):

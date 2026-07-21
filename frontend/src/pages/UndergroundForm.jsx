@@ -15,8 +15,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { PhotoMarkupEditor } from "@/components/PhotoMarkupEditor";
-import { ArrowLeft, Save, Loader2, MapPin, Search, Pencil } from "lucide-react";
+import { ArrowLeft, Save, Loader2, MapPin, Search, Pencil, Plus, Trash2 } from "lucide-react";
+
+// Types that get a FID box + Primary FID toggle
+const FID_TYPES = ["Handhole", "FBT", "NTE", "FBT/NTE", "Aerial Splice", "Loop", "PFP", "Manhole", "Brooks Enclosure", "Flowerpot"];
+const PATH_DIRECTIONS = ["In", "Over", "Up", "Down"];
 
 const MapClickHandler = ({ onSelect }) => {
   useMapEvents({ click: (e) => onSelect(e.latlng.lat, e.latlng.lng) });
@@ -56,6 +61,9 @@ const UndergroundForm = () => {
     notes: "",
     photos: [],
     tie_in_measurements: "", // For Handhole/Pole tie-in measurements
+    fid: "",
+    primary_fid: false,
+    path_measurements: [], // [{direction, feet}]
   });
 
   // Material type options based on underground type
@@ -93,6 +101,9 @@ const UndergroundForm = () => {
         notes: u.notes || "",
         photos: photos,
         tie_in_measurements: u.tie_in_measurements || "",
+        fid: u.fid || "",
+        primary_fid: !!u.primary_fid,
+        path_measurements: (u.path_measurements || []).map((m) => ({ direction: m.direction, feet: m.feet?.toString() || "" })),
       });
     } catch (e) {
       toast.error("Failed to load item");
@@ -163,6 +174,29 @@ const UndergroundForm = () => {
   const markerHandlers = useMemo(() => ({ dragend: (e) => { const { lat, lng } = e.target.getLatLng(); setLatLng(lat, lng); } }), []);
   const mapCenter = markerPosition || [29.7604, -95.3698];
 
+  const showFid = FID_TYPES.includes(formData.type);
+
+  const handlePrimaryFidToggle = async (checked) => {
+    setFormData((p) => ({ ...p, primary_fid: checked }));
+    if (checked) {
+      try {
+        const res = await axios.get(`/jobs/${jobId}/underground`);
+        const others = (res.data || []).filter((u) => u.primary_fid && u.id !== id);
+        if (others.length > 0) {
+          toast.warning(`Primary FID is already ON for: ${others.map((u) => `${u.type}${u.label ? ` ${u.label}` : ""}`).join(", ")}`);
+        }
+      } catch (e) { /* non-blocking check */ }
+    }
+  };
+
+  const addPathMeasurement = () => setFormData((p) => ({ ...p, path_measurements: [...p.path_measurements, { direction: "In", feet: "" }] }));
+  const updatePathMeasurement = (i, field, value) => setFormData((p) => {
+    const rows = [...p.path_measurements];
+    rows[i] = { ...rows[i], [field]: value };
+    return { ...p, path_measurements: rows };
+  });
+  const removePathMeasurement = (i) => setFormData((p) => ({ ...p, path_measurements: p.path_measurements.filter((_, idx) => idx !== i) }));
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.type) {
@@ -179,6 +213,11 @@ const UndergroundForm = () => {
         notes: formData.notes,
         photos: formData.photos,
         tie_in_measurements: formData.tie_in_measurements || null,
+        fid: formData.fid || null,
+        primary_fid: !!formData.primary_fid,
+        path_measurements: formData.path_measurements
+          .filter((m) => m.direction && m.feet !== "" && Number.isFinite(parseFloat(m.feet)))
+          .map((m) => ({ direction: m.direction, feet: parseFloat(m.feet) })),
         latitude: Number.isFinite(parseFloat(formData.latitude)) ? parseFloat(formData.latitude) : null,
         longitude: Number.isFinite(parseFloat(formData.longitude)) ? parseFloat(formData.longitude) : null,
       };
@@ -321,6 +360,63 @@ const UndergroundForm = () => {
                 </p>
               </div>
             )}
+            
+            {/* FID + Primary FID toggle for fiber-bearing attribute types */}
+            {showFid && (
+              <div className="space-y-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
+                  <div className="space-y-2">
+                    <Label className="text-xs font-mono tracking-widest text-blue-700 uppercase">FID</Label>
+                    <Input value={formData.fid} onChange={(e) => setFormData((p) => ({ ...p, fid: e.target.value }))} placeholder="Enter FID" className="h-11 sm:h-10 bg-white border-blue-300 text-zinc-900" data-testid="ug-fid-input" />
+                  </div>
+                  <div className="flex items-center gap-3 pb-2">
+                    <Switch checked={formData.primary_fid} onCheckedChange={handlePrimaryFidToggle} data-testid="ug-primary-fid-toggle" />
+                    <Label className="text-xs font-mono tracking-widest text-blue-700 uppercase">Primary FID</Label>
+                  </div>
+                </div>
+                <p className="text-xs text-blue-600">
+                  Turn on Primary FID to auto-populate this FID into "Nearest fiber FID" on the ASE checklist.
+                </p>
+              </div>
+            )}
+
+            {/* Path of Approach Measurements */}
+            <div className="space-y-3 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-mono tracking-widest text-emerald-700 uppercase">Path Measurements</Label>
+                <Button type="button" onClick={addPathMeasurement} size="sm" variant="outline" className="h-8 bg-white border-emerald-300 hover:bg-emerald-100 text-emerald-700" data-testid="add-path-measurement-btn">
+                  <Plus className="w-4 h-4 mr-1" /> Add
+                </Button>
+              </div>
+              {formData.path_measurements.length === 0 && (
+                <p className="text-xs text-emerald-600">Add direction + footage rows (e.g. Up 25ft, In 15ft). These are added to the map's overall measurements and the ASE path of approach.</p>
+              )}
+              {formData.path_measurements.map((m, i) => (
+                <div key={i} className="flex items-center gap-2" data-testid={`path-measurement-row-${i}`}>
+                  <Select value={m.direction} onValueChange={(v) => updatePathMeasurement(i, "direction", v)}>
+                    <SelectTrigger className="h-10 w-28 bg-white border-emerald-300 text-zinc-900" data-testid={`path-direction-select-${i}`}>
+                      <SelectValue placeholder="Direction" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-zinc-50 border-zinc-300">
+                      {PATH_DIRECTIONS.map((d) => (<SelectItem key={d} value={d}>{d}</SelectItem>))}
+                    </SelectContent>
+                  </Select>
+                  <div className="relative flex-1">
+                    <Input type="number" inputMode="decimal" min="0" step="any" value={m.feet} onChange={(e) => updatePathMeasurement(i, "feet", e.target.value)} placeholder="0" className="h-10 bg-white border-emerald-300 text-zinc-900 pr-8" data-testid={`path-feet-input-${i}`} />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-mono text-zinc-400">ft</span>
+                  </div>
+                  <Button type="button" onClick={() => removePathMeasurement(i)} size="icon" variant="ghost" className="h-10 w-10 text-red-500 hover:text-red-700 hover:bg-red-50" data-testid={`remove-path-measurement-${i}`}>
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              ))}
+              {formData.path_measurements.length > 0 && (
+                <p className="text-xs font-mono text-emerald-700" data-testid="path-measurements-summary">
+                  {formData.path_measurements.filter((m) => m.direction && m.feet).map((m) => `${m.direction} ${m.feet}ft`).join(", ")}
+                  {(() => { const t = formData.path_measurements.reduce((s, m) => s + (parseFloat(m.feet) || 0), 0); return t > 0 ? ` — ${t} ft total` : ""; })()}
+                </p>
+              )}
+            </div>
             
             {/* Photos with Markup Editor */}
             <div className="space-y-2">

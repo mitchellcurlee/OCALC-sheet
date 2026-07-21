@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { toast } from "sonner";
 import { Section, CollapsibleSection, StyledInput, StyledTextarea, DropdownSelect, YesNoSelect, FieldRow, isFilled } from "./ASEFormHelpers";
 import { ASE_OPTIONS } from "./ASEFormConstants";
@@ -36,6 +36,33 @@ const ASEChecklistTab = ({ formData, handleChange, poles = [], underground = [] 
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [attributeOptions]);
+
+  // Auto-populate Nearest fiber FID from the attribute with Primary FID toggled on
+  const fidWarnedRef = useRef(false);
+  useEffect(() => {
+    const primaries = underground
+      .filter((u) => u.primary_fid && u.fid)
+      .sort((a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999));
+    if (primaries.length === 0) return;
+    if (primaries.length > 1 && !fidWarnedRef.current) {
+      fidWarnedRef.current = true;
+      toast.warning(`Multiple attributes have Primary FID on: ${primaries.map((u) => `${u.type}${u.label ? ` ${u.label}` : ""}`).join(", ")}. Using ${primaries[0].type}${primaries[0].label ? ` ${primaries[0].label}` : ""} (first in job order).`);
+    }
+    if (!formData.nearest_fiber_fid) {
+      handleChange("nearest_fiber_fid", primaries[0].fid);
+      toast.success(`Nearest fiber FID set from ${primaries[0].type}${primaries[0].label ? ` ${primaries[0].label}` : ""} (Primary FID)`);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [underground]);
+
+  // EF Requirements → "What Site Requirements are already provided?" sync
+  const handleEfToggle = (item, v) => {
+    handleChange(item.key, v);
+    const current = formData.site_requirements_provided || "";
+    const parts = current.split(";").map((s) => s.trim()).filter(Boolean).filter((s) => s !== item.shortName);
+    if (v === "YES") parts.push(item.shortName);
+    handleChange("site_requirements_provided", parts.join("; "));
+  };
 
   // Fiber Pedestal -> FBT toggle
   const handlePedestalFbtToggle = (v) => {
@@ -338,21 +365,21 @@ const ASEChecklistTab = ({ formData, handleChange, poles = [], underground = [] 
             <span>QTTY</span>
           </div>
           {[
-            { label: "Do we need a buried PVC pipe?", key: "buried_pvc", qtyKey: "buried_pvc_length", qtyLabel: "Length" },
-            { label: "Do we need buried innerduct on customer property?", key: "buried_innerduct", qtyKey: "buried_innerduct_length", qtyLabel: "Length" },
-            { label: "Do we need EMT? (metallic bldg pipe)", key: "need_emt", qtyKey: "emt_length", qtyLabel: "Length" },
-            { label: "Do we need plastic building duct/pipe (Plenum)?", key: "need_plenum", qtyKey: "plenum_length", qtyLabel: "Length" },
-            { label: "Do we need a core drill?", key: "need_core_drill", qtyKey: "core_drill_qty", qtyLabel: "QTTY" },
-            { label: "Do we need an eye-bolt / weatherhead?", key: "need_eyebolt", qtyKey: null },
-            { label: "Do we need a Pullbox?", key: "need_pullbox", qtyKey: "pullbox_qty", qtyLabel: "QTTY" },
-            { label: "Do we need a Hoffman box?", key: "need_hoffman_box", qtyKey: "hoffman_box_qty", qtyLabel: "QTTY" },
-            { label: "Do we need a backboard?", key: "need_backboard", qtyKey: "backboard_qty", qtyLabel: "QTTY" },
-            { label: "Do we need an outlet?", key: "need_outlet", qtyKey: null },
-            { label: "Do we need a groundbar?", key: "need_groundbar", qtyKey: "groundbar_qty", qtyLabel: "QTTY" },
+            { label: "Do we need a buried PVC pipe?", key: "buried_pvc", qtyKey: "buried_pvc_length", qtyLabel: "Length", shortName: "Buried PVC pipe" },
+            { label: "Do we need buried innerduct on customer property?", key: "buried_innerduct", qtyKey: "buried_innerduct_length", qtyLabel: "Length", shortName: "Buried innerduct" },
+            { label: "Do we need EMT? (metallic bldg pipe)", key: "need_emt", qtyKey: "emt_length", qtyLabel: "Length", shortName: "EMT" },
+            { label: "Do we need plastic building duct/pipe (Plenum)?", key: "need_plenum", qtyKey: "plenum_length", qtyLabel: "Length", shortName: "Plenum duct/pipe" },
+            { label: "Do we need a core drill?", key: "need_core_drill", qtyKey: "core_drill_qty", qtyLabel: "QTTY", shortName: "Core drill" },
+            { label: "Do we need an eye-bolt / weatherhead?", key: "need_eyebolt", qtyKey: null, shortName: "Eye-bolt / weatherhead" },
+            { label: "Do we need a Pullbox?", key: "need_pullbox", qtyKey: "pullbox_qty", qtyLabel: "QTTY", shortName: "Pullbox" },
+            { label: "Do we need a Hoffman box?", key: "need_hoffman_box", qtyKey: "hoffman_box_qty", qtyLabel: "QTTY", shortName: "Hoffman box" },
+            { label: "Do we need a backboard?", key: "need_backboard", qtyKey: "backboard_qty", qtyLabel: "QTTY", shortName: "Backboard" },
+            { label: "Do we need an outlet?", key: "need_outlet", qtyKey: null, shortName: "Outlet" },
+            { label: "Do we need a groundbar?", key: "need_groundbar", qtyKey: "groundbar_qty", qtyLabel: "QTTY", shortName: "Groundbar" },
           ].map((item) => (
             <div key={item.key} className="grid grid-cols-3 gap-2 items-center py-2 border-b border-zinc-100">
               <span className="text-xs font-mono text-zinc-700">{item.label}</span>
-              <YesNoSelect value={formData[item.key]} onChange={(v) => handleChange(item.key, v)} filled={isFilled(formData[item.key])} />
+              <YesNoSelect value={formData[item.key]} onChange={(v) => handleEfToggle(item, v)} filled={isFilled(formData[item.key])} />
               {item.qtyKey ? (
                 <StyledInput 
                   value={formData[item.qtyKey] || ""} 

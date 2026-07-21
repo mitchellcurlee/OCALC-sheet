@@ -86,7 +86,8 @@ export const EditableRoute = ({
   measurementLabelPos = null,
   onMeasurementDragEnd = null,
   customLabelText = null,
-  onLabelDoubleClick = null
+  onLabelDoubleClick = null,
+  labelsDraggable = null
 }) => {
   const [localWaypoints, setLocalWaypoints] = useState(waypoints);
   const [isDragging, setIsDragging] = useState(false);
@@ -208,17 +209,7 @@ export const EditableRoute = ({
       {/* Distance label - positioned offset from line */}
       {showDistance && totalDistance > 0 && (
         <>
-          {/* Orange dotted arrow line from label to the actual line */}
-          <Polyline
-            positions={[labelPosition, actualMidpoint]}
-            pathOptions={{
-              color: "#f97316",
-              weight: 2,
-              dashArray: "4, 3",
-              opacity: 0.9,
-            }}
-          />
-          {/* Orange dot at the end of the arrow (on the line) */}
+          {/* Orange dot on the line where the label connector attaches */}
           <CircleMarker
             center={actualMidpoint}
             radius={4}
@@ -248,7 +239,7 @@ export const EditableRoute = ({
               iconSize: [120, 36],
               iconAnchor: [60, 18],
             })}
-            draggable={editMode && onMeasurementDragEnd !== null}
+            draggable={(labelsDraggable ?? editMode) && onMeasurementDragEnd !== null}
             eventHandlers={{
               dragend: (e) => {
                 if (onMeasurementDragEnd) {
