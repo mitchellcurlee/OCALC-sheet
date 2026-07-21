@@ -632,16 +632,18 @@ async def job_photos_gallery(job_id: str, token: Optional[str] = Query(None), re
         
         cards = []
         for label, url in items:
+            dl_name = f"Pole_{_safe(pole_no)}_{_safe(label)}"
             cards.append(
-                '<figure>'
-                f'<a href="{url}" target="_blank" rel="noopener"><img src="{url}" alt="{label}" loading="lazy"/></a>'
+                f'<figure class="ph" data-name="{dl_name}" data-url="{url}">'
+                '<label class="sel"><input type="checkbox" class="pick"/></label>'
+                f'<a href="{url}" target="_blank" rel="noopener"><img draggable="true" src="{url}" alt="{label}" loading="lazy"/></a>'
                 f'<figcaption>{label}</figcaption>'
                 '</figure>'
             )
         
         sections_html.append(
             f'<section id="pole-{pole.get("id", "")}">'
-            f'<h2>Pole {pole_no} <span class="count">({len(items)} photos)</span></h2>'
+            f'<h2>Pole {pole_no} <span class="h2r"><label class="secall"><input type="checkbox" class="pickall"/> Select all</label><span class="count">({len(items)} photos)</span></span></h2>'
             f'<div class="grid">{"".join(cards)}</div>'
             f'</section>'
         )
@@ -656,16 +658,18 @@ async def job_photos_gallery(job_id: str, token: Optional[str] = Query(None), re
         
         cards = []
         for label, url in ug_items:
+            dl_name = f"{_safe(ug_title)}_{_safe(label)}"
             cards.append(
-                '<figure>'
-                f'<a href="{url}" target="_blank" rel="noopener"><img src="{url}" alt="{label}" loading="lazy"/></a>'
+                f'<figure class="ph" data-name="{dl_name}" data-url="{url}">'
+                '<label class="sel"><input type="checkbox" class="pick"/></label>'
+                f'<a href="{url}" target="_blank" rel="noopener"><img draggable="true" src="{url}" alt="{label}" loading="lazy"/></a>'
                 f'<figcaption>{label}</figcaption>'
                 '</figure>'
             )
         
         sections_html.append(
             f'<section id="ug-{ug.get("id", "")}">'
-            f'<h2>{ug_title} <span class="count">({len(ug_items)} photos)</span></h2>'
+            f'<h2>{ug_title} <span class="h2r"><label class="secall"><input type="checkbox" class="pickall"/> Select all</label><span class="count">({len(ug_items)} photos)</span></span></h2>'
             f'<div class="grid">{"".join(cards)}</div>'
             f'</section>'
         )
@@ -673,7 +677,52 @@ async def job_photos_gallery(job_id: str, token: Optional[str] = Query(None), re
     content = "".join(sections_html) or '<p class="empty">No photos found in this job.</p>'
     zip_token = generate_download_token("job_photos", job_id)
     zip_url = f"/api/jobs/{job_id}/export/photos-zip?token={zip_token}"
+    zip_sel_url = f"/api/jobs/{job_id}/export/photos-zip-selected?token={zip_token}"
     download_all_btn = f'<a class="dlall" href="{zip_url}" download>Download all {total_photos} photos (ZIP)</a>' if total_photos > 0 else ''
+    download_sel_btn = '<button id="dlsel" class="dlall selbtn" disabled>Download selected (0)</button>' if total_photos > 0 else ''
+    
+    script_js = """
+<script>
+(function(){
+  var ZIP_SEL_URL = "__ZIPSEL__";
+  var ZIP_NAME = "__ZIPNAME__";
+  var btn = document.getElementById('dlsel');
+  if (!btn) return;
+  function picked(){ return Array.prototype.slice.call(document.querySelectorAll('figure.ph')).filter(function(f){ return f.querySelector('.pick').checked; }); }
+  function refresh(){ var n = picked().length; btn.disabled = n === 0; btn.textContent = 'Download selected (' + n + ')'; }
+  document.addEventListener('change', function(e){
+    if (e.target.classList.contains('pickall')) {
+      var sec = e.target.closest('section');
+      sec.querySelectorAll('.pick').forEach(function(c){ c.checked = e.target.checked; });
+    }
+    if (e.target.classList.contains('pick') || e.target.classList.contains('pickall')) refresh();
+  });
+  btn.addEventListener('click', function(){
+    var photos = picked().map(function(f){ return { name: f.dataset.name, url: f.dataset.url }; });
+    btn.disabled = true; btn.textContent = 'Preparing ' + photos.length + ' photos...';
+    fetch(ZIP_SEL_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ photos: photos }) })
+      .then(function(r){ if (!r.ok) throw new Error('HTTP ' + r.status); return r.blob(); })
+      .then(function(blob){
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = ZIP_NAME;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(function(){ URL.revokeObjectURL(a.href); }, 5000);
+      })
+      .catch(function(){ alert('Download failed. Please try again.'); })
+      .finally(function(){ refresh(); });
+  });
+  // Drag a single photo straight into a folder (Chrome/Edge)
+  document.addEventListener('dragstart', function(e){
+    var fig = e.target.closest && e.target.closest('figure.ph');
+    if (fig && e.target.tagName === 'IMG' && fig.dataset.url && fig.dataset.url.indexOf('data:') !== 0) {
+      var abs = location.origin + fig.dataset.url;
+      e.dataTransfer.setData('DownloadURL', 'image/jpeg:' + fig.dataset.name + '.jpeg:' + abs);
+    }
+  });
+})();
+</script>"""
+    script_js = script_js.replace("__ZIPSEL__", zip_sel_url).replace("__ZIPNAME__", f"{_safe(job_name)}_selected_photos.zip")
     
     html = f"""<!doctype html><html lang="en"><head><meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -695,9 +744,19 @@ async def job_photos_gallery(job_id: str, token: Optional[str] = Query(None), re
   figure img{{width:100%;height:160px;object-fit:cover;display:block;cursor:zoom-in;}}
   figcaption{{padding:8px 10px;font-size:11px;font-family:monospace;color:#52525b;text-transform:uppercase;letter-spacing:.05em;text-align:center;}}
   .empty{{padding:40px;color:#71717a;text-align:center;}}
+  figure.ph{{position:relative;}}
+  .sel{{position:absolute;top:6px;left:6px;z-index:2;background:rgba(255,255,255,.92);border-radius:4px;padding:4px;display:flex;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.3);}}
+  .pick,.pickall{{width:16px;height:16px;cursor:pointer;accent-color:#dc2626;margin:0;}}
+  .selbtn{{background:#18181b;}}
+  .selbtn:hover{{background:#3f3f46;}}
+  .selbtn:disabled{{opacity:.45;cursor:not-allowed;}}
+  .h2r{{display:flex;align-items:center;gap:14px;font-size:12px;font-weight:normal;}}
+  .secall{{display:flex;align-items:center;gap:6px;color:#d4d4d8;cursor:pointer;user-select:none;}}
+  .hint{{font-size:11px;color:#71717a;flex-basis:100%;}}
 </style></head><body>
-<header><h1><span>{job_name}</span> &middot; All Photos ({total_photos})</h1>{download_all_btn}</header>
+<header><h1><span>{job_name}</span> &middot; All Photos ({total_photos})</h1><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">{download_sel_btn}{download_all_btn}</div><span class="hint">Tip: tick photos (or "Select all" per item) then Download selected — or drag any single photo straight into a folder on your computer.</span></header>
 <main>{content}</main>
+{script_js}
 </body></html>"""
     return HTMLResponse(content=html)
 
@@ -875,6 +934,62 @@ async def export_job_photos_zip(job_id: str, token: Optional[str] = Query(None),
             "Content-Type": "application/zip",
             "Content-Length": str(buffer.getbuffer().nbytes)
         }
+    )
+
+
+@router.post("/jobs/{job_id}/export/photos-zip-selected")
+async def export_selected_photos_zip(job_id: str, request: Request, token: Optional[str] = Query(None)):
+    """ZIP only the photos selected in the gallery. Body: {"photos": [{"name": "...", "url": "..."}]}"""
+    import zipfile
+    if not (token and verify_download_token("job_photos", job_id, token)):
+        raise HTTPException(status_code=401, detail="Invalid or expired download link.")
+    job = await _db.jobs.find_one({"id": job_id}, {"_id": 0})
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    body = await request.json()
+    photos = body.get("photos") or []
+    if not photos or len(photos) > 500:
+        raise HTTPException(status_code=400, detail="Select between 1 and 500 photos")
+
+    def safe_name(s, default="photo"):
+        return "".join(c for c in str(s) if c.isalnum() or c in (' ', '-', '_')).strip().replace(' ', '_') or default
+
+    entries = []
+    seen = set()
+    for p in photos:
+        url = str(p.get("url", ""))
+        if url.startswith("http"):
+            continue  # only internal /api/files/ or data: urls
+        name = safe_name(p.get("name", "photo"))
+        base, k = name, 2
+        while name in seen:
+            name = f"{base}_{k}"
+            k += 1
+        seen.add(name)
+        entries.append((f"{name}.jpeg", url))
+    if not entries:
+        raise HTTPException(status_code=400, detail="No valid photos selected")
+
+    results = await _fetch_photo_entries(entries)
+    buffer = io.BytesIO()
+    count = 0
+    with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_STORED) as zf:
+        for zp, data in results:
+            if data:
+                zf.writestr(zp, data)
+                count += 1
+    if count == 0:
+        raise HTTPException(status_code=404, detail="Selected photos could not be loaded")
+    buffer.seek(0)
+    fname = f"{safe_name(job.get('name', 'Job'))}_Selected_{count}_Photos.zip"
+    return StreamingResponse(
+        buffer,
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": f'attachment; filename="{fname}"',
+            "Content-Type": "application/zip",
+            "Content-Length": str(buffer.getbuffer().nbytes),
+        },
     )
 
 

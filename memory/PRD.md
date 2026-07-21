@@ -83,6 +83,8 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 
 - ZIP download SPEEDUP (2026-06, curl-verified): photos-zip endpoints (job + pole) now fetch all photos from object storage in PARALLEL (asyncio.to_thread + Semaphore(12), _fetch_photo_entries helper in routes/jobs.py) instead of sequential blocking requests — ~10x faster for photo-heavy jobs, no longer blocks the event loop. ZIP format unchanged (ZIP_STORED, direct download).
 
+- Gallery multi-download (2026-06, curl+screenshot verified): photo gallery page now has per-photo checkboxes + per-section "Select all" + "Download selected (N)" button (POST /api/jobs/{id}/export/photos-zip-selected, token-gated, internal URLs only, parallel fetch); single photos can be dragged straight into an OS folder via dataTransfer DownloadURL (Chrome/Edge, /api/files/ urls only — data: urls excluded). NOTE: browsers cannot drag MULTIPLE files out at once — multi = select+zip. Seed HH-1 photo is HEIC (renders broken in browser, downloads fine) — pre-existing.
+
 ## Backlog
 - P1: User verification of new gallery flow on production (needs redeploy).
 - P2: Replace native <input type='date'> for ASE "Date of site visit" with shadcn date picker (tester UX note).
