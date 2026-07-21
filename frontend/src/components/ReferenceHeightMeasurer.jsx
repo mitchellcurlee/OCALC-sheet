@@ -320,6 +320,9 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
         const scaleX = img.width / displayCanvas.width;
         const scaleY = img.height / displayCanvas.height;
 
+        // Annotation size scale — keeps text/markers readable on high-res photos
+        const s = Math.max(1, Math.max(img.width, img.height) / 1000);
+
         // Draw reference line
         if (markers.refBottom && markers.refTop) {
           const bx = markers.refBottom.x * scaleX;
@@ -328,8 +331,8 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
           const ty = markers.refTop.y * scaleY;
 
           ctx.strokeStyle = "#3b82f6";
-          ctx.lineWidth = 4;
-          ctx.setLineDash([10, 10]);
+          ctx.lineWidth = 4 * s;
+          ctx.setLineDash([10 * s, 10 * s]);
           ctx.beginPath();
           ctx.moveTo(bx, by);
           ctx.lineTo(tx, ty);
@@ -339,11 +342,11 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
           // Reference label
           ctx.fillStyle = "rgba(59, 130, 246, 0.9)";
           const midY = (by + ty) / 2;
-          ctx.fillRect(bx + 20, midY - 15, 80, 30);
+          ctx.fillRect(bx + 20 * s, midY - 15 * s, 90 * s, 30 * s);
           ctx.fillStyle = "#ffffff";
-          ctx.font = "bold 16px Arial";
+          ctx.font = `bold ${Math.round(16 * s)}px Arial`;
           ctx.textAlign = "center";
-          ctx.fillText(`${referenceHeight}ft ref`, bx + 60, midY + 5);
+          ctx.fillText(`${referenceHeight}ft ref`, bx + 65 * s, midY + 5 * s);
         }
 
         // Draw attachment markers with heights
@@ -360,38 +363,38 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
 
           // Draw horizontal line to marker
           ctx.strokeStyle = "#22c55e";
-          ctx.lineWidth = 3;
+          ctx.lineWidth = 3 * s;
           ctx.beginPath();
           ctx.moveTo(0, ay);
-          ctx.lineTo(ax - 15, ay);
+          ctx.lineTo(ax - 15 * s, ay);
           ctx.stroke();
 
-          // Marker circle (smaller)
+          // Marker circle
           ctx.fillStyle = "#22c55e";
           ctx.beginPath();
-          ctx.arc(ax, ay, 10, 0, Math.PI * 2);
+          ctx.arc(ax, ay, 10 * s, 0, Math.PI * 2);
           ctx.fill();
           ctx.fillStyle = "#ffffff";
-          ctx.font = "bold 12px Arial";
+          ctx.font = `bold ${Math.round(12 * s)}px Arial`;
           ctx.textAlign = "center";
-          ctx.fillText(i + 1, ax, ay + 4);
+          ctx.fillText(i + 1, ax, ay + 4 * s);
 
           // Height label (bigger) - shows feet'inches"
           ctx.fillStyle = "#22c55e";
-          ctx.fillRect(ax + 15, ay - 20, 100, 40);
+          ctx.fillRect(ax + 15 * s, ay - 20 * s, 110 * s, 40 * s);
           ctx.fillStyle = "#ffffff";
-          ctx.font = "bold 22px Arial";
+          ctx.font = `bold ${Math.round(24 * s)}px Arial`;
           ctx.textAlign = "center";
-          ctx.fillText(heightDisplay, ax + 65, ay + 8);
+          ctx.fillText(heightDisplay, ax + 70 * s, ay + 8 * s);
         });
 
         // Title bar
         ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
-        ctx.fillRect(0, 0, img.width, 40);
+        ctx.fillRect(0, 0, img.width, 40 * s);
         ctx.fillStyle = "#ffffff";
-        ctx.font = "bold 18px Arial";
+        ctx.font = `bold ${Math.round(18 * s)}px Arial`;
         ctx.textAlign = "center";
-        ctx.fillText(`Height Measurements (${markers.attachments.length} attachment${markers.attachments.length !== 1 ? 's' : ''})`, img.width / 2, 28);
+        ctx.fillText(`Height Measurements (${markers.attachments.length} attachment${markers.attachments.length !== 1 ? 's' : ''})`, img.width / 2, 28 * s);
 
         resolve(canvas.toDataURL("image/jpeg", 0.85));
       };

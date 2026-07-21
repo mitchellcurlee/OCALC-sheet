@@ -1,0 +1,46 @@
+{
+  "verdict": "fixed",
+  "user_reported_bug": "numbers are too small when opening the picture with the height markers after using the height measurement tool",
+  "summary": "No relevant testing skill found. Verified the HOA Measure Heights flow in the real UI with generated 3000x2000 and 800x600 photos. The high-resolution annotated upload retained 3000x2000 dimensions and contained a green height-label component measured at 330x120 px (expected scale=3), while the small-image regression retained baseline ~110x40 px labels; interactive marking and upload both worked.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "PoleForm/Add route",
+        "issue": "A React development overlay appeared once after applying a high-res measurement: 'ResizeObserver loop completed with undelivered notifications.' It did not block the measured image generation/upload and appears map/layout-related, not the reported label-size bug.",
+        "selector": "runtime error overlay",
+        "priority": "LOW"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/test_reports/height_measure_verification/test_height_marker_export_scaling.py"
+  ],
+  "action_items": [
+    "Optional: suppress or address the ResizeObserver loop runtime overlay on the add-pole page if it appears for users in preview/dev builds."
+  ],
+  "critical_code_review_comments": [
+    "ReferenceHeightMeasurer.createAnnotatedImage now computes s = max(1, max(img.width, img.height)/1000) and applies it to exported annotation fonts, label boxes, line widths, circles, dashes, and title bar. The interactive display canvas remains baseline-sized as intended."
+  ],
+  "updated_files": [
+    "/app/test_reports/highres_height_test_3000x2000.jpg",
+    "/app/test_reports/small_height_test_800x600.jpg",
+    "/app/test_reports/height_measure_verification/test_height_marker_export_scaling.py",
+    "/app/test_reports/bug_verification_24.json",
+    "/app/test_reports/iteration_24.json"
+  ],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "100% for the reported label-size bug"
+  },
+  "seed_data_creation": "Generated local test images only. The UI flow uploaded two temporary annotated images through /api/upload-photo but no pole was saved.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Latest focused report is iteration_24. High-res upload returned /api/files/poledata/uploads/3eea9b23-236a-41f2-92e7-2657de6322cc.jpg and analysis found a 330x120 green label component. Small upload returned /api/files/poledata/uploads/8781b18c-38ec-4d01-8fee-871587db0785.jpg and analysis found a 110x39 green label component.",
+  "rca_of_the_issue": "The prior exported canvas used fixed pixel annotation sizes, so labels became visually tiny on high-resolution photos. The fix scales exported annotation dimensions by image size while preserving baseline sizing for images <=1000px."
+}
