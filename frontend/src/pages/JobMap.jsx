@@ -109,6 +109,9 @@ const arrowIcon = (deg) =>
   });
 
 // Aerial footage pill with ORANGE dotted arrow pointing to segment (closer to span)
+// Attribute types treated as AERIAL (blue) on the map
+const AERIAL_ATTR_TYPES = new Set(["Loop", "Aerial Splice"]);
+
 const numberBadgeIcon = (num, color = "#ea580c", anchor = [13, 13]) =>
   L.divIcon({
     className: "measurement-number-badge",
@@ -1030,8 +1033,8 @@ const JobMap = () => {
         (fromItem.pos[1] + toItem.pos[1]) / 2
       ];
       
-      // Determine segment type and styling (Loop is an aerial attribute)
-      const aerialItem = (it) => it.type === "pole" || it.ugType === "Loop";
+      // Determine segment type and styling (Loop / Aerial Splice are aerial attributes)
+      const aerialItem = (it) => it.type === "pole" || AERIAL_ATTR_TYPES.has(it.ugType);
       const isAerial = aerialItem(fromItem) && aerialItem(toItem);
       const hasUnderground = fromItem.type === "underground" || toItem.type === "underground";
       
@@ -1945,8 +1948,8 @@ const JobMap = () => {
                 const ugIsAfterMPOE = isAfterMPOE.underground[ugIdx] || false;
                 const isRed = isMPOE || ugIsAfterMPOE;
                 const stationLabel = showStationNumbers && stationNumbers[u.id] ? stationNumbers[u.id] : null;
-                // Loop is an aerial attribute — render it blue
-                const itemColor = u.type === "Loop" ? "#2563eb" : undergroundColorHex;
+                // Loop / Aerial Splice are aerial attributes — render them blue
+                const itemColor = AERIAL_ATTR_TYPES.has(u.type) ? "#2563eb" : undergroundColorHex;
                 // Hide underground type label when station numbers are active
                 const ugDisplayLabel = showStationNumbers ? "" : undergroundAbbr(u.type);
                 return (
@@ -2150,7 +2153,7 @@ const JobMap = () => {
                 <div className="flex items-center gap-2 mt-0.5"><span className="w-4 h-0.5 bg-amber-500 inline-block flex-shrink-0" style={{borderStyle: 'dashed'}}></span>Measurement (Amber)</div>
               )}
               {presentUg.map((t) => (
-                <div key={t} className="text-zinc-500 mt-0.5 ml-1"><span style={{ color: t === "Loop" ? "#2563eb" : undergroundColorHex }} className="font-semibold">{undergroundAbbr(t)}</span> {t}{t === "Loop" ? " (Aerial)" : ""}</div>
+                <div key={t} className="text-zinc-500 mt-0.5 ml-1"><span style={{ color: AERIAL_ATTR_TYPES.has(t) ? "#2563eb" : undergroundColorHex }} className="font-semibold">{undergroundAbbr(t)}</span> {t}{AERIAL_ATTR_TYPES.has(t) ? " (Aerial)" : ""}</div>
               ))}
             </div>
           </div>
