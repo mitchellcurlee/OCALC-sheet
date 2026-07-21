@@ -7,6 +7,7 @@ import hashlib
 import hmac
 import os
 import json
+import asyncio
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Border, Side
 
@@ -701,6 +702,32 @@ async def job_photos_gallery(job_id: str, token: Optional[str] = Query(None), re
     return HTMLResponse(content=html)
 
 
+async def _fetch_photo_entries(entries, concurrency=12):
+    """Fetch (zip_path, photo_url) entries in PARALLEL (non-blocking). Returns list of (zip_path, bytes|None) in order."""
+    import base64
+    from services.storage import get_object
+
+    sem = asyncio.Semaphore(concurrency)
+
+    async def fetch_one(zip_path, photo_url):
+        async with sem:
+            try:
+                if photo_url.startswith("data:"):
+                    _, b64_data = photo_url.split(",", 1)
+                    return zip_path, base64.b64decode(b64_data)
+                if photo_url.startswith("/api/files/"):
+                    data, _ = await asyncio.to_thread(get_object, photo_url.replace("/api/files/", ""))
+                    return zip_path, data
+                if not photo_url.startswith("http"):
+                    data, _ = await asyncio.to_thread(get_object, photo_url)
+                    return zip_path, data
+            except Exception:
+                pass
+            return zip_path, None
+
+    return await asyncio.gather(*[fetch_one(p, u) for p, u in entries])
+
+
 @router.get("/jobs/{job_id}/export/photos-zip")
 async def export_job_photos_zip(job_id: str, token: Optional[str] = Query(None), auth_token: Optional[str] = Query(None), request: Request = None):
     """Export all photos from a job as a ZIP file, organized by pole/underground with descriptive labels.
@@ -792,83 +819,46 @@ async def export_job_photos_zip(job_id: str, token: Optional[str] = Query(None),
     buffer = io.BytesIO()
     photo_count = 0
     
+    # Collect all (zip_path, photo_url) entries first, then fetch in parallel
+    entries = []
+    
+    # Pole photo entries
+    for idx, pole in enumerate(poles, 1):
+        pole_number = pole.get("pole_number") or f"Pole_{idx}"
+        station_number = pole.get("station_number") or ""
+        
+        if station_number:
+            folder_name = f"Pole_{safe_name(pole_number)}_{safe_name(station_number)}"
+        else:
+            folder_name = f"Pole_{safe_name(pole_number)}"
+        
+        for label, photo_url in pole_photo_items(pole):
+            safe_label = safe_name(label, "Photo")
+            entries.append((f"{job_name}/Poles/{folder_name}/{safe_label}.jpeg", photo_url))
+    
+    # Underground photo entries
+    for idx, ug in enumerate(underground_items, 1):
+        ug_type = ug.get("type") or "Underground"
+        ug_label = ug.get("label") or ""
+        
+        if ug_label:
+            folder_name = f"{safe_name(ug_type)}_{safe_name(ug_label)}"
+        else:
+            folder_name = f"{safe_name(ug_type)}_{idx}"
+        
+        for label, photo_url in underground_photo_items(ug):
+            safe_label = safe_name(label, "Photo")
+            entries.append((f"{job_name}/Underground/{folder_name}/{safe_label}.jpeg", photo_url))
+    
+    # Fetch all photos in parallel (12 concurrent)
+    results = await _fetch_photo_entries(entries)
+    
     # Use ZIP_STORED (no compression) for better Windows compatibility
     with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_STORED) as zf:
-        # Add pole photos
-        for idx, pole in enumerate(poles, 1):
-            pole_number = pole.get("pole_number") or f"Pole_{idx}"
-            station_number = pole.get("station_number") or ""
-            
-            # Create descriptive folder name: Pole_1_STA100+50 or just Pole_1
-            if station_number:
-                folder_name = f"Pole_{safe_name(pole_number)}_{safe_name(station_number)}"
-            else:
-                folder_name = f"Pole_{safe_name(pole_number)}"
-            
-            photo_items = pole_photo_items(pole)
-            for label, photo_url in photo_items:
-                try:
-                    data = None
-                    
-                    # Handle base64 data URLs
-                    if photo_url.startswith("data:"):
-                        header, b64_data = photo_url.split(",", 1)
-                        data = base64.b64decode(b64_data)
-                    # Handle file storage URLs
-                    elif photo_url.startswith("/api/files/"):
-                        file_path = photo_url.replace("/api/files/", "")
-                        data, _ = get_object(file_path)
-                    elif not photo_url.startswith("http"):
-                        # Direct file path
-                        data, _ = get_object(photo_url)
-                    
-                    if data:
-                        # Create descriptive filename: JobName/Poles/Pole_1_STA100/OCALC_Left.jpeg
-                        safe_label = safe_name(label, "Photo")
-                        filename = f"{job_name}/Poles/{folder_name}/{safe_label}.jpeg"
-                        zf.writestr(filename, data)
-                        photo_count += 1
-                except Exception:
-                    # Skip failed photos
-                    continue
-        
-        # Add underground photos
-        for idx, ug in enumerate(underground_items, 1):
-            ug_type = ug.get("type") or "Underground"
-            ug_label = ug.get("label") or ""
-            
-            # Create descriptive folder name: Handhole_HH-1 or just Handhole_1
-            if ug_label:
-                folder_name = f"{safe_name(ug_type)}_{safe_name(ug_label)}"
-            else:
-                folder_name = f"{safe_name(ug_type)}_{idx}"
-            
-            photo_items = underground_photo_items(ug)
-            for label, photo_url in photo_items:
-                try:
-                    data = None
-                    
-                    # Handle base64 data URLs
-                    if photo_url.startswith("data:"):
-                        header, b64_data = photo_url.split(",", 1)
-                        data = base64.b64decode(b64_data)
-                    # Handle file storage URLs
-                    elif photo_url.startswith("/api/files/"):
-                        file_path = photo_url.replace("/api/files/", "")
-                        data, _ = get_object(file_path)
-                    elif not photo_url.startswith("http"):
-                        # Direct file path
-                        data, _ = get_object(photo_url)
-                    
-                    if data:
-                        # Create descriptive filename: JobName/Underground/Handhole_HH-1/Photo_1.jpeg
-                        safe_label = safe_name(label, "Photo")
-                        filename = f"{job_name}/Underground/{folder_name}/{safe_label}.jpeg"
-                        zf.writestr(filename, data)
-                        photo_count += 1
-                except Exception:
-                    # Skip failed photos
-                    continue
+        for zip_path, data in results:
+            if data:
+                zf.writestr(zip_path, data)
+                photo_count += 1
     
     # Check if any photos were added
     if photo_count == 0:
@@ -938,30 +928,16 @@ async def export_pole_photos_zip(pole_id: str, token: Optional[str] = Query(None
         raise HTTPException(status_code=404, detail="No photos found for this pole")
     
     buffer = io.BytesIO()
-    # Use ZIP_STORED (no compression) for better Windows compatibility
+    # Fetch all photos in parallel, then write ZIP (ZIP_STORED for Windows compatibility)
+    entries = []
+    for label, photo_url in photo_items:
+        safe_label = "".join(c for c in label if c.isalnum() or c in (' ', '-', '_')).strip()
+        entries.append((f"{safe_label}.jpeg", photo_url))
+    results = await _fetch_photo_entries(entries)
     with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_STORED) as zf:
-        for label, photo_url in photo_items:
-            try:
-                data = None
-                
-                # Handle base64 data URLs
-                if photo_url.startswith("data:"):
-                    header, b64_data = photo_url.split(",", 1)
-                    data = base64.b64decode(b64_data)
-                # Handle file storage URLs
-                elif photo_url.startswith("/api/files/"):
-                    file_path = photo_url.replace("/api/files/", "")
-                    data, _ = get_object(file_path)
-                elif not photo_url.startswith("http"):
-                    data, _ = get_object(photo_url)
-                
-                if data:
-                    # Always use .jpeg extension
-                    safe_label = "".join(c for c in label if c.isalnum() or c in (' ', '-', '_')).strip()
-                    filename = f"{safe_label}.jpeg"
-                    zf.writestr(filename, data)
-            except Exception:
-                continue
+        for zip_path, data in results:
+            if data:
+                zf.writestr(zip_path, data)
     
     buffer.seek(0)
     filename = f"Pole_{safe_pole_name}_photos.zip"

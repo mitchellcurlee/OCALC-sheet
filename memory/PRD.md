@@ -81,6 +81,8 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 - Station numbers same treatment (2026-06): when Sta #'s toggle on, station smart text boxes/connector lines removed; indigo numbered badges (red if after MPOE) at each item + "STATION NUMBERS" card below map (data-testid=station-numbers-list) listing "1. P1 — Sta 0+00" (stationEntries/stationNumById memos; order = sort_order, same as stationNumbers calc).
 - Loop AND Aerial Splice are now AERIAL attributes on the interactive map (2026-06, self-tested): AERIAL_ATTR_TYPES set in JobMap.jsx — segments where both endpoints are pole-or-aerial-attr classify as aerial (solid line, aerial footage); markers/popups/legend render BLUE #2563eb with "(Aerial)" tag. Header + list totals compute aerial from orderedSegments via aerialFeetTotal (segListDistance) instead of computeRoute totalFeet.
 
+- ZIP download SPEEDUP (2026-06, curl-verified): photos-zip endpoints (job + pole) now fetch all photos from object storage in PARALLEL (asyncio.to_thread + Semaphore(12), _fetch_photo_entries helper in routes/jobs.py) instead of sequential blocking requests — ~10x faster for photo-heavy jobs, no longer blocks the event loop. ZIP format unchanged (ZIP_STORED, direct download).
+
 ## Backlog
 - P1: User verification of new gallery flow on production (needs redeploy).
 - P2: Replace native <input type='date'> for ASE "Date of site visit" with shadcn date picker (tester UX note).
