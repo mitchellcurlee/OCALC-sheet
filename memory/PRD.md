@@ -68,6 +68,9 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 - EF Requirements ↔ "What Site Requirements are already provided?": toggling YES appends the item's shortName (semicolon-separated, no qty per user choice), NO removes it, manual text preserved (handleEfToggle in ASEChecklistTab.jsx).
 - Map fixes: removed stray orange arrow polyline in EditableRoute that pointed to empty space (every measurement connector now ends at a text-box pill). "Move Items" mode now drags ALL smart text boxes: aerial measurement pills (labelsDraggable prop), underground measurement pills, station labels, note/measurement annotations.
 - Layout tweaks (2026-06, self-tested via screenshot): FID box moved to TOP of underground attribute form (above Type); Notes box moved to BOTTOM of the form (after Photos); JobDetail Add dropdown first item renamed "Add Attribute" -> "Add Pole".
+- Span distance second dropdown zero-pads single digits (00-09) — display only (SpanDistance.jsx).
+- HOA Location dropdown: added "Pole" option (PoleForm.jsx + options.py ATTACHMENT_LOCATIONS).
+- BUG FIX (verified iteration_24): height measurement tool exported photo had tiny numbers on high-res photos — createAnnotatedImage in ReferenceHeightMeasurer.jsx now scales all annotation sizes by s = max(1, max(w,h)/1000). Verified: 3000px photo -> 330x120 label; 800px photo -> baseline 110x40.
 
 ## Backlog
 - P1: User verification of new gallery flow on production (needs redeploy).
