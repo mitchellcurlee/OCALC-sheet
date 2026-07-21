@@ -109,6 +109,14 @@ const arrowIcon = (deg) =>
   });
 
 // Aerial footage pill with ORANGE dotted arrow pointing to segment (closer to span)
+const numberBadgeIcon = (num, color = "#ea580c", anchor = [13, 13]) =>
+  L.divIcon({
+    className: "measurement-number-badge",
+    html: `<div style="background:${color};color:#fff;border:2px solid #fff;border-radius:9999px;min-width:26px;height:26px;display:flex;align-items:center;justify-content:center;font:700 13px/1 ui-monospace,monospace;box-shadow:0 1px 4px rgba(0,0,0,.5);padding:0 4px;">${num}</div>`,
+    iconSize: [26, 26],
+    iconAnchor: anchor,
+  });
+
 const labelIcon = (text, ox, oy, isAfterMPOE = false) => {
   // Use orange for the arrow/connector, keep pill colors based on MPOE status
   const arrowColor = "#f97316"; // Orange
@@ -1099,20 +1107,23 @@ const JobMap = () => {
       const h = parseFloat(p.riser_height) || 0;
       return c > 0 && h > 0 ? { c, h } : null;
     };
-    const pushRiser = (item) => {
+    const pushRiser = (item, pos) => {
       const r = riserInfo(item);
       if (r && !added.has(item.id)) {
         added.add(item.id);
-        entries.push({ kind: "riser", num: entries.length + 1, text: `${poleName(item.label)} Riser${r.c > 1 ? ` ×${r.c}` : ""} = ${fmtFeet(r.c * r.h)}` });
+        entries.push({ kind: "riser", num: entries.length + 1, pos, text: `${poleName(item.label)} Riser${r.c > 1 ? ` ×${r.c}` : ""} = ${fmtFeet(r.c * r.h)}` });
       }
     };
     orderedSegments.forEach((seg, i) => {
-      pushRiser(seg.from);
+      pushRiser(seg.from, seg.fromPos);
       const num = entries.length + 1;
       nums[i] = num;
       entries.push({ kind: "span", num, seg });
     });
-    if (orderedSegments.length > 0) pushRiser(orderedSegments[orderedSegments.length - 1].to);
+    if (orderedSegments.length > 0) {
+      const last = orderedSegments[orderedSegments.length - 1];
+      pushRiser(last.to, last.toPos);
+    }
     return { measurementEntries: entries, spanNums: nums };
   }, [orderedSegments, route]);
 
@@ -1762,7 +1773,14 @@ const JobMap = () => {
                 // For aerial pole-to-pole segments, use EditableRoute with waypoints
                 if (seg.isAerial) {
                   const waypoints = customRoutes[segmentKey] || [];
-                  const defaultMeasurementText = `${spanNums[i] ?? i + 1}. ${Math.round(seg.distFt)} ft`;
+                  let badgePos = seg.mid;
+                  if (waypoints.length > 0) {
+                    const path = [seg.fromPos, ...waypoints.map((w) => [w.lat, w.lng]), seg.toPos];
+                    const m = Math.floor(path.length / 2);
+                    badgePos = path.length % 2 === 0
+                      ? [(path[m - 1][0] + path[m][0]) / 2, (path[m - 1][1] + path[m][1]) / 2]
+                      : path[m];
+                  }
                   return (
                     <React.Fragment key={segmentKey}>
                       <EditableRoute
@@ -1774,16 +1792,14 @@ const JobMap = () => {
                         editMode={editMode}
                         color={segmentColor}
                         weight={isSelected ? 5 : 3}
-                        showDistance={!showStationNumbers}
+                        showDistance={false}
                         isAfterMPOE={seg.isRed}
                         onClick={() => handleSegmentClick(segmentKey)}
-                        measurementLabelPos={measurementLabelPos}
-                        onMeasurementDragEnd={handleMeasurementDragEnd}
-                        customLabelText={customLabelTexts[`measurement-${segmentKey}`]}
-                        onLabelDoubleClick={() => handleLabelDoubleClick(`measurement-${segmentKey}`, defaultMeasurementText)}
-                        labelsDraggable={editMode || positionEditMode}
-                        labelPrefix={`${spanNums[i] ?? i + 1}. `}
                       />
+                      {/* Numbered badge — measurement is in the list below the map */}
+                      {!showStationNumbers && (
+                        <Marker position={badgePos} icon={numberBadgeIcon(spanNums[i] ?? i + 1)} interactive={false} zIndexOffset={800} />
+                      )}
                       {/* Selection highlight */}
                       {isSelected && (
                         <Polyline
@@ -1838,38 +1854,18 @@ const JobMap = () => {
                         }
                       }}
                     />
-                    {/* Only show measurement labels when station numbers are OFF */}
+                    {/* Numbered badge — measurement is in the list below the map */}
                     {!showStationNumbers && (
-                      <>
-                        {/* Orange connecting line from measurement label to midpoint */}
-                        <Polyline
-                          positions={[seg.mid, measurementLabelPos]}
-                          pathOptions={{
-                            color: "#ea580c",
-                            weight: 2,
-                            opacity: 0.9,
-                            dashArray: "4,4"
-                          }}
-                        />
-                        {/* Smart measurement label - draggable in edit mode */}
-                        <DraggableMarker 
-                          position={measurementLabelPos}
-                          icon={L.divIcon({
-                            className: "ug-measurement-label editable-label",
-                            html: `<div style="background:#fff;border:2px solid #ea580c;border-radius:6px;padding:6px 14px;font:700 13px/1.2 ui-monospace,monospace;color:#c2410c;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,.25);cursor:pointer;pointer-events:auto;" title="Double-click to edit">${getLabelText(`measurement-${segmentKey}`, `${spanNums[i] ?? i + 1}. ${fmtFeet(seg.distFt)}`)}</div>`,
-                            iconSize: [120, 36],
-                            iconAnchor: [60, 18],
-                          })}
-                          draggable={editMode || positionEditMode}
-                          onDragEnd={(lat, lng) => handleMeasurementDragEnd(segmentKey, seg.mid, lat, lng)}
-                          onDoubleClick={() => handleLabelDoubleClick(`measurement-${segmentKey}`, `${spanNums[i] ?? i + 1}. ${fmtFeet(seg.distFt)}`)}
-                          zIndexOffset={900}
-                        />
-                      </>
+                      <Marker position={seg.mid} icon={numberBadgeIcon(spanNums[i] ?? i + 1)} interactive={false} zIndexOffset={800} />
                     )}
                   </React.Fragment>
                 );
               })}
+
+              {/* Riser number badges at their pole */}
+              {!showStationNumbers && measurementEntries.filter((e) => e.kind === "riser" && e.pos).map((e) => (
+                <Marker key={`riser-num-${e.num}`} position={e.pos} icon={numberBadgeIcon(e.num, "#7c3aed", [-6, 32])} interactive={false} zIndexOffset={800} />
+              ))}
               
               {poleDisplayInfo.map((p, i) => {
                 const poleLabel = markerLabel(p, i, false);
