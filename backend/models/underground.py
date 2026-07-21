@@ -17,6 +17,8 @@ class UndergroundBase(BaseModel):
     fid: Optional[str] = None
     primary_fid: Optional[bool] = False
     path_measurements: Optional[List[dict]] = []  # [{direction: In/Over/Up/Down, feet: float}]
+    soc_start: Optional[bool] = False
+    soc_end: Optional[bool] = False
 
 
 class UndergroundCreate(UndergroundBase):

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -94,6 +95,7 @@ const emptyFormData = () => ({
   span4_direction: "", span4_distance: "", span4_owner: "",
   latitude: "", longitude: "-", notes: "", row_information: "",
   hoa_markup_photos: [], // Photos for HOA markup/annotation
+  pole_line_start: false, pole_line_end: false,
 });
 const emptyDownGuy = () => ({ _key: rowKey(), owner: "", direction: "", size: "", type: "", condition: "", height: "", lead: "", photos: [] });
 const emptyKnuckle = () => ({ _key: rowKey(), size: "", total_eyes: "", direction: "", condition: "", photos: [] });
@@ -219,6 +221,8 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
       span4_direction: p.span4_direction || "", span4_distance: p.span4_distance?.toString() || "", span4_owner: p.span4_owner || "",
       latitude: p.latitude?.toString() || "", longitude: p.longitude?.toString() || "-", notes: p.notes || "", row_information: p.row_information || "",
       hoa_markup_photos: p.hoa_markup_photos || [],
+      pole_line_start: p.pole_line_start === true,
+      pole_line_end: p.pole_line_end === true,
     });
     setDownGuys(p.down_guys?.length > 0 ? p.down_guys.map(dg => ({ 
       _key: rowKey(), 
@@ -605,6 +609,19 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
             <Button type="submit" disabled={submitting} className={`h-11 sm:h-10 ${submitBtnClass} text-white min-w-36`} data-testid="save-pole-top-btn">
               {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Save className="w-4 h-4 mr-2" />{submitLabel}</>}
             </Button>
+          </div>
+
+          {/* Pole Line Start / End toggles — auto-populate ASE checklist */}
+          <div className="flex flex-wrap items-center gap-6 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <div className="flex items-center gap-3">
+              <Switch checked={formData.pole_line_start} onCheckedChange={(v) => setFormData((p) => ({ ...p, pole_line_start: v }))} data-testid="pole-line-start-toggle" />
+              <Label className="text-xs font-mono tracking-widest text-amber-700 uppercase">Pole Line Start</Label>
+            </div>
+            <div className="flex items-center gap-3">
+              <Switch checked={formData.pole_line_end} onCheckedChange={(v) => setFormData((p) => ({ ...p, pole_line_end: v }))} data-testid="pole-line-end-toggle" />
+              <Label className="text-xs font-mono tracking-widest text-amber-700 uppercase">Pole Line End</Label>
+            </div>
+            <p className="text-xs text-amber-600 basis-full">Auto-populates the POLE LINE START / END Lat/Long boxes on the ASE checklist with this pole's coordinates.</p>
           </div>
 
           {/* Basic Info */}

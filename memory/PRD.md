@@ -85,6 +85,8 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 
 - Gallery multi-download (2026-06, curl+screenshot verified): photo gallery page now has per-photo checkboxes + per-section "Select all" + "Download selected (N)" button (POST /api/jobs/{id}/export/photos-zip-selected, token-gated, internal URLs only, parallel fetch); single photos can be dragged straight into an OS folder via dataTransfer DownloadURL (Chrome/Edge, /api/files/ urls only — data: urls excluded). NOTE: browsers cannot drag MULTIPLE files out at once — multi = select+zip. Seed HH-1 photo is HEIC (renders broken in browser, downloads fine) — pre-existing.
 
+- SOC/Pole Line toggles (2026-06, curl+screenshot verified): underground form has SOC Start / SOC End switches (soc_start/soc_end fields) at top of first card; pole form has Pole Line Start / Pole Line End switches (pole_line_start/pole_line_end) at top of form. ASEChecklistTab useEffect auto-fills soc_start_lat_long, soc_end_lat_long, soc_pole_line_start, soc_pole_line_end (only when empty) with the toggled item's "lat, long".
+
 ## Backlog
 - P1: User verification of new gallery flow on production (needs redeploy).
 - P2: Replace native <input type='date'> for ASE "Date of site visit" with shadcn date picker (tester UX note).

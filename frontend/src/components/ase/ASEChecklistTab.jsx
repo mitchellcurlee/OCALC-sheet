@@ -59,6 +59,19 @@ const ASEChecklistTab = ({ formData, handleChange, poles = [], underground = [] 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [underground]);
 
+  // Auto-populate SOC Start/End and Pole Line Start/End Lat/Long from toggled attributes/poles
+  useEffect(() => {
+    const socStart = underground.find((u) => u.soc_start && u.latitude && u.longitude);
+    if (socStart && !formData.soc_start_lat_long) handleChange("soc_start_lat_long", `${socStart.latitude}, ${socStart.longitude}`);
+    const socEnd = underground.find((u) => u.soc_end && u.latitude && u.longitude);
+    if (socEnd && !formData.soc_end_lat_long) handleChange("soc_end_lat_long", `${socEnd.latitude}, ${socEnd.longitude}`);
+    const plStart = poles.find((p) => p.pole_line_start && p.latitude && p.longitude);
+    if (plStart && !formData.soc_pole_line_start) handleChange("soc_pole_line_start", `${plStart.latitude}, ${plStart.longitude}`);
+    const plEnd = poles.find((p) => p.pole_line_end && p.latitude && p.longitude);
+    if (plEnd && !formData.soc_pole_line_end) handleChange("soc_pole_line_end", `${plEnd.latitude}, ${plEnd.longitude}`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [poles, underground]);
+
   // EF Requirements → "What Site Requirements are already provided?" sync
   const handleEfToggle = (item, v) => {
     handleChange(item.key, v);

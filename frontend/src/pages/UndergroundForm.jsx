@@ -64,6 +64,8 @@ const UndergroundForm = () => {
     fid: "",
     primary_fid: false,
     path_measurements: [], // [{direction, feet}]
+    soc_start: false,
+    soc_end: false,
   });
 
   // Material type options based on underground type
@@ -104,6 +106,8 @@ const UndergroundForm = () => {
         fid: u.fid || "",
         primary_fid: !!u.primary_fid,
         path_measurements: (u.path_measurements || []).map((m) => ({ direction: m.direction, feet: m.feet?.toString() || "" })),
+        soc_start: !!u.soc_start,
+        soc_end: !!u.soc_end,
       });
     } catch (e) {
       toast.error("Failed to load item");
@@ -215,6 +219,8 @@ const UndergroundForm = () => {
         tie_in_measurements: formData.tie_in_measurements || null,
         fid: formData.fid || null,
         primary_fid: !!formData.primary_fid,
+        soc_start: !!formData.soc_start,
+        soc_end: !!formData.soc_end,
         path_measurements: formData.path_measurements
           .filter((m) => m.direction && m.feet !== "" && Number.isFinite(parseFloat(m.feet)))
           .map((m) => ({ direction: m.direction, feet: parseFloat(m.feet) })),
@@ -263,6 +269,18 @@ const UndergroundForm = () => {
       <main className="max-w-3xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
         <form id="ug-form" onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
           <div className="industrial-card p-4 sm:p-5 space-y-4">
+            {/* SOC Start / SOC End toggles — auto-populate ASE checklist */}
+            <div className="flex flex-wrap items-center gap-6 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+              <div className="flex items-center gap-3">
+                <Switch checked={formData.soc_start} onCheckedChange={(v) => setFormData((p) => ({ ...p, soc_start: v }))} data-testid="ug-soc-start-toggle" />
+                <Label className="text-xs font-mono tracking-widest text-amber-700 uppercase">SOC Start</Label>
+              </div>
+              <div className="flex items-center gap-3">
+                <Switch checked={formData.soc_end} onCheckedChange={(v) => setFormData((p) => ({ ...p, soc_end: v }))} data-testid="ug-soc-end-toggle" />
+                <Label className="text-xs font-mono tracking-widest text-amber-700 uppercase">SOC End</Label>
+              </div>
+              <p className="text-xs text-amber-600 basis-full">Auto-populates the SOC START / SOC END Lat/Long boxes on the ASE checklist with this item's coordinates.</p>
+            </div>
             {/* FID + Primary FID toggle for fiber-bearing attribute types */}
             {showFid && (
               <div className="space-y-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
