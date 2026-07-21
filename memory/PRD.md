@@ -87,6 +87,8 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 
 - SOC/Pole Line toggles (2026-06, curl+screenshot verified): underground form has SOC Start / SOC End switches (soc_start/soc_end fields) at top of first card; pole form has Pole Line Start / Pole Line End switches (pole_line_start/pole_line_end) at top of form. ASEChecklistTab useEffect auto-fills soc_start_lat_long, soc_end_lat_long, soc_pole_line_start, soc_pole_line_end (only when empty) with the toggled item's "lat, long".
 
+- EF Requirements rework (2026-06, screenshot verified): YES/NO no longer auto-populates "What Site Requirements are already provided?". Each of the 11 EF rows now has a separate "Provided" Switch (data-testid=ef-provided-{key}, formData key {key}_provided) — on adds shortName to the box, off removes it, manual text preserved (handleEfProvidedToggle in ASEChecklistTab.jsx; defaults in ASEFormConstants.js).
+
 ## Backlog
 - P1: User verification of new gallery flow on production (needs redeploy).
 - P2: Replace native <input type='date'> for ASE "Date of site visit" with shadcn date picker (tester UX note).

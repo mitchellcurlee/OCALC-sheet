@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import { toast } from "sonner";
 import { Section, CollapsibleSection, StyledInput, StyledTextarea, DropdownSelect, YesNoSelect, FieldRow, isFilled } from "./ASEFormHelpers";
+import { Switch } from "@/components/ui/switch";
 import { ASE_OPTIONS } from "./ASEFormConstants";
 import { PhotoMarkupEditor } from "@/components/PhotoMarkupEditor";
 import { ASEPhotoField } from "@/components/ASEPhotoField";
@@ -72,12 +73,12 @@ const ASEChecklistTab = ({ formData, handleChange, poles = [], underground = [] 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [poles, underground]);
 
-  // EF Requirements → "What Site Requirements are already provided?" sync
-  const handleEfToggle = (item, v) => {
-    handleChange(item.key, v);
+  // EF Requirements: "Provided" toggle → "What Site Requirements are already provided?" sync
+  const handleEfProvidedToggle = (item, checked) => {
+    handleChange(`${item.key}_provided`, checked);
     const current = formData.site_requirements_provided || "";
     const parts = current.split(";").map((s) => s.trim()).filter(Boolean).filter((s) => s !== item.shortName);
-    if (v === "YES") parts.push(item.shortName);
+    if (checked) parts.push(item.shortName);
     handleChange("site_requirements_provided", parts.join("; "));
   };
 
@@ -394,9 +395,9 @@ const ASEChecklistTab = ({ formData, handleChange, poles = [], underground = [] 
             { label: "Do we need an outlet?", key: "need_outlet", qtyKey: null, shortName: "Outlet" },
             { label: "Do we need a groundbar?", key: "need_groundbar", qtyKey: "groundbar_qty", qtyLabel: "QTTY", shortName: "Groundbar" },
           ].map((item) => (
-            <div key={item.key} className="grid grid-cols-3 gap-2 items-center py-2 border-b border-zinc-100">
+            <div key={item.key} className="grid grid-cols-4 gap-2 items-center py-2 border-b border-zinc-100">
               <span className="text-xs font-mono text-zinc-700">{item.label}</span>
-              <YesNoSelect value={formData[item.key]} onChange={(v) => handleEfToggle(item, v)} filled={isFilled(formData[item.key])} />
+              <YesNoSelect value={formData[item.key]} onChange={(v) => handleChange(item.key, v)} filled={isFilled(formData[item.key])} />
               {item.qtyKey ? (
                 <StyledInput 
                   value={formData[item.qtyKey] || ""} 
@@ -408,6 +409,14 @@ const ASEChecklistTab = ({ formData, handleChange, poles = [], underground = [] 
               ) : (
                 <span className="text-zinc-400 text-xs">-</span>
               )}
+              <label className="flex items-center gap-2 justify-end cursor-pointer" title="Add to 'What Site Requirements are already provided?'">
+                <Switch
+                  checked={formData[`${item.key}_provided`] === true}
+                  onCheckedChange={(v) => handleEfProvidedToggle(item, v)}
+                  data-testid={`ef-provided-${item.key}`}
+                />
+                <span className="text-[10px] font-mono uppercase text-zinc-500">Provided</span>
+              </label>
             </div>
           ))}
         </div>

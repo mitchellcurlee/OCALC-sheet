@@ -189,6 +189,17 @@ export const INITIAL_FORM_DATA = {
   need_outlet: "NO",
   need_groundbar: "NO",
   groundbar_qty: "",
+  buried_pvc_provided: false,
+  buried_innerduct_provided: false,
+  need_emt_provided: false,
+  need_plenum_provided: false,
+  need_core_drill_provided: false,
+  need_eyebolt_provided: false,
+  need_pullbox_provided: false,
+  need_hoffman_box_provided: false,
+  need_backboard_provided: false,
+  need_outlet_provided: false,
+  need_groundbar_provided: false,
   
   // ADDITIONAL INFO
   nearest_fiber_lat_long: "",
