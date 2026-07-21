@@ -1048,6 +1048,12 @@ const JobMap = () => {
     return segments;
   }, [route, ug]);
 
+  // Total underground footage (segments that touch an underground item, per combined order)
+  const ugFeet = useMemo(
+    () => orderedSegments.reduce((sum, s) => sum + (s.segmentType === "underground" ? s.distFt : 0), 0),
+    [orderedSegments]
+  );
+
   // Compute all smart label positions with collision avoidance
   const computedLabelPositions = useMemo(() => {
     const positions = {
@@ -1261,8 +1267,8 @@ const JobMap = () => {
               <h1 className="font-heading text-sm sm:text-lg font-bold tracking-tight uppercase text-zinc-900 leading-tight">
                 {job?.name || "Job"} — Pole Map
               </h1>
-              <p className="text-xs font-mono text-zinc-500">
-                {route.length} pole(s){ug.length ? ` · ${ug.length} underground` : ""} · {fmtFeet(totalFeet)} span{totalRiserFeet > 0 ? ` + ${fmtFeet(totalRiserFeet)} risers = ${fmtFeet(grandTotalFeet)} total` : " total"}
+              <p className="text-xs font-mono text-zinc-500" data-testid="map-measurements-summary">
+                {route.length} pole(s){ug.length ? ` · ${ug.length} underground` : ""} · {fmtFeet(totalFeet)} aerial{ugFeet > 0 ? ` + ${fmtFeet(ugFeet)} underground` : ""}{totalRiserFeet > 0 ? ` + ${fmtFeet(totalRiserFeet)} risers` : ""} = {fmtFeet(grandTotalFeet + ugFeet)} total
                 {usingManualSpans && <span className="ml-2 text-indigo-600">(Manual)</span>}
               </p>
             </div>
