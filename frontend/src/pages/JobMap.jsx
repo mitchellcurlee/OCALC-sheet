@@ -1060,6 +1060,55 @@ const JobMap = () => {
     [underground]
   );
 
+  // Display name for a segment endpoint (e.g. "P1", "HH HH-1")
+  const segItemName = useCallback((item) => {
+    if (item.type === "pole") {
+      const n = String(item.label || "");
+      return /^\d/.test(n) ? `P${n}` : (n || "Pole");
+    }
+    const abbr = undergroundAbbr(item.ugType);
+    return item.label && item.label !== item.ugType ? `${abbr} ${item.label}` : abbr;
+  }, []);
+
+  // Distance for the list — follows custom waypoints on aerial segments (matches map pill)
+  const segListDistance = useCallback((seg) => {
+    if (!seg.isAerial) return seg.distFt;
+    const wps = customRoutes[`${seg.from.id}-${seg.to.id}`] || [];
+    const path = [seg.fromPos, ...wps.map((w) => [w.lat, w.lng]), seg.toPos];
+    const hav = (p1, p2) => {
+      const R = 6371000;
+      const la1 = (p1[0] * Math.PI) / 180, la2 = (p2[0] * Math.PI) / 180;
+      const dLat = la2 - la1, dLng = ((p2[1] - p1[1]) * Math.PI) / 180;
+      const a = Math.sin(dLat / 2) ** 2 + Math.cos(la1) * Math.cos(la2) * Math.sin(dLng / 2) ** 2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) * 3.28084;
+    };
+    return path.reduce((sum, p, k) => (k === 0 ? 0 : sum + hav(path[k - 1], p)), 0);
+  }, [customRoutes]);
+
+  // Riser rows for the measurements list
+  const riserRows = useMemo(() =>
+    route
+      .filter((p) => (parseInt(p.risers) || 0) > 0 && (parseFloat(p.riser_height) || 0) > 0)
+      .map((p) => {
+        const c = parseInt(p.risers) || 0;
+        const h = parseFloat(p.riser_height) || 0;
+        const name = /^\d/.test(String(p.pole_number || "")) ? `P${p.pole_number}` : (p.pole_number || "Pole");
+        return `${name}: ${c} riser${c > 1 ? "s" : ""} × ${formatRiserHeight(h)} = ${fmtFeet(c * h)}`;
+      }),
+    [route]
+  );
+
+  // Path measurement rows for the measurements list
+  const pathRows = useMemo(() =>
+    underground
+      .filter((u) => (u.path_measurements || []).length > 0)
+      .map((u) => {
+        const t = u.path_measurements.reduce((s, m) => s + (parseFloat(m.feet) || 0), 0);
+        return `${undergroundAbbr(u.type)}${u.label ? ` ${u.label}` : ""}: ${u.path_measurements.map((m) => `${m.direction} ${m.feet}ft`).join(", ")} = ${fmtFeet(t)}`;
+      }),
+    [underground]
+  );
+
   // Compute all smart label positions with collision avoidance
   const computedLabelPositions = useMemo(() => {
     const positions = {
@@ -1695,7 +1744,7 @@ const JobMap = () => {
                 // For aerial pole-to-pole segments, use EditableRoute with waypoints
                 if (seg.isAerial) {
                   const waypoints = customRoutes[segmentKey] || [];
-                  const defaultMeasurementText = `${Math.round(seg.distFt)} ft`;
+                  const defaultMeasurementText = `${i + 1}. ${Math.round(seg.distFt)} ft`;
                   return (
                     <React.Fragment key={segmentKey}>
                       <EditableRoute
@@ -1715,6 +1764,7 @@ const JobMap = () => {
                         customLabelText={customLabelTexts[`measurement-${segmentKey}`]}
                         onLabelDoubleClick={() => handleLabelDoubleClick(`measurement-${segmentKey}`, defaultMeasurementText)}
                         labelsDraggable={editMode || positionEditMode}
+                        labelPrefix={`${i + 1}. `}
                       />
                       {/* Selection highlight */}
                       {isSelected && (
@@ -1788,13 +1838,13 @@ const JobMap = () => {
                           position={measurementLabelPos}
                           icon={L.divIcon({
                             className: "ug-measurement-label editable-label",
-                            html: `<div style="background:#fff;border:2px solid #ea580c;border-radius:6px;padding:6px 14px;font:700 13px/1.2 ui-monospace,monospace;color:#c2410c;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,.25);cursor:pointer;pointer-events:auto;" title="Double-click to edit">${getLabelText(`measurement-${segmentKey}`, fmtFeet(seg.distFt))}</div>`,
+                            html: `<div style="background:#fff;border:2px solid #ea580c;border-radius:6px;padding:6px 14px;font:700 13px/1.2 ui-monospace,monospace;color:#c2410c;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,.25);cursor:pointer;pointer-events:auto;" title="Double-click to edit">${getLabelText(`measurement-${segmentKey}`, `${i + 1}. ${fmtFeet(seg.distFt)}`)}</div>`,
                             iconSize: [120, 36],
                             iconAnchor: [60, 18],
                           })}
                           draggable={editMode || positionEditMode}
                           onDragEnd={(lat, lng) => handleMeasurementDragEnd(segmentKey, seg.mid, lat, lng)}
-                          onDoubleClick={() => handleLabelDoubleClick(`measurement-${segmentKey}`, fmtFeet(seg.distFt))}
+                          onDoubleClick={() => handleLabelDoubleClick(`measurement-${segmentKey}`, `${i + 1}. ${fmtFeet(seg.distFt)}`)}
                           zIndexOffset={900}
                         />
                       </>
@@ -2121,6 +2171,43 @@ const JobMap = () => {
               {presentUg.map((t) => (
                 <div key={t} className="text-zinc-500 mt-0.5 ml-1"><span style={{ color: undergroundColorHex }} className="font-semibold">{undergroundAbbr(t)}</span> {t}</div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* Numbered span measurements list */}
+        {orderedSegments.length > 0 && (
+          <div className="industrial-card p-4 sm:p-5" data-testid="span-measurements-list">
+            <h2 className="font-heading text-base sm:text-lg font-bold text-zinc-900 mb-3 flex items-center gap-2">
+              <div className="w-1 h-5 bg-orange-500"></div>
+              SPAN MEASUREMENTS
+            </h2>
+            <ol className="space-y-1 font-mono text-sm text-zinc-800">
+              {orderedSegments.map((seg, i) => (
+                <li key={`seg-li-${i}`} data-testid={`span-measurement-${i + 1}`}>
+                  <span className="font-bold text-orange-700">{i + 1}.</span> {segItemName(seg.from)} to {segItemName(seg.to)} = {fmtFeet(segListDistance(seg))}
+                  {!seg.isAerial && <span className="text-emerald-700 text-xs ml-1">(UG)</span>}
+                </li>
+              ))}
+            </ol>
+            {riserRows.length > 0 && (
+              <div className="mt-3 pt-3 border-t border-zinc-200">
+                <div className="text-xs font-mono font-bold text-violet-700 uppercase mb-1">Risers</div>
+                <ul className="space-y-1 font-mono text-sm text-zinc-800" data-testid="riser-measurements-list">
+                  {riserRows.map((r, i) => (<li key={`riser-li-${i}`}>{r}</li>))}
+                </ul>
+              </div>
+            )}
+            {pathRows.length > 0 && (
+              <div className="mt-3 pt-3 border-t border-zinc-200">
+                <div className="text-xs font-mono font-bold text-emerald-700 uppercase mb-1">Path Measurements</div>
+                <ul className="space-y-1 font-mono text-sm text-zinc-800" data-testid="path-measurements-list">
+                  {pathRows.map((r, i) => (<li key={`path-li-${i}`}>{r}</li>))}
+                </ul>
+              </div>
+            )}
+            <div className="mt-3 pt-3 border-t border-zinc-300 font-mono text-sm font-bold text-zinc-900" data-testid="span-measurements-total">
+              Total: {fmtFeet(totalFeet)} aerial{ugFeet > 0 ? ` + ${fmtFeet(ugFeet)} underground` : ""}{totalRiserFeet > 0 ? ` + ${fmtFeet(totalRiserFeet)} risers` : ""}{pathFeet > 0 ? ` + ${fmtFeet(pathFeet)} path` : ""} = {fmtFeet(grandTotalFeet + ugFeet + pathFeet)}
             </div>
           </div>
         )}

@@ -87,7 +87,8 @@ export const EditableRoute = ({
   onMeasurementDragEnd = null,
   customLabelText = null,
   onLabelDoubleClick = null,
-  labelsDraggable = null
+  labelsDraggable = null,
+  labelPrefix = ""
 }) => {
   const [localWaypoints, setLocalWaypoints] = useState(waypoints);
   const [isDragging, setIsDragging] = useState(false);
@@ -235,7 +236,7 @@ export const EditableRoute = ({
             position={measurementLabelPos || labelPosition}
             icon={L.divIcon({
               className: "distance-label editable-label",
-              html: `<div style="background:rgba(255,255,255,0.95);border:2px solid #ea580c;border-radius:6px;padding:6px 14px;font:700 13px/1.2 ui-monospace,monospace;color:#c2410c;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,.25);cursor:pointer;pointer-events:auto;" title="Double-click to edit">${customLabelText || Math.round(totalDistance) + ' ft'}</div>`,
+              html: `<div style="background:rgba(255,255,255,0.95);border:2px solid #ea580c;border-radius:6px;padding:6px 14px;font:700 13px/1.2 ui-monospace,monospace;color:#c2410c;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,.25);cursor:pointer;pointer-events:auto;" title="Double-click to edit">${customLabelText || (labelPrefix + Math.round(totalDistance) + ' ft')}</div>`,
               iconSize: [120, 36],
               iconAnchor: [60, 18],
             })}

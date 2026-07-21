@@ -75,6 +75,8 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 - "Power" aerial attribute added (options.py UNDERGROUND_TYPES, JobDetail Aerial section, abbr "PWR" in poleMapImage.js) + PWR marker in markup editor (RED #dc2626 per user).
 - BUG FIX (verified by bug testing agent): markup text escaping its background box — root cause: marker branch left ctx.textAlign='center'/textBaseline='middle' set, corrupting later text/label renders. Fixed with resets in marker branch + explicit align/baseline in text and label branches (PhotoMarkupEditor.jsx). NOTE: also removed stray duplicated JSX after `export default` that broke the build (persistence anomaly struck twice this session — always grep after edits).
 
+- Numbered span measurements (2026-06, self-tested via screenshots): map measurement pills now prefixed "1.", "2." ... in job order (EditableRoute labelPrefix prop + UG pill defaults); new "SPAN MEASUREMENTS" card below map (data-testid=span-measurements-list) listing "1. HH to P1 = 200 ft" per segment + RISERS section (per-pole count × height) + PATH MEASUREMENTS section + totals row. Aerial list distances use haversine incl. waypoints to match pills (segListDistance).
+
 ## Backlog
 - P1: User verification of new gallery flow on production (needs redeploy).
 - P2: Replace native <input type='date'> for ASE "Date of site visit" with shadcn date picker (tester UX note).
