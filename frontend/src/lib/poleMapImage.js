@@ -74,6 +74,7 @@ export const UNDERGROUND_ABBR = {
   "DW End": "DW-E",
   "Aerial Splice": "AS",
   Loop: "LOOP",
+  Power: "PWR",
 };
 export const undergroundAbbr = (type) => UNDERGROUND_ABBR[type] || String(type || "").slice(0, 3).toUpperCase();
 export const UNDERGROUND_TYPES = Object.keys(UNDERGROUND_ABBR);

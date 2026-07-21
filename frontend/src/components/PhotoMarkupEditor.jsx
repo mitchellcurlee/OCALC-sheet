@@ -39,6 +39,7 @@ const UG_MARKERS = [
   { type: "ROW", label: "Right of Way", color: "#64748b" },
   { type: "DW-S", label: "DW Start", color: "#0891b2" },
   { type: "DW-E", label: "DW End", color: "#0891b2" },
+  { type: "PWR", label: "Power", color: "#eab308" },
 ];
 
 const LINE_COLORS = [

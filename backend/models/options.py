@@ -36,5 +36,5 @@ RISER_OPTIONS = ["0", "1", "2", "3", "4", "5", "6"]
 UNDERGROUND_TYPES = [
     "Handhole", "Manhole", "Brooks Enclosure", "Flowerpot", "Hoffman Box", "Pedestal",
     "Point of Intersection", "FBT", "NTE", "FBT/NTE", "PFP", "SOC Start", "SOC End", "Riser", "MPOE",
-    "EOP", "ROW", "DW Start", "DW End", "Gas Line", "Aerial Splice", "Loop",
+    "EOP", "ROW", "DW Start", "DW End", "Gas Line", "Aerial Splice", "Loop", "Power",
 ]
