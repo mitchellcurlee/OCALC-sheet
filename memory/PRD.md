@@ -71,6 +71,9 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 - Span distance second dropdown zero-pads single digits (00-09) — display only (SpanDistance.jsx).
 - HOA Location dropdown: added "Pole" option (PoleForm.jsx + options.py ATTACHMENT_LOCATIONS).
 - BUG FIX (verified iteration_24): height measurement tool exported photo had tiny numbers on high-res photos — createAnnotatedImage in ReferenceHeightMeasurer.jsx now scales all annotation sizes by s = max(1, max(w,h)/1000). Verified: 3000px photo -> 330x120 label; 800px photo -> baseline 110x40.
+- HOA Type dropdown: added "Fiber Drop" + "Copper Drop" (PoleForm.jsx + options.py).
+- "Power" aerial attribute added (options.py UNDERGROUND_TYPES, JobDetail Aerial section, abbr "PWR" in poleMapImage.js) + PWR marker in markup editor (RED #dc2626 per user).
+- BUG FIX (verified by bug testing agent): markup text escaping its background box — root cause: marker branch left ctx.textAlign='center'/textBaseline='middle' set, corrupting later text/label renders. Fixed with resets in marker branch + explicit align/baseline in text and label branches (PhotoMarkupEditor.jsx). NOTE: also removed stray duplicated JSX after `export default` that broke the build (persistence anomaly struck twice this session — always grep after edits).
 
 ## Backlog
 - P1: User verification of new gallery flow on production (needs redeploy).
