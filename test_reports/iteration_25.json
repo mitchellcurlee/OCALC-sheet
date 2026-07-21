@@ -1,0 +1,38 @@
+{
+  "verdict": "fixed",
+  "user_reported_bug": "Text is moving out of the text box on the mark up tool",
+  "summary": "No relevant testing skill found. Verified PhotoMarkupEditor marker-first flow in the real preview UI: logged in, opened seed job A050ABC, opened PHOTO MARKUP editor, placed PWR marker before text, dragged text to force redraw, and confirmed the text remained enclosed by its white background box. Also verified PWR marker renders red (#dc2626) and marker/label/icon text alignment regressions did not reproduce.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/tests/bug_verification_markup_text_canvas.py",
+    "/app/test_reports/bug_verification_25.json",
+    "/app/test_reports/iteration_25.json"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Confirmed code fix is present in /app/frontend/src/components/PhotoMarkupEditor.jsx: PWR color is #dc2626; marker branch resets textAlign/textBaseline after drawing label; text and label branches explicitly set textAlign='left' and textBaseline='alphabetic'; icon branch also resets state.",
+    "Working tree still has uncommitted PhotoMarkupEditor.jsx plus untracked yarn.lock files; verification was performed against this current working tree. Frontend build succeeds with warnings unrelated to this bug."
+  ],
+  "updated_files": [
+    "/app/tests/bug_verification_markup_text_canvas.py",
+    "/app/test_reports/bug_verification_25.json",
+    "/app/test_reports/iteration_25.json"
+  ],
+  "success_rate": {
+    "backend": "N/A (frontend-only bug)",
+    "frontend": "100%"
+  },
+  "seed_data_creation": "No seed data created and markup was not saved/overwritten. Test annotations were temporary in the editor canvas only.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Use seed job /jobs/e5dc0bae-96bb-4cef-8001-7baf4e41d80a with Admin@mastec.com / Mastecbyers12345. Evidence screenshot from the passing run is /app/test_reports/iteration_25_browser_success/markup_marker_text_label_icon_after_redraw.jpg. The script instrumented canvas fillText/roundRect/fill calls and verified Test Text 123 used left/alphabetic with a matching white box after redraw; PWR pixel was [220,38,38,255].",
+  "rca_of_the_issue": "Original RCA was canvas drawing-state leakage from marker textAlign='center'/textBaseline='middle'. Current code resets marker/icon canvas state and sets text/label alignment explicitly. Runtime reproduction with marker before text no longer shows text outside the white box, including after a select/drag redraw."
+}

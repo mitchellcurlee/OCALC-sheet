@@ -39,7 +39,7 @@ const UG_MARKERS = [
   { type: "ROW", label: "Right of Way", color: "#64748b" },
   { type: "DW-S", label: "DW Start", color: "#0891b2" },
   { type: "DW-E", label: "DW End", color: "#0891b2" },
-  { type: "PWR", label: "Power", color: "#eab308" },
+  { type: "PWR", label: "Power", color: "#dc2626" },
 ];
 
 const LINE_COLORS = [
@@ -420,6 +420,8 @@ export const PhotoMarkupEditor = ({
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText(ann.label, ann.x, ann.y);
+        ctx.textAlign = "left";
+        ctx.textBaseline = "alphabetic";
         
         // Selection indicator
         if (isSelected) {
@@ -436,6 +438,8 @@ export const PhotoMarkupEditor = ({
         const fontSize = ann.fontSize || 16;
         const padding = 4;
         ctx.font = `bold ${fontSize}px sans-serif`;
+        ctx.textAlign = "left";
+        ctx.textBaseline = "alphabetic";
         const metrics = ctx.measureText(ann.text);
         const textWidth = metrics.width;
         const textHeight = fontSize;
@@ -498,6 +502,8 @@ export const PhotoMarkupEditor = ({
         const fontSize = ann.fontSize || 14;
         const padding = ann.padding || 4;
         ctx.font = `bold ${fontSize}px sans-serif`;
+        ctx.textAlign = "left";
+        ctx.textBaseline = "alphabetic";
         const metrics = ctx.measureText(ann.text);
         const textWidth = metrics.width;
         const textHeight = fontSize;
