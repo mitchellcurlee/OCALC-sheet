@@ -42,6 +42,7 @@ import {
   Calendar,
   Trash2,
   Pencil,
+  ArrowRightLeft,
   LogOut,
   Loader2,
   Radio,
@@ -226,6 +227,39 @@ const JobsList = () => {
     }
   };
 
+  // Job transfer
+  const [transferJob, setTransferJob] = useState(null);
+  const [transferUsers, setTransferUsers] = useState([]);
+  const [transferUserId, setTransferUserId] = useState("");
+  const [transferring, setTransferring] = useState(false);
+
+  const openTransferDialog = async (job, e) => {
+    e.stopPropagation();
+    setTransferJob(job);
+    setTransferUserId("");
+    try {
+      const res = await axios.get("/users/transferable");
+      setTransferUsers(res.data || []);
+    } catch (error) {
+      toast.error("Failed to load users");
+    }
+  };
+
+  const handleTransfer = async () => {
+    if (!transferJob || !transferUserId) return;
+    setTransferring(true);
+    try {
+      const res = await axios.post(`/jobs/${transferJob.id}/transfer`, { user_id: transferUserId });
+      toast.success(res.data?.message || "Job transferred");
+      setTransferJob(null);
+      fetchJobs();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Failed to transfer job");
+    } finally {
+      setTransferring(false);
+    }
+  };
+
   const renderJobCard = (job) => (
     <div
       key={job.id}
@@ -247,6 +281,16 @@ const JobsList = () => {
           </span>
         </label>
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-8 w-8 text-zinc-600 hover:text-blue-600"
+            title="Transfer job to another user"
+            onClick={(e) => openTransferDialog(job, e)}
+            data-testid={`job-transfer-btn-${job.id}`}
+          >
+            <ArrowRightLeft className="w-4 h-4" />
+          </Button>
           <Button
             size="icon"
             variant="ghost"
@@ -596,6 +640,47 @@ const JobsList = () => {
             </Button>
             <Button onClick={handleEdit} disabled={saving} className="bg-red-600 hover:bg-red-700 text-white">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Transfer Job Dialog */}
+      <Dialog open={!!transferJob} onOpenChange={(open) => { if (!open) setTransferJob(null); }}>
+        <DialogContent className="bg-zinc-50 border-zinc-200" data-testid="transfer-job-dialog">
+          <DialogHeader>
+            <DialogTitle className="text-zinc-900 flex items-center gap-2">
+              <ArrowRightLeft className="w-5 h-5 text-blue-600" />
+              Transfer Job
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-zinc-600">
+              Transfer <span className="font-bold text-zinc-900">{transferJob?.name}</span> to another user. It will appear on their dashboard{!isAdmin ? " and leave yours" : ""}.
+            </p>
+            <div className="space-y-2">
+              <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Transfer To</Label>
+              <Select value={transferUserId} onValueChange={setTransferUserId}>
+                <SelectTrigger className="bg-white border-zinc-300 text-zinc-900" data-testid="transfer-user-select">
+                  <SelectValue placeholder={transferUsers.length ? "Select a user" : "Loading users..."} />
+                </SelectTrigger>
+                <SelectContent className="bg-zinc-50 border-zinc-300 max-h-64">
+                  {transferUsers.map((u) => (
+                    <SelectItem key={u.id} value={u.id} data-testid={`transfer-user-${u.email}`}>{u.email}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {transferUsers.length === 0 && (
+                <p className="text-xs text-zinc-500">No other company users found.</p>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTransferJob(null)} className="bg-zinc-100 border-zinc-300 text-zinc-900">
+              Cancel
+            </Button>
+            <Button onClick={handleTransfer} disabled={!transferUserId || transferring} className="bg-blue-600 hover:bg-blue-700 text-white" data-testid="transfer-confirm-btn">
+              {transferring ? <Loader2 className="w-4 h-4 animate-spin" /> : "Transfer Job"}
             </Button>
           </DialogFooter>
         </DialogContent>

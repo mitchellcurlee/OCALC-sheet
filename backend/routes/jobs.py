@@ -787,6 +787,43 @@ async def _fetch_photo_entries(entries, concurrency=12):
     return await asyncio.gather(*[fetch_one(p, u) for p, u in entries])
 
 
+@router.get("/users/transferable")
+async def get_transferable_users(current_user: dict = Depends(get_current_user)):
+    """Company users a job can be transferred to."""
+    users = await _db.users.find({}, {"_id": 0, "id": 1, "email": 1}).to_list(1000)
+    out = []
+    for u in users:
+        email = (u.get("email") or "").lower()
+        if u.get("id") == current_user["id"]:
+            continue
+        if email.endswith("@mastec.com") or email.endswith("@byers.com"):
+            out.append({"id": u["id"], "email": u.get("email")})
+    out.sort(key=lambda x: (x["email"] or "").lower())
+    return out
+
+
+@router.post("/jobs/{job_id}/transfer")
+async def transfer_job(job_id: str, request_body: dict, current_user: dict = Depends(get_current_user)):
+    """Transfer job ownership to another company user (owner or admins only)."""
+    job = await can_access_job(job_id, current_user)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found or access denied")
+    target_id = request_body.get("user_id")
+    if not target_id:
+        raise HTTPException(status_code=400, detail="user_id is required")
+    target = await _db.users.find_one({"id": target_id}, {"_id": 0, "id": 1, "email": 1})
+    if not target:
+        raise HTTPException(status_code=404, detail="Target user not found")
+    email = (target.get("email") or "").lower()
+    if not (email.endswith("@mastec.com") or email.endswith("@byers.com")):
+        raise HTTPException(status_code=400, detail="Jobs can only be transferred to company users")
+    await _db.jobs.update_one(
+        {"id": job_id},
+        {"$set": {"user_id": target["id"], "user_email": target.get("email"), "updated_at": datetime.now(timezone.utc).isoformat()}},
+    )
+    return {"message": f"Job transferred to {target.get('email')}", "user_email": target.get("email")}
+
+
 @router.get("/jobs/{job_id}/export/photos-zip")
 async def export_job_photos_zip(job_id: str, token: Optional[str] = Query(None), auth_token: Optional[str] = Query(None), request: Request = None):
     """Export all photos from a job as a ZIP file, organized by pole/underground with descriptive labels.
