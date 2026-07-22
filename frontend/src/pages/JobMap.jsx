@@ -1107,11 +1107,12 @@ const JobMap = () => {
     return path.reduce((sum, p, k) => (k === 0 ? 0 : sum + hav(path[k - 1], p)), 0);
   }, [customRoutes]);
 
-  // Combined numbered measurement entries (spans + inline risers, in route order)
+  // Combined numbered measurement entries (spans + inline risers + inline path measurements, in route order)
   const { measurementEntries, spanNums } = useMemo(() => {
     const entries = [];
     const nums = {};
     const added = new Set();
+    const pathAdded = new Set();
     const poleName = (label) => (/^\d/.test(String(label || "")) ? `P${label}` : (label || "Pole"));
     const riserInfo = (item) => {
       if (item.type !== "pole") return null;
@@ -1128,8 +1129,20 @@ const JobMap = () => {
         entries.push({ kind: "riser", num: entries.length + 1, pos, text: `${poleName(item.label)} Riser${r.c > 1 ? ` ×${r.c}` : ""} = ${fmtFeet(r.c * r.h)}` });
       }
     };
+    const pathText = (u) => {
+      const t = u.path_measurements.reduce((s, m) => s + (parseFloat(m.feet) || 0), 0);
+      return `${undergroundAbbr(u.type)}${u.label ? ` ${u.label}` : ""}: ${u.path_measurements.map((m) => `${m.direction} ${m.feet}ft`).join(", ")} = ${fmtFeet(t)}`;
+    };
+    const pushPath = (item, pos) => {
+      if (item.type === "pole" || pathAdded.has(item.id)) return;
+      const u = underground.find((x) => x.id === item.id);
+      if (!u || !(u.path_measurements || []).length) return;
+      pathAdded.add(item.id);
+      entries.push({ kind: "path", num: entries.length + 1, pos, text: pathText(u) });
+    };
     orderedSegments.forEach((seg, i) => {
       pushRiser(seg.from, seg.fromPos);
+      pushPath(seg.from, seg.fromPos);
       const num = entries.length + 1;
       nums[i] = num;
       entries.push({ kind: "span", num, seg });
@@ -1137,20 +1150,18 @@ const JobMap = () => {
     if (orderedSegments.length > 0) {
       const last = orderedSegments[orderedSegments.length - 1];
       pushRiser(last.to, last.toPos);
+      pushPath(last.to, last.toPos);
     }
+    // Items with path measurements not on the route chain (e.g. no GPS) — append at end
+    [...underground]
+      .sort((a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999))
+      .filter((u) => (u.path_measurements || []).length > 0 && !pathAdded.has(u.id))
+      .forEach((u) => {
+        pathAdded.add(u.id);
+        entries.push({ kind: "path", num: entries.length + 1, pos: null, text: pathText(u) });
+      });
     return { measurementEntries: entries, spanNums: nums };
-  }, [orderedSegments, route]);
-
-  // Path measurement rows for the measurements list
-  const pathRows = useMemo(() =>
-    underground
-      .filter((u) => (u.path_measurements || []).length > 0)
-      .map((u) => {
-        const t = u.path_measurements.reduce((s, m) => s + (parseFloat(m.feet) || 0), 0);
-        return `${undergroundAbbr(u.type)}${u.label ? ` ${u.label}` : ""}: ${u.path_measurements.map((m) => `${m.direction} ${m.feet}ft`).join(", ")} = ${fmtFeet(t)}`;
-      }),
-    [underground]
-  );
+  }, [orderedSegments, route, underground]);
 
   // Total aerial footage from ordered segments (includes Loop spans + waypoint routes)
   const aerialFeetTotal = useMemo(
@@ -1886,6 +1897,11 @@ const JobMap = () => {
               {!showStationNumbers && measurementEntries.filter((e) => e.kind === "riser" && e.pos).map((e) => (
                 <Marker key={`riser-num-${e.num}`} position={e.pos} icon={numberBadgeIcon(e.num, "#7c3aed", [-6, 32])} interactive={false} zIndexOffset={800} />
               ))}
+
+              {/* Path measurement number badges at their item */}
+              {!showStationNumbers && measurementEntries.filter((e) => e.kind === "path" && e.pos).map((e) => (
+                <Marker key={`path-num-${e.num}`} position={e.pos} icon={numberBadgeIcon(e.num, "#059669", [34, -8])} interactive={false} zIndexOffset={800} />
+              ))}
               
               {poleDisplayInfo.map((p, i) => {
                 const poleLabel = markerLabel(p, i, false);
@@ -2177,7 +2193,7 @@ const JobMap = () => {
         )}
 
         {/* Numbered span measurements list */}
-        {orderedSegments.length > 0 && (
+        {measurementEntries.length > 0 && (
           <div className="industrial-card p-4 sm:p-5" data-testid="span-measurements-list">
             <h2 className="font-heading text-base sm:text-lg font-bold text-zinc-900 mb-3 flex items-center gap-2">
               <div className="w-1 h-5 bg-orange-500"></div>
@@ -2190,21 +2206,17 @@ const JobMap = () => {
                     <span className="font-bold text-orange-700">{e.num}.</span> {segItemName(e.seg.from)} to {segItemName(e.seg.to)} = {fmtFeet(segListDistance(e.seg))}
                     {!e.seg.isAerial && <span className="text-emerald-700 text-xs ml-1">(UG)</span>}
                   </li>
-                ) : (
+                ) : e.kind === "riser" ? (
                   <li key={`entry-${e.num}`} data-testid={`riser-measurement-${e.num}`}>
                     <span className="font-bold text-violet-700">{e.num}.</span> {e.text}
+                  </li>
+                ) : (
+                  <li key={`entry-${e.num}`} data-testid={`path-measurement-${e.num}`}>
+                    <span className="font-bold text-emerald-700">{e.num}.</span> {e.text}
                   </li>
                 )
               ))}
             </ol>
-            {pathRows.length > 0 && (
-              <div className="mt-3 pt-3 border-t border-zinc-200">
-                <div className="text-xs font-mono font-bold text-emerald-700 uppercase mb-1">Path Measurements</div>
-                <ul className="space-y-1 font-mono text-sm text-zinc-800" data-testid="path-measurements-list">
-                  {pathRows.map((r, i) => (<li key={`path-li-${i}`}>{r}</li>))}
-                </ul>
-              </div>
-            )}
             <div className="mt-3 pt-3 border-t border-zinc-300 font-mono text-sm font-bold text-zinc-900" data-testid="span-measurements-total">
               Total: {fmtFeet(aerialFeetTotal)} aerial{ugFeet > 0 ? ` + ${fmtFeet(ugFeet)} underground` : ""}{totalRiserFeet > 0 ? ` + ${fmtFeet(totalRiserFeet)} risers` : ""}{pathFeet > 0 ? ` + ${fmtFeet(pathFeet)} path` : ""} = {fmtFeet(aerialFeetTotal + totalRiserFeet + ugFeet + pathFeet)}
             </div>
