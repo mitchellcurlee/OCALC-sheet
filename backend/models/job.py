@@ -35,6 +35,8 @@ class Job(BaseModel):
     user_email: Optional[str] = None
     pole_count: int = 0
     completed: Optional[bool] = False
+    transferred_from: Optional[str] = None
+    transferred_at: Optional[str] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     ase_data: Optional[Dict[str, Any]] = None  # ASE Site Walk Survey data

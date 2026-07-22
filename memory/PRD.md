@@ -93,6 +93,9 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 
 - Job Transfer (2026-06, testing agent iteration_27 100% backend+frontend): GET /api/users/transferable (company @mastec/@byers users, excludes caller) + POST /api/jobs/{id}/transfer {user_id} (owner or admins via can_access_job; company-domain recipients only; updates user_id/user_email). Dashboard job cards have hover transfer button (data-testid=job-transfer-btn-{id}) → dialog (transfer-job-dialog, transfer-user-select, transfer-confirm-btn). Transferred jobs leave owner's dashboard, appear on recipient's; admins see updated email.
 
+- BUG FIX (verified iteration_28): dashboard map covering Edit/Transfer/Delete/New Job dialogs — root cause: Leaflet panes (z-index 400-1000) painted above Radix z-50 dialogs because .leaflet-container created no stacking context. Fixed globally in index.css: .leaflet-container { z-index: 0; isolation: isolate; }. Testing agent verified all dialogs above map via elementFromPoint + map regressions pass.
+- Transfer notice (backend fields curl-verified after model fix): transfer endpoint sets transferred_from/transferred_at; Job model now declares them (was stripped by response_model — caught by testing agent). Amber "Transferred from {email}" note on job cards (data-testid=job-transferred-from-{id}) and job detail header (job-detail-transferred-from).
+
 ## Backlog
 - P1: User verification of new gallery flow on production (needs redeploy).
 - P2: Replace native <input type='date'> for ASE "Date of site visit" with shadcn date picker (tester UX note).
