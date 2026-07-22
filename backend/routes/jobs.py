@@ -817,15 +817,26 @@ async def transfer_job(job_id: str, request_body: dict, current_user: dict = Dep
     email = (target.get("email") or "").lower()
     if not (email.endswith("@mastec.com") or email.endswith("@byers.com")):
         raise HTTPException(status_code=400, detail="Jobs can only be transferred to company users")
+    now = datetime.now(timezone.utc).isoformat()
+    history = list(job.get("transfer_history") or [])
+    history.append({
+        "from_email": job.get("user_email") or "",
+        "to_email": target.get("email") or "",
+        "by_email": current_user.get("email", ""),
+        "at": now,
+    })
     await _db.jobs.update_one(
         {"id": job_id},
-        {"$set": {
-            "user_id": target["id"],
-            "user_email": target.get("email"),
-            "transferred_from": job.get("user_email") or current_user.get("email", ""),
-            "transferred_at": datetime.now(timezone.utc).isoformat(),
-            "updated_at": datetime.now(timezone.utc).isoformat(),
-        }},
+        {
+            "$set": {
+                "user_id": target["id"],
+                "user_email": target.get("email"),
+                "transferred_from": job.get("user_email") or current_user.get("email", ""),
+                "transferred_at": now,
+                "updated_at": now,
+                "transfer_history": history,
+            },
+        },
     )
     return {"message": f"Job transferred to {target.get('email')}", "user_email": target.get("email")}
 

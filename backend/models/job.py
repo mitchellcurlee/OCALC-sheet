@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from datetime import datetime, timezone
 import uuid
 
@@ -37,6 +37,7 @@ class Job(BaseModel):
     completed: Optional[bool] = False
     transferred_from: Optional[str] = None
     transferred_at: Optional[str] = None
+    transfer_history: Optional[List[dict]] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     ase_data: Optional[Dict[str, Any]] = None  # ASE Site Walk Survey data

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useAuth } from "@/context/AuthContext";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
@@ -129,6 +130,7 @@ const SortablePoleItem = SortableItem;
 
 const JobDetail = () => {
   const { jobId } = useParams();
+  const { isAdmin } = useAuth();
   const navigate = useNavigate();
   const [job, setJob] = useState(null);
   const [poles, setPoles] = useState([]);
@@ -442,6 +444,20 @@ const JobDetail = () => {
                     <Repeat className="w-3 h-3" />
                     Transferred from {job.transferred_from}
                   </p>
+                )}
+                {isAdmin && (job?.transfer_history || []).length > 0 && (
+                  <details className="mt-1" data-testid="transfer-history">
+                    <summary className="text-[11px] font-mono text-zinc-500 cursor-pointer hover:text-zinc-700 select-none">
+                      Transfer history ({job.transfer_history.length})
+                    </summary>
+                    <ul className="mt-1 space-y-0.5">
+                      {[...job.transfer_history].reverse().map((h, i) => (
+                        <li key={i} className="text-[11px] font-mono text-zinc-500" data-testid={`transfer-history-entry-${i}`}>
+                          {h.at ? new Date(h.at).toLocaleString() : ""} — {h.from_email || "?"} → {h.to_email || "?"}{h.by_email && h.by_email !== h.from_email ? ` (by ${h.by_email})` : ""}
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
                 )}
               </div>
             </div>

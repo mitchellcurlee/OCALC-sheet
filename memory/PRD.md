@@ -96,6 +96,8 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 - BUG FIX (verified iteration_28): dashboard map covering Edit/Transfer/Delete/New Job dialogs — root cause: Leaflet panes (z-index 400-1000) painted above Radix z-50 dialogs because .leaflet-container created no stacking context. Fixed globally in index.css: .leaflet-container { z-index: 0; isolation: isolate; }. Testing agent verified all dialogs above map via elementFromPoint + map regressions pass.
 - Transfer notice (backend fields curl-verified after model fix): transfer endpoint sets transferred_from/transferred_at; Job model now declares them (was stripped by response_model — caught by testing agent). Amber "Transferred from {email}" note on job cards (data-testid=job-transferred-from-{id}) and job detail header (job-detail-transferred-from).
 
+- Transfer history (2026-06, curl+screenshot verified): transfer endpoint appends {from_email,to_email,by_email,at} to job.transfer_history (computed $set — NOT $push, which failed with WriteError on docs where the field is null from model default). Job model declares transfer_history. Admin-only collapsible "Transfer history (N)" details element on JobDetail header (data-testid=transfer-history), newest first.
+
 ## Backlog
 - P1: User verification of new gallery flow on production (needs redeploy).
 - P2: Replace native <input type='date'> for ASE "Date of site visit" with shadcn date picker (tester UX note).
