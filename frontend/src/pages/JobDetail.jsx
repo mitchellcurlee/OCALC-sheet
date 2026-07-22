@@ -437,6 +437,12 @@ const JobDetail = () => {
                     {job.location}
                   </p>
                 )}
+                {job?.transferred_from && (
+                  <p className="text-xs text-amber-600 font-mono flex items-center gap-1" data-testid="job-detail-transferred-from">
+                    <Repeat className="w-3 h-3" />
+                    Transferred from {job.transferred_from}
+                  </p>
+                )}
               </div>
             </div>
             <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">

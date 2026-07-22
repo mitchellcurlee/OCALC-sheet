@@ -253,6 +253,12 @@ body {
     }
 }
 
+/* Keep Leaflet maps below dialogs/modals (Leaflet panes use z-index 400-1000) */
+.leaflet-container {
+    z-index: 0;
+    isolation: isolate;
+}
+
 /* Improve map container on mobile */
 @media (max-width: 640px) {
     .leaflet-container {

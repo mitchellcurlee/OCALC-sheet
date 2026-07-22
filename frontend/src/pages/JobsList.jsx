@@ -330,6 +330,12 @@ const JobsList = () => {
                 {job.user_email}
               </div>
             )}
+            {job.transferred_from && (
+              <div className="flex items-center gap-1 text-xs text-amber-600 mt-1" data-testid={`job-transferred-from-${job.id}`}>
+                <ArrowRightLeft className="w-3 h-3" />
+                Transferred from {job.transferred_from}
+              </div>
+            )}
           </div>
         </div>
       </div>

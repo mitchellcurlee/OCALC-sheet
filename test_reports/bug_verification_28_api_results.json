@@ -1,0 +1,39 @@
+{
+  "recipient_job_in_list": {
+    "id": "722a7d63-9fa7-4fc1-85da-62e831a844e5",
+    "name": "QA ZIndex Transfer 1784736641",
+    "description": "Temporary QA job for Leaflet dialog z-index verification",
+    "location": "Dallas, TX",
+    "job_type": "OCALC",
+    "user_id": "69cdf4ff-8f09-4a63-9934-3fde19d3640e",
+    "user_email": "qa-transfer-1784736641@byers.com",
+    "pole_count": 1,
+    "completed": false,
+    "latitude": 32.7767,
+    "longitude": -96.797,
+    "ase_data": null,
+    "created_at": "2026-07-22T16:10:42.869134+00:00",
+    "updated_at": "2026-07-22T16:13:10.196154+00:00"
+  },
+  "recipient_job_has_transferred_from_in_list": false,
+  "recipient_detail_status": 200,
+  "recipient_job_detail": {
+    "id": "722a7d63-9fa7-4fc1-85da-62e831a844e5",
+    "name": "QA ZIndex Transfer 1784736641",
+    "description": "Temporary QA job for Leaflet dialog z-index verification",
+    "location": "Dallas, TX",
+    "job_type": "OCALC",
+    "user_id": "69cdf4ff-8f09-4a63-9934-3fde19d3640e",
+    "user_email": "qa-transfer-1784736641@byers.com",
+    "pole_count": 1,
+    "completed": false,
+    "latitude": null,
+    "longitude": null,
+    "ase_data": null,
+    "created_at": "2026-07-22T16:10:42.869134+00:00",
+    "updated_at": "2026-07-22T16:13:10.196154+00:00"
+  },
+  "recipient_detail_has_transferred_from": false,
+  "cleanup_delete_job_status": 200,
+  "cleanup_delete_job_body": "{\"message\":\"Job and all poles deleted successfully\"}"
+}

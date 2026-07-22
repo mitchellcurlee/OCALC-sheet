@@ -819,7 +819,13 @@ async def transfer_job(job_id: str, request_body: dict, current_user: dict = Dep
         raise HTTPException(status_code=400, detail="Jobs can only be transferred to company users")
     await _db.jobs.update_one(
         {"id": job_id},
-        {"$set": {"user_id": target["id"], "user_email": target.get("email"), "updated_at": datetime.now(timezone.utc).isoformat()}},
+        {"$set": {
+            "user_id": target["id"],
+            "user_email": target.get("email"),
+            "transferred_from": job.get("user_email") or current_user.get("email", ""),
+            "transferred_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }},
     )
     return {"message": f"Job transferred to {target.get('email')}", "user_email": target.get("email")}
 
