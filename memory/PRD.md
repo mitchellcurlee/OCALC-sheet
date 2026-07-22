@@ -98,6 +98,9 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 
 - Transfer history (2026-06, curl+screenshot verified): transfer endpoint appends {from_email,to_email,by_email,at} to job.transfer_history (computed $set — NOT $push, which failed with WriteError on docs where the field is null from model default). Job model declares transfer_history. Admin-only collapsible "Transfer history (N)" details element on JobDetail header (data-testid=transfer-history), newest first.
 
+- Inline path measurements (2026-06, screenshot verified): path measurement entries now numbered INLINE in the SPAN MEASUREMENTS sequence at their route position (kind:"path" in measurementEntries; emerald numbers in list + emerald badges anchor [34,-8] on map; items off the GPS chain appended at end). Separate "Path Measurements" section + pathRows memo removed. List guard now measurementEntries.length.
+- New underground attribute types "UG Path Start" (UGP-S) / "UG Path End" (UGP-E) — options.py + UNDERGROUND_ABBR; indicate where an underground path begins after a riser from a pole. Verified marker + legend on map.
+
 ## Backlog
 - P1: User verification of new gallery flow on production (needs redeploy).
 - P2: Replace native <input type='date'> for ASE "Date of site visit" with shadcn date picker (tester UX note).

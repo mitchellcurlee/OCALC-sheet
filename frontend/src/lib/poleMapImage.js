@@ -72,6 +72,8 @@ export const UNDERGROUND_ABBR = {
   ROW: "ROW",
   "DW Start": "DW-S",
   "DW End": "DW-E",
+  "UG Path Start": "UGP-S",
+  "UG Path End": "UGP-E",
   "Aerial Splice": "AS",
   Loop: "LOOP",
   Power: "PWR",
