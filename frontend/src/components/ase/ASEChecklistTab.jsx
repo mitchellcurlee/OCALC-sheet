@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from "react";
 import { toast } from "sonner";
-import { Section, CollapsibleSection, StyledInput, StyledTextarea, DropdownSelect, YesNoSelect, FieldRow, isFilled } from "./ASEFormHelpers";
+import { Section, CollapsibleSection, StyledInput, StyledTextarea, DropdownSelect, YesNoSelect, FieldRow, isFilled, DatePickerField } from "./ASEFormHelpers";
 import { Switch } from "@/components/ui/switch";
 import { ASE_OPTIONS } from "./ASEFormConstants";
 import { PhotoMarkupEditor } from "@/components/PhotoMarkupEditor";
@@ -120,7 +120,7 @@ const ASEChecklistTab = ({ formData, handleChange, poles = [], underground = [] 
             <DropdownSelect value={formData.employee_info} onChange={(v) => handleChange("employee_info", v)} options={ASE_OPTIONS.employees} filled={isFilled(formData.employee_info)} />
           </FieldRow>
           <FieldRow label="Date of site visit">
-            <StyledInput type="date" value={formData.date_of_site_visit} onChange={(e) => handleChange("date_of_site_visit", e.target.value)} filled={isFilled(formData.date_of_site_visit)} />
+            <DatePickerField value={formData.date_of_site_visit} onChange={(v) => handleChange("date_of_site_visit", v)} filled={isFilled(formData.date_of_site_visit)} testId="date-of-site-visit-picker" />
           </FieldRow>
         </div>
       </Section>

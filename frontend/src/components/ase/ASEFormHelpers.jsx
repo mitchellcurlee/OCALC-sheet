@@ -2,6 +2,10 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { Calendar as CalendarPicker } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { format } from "date-fns";
 import {
   Select,
   SelectContent,
@@ -9,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, Calendar as CalendarIcon } from "lucide-react";
 import { ASE_OPTIONS, BLANK } from "./ASEFormConstants";
 
 // Section component for consistent styling
@@ -111,4 +115,33 @@ export const isFilled = (value) => {
   if (typeof value === 'string') return value.trim() !== '';
   if (Array.isArray(value)) return value.length > 0;
   return Boolean(value);
+};
+
+// Calendar date picker field (value: "YYYY-MM-DD" string)
+export const DatePickerField = ({ value, onChange, filled, testId }) => {
+  const [open, setOpen] = useState(false);
+  const date = value ? new Date(`${value}T00:00:00`) : undefined;
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          data-testid={testId}
+          className={`h-10 w-full justify-start font-mono text-sm font-normal ${filled ? 'bg-green-50 border-green-300' : 'bg-amber-50 border-amber-300'}`}
+        >
+          <CalendarIcon className="w-4 h-4 mr-2 text-zinc-500" />
+          {date ? format(date, "MM/dd/yyyy") : <span className="text-zinc-400">Pick a date</span>}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0 bg-white" align="start">
+        <CalendarPicker
+          mode="single"
+          selected={date}
+          onSelect={(d) => { if (d) onChange(format(d, "yyyy-MM-dd")); setOpen(false); }}
+          initialFocus
+        />
+      </PopoverContent>
+    </Popover>
+  );
 };

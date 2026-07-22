@@ -1,0 +1,27 @@
+{
+  "summary": "Verified iteration 30 features end-to-end on preview: (1) END badge renders on live Job Map for pole with end_path=true (red divIcon .end-path-badge visible next to UIP2, span skipped between UIP2 and next item); (2) Job Map Download button produces a real file download (UI_TEST_ITER30_pole_map.png) with connections/end-path present, no browser tab opened, no console errors; (3) ASE 'Date of site visit' now uses shadcn calendar popover — clicking the button opens the calendar, picking day 15 sets 07/15/2026 on the trigger and PUT/GET /api/jobs/{id}/ase-data confirms YYYY-MM-DD persistence; (4) Excel bulk import — GET /api/import/template returns valid .xlsx with 'Poles' + 'Underground' sheets and exact headers; Import dialog opens from Add ▸ Import from Excel; Download template button is a file download (pole_import_template.xlsx), not a new tab; add mode imported 2 poles + 1 UG and skipped the bad row (errors=[missing Pole #]), items appeared in Job Detail list; replace mode showed red warning, wiped previous items (including seed items), left exactly 2 poles + 1 UG. Regression: previous End Path/connection behavior still intact.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_import_excel_iter30.py",
+    "/app/test_reports/pytest/pytest_iter30.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "poleMapImage.js duplicates computeConnectionPairs / end_path-break logic that also lives in JobMap.jsx (~line 855-1055). Both branches were verified consistent for this iteration, but future changes to connection ordering / end_path semantics must be applied in BOTH files to keep the live map and the downloaded exhibit in sync.",
+    "poleMapImage.js is >1200 lines and mixes single-image download, ZIP-page generator and helpers; consider splitting into map-image-single.js / map-image-zip.js for maintainability.",
+    "import_excel.py: replace mode also wipes /api/connections for the job — good; note that /api/jobs/{job_id}/import-excel currently accepts no auth (matches other pole/underground endpoints), so any client who knows a job_id can bulk-mutate its data. Not a regression, but worth reviewing across the pole/underground endpoint family."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_import_excel_iter30.py",
+    "/app/test_reports/iteration_30.json",
+    "/app/test_reports/pytest/pytest_iter30.xml"
+  ],
+  "success_rate": {"backend": "100% (9/9)", "frontend": "100% (all 7 UI checks passed)"},
+  "test_credentials": "Admin@mastec.com / Mastecbyers12345 (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "Created temp job UI_TEST_ITER30 (id=64c05796-0d6a-4b48-ad2c-0014ee12390b) with 3 poles (UIP1/UIP2/UIP3, UIP2.end_path=true) + 1 UG (UIHH1) for UI verification; used it for END badge + map download + import add/replace UI flows; deleted the job afterward (GET /jobs/{id}=404). Backend pytest also creates & deletes its own TEST_ITER30_IMPORT job. Seed job A050ABC (e5dc0bae) was NOT touched.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Backend pytest at /app/backend/tests/test_import_excel_iter30.py covers: template download+schema, add mode (with skipped bad row), replace mode (non-cumulative, only new items remain), invalid mode/file/job errors, pole & underground end_path PUT persistence, and ase-data date_of_site_visit persistence. All 9 tests pass. UI verified END badge, map PNG download (expect_download), ASE date picker popover (07/15/2026 rendered), import dialog with add+replace including replace warning banner. openpyxl not present in the browser-automation venv, so build .xlsx files in /tmp beforehand via /root/.venv python.",
+  "rca_of_the_issue": "N/A — feature verification, no bugs found. All four requested features work as specified."
+}

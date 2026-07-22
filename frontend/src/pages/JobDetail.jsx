@@ -44,6 +44,7 @@ import {
   FileText,
   Image as ImageIcon,
   Download,
+  FileUp,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -51,6 +52,13 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {
   DndContext,
   closestCenter,
@@ -283,6 +291,52 @@ const JobDetail = () => {
     fetchJobAndPoles();
   }, [fetchJobAndPoles]);
 
+  // Excel bulk import
+  const [showImportDialog, setShowImportDialog] = useState(false);
+  const [importFile, setImportFile] = useState(null);
+  const [importMode, setImportMode] = useState("add");
+  const [importing, setImporting] = useState(false);
+
+  const handleDownloadTemplate = async () => {
+    try {
+      const res = await axios.get(`/import/template`, { responseType: "blob" });
+      const url = URL.createObjectURL(res.data);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "pole_import_template.xlsx";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      toast.error("Failed to download template");
+    }
+  };
+
+  const handleImportExcel = async () => {
+    if (!importFile) {
+      toast.error("Choose a filled-in .xlsx file first");
+      return;
+    }
+    setImporting(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", importFile);
+      fd.append("mode", importMode);
+      const res = await axios.post(`/jobs/${jobId}/import-excel`, fd);
+      const { poles_created, underground_created, errors } = res.data;
+      toast.success(`Imported ${poles_created} pole(s) + ${underground_created} underground item(s)${errors?.length ? ` — ${errors.length} row(s) skipped` : ""}`);
+      (errors || []).slice(0, 3).forEach((msg) => toast.warning(msg));
+      setShowImportDialog(false);
+      setImportFile(null);
+      fetchJobAndPoles();
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Import failed");
+    } finally {
+      setImporting(false);
+    }
+  };
+
   // Save markup photos to ASE data
   const handleMarkupPhotosChange = async (newPhotos) => {
     setMarkupPhotos(newPhotos);
@@ -502,6 +556,14 @@ const JobDetail = () => {
                       {t}
                     </DropdownMenuItem>
                   ))}
+                  <DropdownMenuItem
+                    onClick={() => setShowImportDialog(true)}
+                    data-testid="import-excel-btn"
+                    className="cursor-pointer font-semibold text-emerald-700 border-t border-zinc-200"
+                  >
+                    <FileUp className="w-4 h-4 mr-2" />
+                    Import from Excel
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
 
@@ -556,6 +618,74 @@ const JobDetail = () => {
           </div>
         </div>
       </header>
+
+      {/* Excel import dialog */}
+      <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
+        <DialogContent className="bg-white sm:max-w-md" data-testid="import-excel-dialog">
+          <DialogHeader>
+            <DialogTitle className="font-heading">IMPORT FROM EXCEL</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Button
+              variant="outline"
+              onClick={handleDownloadTemplate}
+              className="w-full bg-blue-50 border-blue-300 text-blue-800 hover:bg-blue-100"
+              data-testid="download-template-btn"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Download blank template (.xlsx)
+            </Button>
+            <div className="space-y-1">
+              <p className="text-xs font-mono text-zinc-500 uppercase tracking-wide">Filled-in spreadsheet</p>
+              <Input
+                type="file"
+                accept=".xlsx"
+                onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+                className="bg-zinc-50 cursor-pointer"
+                data-testid="import-file-input"
+              />
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs font-mono text-zinc-500 uppercase tracking-wide">Import mode</p>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setImportMode("add")}
+                  className={`flex-1 ${importMode === "add" ? "bg-emerald-600 hover:bg-emerald-700 border-emerald-600 text-white hover:text-white" : ""}`}
+                  data-testid="import-mode-add"
+                >
+                  Add to existing
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setImportMode("replace")}
+                  className={`flex-1 ${importMode === "replace" ? "bg-red-600 hover:bg-red-700 border-red-600 text-white hover:text-white" : ""}`}
+                  data-testid="import-mode-replace"
+                >
+                  Replace all
+                </Button>
+              </div>
+              {importMode === "replace" && (
+                <p className="text-xs text-red-600" data-testid="import-replace-warning">
+                  Replace deletes ALL existing poles, underground attributes and map connections on this job before importing.
+                </p>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={handleImportExcel}
+              disabled={importing || !importFile}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white w-full"
+              data-testid="import-confirm-btn"
+            >
+              {importing ? <Loader2 className="w-4 h-4 animate-spin" /> : <><FileUp className="w-4 h-4 mr-2" />Import</>}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6">
         {/* Photo Markup Section - Collapsible */}

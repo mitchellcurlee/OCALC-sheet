@@ -184,12 +184,68 @@ export const computeUgConnectors = (route, ug) => {
   });
 };
 
+// Aerial attribute types (kept in sync with JobMap.jsx AERIAL_ATTR_TYPES)
+export const AERIAL_ATTR_TYPES = new Set(["Loop", "Aerial Splice"]);
+
+// Build map line pairs the same way the live Job Map does (custom connections + End Path breaks)
+export const computeConnectionPairs = (route, ug, connections = []) => {
+  const allItems = [];
+  route.forEach((p) => allItems.push({ id: p.id, type: "pole", pos: p.pos, sort_order: p.sort_order ?? Infinity, label: p.pole_number || "Pole", end_path: p.end_path === true }));
+  ug.forEach((u) => allItems.push({ id: u.id, type: "underground", ugType: u.type, pos: u.pos, sort_order: u.sort_order ?? Infinity, label: u.label || u.type, end_path: u.end_path === true }));
+  allItems.sort((a, b) => a.sort_order - b.sort_order);
+  const byId = {};
+  allItems.forEach((it) => { byId[it.id] = it; });
+  let pairs = [];
+  if (connections.length > 0) {
+    pairs = connections
+      .map((c) => ({ from: byId[c.from_item_id], to: byId[c.to_item_id], connType: c.connection_type }))
+      .filter((p) => p.from && p.to && p.from.id !== p.to.id)
+      .filter((p) => {
+        if (p.connType === "custom") return true;
+        const earlier = p.from.sort_order <= p.to.sort_order ? p.from : p.to;
+        return !earlier.end_path;
+      })
+      .sort((a, b) =>
+        (Math.min(a.from.sort_order, a.to.sort_order) - Math.min(b.from.sort_order, b.to.sort_order)) ||
+        (Math.max(a.from.sort_order, a.to.sort_order) - Math.max(b.from.sort_order, b.to.sort_order))
+      );
+    const referenced = new Set();
+    connections.forEach((c) => { referenced.add(c.from_item_id); referenced.add(c.to_item_id); });
+    for (let i = 0; i < allItems.length - 1; i++) {
+      const a = allItems[i], b = allItems[i + 1];
+      if ((!referenced.has(a.id) || !referenced.has(b.id)) && !a.end_path) pairs.push({ from: a, to: b });
+    }
+  } else {
+    for (let i = 0; i < allItems.length - 1; i++) {
+      if (allItems[i].end_path) continue;
+      pairs.push({ from: allItems[i], to: allItems[i + 1] });
+    }
+  }
+  return pairs;
+};
+
+export const pairIsAerial = (pr) => {
+  const aerialItem = (it) => it.type === "pole" || AERIAL_ATTR_TYPES.has(it.ugType);
+  return aerialItem(pr.from) && aerialItem(pr.to);
+};
+
 // Fetch a single satellite image (via backend proxy) and draw the annotated
 // pole-route exhibit, then trigger a PNG download. Returns true on success.
-export const downloadPoleMapImage = async ({ poles, job, showStops = false, underground = [] }) => {
-  const { route, segments, totalFeet, totalRiserFeet, grandTotalFeet } = computeRoute(poles);
+export const downloadPoleMapImage = async ({ poles, job, showStops = false, underground = [], connections = [] }) => {
+  const { route, totalRiserFeet } = computeRoute(poles);
   const ug = ugWithGps(underground);
-  const connectors = computeUgConnectors(route, ug);
+  // Mirror the live Job Map lines: custom connections + End Path breaks
+  const pairSegs = computeConnectionPairs(route, ug, connections).map((pr) => ({
+    from: pr.from,
+    to: pr.to,
+    ft: distanceFeet(pr.from.pos, pr.to.pos),
+    deg: bearingDeg(pr.from.pos, pr.to.pos),
+    mid: [(pr.from.pos[0] + pr.to.pos[0]) / 2, (pr.from.pos[1] + pr.to.pos[1]) / 2],
+    aerial: pairIsAerial(pr),
+  }));
+  const aerialFt = pairSegs.reduce((acc, x) => acc + (x.aerial ? x.ft : 0), 0);
+  const ugFt = pairSegs.reduce((acc, x) => acc + (x.aerial ? 0 : x.ft), 0);
+  const grandFt = aerialFt + ugFt + totalRiserFeet;
   if (route.length === 0 && ug.length === 0) {
     toast.error("No poles or underground items with GPS coordinates to map");
     return false;
@@ -253,77 +309,24 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
       return [((mx - xmin) / (xmax - xmin)) * mapW, ((ymax - my) / (ymax - ymin)) * mapH];
     };
 
-    // 1) Aerial Route line (BLUE)
-    if (route.length > 1) {
-      ctx.strokeStyle = "#2563eb";
-      ctx.lineWidth = 3 * s;
+    // 1) Route lines mirroring the live map: aerial (BLUE solid), underground (GREEN dashed)
+    pairSegs.forEach((sg) => {
+      const [x1, y1] = pt(sg.from.pos);
+      const [x2, y2] = pt(sg.to.pos);
+      ctx.save();
+      if (!sg.aerial) ctx.setLineDash([6 * s, 4 * s]);
+      ctx.strokeStyle = sg.aerial ? "#2563eb" : "#16a34a";
+      ctx.lineWidth = sg.aerial ? 3 * s : 2.5 * s;
       ctx.lineJoin = "round";
       ctx.beginPath();
-      route.forEach((p, i) => {
-        const [x, y] = pt(p.pos);
-        if (i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      });
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
       ctx.stroke();
-    }
-
-    // 1b) Underground connectors (GREEN dashed) from each UG item to its nearest pole
-    if (connectors.length) {
-      ctx.save();
-      ctx.setLineDash([6 * s, 4 * s]);
-      ctx.strokeStyle = "#16a34a";
-      ctx.lineWidth = 2.5 * s;
-      connectors.forEach((c) => {
-        const [x1, y1] = pt(c.from);
-        const [x2, y2] = pt(c.to);
-        ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
-        ctx.stroke();
-      });
       ctx.restore();
-    }
-
-    // 1c) Underground connector distance labels (GREEN pills)
-    connectors.forEach((c, i) => {
-      const [mx, my] = pt(c.mid);
-      const ang = toRad(c.deg - 90);
-      const perp = ang + Math.PI / 2;
-      const side = i % 2 === 0 ? 1 : -1;
-      const off = 22 * s * side;
-      const lx = mx + Math.cos(perp) * off;
-      const ly = my + Math.sin(perp) * off;
-      // leader line
-      ctx.strokeStyle = "rgba(22,163,74,0.7)";
-      ctx.lineWidth = 1.2 * s;
-      ctx.beginPath();
-      ctx.moveTo(mx, my);
-      ctx.lineTo(lx, ly);
-      ctx.stroke();
-      // pill
-      const text = fmtFeet(c.ft);
-      ctx.font = `700 ${11 * s}px ui-monospace, monospace`;
-      const tw = ctx.measureText(text).width;
-      const padX2 = 5 * s;
-      const ph = 18 * s;
-      const pw = tw + padX2 * 2;
-      const px = lx - pw / 2;
-      const py = ly - ph / 2;
-      ctx.fillStyle = "#ffffff";
-      ctx.strokeStyle = "#16a34a";
-      ctx.lineWidth = 1.5 * s;
-      ctx.beginPath();
-      ctx.rect(px, py, pw, ph);
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = "#166534";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(text, lx, ly);
     });
 
-    // 2) Direction arrows at segment midpoints (on the line - BLUE)
-    segments.forEach((seg) => {
+    // 2) Direction arrows at aerial segment midpoints (on the line - BLUE)
+    pairSegs.filter((sg) => sg.aerial).forEach((seg) => {
       const [mx, my] = pt(seg.mid);
       const ang = toRad(seg.deg - 90);
       const len = 9 * s;
@@ -426,6 +429,26 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(label, labelX, labelY);
+      
+      // END badge for End Path poles
+      if (p.end_path === true) {
+        const t = "END";
+        ctx.font = `700 ${9 * s}px ui-monospace, monospace`;
+        const tw2 = ctx.measureText(t).width;
+        const bw2 = tw2 + 8 * s, bh2 = 14 * s;
+        const bx2 = x + 9 * s, by2 = y - 24 * s;
+        ctx.fillStyle = "#dc2626";
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 1.5 * s;
+        ctx.beginPath();
+        ctx.roundRect(bx2, by2, bw2, bh2, 3 * s);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = "#ffffff";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(t, bx2 + bw2 / 2, by2 + bh2 / 2);
+      }
     });
 
     // 3b) Underground items (GREEN square markers with abbreviation)
@@ -449,11 +472,31 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(abbr, x, y + 0.5 * s);
+      
+      // END badge for End Path underground items
+      if (u.end_path === true) {
+        const t = "END";
+        ctx.font = `700 ${9 * s}px ui-monospace, monospace`;
+        const tw2 = ctx.measureText(t).width;
+        const bw2 = tw2 + 8 * s, bh2 = 14 * s;
+        const bx2 = x + w / 2 + 3 * s, by2 = y - h / 2 - 14 * s;
+        ctx.fillStyle = "#dc2626";
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 1.5 * s;
+        ctx.beginPath();
+        ctx.roundRect(bx2, by2, bw2, bh2, 3 * s);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = "#ffffff";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(t, bx2 + bw2 / 2, by2 + bh2 / 2);
+      }
     });
 
-    // 4) Aerial footage labels (BLUE pills), offset perpendicular to the line
-    //    alternating sides so they don't cover markers or each other
-    segments.forEach((seg, i) => {
+    // 4) Footage labels (BLUE pills aerial / GREEN pills underground), offset perpendicular
+    //    to the line, alternating sides so they don't cover markers or each other
+    pairSegs.forEach((seg, i) => {
       const [mx, my] = pt(seg.mid);
       const ang = toRad(seg.deg - 90);
       const perp = ang + Math.PI / 2;
@@ -461,8 +504,10 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
       const off = 26 * s * side;
       const lx = mx + Math.cos(perp) * off;
       const ly = my + Math.sin(perp) * off;
+      const main = seg.aerial ? "#2563eb" : "#16a34a";
+      const dark = seg.aerial ? "#1e40af" : "#166534";
       // leader line
-      ctx.strokeStyle = "rgba(37,99,235,0.7)";
+      ctx.strokeStyle = seg.aerial ? "rgba(37,99,235,0.7)" : "rgba(22,163,74,0.7)";
       ctx.lineWidth = 1.2 * s;
       ctx.beginPath();
       ctx.moveTo(mx, my);
@@ -478,13 +523,13 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
       const px = lx - pw / 2;
       const py = ly - ph / 2;
       ctx.fillStyle = "#ffffff";
-      ctx.strokeStyle = "#2563eb";
+      ctx.strokeStyle = main;
       ctx.lineWidth = 1.5 * s;
       ctx.beginPath();
       ctx.rect(px, py, pw, ph);
       ctx.fill();
       ctx.stroke();
-      ctx.fillStyle = "#1e40af";
+      ctx.fillStyle = dark;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(text, lx, ly);
@@ -492,8 +537,10 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
 
     // 5) Title banner (top-left)
     const ugPart = ug.length ? `, ${ug.length} UG` : "";
-    const riserPart = totalRiserFeet > 0 ? ` + ${fmtFeet(totalRiserFeet)} risers = ${fmtFeet(grandTotalFeet)}` : "";
-    const title = `${job?.name || "Job"}  -  ${route.length} poles${ugPart}, ${fmtFeet(totalFeet)} span${riserPart}${!riserPart ? " total" : ""}`;
+    const titleParts = [`${fmtFeet(aerialFt)} aerial`];
+    if (ugFt > 0) titleParts.push(`${fmtFeet(ugFt)} UG`);
+    if (totalRiserFeet > 0) titleParts.push(`${fmtFeet(totalRiserFeet)} risers`);
+    const title = `${job?.name || "Job"}  -  ${route.length} poles${ugPart}, ${titleParts.join(" + ")} = ${fmtFeet(grandFt)} total`;
     ctx.font = `700 ${13 * s}px ui-monospace, monospace`;
     const bw = ctx.measureText(title).width + 20 * s;
     ctx.fillStyle = "rgba(255,255,255,0.92)";
@@ -626,15 +673,20 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
     const hasRisers = totalRiserFeet > 0;
     const bottomSection = hasRisers ? 68 * s : 34 * s;
     
-    // Build display rows: interleave segments with riser info
+    // Build display rows: pair segments (in live-map order) interleaved with riser info
+    const itemName = (it) => it.type === "pole"
+      ? (it.label || "Pole")
+      : `${undergroundAbbr(it.ugType)}${it.label && it.label !== it.ugType ? ` ${it.label}` : ""}`;
     const displayRows = [];
-    for (let i = 0; i < segments.length; i++) {
-      displayRows.push({ type: "segment", text: `${segments[i].a || "?"} -> ${segments[i].b || "?"}`, ft: segments[i].ft });
-      const poleB = route.find(p => p.pole_number === segments[i].b);
-      if (poleB?.risers && poleB?.riser_height) {
+    const riserDone = new Set();
+    pairSegs.forEach((sg) => {
+      displayRows.push({ type: "segment", text: `${itemName(sg.from)} -> ${itemName(sg.to)}${sg.aerial ? "" : " (UG)"}`, ft: sg.ft });
+      const poleB = sg.to.type === "pole" ? route.find((p) => p.id === sg.to.id) : null;
+      if (poleB?.risers && poleB?.riser_height && !riserDone.has(poleB.id)) {
         const riserCount = parseInt(poleB.risers) || 0;
         const riserHeight = parseFloat(poleB.riser_height) || 0;
         if (riserCount > 0 && riserHeight > 0) {
+          riserDone.add(poleB.id);
           displayRows.push({ 
             type: "riser", 
             text: `  ↳ ${poleB.pole_number} Riser${riserCount > 1 ? ` x${riserCount}` : ""}`, 
@@ -642,7 +694,7 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
           });
         }
       }
-    }
+    });
     
     // Calculate required height to show all measurements
     const requiredPanelHeight = headerH + (displayRows.length * rowH) + bottomSection + 20 * s;
@@ -699,7 +751,7 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
     fctx.textAlign = "left";
     fctx.fillText("TOTAL", mapW + 14 * s, final.height - 17 * s);
     fctx.textAlign = "right";
-    fctx.fillText(fmtFeet(grandTotalFeet), mapW + panelW - 14 * s, final.height - 17 * s);
+    fctx.fillText(fmtFeet(grandFt), mapW + panelW - 14 * s, final.height - 17 * s);
 
     const url = final.toDataURL("image/png");
     const a = document.createElement("a");
