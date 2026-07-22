@@ -91,6 +91,8 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 
 - BUG FIX (verified by bug_testing_agent, iteration_26 100%): SOC Start/End toggles reset after saving an EDIT — root cause: UndergroundUpdate model was missing soc_start/soc_end (an earlier edit silently didn't persist — anomaly struck AGAIN), so PUT dropped them via exclude_unset. Re-added to UndergroundUpdate in models/underground.py. PoleUpdate pole_line_start/end confirmed present. LESSON: always grep-verify model edits after search_replace in this repo.
 
+- Job Transfer (2026-06, testing agent iteration_27 100% backend+frontend): GET /api/users/transferable (company @mastec/@byers users, excludes caller) + POST /api/jobs/{id}/transfer {user_id} (owner or admins via can_access_job; company-domain recipients only; updates user_id/user_email). Dashboard job cards have hover transfer button (data-testid=job-transfer-btn-{id}) → dialog (transfer-job-dialog, transfer-user-select, transfer-confirm-btn). Transferred jobs leave owner's dashboard, appear on recipient's; admins see updated email.
+
 ## Backlog
 - P1: User verification of new gallery flow on production (needs redeploy).
 - P2: Replace native <input type='date'> for ASE "Date of site visit" with shadcn date picker (tester UX note).
