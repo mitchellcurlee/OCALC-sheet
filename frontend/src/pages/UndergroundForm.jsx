@@ -66,6 +66,7 @@ const UndergroundForm = () => {
     path_measurements: [], // [{direction, feet}]
     soc_start: false,
     soc_end: false,
+    end_path: false,
   });
 
   // Material type options based on underground type
@@ -108,6 +109,7 @@ const UndergroundForm = () => {
         path_measurements: (u.path_measurements || []).map((m) => ({ direction: m.direction, feet: m.feet?.toString() || "" })),
         soc_start: !!u.soc_start,
         soc_end: !!u.soc_end,
+        end_path: !!u.end_path,
       });
     } catch (e) {
       toast.error("Failed to load item");
@@ -221,6 +223,7 @@ const UndergroundForm = () => {
         primary_fid: !!formData.primary_fid,
         soc_start: !!formData.soc_start,
         soc_end: !!formData.soc_end,
+        end_path: !!formData.end_path,
         path_measurements: formData.path_measurements
           .filter((m) => m.direction && m.feet !== "" && Number.isFinite(parseFloat(m.feet)))
           .map((m) => ({ direction: m.direction, feet: parseFloat(m.feet) })),
@@ -280,6 +283,14 @@ const UndergroundForm = () => {
                 <Label className="text-xs font-mono tracking-widest text-amber-700 uppercase">SOC End</Label>
               </div>
               <p className="text-xs text-amber-600 basis-full">Auto-populates the SOC START / SOC END Lat/Long boxes on the ASE checklist with this item's coordinates.</p>
+            </div>
+            {/* End Path toggle — breaks the map route after this attribute */}
+            <div className="flex flex-wrap items-center gap-6 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <div className="flex items-center gap-3">
+                <Switch checked={formData.end_path} onCheckedChange={(v) => setFormData((p) => ({ ...p, end_path: v }))} data-testid="ug-end-path-toggle" />
+                <Label className="text-xs font-mono tracking-widest text-red-700 uppercase">End Path</Label>
+              </div>
+              <p className="text-xs text-red-600 basis-full">Marks this as the last attribute on its path. The map will not draw a line from this attribute to the next one — the next attribute starts a new path.</p>
             </div>
             {/* FID + Primary FID toggle for fiber-bearing attribute types */}
             {showFid && (

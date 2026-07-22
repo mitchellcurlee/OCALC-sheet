@@ -851,7 +851,8 @@ const JobMap = () => {
         id: p.id,
         type: "pole",
         sort_order: p.sort_order ?? Infinity,
-        pos: p.pos
+        pos: p.pos,
+        end_path: p.end_path === true
       });
     });
     
@@ -861,7 +862,8 @@ const JobMap = () => {
         id: u.id,
         type: "underground",
         sort_order: u.sort_order ?? Infinity,
-        pos: u.pos
+        pos: u.pos,
+        end_path: u.end_path === true
       });
     });
     
@@ -876,6 +878,7 @@ const JobMap = () => {
     for (let i = 0; i < allItems.length - 1; i++) {
       const fromItem = allItems[i];
       const toItem = allItems[i + 1];
+      if (fromItem.end_path) continue;
       
       // Determine connection type based on item types
       let connectionType = "custom";
@@ -969,7 +972,8 @@ const JobMap = () => {
         pos: p.pos,
         type: "pole",
         label: p.pole_number || `Pole`,
-        sort_order: p.sort_order ?? Infinity
+        sort_order: p.sort_order ?? Infinity,
+        end_path: p.end_path === true
       });
     });
     ug.forEach(u => {
@@ -978,7 +982,8 @@ const JobMap = () => {
         pos: u.pos,
         type: "underground",
         label: u.label || u.type,
-        sort_order: u.sort_order ?? Infinity
+        sort_order: u.sort_order ?? Infinity,
+        end_path: u.end_path === true
       });
     });
     // Sort by sort_order to match job page order
@@ -998,7 +1003,8 @@ const JobMap = () => {
         type: "pole",
         pos: p.pos,
         sort_order: p.sort_order ?? Infinity,
-        label: p.pole_number || 'Pole'
+        label: p.pole_number || 'Pole',
+        end_path: p.end_path === true
       });
     });
     
@@ -1009,19 +1015,54 @@ const JobMap = () => {
         ugType: u.type,
         pos: u.pos,
         sort_order: u.sort_order ?? Infinity,
-        label: u.label || u.type
+        label: u.label || u.type,
+        end_path: u.end_path === true
       });
     });
     
     // Sort by sort_order (matching job page display order)
     allItems.sort((a, b) => a.sort_order - b.sort_order);
+    const byId = {};
+    allItems.forEach((it) => { byId[it.id] = it; });
     
-    // Create segments between consecutive items
+    // Build item pairs: from custom connections when present (drag-to-reconnect / end path), else consecutive chain
+    let pairs = [];
+    if (connections.length > 0) {
+      pairs = connections
+        .map((c) => ({ from: byId[c.from_item_id], to: byId[c.to_item_id], connType: c.connection_type }))
+        .filter((p) => p.from && p.to && p.from.id !== p.to.id)
+        .filter((p) => {
+          // End Path breaks auto connections; explicit custom links are honored
+          if (p.connType === "custom") return true;
+          const earlier = p.from.sort_order <= p.to.sort_order ? p.from : p.to;
+          return !earlier.end_path;
+        })
+        .sort((a, b) =>
+          (Math.min(a.from.sort_order, a.to.sort_order) - Math.min(b.from.sort_order, b.to.sort_order)) ||
+          (Math.max(a.from.sort_order, a.to.sort_order) - Math.max(b.from.sort_order, b.to.sort_order))
+        );
+      // Chain-connect items added after connections were saved (not referenced by any connection)
+      const referenced = new Set();
+      connections.forEach((c) => { referenced.add(c.from_item_id); referenced.add(c.to_item_id); });
+      for (let i = 0; i < allItems.length - 1; i++) {
+        const a = allItems[i], b = allItems[i + 1];
+        if ((!referenced.has(a.id) || !referenced.has(b.id)) && !a.end_path) {
+          pairs.push({ from: a, to: b });
+        }
+      }
+    } else {
+      for (let i = 0; i < allItems.length - 1; i++) {
+        if (allItems[i].end_path) continue;
+        pairs.push({ from: allItems[i], to: allItems[i + 1] });
+      }
+    }
+    
+    const mpoeItem = allItems.find((item) => item.ugType === "MPOE");
+    const mpoeOrder = mpoeItem ? mpoeItem.sort_order : null;
+    
+    // Create segments from pairs
     const segments = [];
-    for (let i = 0; i < allItems.length - 1; i++) {
-      const fromItem = allItems[i];
-      const toItem = allItems[i + 1];
-      
+    pairs.forEach(({ from: fromItem, to: toItem }) => {
       // Calculate distance
       const latDiff = (toItem.pos[0] - fromItem.pos[0]) * 364000;
       const lngDiff = (toItem.pos[1] - fromItem.pos[1]) * 288200;
@@ -1039,8 +1080,7 @@ const JobMap = () => {
       const hasUnderground = fromItem.type === "underground" || toItem.type === "underground";
       
       // Check if either item is MPOE or after MPOE
-      const mpoeIndex = allItems.findIndex(item => item.ugType === "MPOE");
-      const isAfterMPOE = mpoeIndex >= 0 && i >= mpoeIndex;
+      const isAfterMPOE = mpoeOrder !== null && Math.min(fromItem.sort_order, toItem.sort_order) >= mpoeOrder;
       const isMPOE = fromItem.ugType === "MPOE" || toItem.ugType === "MPOE";
       
       segments.push({
@@ -1055,10 +1095,10 @@ const JobMap = () => {
         isRed: isMPOE || isAfterMPOE,
         segmentType: isAerial ? "aerial" : "underground"
       });
-    }
+    });
     
     return segments;
-  }, [route, ug]);
+  }, [route, ug, connections]);
 
   // Total underground footage (segments that touch an underground item, per combined order)
   const ugFeet = useMemo(
@@ -2034,6 +2074,9 @@ const JobMap = () => {
                     const toItem = allConnectableItems.find(i => i.id === conn.to_item_id);
                     
                     if (!fromItem || !toItem) return null;
+                    // Hide auto connections broken by an End Path toggle
+                    const earlierItem = fromItem.sort_order <= toItem.sort_order ? fromItem : toItem;
+                    if (conn.connection_type !== 'custom' && earlierItem.end_path) return null;
                     
                     const lineColor = conn.connection_type === 'aerial' ? '#3b82f6' : 
                                       conn.connection_type === 'underground' ? '#22c55e' : '#8b5cf6';

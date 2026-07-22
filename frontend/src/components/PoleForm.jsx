@@ -95,7 +95,7 @@ const emptyFormData = () => ({
   span4_direction: "", span4_distance: "", span4_owner: "",
   latitude: "", longitude: "-", notes: "", row_information: "",
   hoa_markup_photos: [], // Photos for HOA markup/annotation
-  pole_line_start: false, pole_line_end: false,
+  pole_line_start: false, pole_line_end: false, end_path: false,
 });
 const emptyDownGuy = () => ({ _key: rowKey(), owner: "", direction: "", size: "", type: "", condition: "", height: "", lead: "", photos: [] });
 const emptyKnuckle = () => ({ _key: rowKey(), size: "", total_eyes: "", direction: "", condition: "", photos: [] });
@@ -223,6 +223,7 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
       hoa_markup_photos: p.hoa_markup_photos || [],
       pole_line_start: p.pole_line_start === true,
       pole_line_end: p.pole_line_end === true,
+      end_path: p.end_path === true,
     });
     setDownGuys(p.down_guys?.length > 0 ? p.down_guys.map(dg => ({ 
       _key: rowKey(), 
@@ -622,6 +623,15 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
               <Label className="text-xs font-mono tracking-widest text-amber-700 uppercase">Pole Line End</Label>
             </div>
             <p className="text-xs text-amber-600 basis-full">Auto-populates the POLE LINE START / END Lat/Long boxes on the ASE checklist with this pole's coordinates.</p>
+          </div>
+
+          {/* End Path toggle — breaks the map route after this pole */}
+          <div className="flex flex-wrap items-center gap-6 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <div className="flex items-center gap-3">
+              <Switch checked={formData.end_path} onCheckedChange={(v) => setFormData((p) => ({ ...p, end_path: v }))} data-testid="pole-end-path-toggle" />
+              <Label className="text-xs font-mono tracking-widest text-red-700 uppercase">End Path</Label>
+            </div>
+            <p className="text-xs text-red-600 basis-full">Marks this pole as the last attribute on its path. The map will not draw a line from this pole to the next attribute — the next attribute starts a new path.</p>
           </div>
 
           {/* Basic Info */}

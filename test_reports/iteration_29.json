@@ -1,0 +1,42 @@
+{
+  "verdict": "fixed",
+  "user_reported_bug": "I am unable to move connections on both underground and aerial paths. I also need to have the ability to end a path but continue a pole or underground path. Add a end path toggle to poles and underground attributes. This is to indicate that is the last attribute on that path and anything added after will not connect to eachother.",
+  "summary": "No relevant testing skill found. Verified the focused map flow on a temporary QA job: End Path toggles persisted for pole and underground forms; map/span totals broke only the span after an end_path item while later items continued as a new path; draggable connection endpoint dots appeared in Edit Lines & Connections mode; real UI dragging worked for both an aerial connection endpoint and an underground connection endpoint, with backend persistence and immediate map/span list updates. Also verified API PUT connection movement persists after reload and Move Items mode still opens. Temporary job/items/connections were cleaned up.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/test_reports/bug_verify_connections_end_path_api_setup.py",
+    "/app/test_reports/bug_verify_connections_end_path_cleanup.py",
+    "/app/test_reports/bug_verify_connections_end_path_state.json",
+    "/app/test_reports/bug_verification_29.json",
+    "/app/test_reports/iteration_29.json"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "JobMap orderedSegments now depends on [route, ug, connections] and the connection edit handlers call handleConnectionUpdate; this is consistent with the verified immediate update/persistence behavior.",
+    "End Path map logic correctly skips auto/chain spans from the item marked end_path while allowing the following item to start a new path. Note: when only a sparse saved custom connection exists, JobMap also chain-connects unreferenced adjacent items; that did not affect the user-reported end_path case and default full-chain flow, but main agent may want to review this behavior separately if sparse custom routes are intended to be exclusive."
+  ],
+  "updated_files": [
+    "/app/test_reports/bug_verify_connections_end_path_api_setup.py",
+    "/app/test_reports/bug_verify_connections_end_path_cleanup.py",
+    "/app/test_reports/bug_verify_connections_end_path_state.json",
+    "/app/test_reports/bug_verification_29.json",
+    "/app/test_reports/iteration_29.json"
+  ],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "100%"
+  },
+  "seed_data_creation": "Created temporary job 815406c9-d7e0-4309-8b47-c8ae8bb4d9e6 with QA-P1/QA-P2/QA-P5 and QA-HH3/QA-HH4; used it for UI/API verification; cleared its connections and deleted the job afterward (GET /jobs/{id}=404, connections=[]).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Focused verification completed on preview. Skills lookup returned no relevant testing skill. Browser logs only showed expected/benign aborted map tile/navigation requests; no app error messages were present. The UI drag test is finicky when dragging onto an existing endpoint at the same coordinates, so terminal single-connection drags to an off-line QA-P5 target were used to prove aerial and underground endpoint movement.",
+  "rca_of_the_issue": "Reproduced the exact affected workflow after the fix: in /jobs/{jobId}/map, Edit Map -> Edit Lines & Connections displayed .conn-endpoint-from/.conn-endpoint-to markers. Dragging terminal aerial P1->P2 to P5 updated the connection to to_item_id=P5 and updated the SPAN MEASUREMENTS immediately. Dragging terminal underground HH3->HH4 to P5 likewise updated to_item_id=P5 and the span list immediately. Separate API movement P1->HH3 persisted after reload. End Path on P2 removed only P2->HH3 from map/list/totals while preserving P1->P2 and HH3->HH4."
+}
