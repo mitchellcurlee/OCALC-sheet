@@ -2167,7 +2167,9 @@ const JobMap = () => {
                         {/* Wide invisible hit line for easy tapping */}
                         <Polyline
                           positions={[fromItem.pos, toItem.pos]}
-                          pathOptions={{ color: "#000000", opacity: 0.001, weight: 22, className: "conn-hit-line" }}
+                          pathOptions={{ color: "#000000", opacity: 0.001, weight: 26, className: "conn-hit-line" }}
+                          interactive={true}
+                          bubblingMouseEvents={false}
                           eventHandlers={{
                             click: (e) => {
                               L.DomEvent.stopPropagation(e);
@@ -2240,6 +2242,25 @@ const JobMap = () => {
                   ) : (
                     <>
                       <div className="text-xs text-zinc-500" data-testid="conn-panel-instruction">Tap any line on the map to move, delete or re-route it.</div>
+                      {connections.length > 0 && (
+                        <Select value="" onValueChange={(v) => { if (v) { setSelectedConn(v); setReconnectSide(null); setAddingConn(null); } }}>
+                          <SelectTrigger className="h-8 text-xs bg-white" data-testid="conn-picker-select">
+                            <SelectValue placeholder="Or pick a line from list…" />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-60">
+                            {connections.map((c) => {
+                              const f = allConnectableItems.find((i) => i.id === c.from_item_id);
+                              const t = allConnectableItems.find((i) => i.id === c.to_item_id);
+                              if (!f || !t) return null;
+                              return (
+                                <SelectItem key={c.id} value={c.id} data-testid={`conn-picker-item-${c.id}`}>
+                                  {f.label} → {t.label}
+                                </SelectItem>
+                              );
+                            })}
+                          </SelectContent>
+                        </Select>
+                      )}
                       <Button size="sm" className="w-full h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => { setAddingConn({ from: null }); setSelectedConn(null); setReconnectSide(null); }} data-testid="conn-add-line-btn">+ Add line</Button>
                       <Button size="sm" variant="outline" className="w-full h-8 text-xs" onClick={resetConnections} data-testid="conn-reset-lines-btn">Reset lines to job order</Button>
                     </>

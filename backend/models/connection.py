@@ -32,6 +32,8 @@ class ConnectionCreate(BaseModel):
 
 class ConnectionUpdate(BaseModel):
     """Schema for updating a connection"""
+    from_item_id: Optional[str] = None
+    from_item_type: Optional[str] = None
     to_item_id: Optional[str] = None
     to_item_type: Optional[str] = None
     waypoints: Optional[List[dict]] = None

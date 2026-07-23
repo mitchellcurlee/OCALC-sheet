@@ -1,0 +1,67 @@
+{
+  "verdict": "not_fixed",
+  "user_reported_bug": "I am still unable to move connections from pole to pole. (User: in preview; drag snapped back. User approved tap-based flow: tap a connection line -> highlights -> tap 'Move start' or 'Move end' -> tap the pole/attribute to connect to.)",
+  "summary": "No relevant testing skill found. Focused preview retest created a disposable job and verified backend PUT for from_item_id now persists, but the approved UI tap flow is still not working: after selecting a pole-to-pole connection and clicking Move start, real clicks on the green .conn-target pole circle pass through to the underlying pole/line instead of updating the connection. API stayed unchanged, so the user still cannot move pole-to-pole connections end to end in the UI.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "JobMap connection target circles",
+        "issue": "During Move start, the green .conn-target markers rendered but did not receive real mouse clicks. Clicking the P3 target opened the underlying pole popup or selected another line, and no Connection updated toast/API change occurred. DOM showed target marker classes without leaflet-interactive, likely because markers were initially rendered non-interactive and React-Leaflet did not update interactivity when entering target-pick mode.",
+        "selector": ".conn-target",
+        "priority": "CRITICAL"
+      },
+      {
+        "component": "JobMap connection hit line",
+        "issue": "Raw mouse click on the first .conn-hit-line midpoint still did not select a line in automation; selected_count remained 0. The dropdown fallback did work for selection.",
+        "selector": ".conn-hit-line, [data-testid=\"conn-picker-select\"]",
+        "priority": "MEDIUM"
+      }
+    ],
+    "integration_issues": [
+      {
+        "flow": "Edit Lines & Connections -> dropdown select QA32-P1 \u2192 QA32-P2 -> Move start -> tap QA32-P3 target",
+        "issue": "UI target tap did not call the update flow; GET /api/jobs/{job_id}/connections still showed from_item_id=QA32-P1 after tapping QA32-P3. This is the exact previously failing user outcome, now failing at target tap delivery rather than backend schema persistence.",
+        "affected_selectors": [
+          "conn-picker-select",
+          "conn-move-start-btn",
+          ".conn-target"
+        ]
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/test_reports/iteration_32_connection_flow_setup.py",
+    "/app/test_reports/iteration_32_connection_flow_ui_test.py",
+    "/app/test_reports/iteration_32_api_direct_probe_result.json"
+  ],
+  "action_items": [
+    "Fix .conn-target click handling so target circles are interactive after entering Move start/Move end/add-line mode; likely force-remount target markers when awaitingTarget changes or keep target markers always interactive with guarded handlers.",
+    "Retest full UI flow for Move start and Move end through reload after target clicks work; current UI test could not proceed past Move start target tap.",
+    "Retest raw line tap selection on preview; dropdown fallback works, but direct .conn-hit-line mouse click was still unreliable in automation."
+  ],
+  "critical_code_review_comments": [
+    "/app/backend/models/connection.py now includes from_item_id/from_item_type and a direct API PUT persisted Move start, so the iteration_31 backend blocker is resolved.",
+    "/app/frontend/src/pages/JobMap.jsx renders target markers with key target-{item.id}; they first mount in idle mode with interactive=false, then the same marker is reused when awaitingTarget becomes true. In the browser DOM during target-pick mode, .conn-target marker icons lacked leaflet-interactive and clicks fell through to underlying map layers."
+  ],
+  "updated_files": [
+    "/app/test_reports/iteration_32_connection_flow_setup.py",
+    "/app/test_reports/iteration_32_connection_flow_ui_test.py",
+    "/app/test_reports/iteration_32_api_direct_probe_result.json",
+    "/app/test_reports/bug_verification_32.json",
+    "/app/test_reports/iteration_32.json"
+  ],
+  "success_rate": {
+    "backend": "100% for direct Move start persistence",
+    "frontend": "30%"
+  },
+  "seed_data_creation": "Created isolated temp job d808090f-e8f0-48a3-a8ea-7cb27c60dee6 with 3 GPS poles and 2 underground items via preview API; deleted it after testing.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "No relevant testing skill found. Credentials from /app/memory/test_credentials.md. Dropdown selection worked. Raw line click did not select. Move start target circles rendered but were not interactive; clicking P3 target opened pole popup/selected other line and API did not change. Direct API PUT with from_item_id did persist, proving backend fix is good. Temp seed job cleaned up.",
+  "rca_of_the_issue": "The previous backend schema issue appears fixed, but the frontend target-pick markers remain non-interactive after switching from idle to awaiting-target mode. Repro: select QA32-P1 \u2192 QA32-P2 via conn-picker-select, click conn-move-start-btn, click the green target circle over QA32-P3; no update occurs and GET /connections still shows from_item_id=QA32-P1. DOM evidence: .conn-target marker icons lacked leaflet-interactive while awaiting target, so clicks went to underlying pole/line layers."
+}

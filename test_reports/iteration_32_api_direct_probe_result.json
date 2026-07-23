@@ -1,0 +1,27 @@
+{
+  "put_status": 200,
+  "put_response": {
+    "id": "2ce22435-79e1-4952-a4ef-c2b442fce3fb",
+    "job_id": "d808090f-e8f0-48a3-a8ea-7cb27c60dee6",
+    "from_item_id": "02dd73dd-6111-4c32-8047-69c5fc7bf92b",
+    "from_item_type": "pole",
+    "to_item_id": "dbf89626-3736-4f53-bb92-096e8d998903",
+    "to_item_type": "pole",
+    "connection_type": "aerial",
+    "waypoints": [],
+    "created_at": "2026-07-23T00:11:14.638972+00:00",
+    "updated_at": "2026-07-23T00:12:29.907976+00:00"
+  },
+  "after_connection": {
+    "id": "2ce22435-79e1-4952-a4ef-c2b442fce3fb",
+    "job_id": "d808090f-e8f0-48a3-a8ea-7cb27c60dee6",
+    "from_item_id": "02dd73dd-6111-4c32-8047-69c5fc7bf92b",
+    "from_item_type": "pole",
+    "to_item_id": "dbf89626-3736-4f53-bb92-096e8d998903",
+    "to_item_type": "pole",
+    "connection_type": "aerial",
+    "waypoints": [],
+    "created_at": "2026-07-23T00:11:14.638972+00:00",
+    "updated_at": "2026-07-23T00:12:29.907976+00:00"
+  }
+}
