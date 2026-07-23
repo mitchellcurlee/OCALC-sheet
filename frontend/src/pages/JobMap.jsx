@@ -517,35 +517,11 @@ const JobMap = () => {
     }));
   }, []);
 
-  // Save all route edits to the backend
+  // saveRouteEdits is declared later (after orderedSegments is defined) to avoid TDZ error.
+  const saveRouteEditsRef = useRef(async () => {});
   const saveRouteEdits = useCallback(async () => {
-    setSaving(true);
-    try {
-      // Build route segments to save
-      const routesToSave = [];
-      for (let i = 0; i < route.length - 1; i++) {
-        const fromPole = route[i];
-        const toPole = route[i + 1];
-        const key = `${fromPole.id}-${toPole.id}`;
-        const waypoints = customRoutes[key] || [];
-        
-        routesToSave.push({
-          job_id: jobId,
-          from_pole_id: fromPole.id,
-          to_pole_id: toPole.id,
-          waypoints: waypoints
-        });
-      }
-      
-      await axios.post(`/jobs/${jobId}/routes/bulk`, routesToSave);
-      toast.success("Route edits saved");
-      setEditMode(false);
-    } catch (e) {
-      toast.error("Failed to save route edits");
-    } finally {
-      setSaving(false);
-    }
-  }, [route, customRoutes, jobId]);
+    return saveRouteEditsRef.current();
+  }, []);
 
   // Cancel edit mode and revert changes
   const cancelEditing = useCallback(() => {
@@ -1117,6 +1093,29 @@ const JobMap = () => {
   }, [route, ug, connections]);
 
 
+  // Wire the actual save implementation now that orderedSegments is available (fixes TDZ)
+  useEffect(() => {
+    saveRouteEditsRef.current = async () => {
+      setSaving(true);
+      try {
+        const routesToSave = orderedSegments.map((seg) => ({
+          job_id: jobId,
+          from_pole_id: seg.from.id,
+          to_pole_id: seg.to.id,
+          waypoints: customRoutes[`${seg.from.id}-${seg.to.id}`] || [],
+        }));
+        await axios.post(`/jobs/${jobId}/routes/bulk`, routesToSave);
+        toast.success("Route edits saved");
+        setEditMode(false);
+      } catch (e) {
+        toast.error("Failed to save route edits");
+      } finally {
+        setSaving(false);
+      }
+    };
+  }, [orderedSegments, customRoutes, jobId]);
+
+
   // Total path measurement footage (In/Over/Up/Down entries on attributes)
   const pathFeet = useMemo(
     () => underground.reduce((sum, u) => sum + (u.path_measurements || []).reduce((s, m) => s + (parseFloat(m.feet) || 0), 0), 0),
@@ -1344,20 +1343,20 @@ const JobMap = () => {
   const downloadImage = useCallback(async () => {
     setDownloading(true);
     try {
-      await downloadPoleMapImage({ poles, job, showStops: false, underground, connections });
+      await downloadPoleMapImage({ poles, job, showStops: false, underground, connections, routes: customRoutes });
     } finally {
       setDownloading(false);
     }
-  }, [poles, job, underground, connections]);
+  }, [poles, job, underground, connections, customRoutes]);
 
   const downloadSegmented = useCallback(async () => {
     setDownloading(true);
     try {
-      await downloadSegmentedMapPages({ poles, job, showStops: false, underground, connections, targetFeet: 800 });
+      await downloadSegmentedMapPages({ poles, job, showStops: false, underground, connections, routes: customRoutes, targetFeet: 800 });
     } finally {
       setDownloading(false);
     }
-  }, [poles, job, underground, connections]);
+  }, [poles, job, underground, connections, customRoutes]);
 
   // Screenshot the visible map frame using dom-to-image-more - captures entire app frame
   const captureMapScreenshot = useCallback(async () => {
@@ -1986,52 +1985,41 @@ const JobMap = () => {
                   );
                 }
                 
-                // For segments involving underground items, use dashed Polyline
+                // For segments involving underground items, use EditableRoute (dashed) with waypoints
+                const ugWaypoints = customRoutes[segmentKey] || [];
+                let ugBadgePos = seg.mid;
+                if (ugWaypoints.length > 0) {
+                  const path = [seg.fromPos, ...ugWaypoints.map((w) => [w.lat, w.lng]), seg.toPos];
+                  const m = Math.floor(path.length / 2);
+                  ugBadgePos = path.length % 2 === 0
+                    ? [(path[m - 1][0] + path[m][0]) / 2, (path[m - 1][1] + path[m][1]) / 2]
+                    : path[m];
+                }
                 return (
                   <React.Fragment key={segmentKey}>
+                    <EditableRoute
+                      startPos={seg.fromPos}
+                      endPos={seg.toPos}
+                      waypoints={ugWaypoints}
+                      segmentId={segmentKey}
+                      onWaypointsChange={handleWaypointsChange}
+                      editMode={editMode}
+                      color={segmentColor}
+                      weight={isSelected ? 4 : 2.5}
+                      dashed={true}
+                      showDistance={false}
+                      onClick={() => handleSegmentClick(segmentKey)}
+                    />
                     {/* Selection highlight */}
                     {isSelected && (
                       <Polyline
-                        positions={[seg.fromPos, seg.toPos]}
+                        positions={[seg.fromPos, ...ugWaypoints.map((w) => [w.lat, w.lng]), seg.toPos]}
                         pathOptions={{ color: "#fff", weight: 7, opacity: 0.5 }}
                       />
                     )}
-                    {/* Invisible wider polyline for easier clicking */}
-                    {editMode && (
-                      <Polyline 
-                        positions={[seg.fromPos, seg.toPos]} 
-                        pathOptions={{ 
-                          color: "transparent", 
-                          weight: 25, 
-                          opacity: 0,
-                          bubblingMouseEvents: false
-                        }}
-                        eventHandlers={{
-                          click: (e) => {
-                            e.originalEvent.stopPropagation();
-                            handleSegmentClick(segmentKey);
-                          }
-                        }}
-                      />
-                    )}
-                    <Polyline 
-                      positions={[seg.fromPos, seg.toPos]} 
-                      pathOptions={{ 
-                        color: segmentColor, 
-                        weight: isSelected ? 4 : 2.5, 
-                        dashArray: "6,4",
-                        bubblingMouseEvents: false
-                      }}
-                      eventHandlers={{
-                        click: (e) => {
-                          e.originalEvent.stopPropagation();
-                          handleSegmentClick(segmentKey);
-                        }
-                      }}
-                    />
                     {/* Numbered badge — measurement is in the list below the map */}
                     {!showStationNumbers && spanNums[i] != null && (
-                      <Marker position={seg.mid} icon={numberBadgeIcon(spanNums[i])} interactive={false} zIndexOffset={800} />
+                      <Marker position={ugBadgePos} icon={numberBadgeIcon(spanNums[i])} interactive={false} zIndexOffset={800} />
                     )}
                   </React.Fragment>
                 );

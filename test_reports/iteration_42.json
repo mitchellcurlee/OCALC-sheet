@@ -1,0 +1,41 @@
+{
+  "summary": "Iter42 — Multi-point (waypoint) editing for ALL lines (aerial + underground) on Job Map. Backend bulk-routes API verified (6/6 pytest pass). UI: EditableRoute now renders midpoint dots on BOTH aerial and UG dashed segments; clicking midpoint adds a route-waypoint; Save persists via /jobs/{id}/routes/bulk; after reload waypoints are still present and lines bend through them (visual verified). CRITICAL BUG FOUND & FIXED by tester: JobMap.jsx had a Temporal Dead Zone (TDZ) reference error — saveRouteEdits useCallback referenced orderedSegments before its declaration, so the entire /jobs/{id}/map page threw 'Cannot access orderedSegments before initialization' and did not render. Fixed by deferring the body via a useRef + effect. REMAINING BUG (not fixed): segListDistance at JobMap.jsx line 1140 still filters waypoints by seg.isAerial (const wps = seg.isAerial ? ... : []), so UG segment waypoints are NOT reflected in the span-measurements list or underground total. Confirmed empirically: after seeding a bent UG waypoint via /routes/bulk, the map visually shows the UG line bending through the waypoint, but the span list still shows straight-line 365 ft instead of the longer bent-path distance (aerial waypoint DID update from 365 ft → 1,313 ft as expected).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "JobMap segListDistance (line 1140)", "issue": "Only uses waypoints for aerial segments (const wps = seg.isAerial ? (customRoutes[key] || []) : []). UG segment waypoints are ignored so span list distance & underground total do NOT follow bent UG paths. Repro: seed a bent waypoint for a UG segment via /jobs/{id}/routes/bulk, open map — line visually bends but list shows straight-line distance. Fix: remove the isAerial filter so all segments include waypoints (const wps = customRoutes[key] || []).", "selector": "[data-testid='span-measurements-list']", "priority": "HIGH"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_routes_bulk_waypoints.py",
+    "/app/test_reports/pytest/iter42_routes_bulk.xml",
+    "/app/test_reports/iter42_setup.py",
+    "/app/test_reports/iter42_edit_mode.jpeg",
+    "/app/test_reports/iter42_after_reload.jpeg",
+    "/app/test_reports/iter42_bent_distances.jpeg"
+  ],
+  "action_items": [
+    "Fix JobMap.jsx line 1140 segListDistance: drop the seg.isAerial gate so UG waypoints extend the span-list distance and underground total (const wps = customRoutes[`${seg.from.id}-${seg.to.id}`] || []).",
+    "Review the TDZ fix I applied at JobMap.jsx (saveRouteEditsRef + useEffect binding after orderedSegments) — consider simply moving the entire saveRouteEdits useCallback declaration to below orderedSegments for cleaner code."
+  ],
+  "critical_code_review_comments": [
+    "JobMap.jsx TDZ bug: saveRouteEdits useCallback at ~line 521 depended on orderedSegments (declared at ~line 1018) — caused ReferenceError blocking the entire /jobs/{id}/map page. Tester applied a useRef indirection fix; recommend the main agent move the useCallback below orderedSegments for a cleaner solution.",
+    "JobMap.jsx segListDistance (line 1140) filters waypoints by seg.isAerial — remaining unfixed. This is the direct cause of UG span list distances not following waypoints. All other layers (EditableRoute rendering, saveRouteEdits, /routes/bulk backend, buildSpanMeasurementTexts, downloadPoleMapImage in poleMapImage.js) already handle UG waypoints correctly via segPath(pr, routes).",
+    "poleMapImage.js already uses segPath/pathFeet/pathMid on all segments regardless of aerial/UG, so exhibit downloads and ASE buildSpanMeasurementTexts will follow UG waypoints correctly (verified by reading source; exhibit PNG generation not automated in this run).",
+    "Backend /jobs/{id}/routes/bulk correctly accepts generic ids (underground handhole id as to_pole_id) and persists them (6/6 backend tests pass, including GET verification)."
+  ],
+  "updated_files": [
+    "/app/frontend/src/pages/JobMap.jsx",
+    "/app/backend/tests/test_routes_bulk_waypoints.py",
+    "/app/test_reports/iter42_setup.py"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "80%"},
+  "test_credentials": "mitchell.curlee@byers.com / Dawson@2016 (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "Ephemeral job TEST_ITER42_UI_1784800110 (id 744a5679-6b85-421e-85a0-8a4d6abc0eff) created with P1(sort 0), P2(sort 1), HH-1(sort 2). Deleted at test end (verified). Seed job e5dc0bae-96bb-4cef-8001-7baf4e41d80a untouched (verified 200 after cleanup). Backend pytest suite creates its own TEST_ROUTES_BULK_* job and deletes on teardown.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Iter42 acceptance: (1) POST /jobs/{id}/routes/bulk with UG ids returns 200 and GET returns waypoints — VERIFIED via /app/backend/tests/test_routes_bulk_waypoints.py. (2) Waypoint edit mode is triggered via data-testid=edit-map-dropdown-btn → edit-segment-colors-btn (this option sets ONLY editMode=true so midpoint dots appear on both aerial + UG). data-testid=edit-all-btn triggers Move Mode (position edit), NOT waypoint edit. data-testid=edit-lines-btn also sets editMode but additionally enables connectionEditMode. (3) Save button is data-testid=save-all-btn (labeled 'Done'). (4) Span list testids: span-measurements-list, span-measurements-total. (5) segListDistance UG bug at JobMap.jsx line 1140 still needs fix — see action_items. Once fixed, reproduce by seeding a bent waypoint via /jobs/{id}/routes/bulk and expecting both aerial and UG list distances to increase over straight-line.",
+  "rca_of_the_issue": "TWO defects found: (A) TDZ: saveRouteEdits at line 521 in a useCallback with orderedSegments (line 1018) in its dependency array. React evaluates the closure body top-down during render; hitting orderedSegments before its `const` initialization threw ReferenceError, preventing the map page from ever rendering. Fixed by tester via useRef-indirection so the closure captures the ref, and the real implementation is assigned in a useEffect below orderedSegments. (B) UG list-distance regression: segListDistance line 1140 gates waypoints behind seg.isAerial, so only aerial segments use waypoint path length. UG segments always report straight-line distance regardless of persisted route waypoints. Fix: remove the ternary and always look up customRoutes[`${seg.from.id}-${seg.to.id}`]."
+}

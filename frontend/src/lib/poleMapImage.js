@@ -247,6 +247,19 @@ export const pairIsAerial = (pr) => {
 // A pair whose FROM item has manual path measurements: its auto GPS footage is replaced
 export const pairIsManual = (pr) => pr.from.type === "underground" && pr.from.hasPath === true;
 
+// Waypoint-following path helpers (routes = { "fromId-toId": [{lat,lng}, ...] })
+const segPath = (pr, routes) => {
+  const wps = (routes && routes[`${pr.from.id}-${pr.to.id}`]) || [];
+  return [pr.from.pos, ...wps.map((w) => [w.lat, w.lng]), pr.to.pos];
+};
+const pathFeet = (path) => path.reduce((s2, p, i) => (i === 0 ? 0 : s2 + distanceFeet(path[i - 1], p)), 0);
+const pathMid = (path) => {
+  const m = Math.floor(path.length / 2);
+  return path.length % 2 === 0
+    ? [(path[m - 1][0] + path[m][0]) / 2, (path[m - 1][1] + path[m][1]) / 2]
+    : path[m];
+};
+
 // Insert UG path-measurement rows into a display-row list at their route position (by sort_order)
 const insertPathRows = (displayRows, underground) => {
   [...(underground || [])]
@@ -271,7 +284,7 @@ const totalPathFeet = (underground) =>
 
 // Build the exact text lines shown in the interactive map's Span Measurements list.
 // Used by the ASE checklist "path of approach" so both always match.
-export const buildSpanMeasurementTexts = ({ poles, underground = [], connections = [], includeStations = false }) => {
+export const buildSpanMeasurementTexts = ({ poles, underground = [], connections = [], includeStations = false, routes = {} }) => {
   const { route } = computeRoute(poles);
   const ug = ugWithGps(underground);
   const pairs = computeConnectionPairs(route, ug, connections);
@@ -324,7 +337,7 @@ export const buildSpanMeasurementTexts = ({ poles, underground = [], connections
     if (!pairIsManual(pr)) {
       rows.push({
         so: pr.from.sort_order ?? Infinity,
-        text: `${nameWithSta(pr.from)} to ${nameWithSta(pr.to)} = ${fmtFeet(distanceFeet(pr.from.pos, pr.to.pos))}${pairIsAerial(pr) ? "" : " (UG)"}`,
+        text: `${nameWithSta(pr.from)} to ${nameWithSta(pr.to)} = ${fmtFeet(pathFeet(segPath(pr, routes)))}${pairIsAerial(pr) ? "" : " (UG)"}`,
       });
     }
   });
@@ -349,19 +362,23 @@ export const buildSpanMeasurementTexts = ({ poles, underground = [], connections
 
 // Fetch a single satellite image (via backend proxy) and draw the annotated
 // pole-route exhibit, then trigger a PNG download. Returns true on success.
-export const downloadPoleMapImage = async ({ poles, job, showStops = false, underground = [], connections = [] }) => {
+export const downloadPoleMapImage = async ({ poles, job, showStops = false, underground = [], connections = [], routes = {} }) => {
   const { route, totalRiserFeet } = computeRoute(poles);
   const ug = ugWithGps(underground);
   // Mirror the live Job Map lines: custom connections + End Path breaks
-  const pairSegs = computeConnectionPairs(route, ug, connections).map((pr) => ({
-    from: pr.from,
-    to: pr.to,
-    ft: distanceFeet(pr.from.pos, pr.to.pos),
-    deg: bearingDeg(pr.from.pos, pr.to.pos),
-    mid: [(pr.from.pos[0] + pr.to.pos[0]) / 2, (pr.from.pos[1] + pr.to.pos[1]) / 2],
-    aerial: pairIsAerial(pr),
-    manual: pairIsManual(pr),
-  }));
+  const pairSegs = computeConnectionPairs(route, ug, connections).map((pr) => {
+    const path = segPath(pr, routes);
+    return {
+      from: pr.from,
+      to: pr.to,
+      path,
+      ft: pathFeet(path),
+      deg: bearingDeg(pr.from.pos, pr.to.pos),
+      mid: pathMid(path),
+      aerial: pairIsAerial(pr),
+      manual: pairIsManual(pr),
+    };
+  });
   const aerialFt = pairSegs.reduce((acc, x) => acc + (x.aerial && !x.manual ? x.ft : 0), 0);
   const ugFt = pairSegs.reduce((acc, x) => acc + (!x.aerial && !x.manual ? x.ft : 0), 0);
   const pathFt = totalPathFeet(underground);
@@ -431,16 +448,15 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
 
     // 1) Route lines mirroring the live map: aerial (BLUE solid), underground (GREEN dashed)
     pairSegs.forEach((sg) => {
-      const [x1, y1] = pt(sg.from.pos);
-      const [x2, y2] = pt(sg.to.pos);
+      const pts = (sg.path || [sg.from.pos, sg.to.pos]).map((ll) => pt(ll));
       ctx.save();
       if (!sg.aerial) ctx.setLineDash([6 * s, 4 * s]);
       ctx.strokeStyle = sg.aerial ? "#2563eb" : "#16a34a";
       ctx.lineWidth = sg.aerial ? 3 * s : 2.5 * s;
       ctx.lineJoin = "round";
       ctx.beginPath();
-      ctx.moveTo(x1, y1);
-      ctx.lineTo(x2, y2);
+      ctx.moveTo(pts[0][0], pts[0][1]);
+      for (let k = 1; k < pts.length; k++) ctx.lineTo(pts[k][0], pts[k][1]);
       ctx.stroke();
       ctx.restore();
     });
@@ -1013,16 +1029,15 @@ const generateSegmentPage = async ({
 
   // Draw route lines mirroring the live map (aerial BLUE solid / underground GREEN dashed)
   pagePairs.forEach((sg) => {
-    const [x1, y1] = pt(sg.from.pos);
-    const [x2, y2] = pt(sg.to.pos);
+    const pts = (sg.path || [sg.from.pos, sg.to.pos]).map((ll) => pt(ll));
     ctx.save();
     if (!sg.aerial) ctx.setLineDash([6 * s, 4 * s]);
     ctx.strokeStyle = sg.aerial ? "#2563eb" : "#16a34a";
     ctx.lineWidth = sg.aerial ? 4 * s : 3 * s;
     ctx.lineJoin = "round";
     ctx.beginPath();
-    ctx.moveTo(x1, y1);
-    ctx.lineTo(x2, y2);
+    ctx.moveTo(pts[0][0], pts[0][1]);
+    for (let k = 1; k < pts.length; k++) ctx.lineTo(pts[k][0], pts[k][1]);
     ctx.stroke();
     ctx.restore();
   });
@@ -1324,21 +1339,25 @@ const generateMeasurementListImage = ({ pairSegs, route, totalRiserFeet, job, un
 
 // Download segmented map pages as a ZIP file with separate measurement list
 export const downloadSegmentedMapPages = async ({ 
-  poles, job, showStops = false, underground = [], connections = [],
+  poles, job, showStops = false, underground = [], connections = [], routes = {},
   targetFeet = 800 
 }) => {
   const { route, totalRiserFeet } = computeRoute(poles);
   const ug = ugWithGps(underground);
   // Mirror the live Job Map lines: custom connections + End Path breaks + standalone items
-  const pairSegs = computeConnectionPairs(route, ug, connections).map((pr) => ({
-    from: pr.from,
-    to: pr.to,
-    ft: distanceFeet(pr.from.pos, pr.to.pos),
-    deg: bearingDeg(pr.from.pos, pr.to.pos),
-    mid: [(pr.from.pos[0] + pr.to.pos[0]) / 2, (pr.from.pos[1] + pr.to.pos[1]) / 2],
-    aerial: pairIsAerial(pr),
-    manual: pairIsManual(pr),
-  }));
+  const pairSegs = computeConnectionPairs(route, ug, connections).map((pr) => {
+    const path = segPath(pr, routes);
+    return {
+      from: pr.from,
+      to: pr.to,
+      path,
+      ft: pathFeet(path),
+      deg: bearingDeg(pr.from.pos, pr.to.pos),
+      mid: pathMid(path),
+      aerial: pairIsAerial(pr),
+      manual: pairIsManual(pr),
+    };
+  });
   
   if (route.length === 0 && ug.length === 0) {
     toast.error("No items with GPS coordinates to map");
