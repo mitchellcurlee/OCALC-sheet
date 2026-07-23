@@ -85,8 +85,8 @@ const JobsLocationMap = ({ jobs, onOpenJob }) => {
       </div>
       <div className="h-[320px]">
         <MapContainer bounds={bounds} boundsOptions={{ padding: [40, 40], maxZoom: 15 }} className="h-full w-full" scrollWheelZoom={true}>
-          <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" attribution="&copy; Esri" maxNativeZoom={19} maxZoom={22} />
-          <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}" maxNativeZoom={19} maxZoom={22} />
+          <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" attribution="&copy; Esri" maxNativeZoom={19} maxZoom={22} crossOrigin="anonymous" />
+          <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}" maxNativeZoom={19} maxZoom={22} crossOrigin="anonymous" />
           {pins.map((job) => (
             <Marker key={job.id} position={[job.latitude, job.longitude]} icon={jobPinIcon(job.name, !!job.completed)}>
               <Popup>

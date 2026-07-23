@@ -50,7 +50,12 @@ export const PhotoUpload = ({ label, value, onChange, testId, showHeightTool = f
           onChange(placeholder);
           toast.warning("No signal — photo saved on this device and will upload automatically.");
           return;
-        } catch (e2) { /* fall through to normal error */ }
+        } catch (e2) {
+          if (e2?.name === "QuotaExceededError" || `${e2?.message}`.includes("write failed")) {
+            toast.error("Device storage is full — free up space to save photos offline.");
+            return;
+          }
+        }
       }
       console.error("Photo upload failed", err);
       toast.error("Photo upload failed. Please try again.");

@@ -77,7 +77,12 @@ export const MultiPhotoUpload = ({ label, value = [], onChange, testId, compact 
             uploadedUrls.push(placeholder);
             toast.warning(`No signal — ${file.name} saved on this device and will upload automatically.`);
             continue;
-          } catch (e2) { /* fall through to normal error */ }
+          } catch (e2) {
+            if (e2?.name === "QuotaExceededError" || `${e2?.message}`.includes("write failed")) {
+              toast.error("Device storage is full — free up space to save photos offline.");
+              continue;
+            }
+          }
         }
         console.error("Photo upload failed", err);
         toast.error(`Failed to upload ${file.name}`);

@@ -1,0 +1,27 @@
+{
+  "summary": "FINAL RETEST of offline photo E2E flow (iter39). ALL acceptance criteria PASS. Service Worker v4 with CORS tile fetching + no-opaque-caching + trim limits (2500/300/120) is verified working: storage estimate stays at ~7MB (was 1070MB pre-fix). Offline photo capture -> Save -> reconnect -> real https URL sync flow is fully functional end-to-end. tx.oncomplete write semantics from iter37 are correct. Online photo regression PASS. Test data cleaned up.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/test_reports/iter38_setup.py",
+    "/app/test_reports/iter39_offline_photo2/"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "public/service-worker.js v4: CORS tile caching + opaque rejection + trimCache with LRU-style eviction is the correct fix. TileLayer crossOrigin='anonymous' aligns tile requests with cache policy. Verified: usage 7.09MB / quota 870MB after login+edit page reload; only poledata-static-v4/poledata-api-v2/poledata-tiles-v2 caches present.",
+    "offlineDb.js tx.oncomplete/tx.onabort putItem/deleteItem semantics from iter37 remain correct. Offline write interceptor now correctly queues the pole PUT to syncQueue with a proper update:pole payload (44 top-level fields including birthmark_photos containing the offline-photo:// placeholder).",
+    "MultiPhotoUpload.jsx quota-full toast branch is present at line 81-84 (`e2?.name === 'QuotaExceededError' || message.includes('write failed')` -> toast.error). Not triggered in this run because storage was healthy — logic path was reviewed and is correct.",
+    "offlinePhotos.syncOfflinePhotos: fires 6s after 'online' event, drained photoQueue (1->0) and syncQueue (1->0) within a single 3.5s poll after the online event. `Uploaded 1 offline photo` success toast rendered on final screenshot. Backend GET /api/jobs/{id}/poles now shows birthmark_photos=['/api/files/poledata/uploads/ff590b37...png'] (real URL, no offline-photo:// prefix)."
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "100% (POST /api/auth/login 200, POST /api/jobs 200, POST /api/poles 200, POST /api/upload-photo 200, GET /api/jobs/{id}/poles 200, DELETE /api/jobs/{id} 200, GET deleted job 404)",
+    "frontend": "100% offline photo E2E: warning banner shown, photoQueue.count=1, thumbnail rendered, save queued update:pole to syncQueue, reconnect drained both queues, backend has real https URL, 'Uploaded 1 offline photo' toast visible. Online photo regression: /api/upload-photo returns immediate real URL. Storage sanity: 7.09MB used / 870MB quota (well below 100MB target)."
+  },
+  "test_credentials": "mitchell.curlee@byers.com / Dawson@2016 (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "Created temp job TEST_iter38_offline_photo (id 3dc5fa68-be3b-4a34-a9e8-888d18df29dc) + pole TP1 (id f9028774-e35f-454e-90fa-44fa82bed2ae). DELETED at end of test (DELETE returned 200; subsequent GET returned 404). Seed job e5dc0bae-96bb-4cef-8001-7baf4e41d80a was not touched.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Offline photo E2E is fully verified working after the SW v4 CORS-tile / no-opaque / trim-cache fix. Nothing further to test on this flow. If regressing, run /app/test_reports/iter38_setup.py to create a fresh job+pole and follow the exact E2E script from this iteration (browser automation output at /app/test_reports/iter39_offline_photo2/).",
+  "rca of the issue": "PREVIOUSLY (iter38): SW aggressively cached opaque map tile responses; Chromium pads each opaque cache entry by ~7MB, exhausting the 1GB origin quota after just login + one navigation. That in turn made ALL IndexedDB readwrite transactions abort with QuotaExceededError, so offline photo capture could not queue. FIX APPLIED (verified in this iter39): (a) TileLayer sets crossOrigin='anonymous' so tiles arrive as CORS responses (no padding); (b) service-worker.js v4 skips caching any response with type==='opaque'; (c) trimCache enforces MAX ENTRIES per cache (tiles 2500 / api 300 / static 120) with LRU-style eviction on every 50th put; (d) old cache names are deleted on SW activate; (e) offlineTiles prefetch uses mode:'cors'. Measured post-fix: 7.09MB used / 870MB quota after login + pole edit form + reload. Offline photo E2E now works end-to-end: photoQueue write succeeds, syncQueue update:pole write succeeds, syncOfflinePhotos uploads to /upload-photo and PUTs /poles/{id} with the real URL. Backend GET confirms birthmark_photos contains only a real /api/files/poledata/uploads/... URL after reconnect."
+}

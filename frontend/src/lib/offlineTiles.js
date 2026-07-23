@@ -70,7 +70,7 @@ export const cacheJobForOffline = async (jobId, points, onProgress) => {
   let done = 0;
   const workers = Array.from({ length: 8 }, async (_, w) => {
     for (let i = w; i < urls.length; i += 8) {
-      try { await fetch(urls[i], { mode: 'no-cors' }); } catch (e) { /* ignore */ }
+      try { await fetch(urls[i], { mode: 'cors' }); } catch (e) { /* ignore */ }
       done++;
       if (onProgress && done % 20 === 0) onProgress(Math.round((done / urls.length) * 100));
     }

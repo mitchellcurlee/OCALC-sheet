@@ -6,10 +6,35 @@
 // - API GET: network first, cache fallback (offline viewing)
 // - Writes are never intercepted (the app queues them in IndexedDB)
 
-const STATIC_CACHE = 'poledata-static-v3';
-const TILE_CACHE = 'poledata-tiles-v1';
-const API_CACHE = 'poledata-api-v1';
+const STATIC_CACHE = 'poledata-static-v4';
+const TILE_CACHE = 'poledata-tiles-v2';
+const API_CACHE = 'poledata-api-v2';
 const CURRENT_CACHES = [STATIC_CACHE, TILE_CACHE, API_CACHE];
+
+// Max entries per cache (opaque responses are never cached — Chromium pads
+// each opaque entry by ~7MB which exhausts the origin quota instantly)
+const CACHE_LIMITS = { [TILE_CACHE]: 2500, [API_CACHE]: 300, [STATIC_CACHE]: 120 };
+
+async function trimCache(cacheName) {
+  const limit = CACHE_LIMITS[cacheName];
+  if (!limit) return;
+  const cache = await caches.open(cacheName);
+  const keys = await cache.keys();
+  if (keys.length > limit) {
+    const excess = keys.length - limit;
+    for (let i = 0; i < excess; i++) {
+      await cache.delete(keys[i]);
+    }
+  }
+}
+
+let putCounter = 0;
+async function cachePut(cacheName, request, response) {
+  const cache = await caches.open(cacheName);
+  await cache.put(request, response);
+  putCounter++;
+  if (putCounter % 50 === 0) trimCache(cacheName);
+}
 
 const STATIC_ASSETS = ['/', '/index.html', '/manifest.json'];
 
@@ -38,15 +63,16 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Cache-first for map tiles (opaque cross-origin responses allowed)
+// Cache-first for map tiles (CORS responses only — opaque responses are NOT
+// cached because of Chromium's ~7MB quota padding per opaque entry)
 async function tileCacheFirst(request) {
   const cache = await caches.open(TILE_CACHE);
   const cached = await cache.match(request);
   if (cached) return cached;
   try {
     const response = await fetch(request);
-    if (response && (response.ok || response.type === 'opaque')) {
-      cache.put(request, response.clone());
+    if (response && response.ok && response.type !== 'opaque') {
+      cachePut(TILE_CACHE, request, response.clone());
     }
     return response;
   } catch (e) {
@@ -60,7 +86,7 @@ async function apiNetworkFirst(request) {
   try {
     const response = await fetch(request);
     if (response && response.ok) {
-      cache.put(request, response.clone());
+      cachePut(API_CACHE, request, response.clone());
     }
     return response;
   } catch (e) {
@@ -79,7 +105,7 @@ async function staticNetworkFirst(request) {
   try {
     const response = await fetch(request);
     if (response && response.ok) {
-      cache.put(request, response.clone());
+      cachePut(STATIC_CACHE, request, response.clone());
     }
     return response;
   } catch (e) {
