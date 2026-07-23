@@ -165,16 +165,13 @@ async def _sync_job(action: SyncAction, user: dict) -> SyncResult:
     
     if action.action == "create":
         data = action.data or {}
-        job_kwargs = {}
-        if data.get("id"):
-            job_kwargs["id"] = data["id"]
+        # Pass through all job fields (model ignores extras); enforce ownership fields
+        clean = {k: v for k, v in data.items() if not k.startswith("_") and k not in ("user_id", "user_email")}
+        clean["name"] = clean.get("name") or "Untitled"
         job = Job(
-            name=data.get("name", "Untitled"),
-            description=data.get("description"),
-            location=data.get("location"),
+            **clean,
             user_id=user["id"],
             user_email=user.get("email", ""),
-            **job_kwargs
         )
         await _db.jobs.insert_one(job.model_dump())
         return SyncResult(action_id=action.id, success=True, server_id=job.id)
