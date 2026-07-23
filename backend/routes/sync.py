@@ -214,6 +214,11 @@ async def _sync_underground(action: SyncAction, user: dict) -> SyncResult:
     
     if action.action == "create":
         data = action.data or {}
+        job = await _db.jobs.find_one({"id": data.get("job_id")})
+        if not job:
+            return SyncResult(action_id=action.id, success=False, error="Job not found")
+        if job["user_id"] != user["id"] and not is_admin_user(user):
+            return SyncResult(action_id=action.id, success=False, error="Access denied")
         item = Underground(**data)
         await _db.underground.insert_one(item.model_dump())
         return SyncResult(action_id=action.id, success=True, server_id=item.id)

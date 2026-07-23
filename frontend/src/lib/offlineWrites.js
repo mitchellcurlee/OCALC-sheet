@@ -67,6 +67,10 @@ axios.interceptors.response.use(
     if (!cfg || error.response || cfg._offlineReplay || cfg.data instanceof FormData) {
       return Promise.reject(error);
     }
+    // Only queue true connectivity failures — not timeouts/aborts while online
+    if (navigator.onLine && error.code !== 'ERR_NETWORK') {
+      return Promise.reject(error);
+    }
     const parsed = parseWrite(cfg.method, cfg.url);
     if (!parsed) return Promise.reject(error);
 
