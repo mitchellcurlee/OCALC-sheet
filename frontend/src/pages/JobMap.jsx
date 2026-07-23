@@ -1496,7 +1496,7 @@ const JobMap = () => {
                             <SelectValue />
                           </div>
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="z-[1200] bg-white">
                           {Object.entries(PATH_COLORS).map(([key, { name, hex }]) => (
                             <SelectItem key={key} value={key}>
                               <div className="flex items-center gap-2">
@@ -1519,7 +1519,7 @@ const JobMap = () => {
                             <SelectValue />
                           </div>
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="z-[1200] bg-white">
                           {Object.entries(PATH_COLORS).map(([key, { name, hex }]) => (
                             <SelectItem key={key} value={key}>
                               <div className="flex items-center gap-2">
@@ -1729,7 +1729,7 @@ const JobMap = () => {
                       <SelectTrigger className="h-7 text-xs bg-white text-zinc-900">
                         <SelectValue placeholder="Select a segment..." />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="z-[1200] bg-white">
                         {orderedSegments.map((seg, i) => {
                           const segKey = `${seg.from.id}-${seg.to.id}`;
                           const fromLabel = seg.from.pole_number || seg.from.type || 'P' + (i+1);
@@ -2237,7 +2237,7 @@ const JobMap = () => {
                           <SelectTrigger className="h-8 text-xs bg-white" data-testid="conn-picker-select">
                             <SelectValue placeholder="Or pick a line from list…" />
                           </SelectTrigger>
-                          <SelectContent className="max-h-60">
+                          <SelectContent className="max-h-60 z-[1200] bg-white">
                             {connections.map((c) => {
                               const f = allConnectableItems.find((i) => i.id === c.from_item_id);
                               const t = allConnectableItems.find((i) => i.id === c.to_item_id);
