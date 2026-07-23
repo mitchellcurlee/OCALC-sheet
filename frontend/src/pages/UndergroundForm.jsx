@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { PhotoMarkupEditor } from "@/components/PhotoMarkupEditor";
+import { undergroundAbbr } from "@/lib/poleMapImage";
 import { ArrowLeft, Save, Loader2, MapPin, Search, Pencil, Plus, Trash2 } from "lucide-react";
 
 // Types that get a FID box + Primary FID toggle
@@ -46,6 +47,7 @@ const UndergroundForm = () => {
   const backUrl = `/jobs/${jobId}`;
 
   const [types, setTypes] = useState([]);
+  const [jobItems, setJobItems] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [fetching, setFetching] = useState(isEdit);
   const [gpsLoading, setGpsLoading] = useState(false);
@@ -107,7 +109,7 @@ const UndergroundForm = () => {
         tie_in_measurements: u.tie_in_measurements || "",
         fid: u.fid || "",
         primary_fid: !!u.primary_fid,
-        path_measurements: (u.path_measurements || []).map((m) => ({ direction: m.direction, feet: m.feet?.toString() || "" })),
+        path_measurements: (u.path_measurements || []).map((m) => ({ direction: m.direction, feet: m.feet?.toString() || "", to: m.to || "" })),
         soc_start: !!u.soc_start,
         soc_end: !!u.soc_end,
         end_path: !!u.end_path,
@@ -121,10 +123,33 @@ const UndergroundForm = () => {
     }
   }, [id, isEdit, navigate, backUrl]);
 
+  const fetchJobItems = useCallback(async () => {
+    try {
+      const [polesRes, ugRes] = await Promise.all([
+        axios.get(`/jobs/${jobId}/poles`),
+        axios.get(`/jobs/${jobId}/underground`),
+      ]);
+      const items = [];
+      (polesRes.data || []).forEach((p) => items.push({
+        id: p.id, kind: "pole", sort_order: p.sort_order ?? Infinity, standalone: p.standalone === true,
+        lat: parseFloat(p.latitude), lng: parseFloat(p.longitude),
+        name: /^\d/.test(String(p.pole_number || "")) ? `P${p.pole_number}` : (p.pole_number || "Pole"),
+      }));
+      (ugRes.data || []).forEach((u) => items.push({
+        id: u.id, kind: "underground", sort_order: u.sort_order ?? Infinity, standalone: u.standalone === true,
+        lat: parseFloat(u.latitude), lng: parseFloat(u.longitude),
+        name: `${undergroundAbbr(u.type)}${u.label && u.label !== u.type ? ` ${u.label}` : ""}`,
+      }));
+      items.sort((a, b) => a.sort_order - b.sort_order);
+      setJobItems(items);
+    } catch (e) { /* dropdown is best-effort */ }
+  }, [jobId]);
+
   useEffect(() => {
     fetchOptions();
     fetchItem();
-  }, [fetchOptions, fetchItem]);
+    fetchJobItems();
+  }, [fetchOptions, fetchItem, fetchJobItems]);
 
   const setLatLng = (lat, lng) => {
     setFormData((prev) => ({ ...prev, latitude: lat.toFixed(6), longitude: lng.toFixed(6) }));
@@ -197,7 +222,7 @@ const UndergroundForm = () => {
     }
   };
 
-  const addPathMeasurement = () => setFormData((p) => ({ ...p, path_measurements: [...p.path_measurements, { direction: "In", feet: "" }] }));
+  const addPathMeasurement = () => setFormData((p) => ({ ...p, path_measurements: [...p.path_measurements, { direction: "In", feet: "", to: "" }] }));
   const updatePathMeasurement = (i, field, value) => setFormData((p) => {
     const rows = [...p.path_measurements];
     rows[i] = { ...rows[i], [field]: value };
@@ -205,10 +230,45 @@ const UndergroundForm = () => {
   });
   const removePathMeasurement = (i) => setFormData((p) => ({ ...p, path_measurements: p.path_measurements.filter((_, idx) => idx !== i) }));
 
+  // Target options for the "to" dropdown — all attribute markers in the job except this item
+  const targetOptions = useMemo(
+    () => jobItems.filter((it) => it.id !== id).map((it) => it.name),
+    [jobItems, id]
+  );
+
+  // Auto GPS coordinate-to-coordinate measurements to the path neighbors (edit mode)
+  const autoGpsMeasurements = useMemo(() => {
+    if (!isEdit) return null;
+    const dFt = (a, b) => {
+      const R = 20925646.3;
+      const la1 = (a[0] * Math.PI) / 180, la2 = (b[0] * Math.PI) / 180;
+      const dLat = la2 - la1, dLng = ((b[1] - a[1]) * Math.PI) / 180;
+      const h = Math.sin(dLat / 2) ** 2 + Math.cos(la1) * Math.cos(la2) * Math.sin(dLng / 2) ** 2;
+      return R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+    };
+    const myLat = parseFloat(formData.latitude);
+    const myLng = parseFloat(formData.longitude);
+    if (!Number.isFinite(myLat) || !Number.isFinite(myLng)) return null;
+    const pathChain = jobItems.filter((it) => !it.standalone && Number.isFinite(it.lat) && Number.isFinite(it.lng));
+    const idx = pathChain.findIndex((it) => it.id === id);
+    if (idx === -1) return null;
+    const prev = pathChain[idx - 1];
+    const next = pathChain[idx + 1];
+    return {
+      incoming: prev ? { name: prev.name, ft: dFt([prev.lat, prev.lng], [myLat, myLng]) } : null,
+      outgoing: next ? { name: next.name, ft: dFt([myLat, myLng], [next.lat, next.lng]) } : null,
+    };
+  }, [isEdit, id, jobItems, formData.latitude, formData.longitude]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.type) {
       toast.error("Please select a type");
+      return;
+    }
+    const validRows = formData.path_measurements.filter((m) => m.direction && m.feet !== "" && Number.isFinite(parseFloat(m.feet)));
+    if (validRows.some((m) => !m.to)) {
+      toast.error("Select a \"to\" target for each path measurement");
       return;
     }
     setSubmitting(true);
@@ -229,7 +289,7 @@ const UndergroundForm = () => {
         standalone: !!formData.standalone,
         path_measurements: formData.path_measurements
           .filter((m) => m.direction && m.feet !== "" && Number.isFinite(parseFloat(m.feet)))
-          .map((m) => ({ direction: m.direction, feet: parseFloat(m.feet) })),
+          .map((m) => ({ direction: m.direction, feet: parseFloat(m.feet), to: m.to })),
         latitude: Number.isFinite(parseFloat(formData.latitude)) ? parseFloat(formData.latitude) : null,
         longitude: Number.isFinite(parseFloat(formData.longitude)) ? parseFloat(formData.longitude) : null,
       };
@@ -423,22 +483,31 @@ const UndergroundForm = () => {
                 </Button>
               </div>
               {formData.path_measurements.length === 0 && (
-                <p className="text-xs text-emerald-600">Add direction + footage rows (e.g. Up 25ft, In 15ft). These are added to the map's overall measurements and the ASE path of approach.</p>
+                <p className="text-xs text-emerald-600">Add direction + footage rows with a target (e.g. Up 6ft to MPOE). These are added to the map's overall measurements and the ASE path of approach.</p>
               )}
               {formData.path_measurements.map((m, i) => (
-                <div key={i} className="flex items-center gap-2" data-testid={`path-measurement-row-${i}`}>
+                <div key={i} className="flex items-center gap-2 flex-wrap" data-testid={`path-measurement-row-${i}`}>
                   <Select value={m.direction} onValueChange={(v) => updatePathMeasurement(i, "direction", v)}>
-                    <SelectTrigger className="h-10 w-28 bg-white border-emerald-300 text-zinc-900" data-testid={`path-direction-select-${i}`}>
+                    <SelectTrigger className="h-10 w-24 bg-white border-emerald-300 text-zinc-900" data-testid={`path-direction-select-${i}`}>
                       <SelectValue placeholder="Direction" />
                     </SelectTrigger>
-                    <SelectContent className="bg-zinc-50 border-zinc-300">
+                    <SelectContent className="bg-zinc-50 border-zinc-300 z-[1200]">
                       {PATH_DIRECTIONS.map((d) => (<SelectItem key={d} value={d}>{d}</SelectItem>))}
                     </SelectContent>
                   </Select>
-                  <div className="relative flex-1">
+                  <div className="relative w-24">
                     <Input type="number" inputMode="decimal" min="0" step="any" value={m.feet} onChange={(e) => updatePathMeasurement(i, "feet", e.target.value)} placeholder="0" className="h-10 bg-white border-emerald-300 text-zinc-900 pr-8" data-testid={`path-feet-input-${i}`} />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-mono text-zinc-400">ft</span>
                   </div>
+                  <span className="text-xs font-mono text-emerald-700">to</span>
+                  <Select value={m.to || ""} onValueChange={(v) => updatePathMeasurement(i, "to", v)}>
+                    <SelectTrigger className="h-10 flex-1 min-w-[130px] bg-white border-emerald-300 text-zinc-900" data-testid={`path-to-select-${i}`}>
+                      <SelectValue placeholder="Target…" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-zinc-50 border-zinc-300 z-[1200] max-h-60">
+                      {targetOptions.map((t, ti) => (<SelectItem key={`${t}-${ti}`} value={t}>{t}</SelectItem>))}
+                    </SelectContent>
+                  </Select>
                   <Button type="button" onClick={() => removePathMeasurement(i)} size="icon" variant="ghost" className="h-10 w-10 text-red-500 hover:text-red-700 hover:bg-red-50" data-testid={`remove-path-measurement-${i}`}>
                     <Trash2 className="w-4 h-4" />
                   </Button>
@@ -446,9 +515,23 @@ const UndergroundForm = () => {
               ))}
               {formData.path_measurements.length > 0 && (
                 <p className="text-xs font-mono text-emerald-700" data-testid="path-measurements-summary">
-                  {formData.path_measurements.filter((m) => m.direction && m.feet).map((m) => `${m.direction} ${m.feet}ft`).join(", ")}
+                  {formData.path_measurements.filter((m) => m.direction && m.feet).map((m) => `${m.direction} ${m.feet}ft${m.to ? ` to ${m.to}` : ""}`).join(", ")}
                   {(() => { const t = formData.path_measurements.reduce((s, m) => s + (parseFloat(m.feet) || 0), 0); return t > 0 ? ` — ${t} ft total` : ""; })()}
                 </p>
+              )}
+              {autoGpsMeasurements && (autoGpsMeasurements.incoming || autoGpsMeasurements.outgoing) && (
+                <div className="border border-emerald-200 bg-white rounded p-2 space-y-0.5" data-testid="auto-gps-measurements">
+                  <p className="text-[10px] font-mono tracking-widest text-zinc-400 uppercase">Auto GPS measurements</p>
+                  {autoGpsMeasurements.incoming && (
+                    <p className="text-xs font-mono text-zinc-600" data-testid="auto-gps-incoming">{autoGpsMeasurements.incoming.name} → this: {Math.round(autoGpsMeasurements.incoming.ft)} ft</p>
+                  )}
+                  {autoGpsMeasurements.outgoing && (
+                    <p className={`text-xs font-mono ${formData.path_measurements.length > 0 ? "text-zinc-400 line-through" : "text-zinc-600"}`} data-testid="auto-gps-outgoing">
+                      this → {autoGpsMeasurements.outgoing.name}: {Math.round(autoGpsMeasurements.outgoing.ft)} ft
+                      {formData.path_measurements.length > 0 && <span className="ml-1 no-underline text-emerald-700">(replaced by path measurements)</span>}
+                    </p>
+                  )}
+                </div>
               )}
             </div>
             

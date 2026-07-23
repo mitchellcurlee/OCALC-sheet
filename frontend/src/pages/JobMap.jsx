@@ -1103,7 +1103,8 @@ const JobMap = () => {
         isAerial,
         hasUnderground,
         isRed: isMPOE || isAfterMPOE,
-        segmentType: isAerial ? "aerial" : "underground"
+        segmentType: isAerial ? "aerial" : "underground",
+        manualMeasured: fromItem.type === "underground" && fromItem.hasPath === true
       });
     });
     
@@ -1112,7 +1113,7 @@ const JobMap = () => {
 
   // Total underground footage (segments that touch an underground item, per combined order)
   const ugFeet = useMemo(
-    () => orderedSegments.reduce((sum, s) => sum + (s.segmentType === "underground" ? s.distFt : 0), 0),
+    () => orderedSegments.reduce((sum, s) => sum + (s.segmentType === "underground" && !s.manualMeasured ? s.distFt : 0), 0),
     [orderedSegments]
   );
 
@@ -1181,7 +1182,7 @@ const JobMap = () => {
     };
     const pathText = (u) => {
       const t = u.path_measurements.reduce((s, m) => s + (parseFloat(m.feet) || 0), 0);
-      return `${undergroundAbbr(u.type)}${u.label ? ` ${u.label}` : ""}: ${u.path_measurements.map((m) => `${m.direction} ${m.feet}ft`).join(", ")} = ${fmtFeet(t)}`;
+      return `${undergroundAbbr(u.type)}${u.label ? ` ${u.label}` : ""}: ${u.path_measurements.map((m) => `${m.direction} ${m.feet}ft${m.to ? ` to ${m.to}` : ""}`).join(", ")} = ${fmtFeet(t)}`;
     };
     const pushPath = (item, pos) => {
       if (item.type === "pole" || pathAdded.has(item.id)) return;
@@ -1193,7 +1194,7 @@ const JobMap = () => {
     orderedSegments.forEach((seg, i) => {
       pushRiser(seg.from, seg.fromPos);
       pushPath(seg.from, seg.fromPos);
-      entries.push({ kind: "span", so: seg.from.sort_order ?? Infinity, segIndex: i, seg });
+      if (!seg.manualMeasured) entries.push({ kind: "span", so: seg.from.sort_order ?? Infinity, segIndex: i, seg });
     });
     if (orderedSegments.length > 0) {
       const last = orderedSegments[orderedSegments.length - 1];
@@ -1222,7 +1223,7 @@ const JobMap = () => {
 
   // Total aerial footage from ordered segments (includes Loop spans + waypoint routes)
   const aerialFeetTotal = useMemo(
-    () => orderedSegments.reduce((sum, seg) => sum + (seg.segmentType === "aerial" ? segListDistance(seg) : 0), 0),
+    () => orderedSegments.reduce((sum, seg) => sum + (seg.segmentType === "aerial" && !seg.manualMeasured ? segListDistance(seg) : 0), 0),
     [orderedSegments, segListDistance]
   );
 
@@ -1966,8 +1967,8 @@ const JobMap = () => {
                         onClick={() => handleSegmentClick(segmentKey)}
                       />
                       {/* Numbered badge — measurement is in the list below the map */}
-                      {!showStationNumbers && (
-                        <Marker position={badgePos} icon={numberBadgeIcon(spanNums[i] ?? i + 1)} interactive={false} zIndexOffset={800} />
+                      {!showStationNumbers && spanNums[i] != null && (
+                        <Marker position={badgePos} icon={numberBadgeIcon(spanNums[i])} interactive={false} zIndexOffset={800} />
                       )}
                       {/* Selection highlight */}
                       {isSelected && (
@@ -2024,8 +2025,8 @@ const JobMap = () => {
                       }}
                     />
                     {/* Numbered badge — measurement is in the list below the map */}
-                    {!showStationNumbers && (
-                      <Marker position={seg.mid} icon={numberBadgeIcon(spanNums[i] ?? i + 1)} interactive={false} zIndexOffset={800} />
+                    {!showStationNumbers && spanNums[i] != null && (
+                      <Marker position={seg.mid} icon={numberBadgeIcon(spanNums[i])} interactive={false} zIndexOffset={800} />
                     )}
                   </React.Fragment>
                 );

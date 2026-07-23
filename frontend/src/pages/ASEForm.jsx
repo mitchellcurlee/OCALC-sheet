@@ -386,7 +386,7 @@ const ASEForm = () => {
         {
           const pmTexts = ugData
             .filter((i) => (i.path_measurements || []).length > 0)
-            .map((i) => `${i.label || i.type}: ${i.path_measurements.map((m) => `${m.direction} ${m.feet}ft`).join(', ')}`);
+            .map((i) => `${i.label || i.type}: ${i.path_measurements.map((m) => `${m.direction} ${m.feet}ft${m.to ? ` to ${m.to}` : ''}`).join(', ')}`);
           pmTexts.forEach((t) => {
             if (!updated.path_of_approach) {
               updated.path_of_approach = t;

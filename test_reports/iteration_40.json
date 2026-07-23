@@ -1,0 +1,29 @@
+{
+  "summary": "Iter40 — Underground path_measurements 'to' target + auto GPS + outgoing exclusion feature. Backend and frontend fully verified end-to-end. All 8 pytest tests pass. Playwright UI test confirmed: (a) auto-GPS incoming/outgoing box shows correct neighbor distances, (b) target dropdown lists all other job attributes (P1,P2,MPOE,P3) and excludes self (HH-1), (c) validation toast blocks save when feet is filled but 'to' target is empty, (d) picking a target strikes-through the outgoing auto GPS line with '(replaced by path measurements)', (e) after save the Job Map span-measurements-list contains the path entry 'HH HH-1: Up 6ft to MPOE = 6.0 ft' and correctly excludes the auto 'HH HH-1 to MPOE' outgoing span while keeping 'P2 to HH HH-1' (incoming) and 'MPOE to P3', (f) total footer includes '+ 6.0 ft path' (365 aerial + 728 underground + 6.0 path = 1,099 ft). Test job deleted, seed job untouched.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_underground_path_to.py",
+    "/app/test_reports/pytest/iter40_underground_path_to.xml",
+    "/app/test_reports/iter40_setup.py",
+    "/app/test_reports/iter40_state.json",
+    "/app/test_reports/iter40_ui/final.jpeg"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "UndergroundForm.jsx: form validation correctly filters rows where direction AND feet are set before checking 'to', preventing false positives from empty rows.",
+    "JobMap.jsx manualMeasured flag depends on `fromItem.hasPath` which is only populated by computeConnectionPairs (poleMapImage.js line 194). Direct segments constructed elsewhere would silently break — worth adding a shared enricher to avoid regressions.",
+    "UndergroundForm.jsx targetOptions uses `it.name` display strings for the value. If a pole_number equals another item's abbreviated name there could be ambiguity; consider storing target id alongside display text. Non-blocking for MVP."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_underground_path_to.py",
+    "/app/test_reports/iter40_setup.py"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "mitchell.curlee@byers.com / Dawson@2016 (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "Ephemeral job TEST_ITER40_UI_* created with P1(sort0), P2(sort1), HH-1(sort2), MPOE(sort3), P3(sort4) — deleted after UI test (verified 404). Seed job e5dc0bae-96bb-4cef-8001-7baf4e41d80a not touched.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend test file test_underground_path_to.py can be re-run standalone (module-scoped job fixture creates+deletes). If UI test needs re-run, execute /app/test_reports/iter40_setup.py first to seed, then run the browser flow; state json will be written to iter40_state.json. Exhibit image PNG generation was NOT verified via automation (per request) — shares pairIsManual logic with the verified span list.",
+  "rca of the issue": "N/A — all feature acceptance criteria pass on first run."
+}

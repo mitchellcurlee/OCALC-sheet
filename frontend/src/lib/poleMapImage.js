@@ -191,7 +191,7 @@ export const AERIAL_ATTR_TYPES = new Set(["Loop", "Aerial Splice", "X-Messenger"
 export const computeConnectionPairs = (route, ug, connections = []) => {
   const allItems = [];
   route.forEach((p) => allItems.push({ id: p.id, type: "pole", pos: p.pos, sort_order: p.sort_order ?? Infinity, label: p.pole_number || "Pole", end_path: p.end_path === true, standalone: p.standalone === true }));
-  ug.forEach((u) => allItems.push({ id: u.id, type: "underground", ugType: u.type, pos: u.pos, sort_order: u.sort_order ?? Infinity, label: u.label || u.type, end_path: u.end_path === true, standalone: u.standalone === true }));
+  ug.forEach((u) => allItems.push({ id: u.id, type: "underground", ugType: u.type, pos: u.pos, sort_order: u.sort_order ?? Infinity, label: u.label || u.type, end_path: u.end_path === true, standalone: u.standalone === true, hasPath: (u.path_measurements || []).length > 0 }));
   allItems.sort((a, b) => a.sort_order - b.sort_order);
   const byId = {};
   allItems.forEach((it) => { byId[it.id] = it; });
@@ -232,6 +232,9 @@ export const pairIsAerial = (pr) => {
   return aerialItem(pr.from) && aerialItem(pr.to);
 };
 
+// A pair whose FROM item has manual path measurements: its auto GPS footage is replaced
+export const pairIsManual = (pr) => pr.from.type === "underground" && pr.from.hasPath === true;
+
 // Insert UG path-measurement rows into a display-row list at their route position (by sort_order)
 const insertPathRows = (displayRows, underground) => {
   [...(underground || [])]
@@ -267,9 +270,10 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
     deg: bearingDeg(pr.from.pos, pr.to.pos),
     mid: [(pr.from.pos[0] + pr.to.pos[0]) / 2, (pr.from.pos[1] + pr.to.pos[1]) / 2],
     aerial: pairIsAerial(pr),
+    manual: pairIsManual(pr),
   }));
-  const aerialFt = pairSegs.reduce((acc, x) => acc + (x.aerial ? x.ft : 0), 0);
-  const ugFt = pairSegs.reduce((acc, x) => acc + (x.aerial ? 0 : x.ft), 0);
+  const aerialFt = pairSegs.reduce((acc, x) => acc + (x.aerial && !x.manual ? x.ft : 0), 0);
+  const ugFt = pairSegs.reduce((acc, x) => acc + (!x.aerial && !x.manual ? x.ft : 0), 0);
   const pathFt = totalPathFeet(underground);
   const grandFt = aerialFt + ugFt + totalRiserFeet + pathFt;
   if (route.length === 0 && ug.length === 0) {
@@ -523,6 +527,7 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
     // 4) Footage labels (BLUE pills aerial / GREEN pills underground), offset perpendicular
     //    to the line, alternating sides so they don't cover markers or each other
     pairSegs.forEach((seg, i) => {
+      if (seg.manual) return;
       const [mx, my] = pt(seg.mid);
       const ang = toRad(seg.deg - 90);
       const perp = ang + Math.PI / 2;
@@ -707,7 +712,7 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
     const displayRows = [];
     const riserDone = new Set();
     pairSegs.forEach((sg) => {
-      displayRows.push({ type: "segment", so: sg.from.sort_order ?? Infinity, text: `${itemName(sg.from)} -> ${itemName(sg.to)}${sg.aerial ? "" : " (UG)"}`, ft: sg.ft });
+      if (!sg.manual) displayRows.push({ type: "segment", so: sg.from.sort_order ?? Infinity, text: `${itemName(sg.from)} -> ${itemName(sg.to)}${sg.aerial ? "" : " (UG)"}`, ft: sg.ft });
       const poleB = sg.to.type === "pole" ? route.find((p) => p.id === sg.to.id) : null;
       if (poleB?.risers && poleB?.riser_height && !riserDone.has(poleB.id)) {
         const riserCount = parseInt(poleB.risers) || 0;
@@ -812,7 +817,7 @@ const splitPairsIntoPages = (pairSegs, targetFeet = 800) => {
   let current = { pairs: [], footage: 0 };
   pairSegs.forEach((sg, i) => {
     current.pairs.push(sg);
-    current.footage += sg.ft;
+    current.footage += sg.manual ? 0 : sg.ft;
     if (current.footage >= targetFeet && i < pairSegs.length - 1) {
       pages.push(current);
       current = { pairs: [], footage: 0 };
@@ -952,6 +957,7 @@ const generateSegmentPage = async ({
 
   // Draw distance labels on pairs (blue aerial / green UG)
   pagePairs.forEach((seg, i) => {
+    if (seg.manual) return;
     const [mx, my] = pt(seg.mid);
     const ang = toRad(seg.deg - 90);
     const perp = ang + Math.PI / 2;
@@ -1131,7 +1137,7 @@ const generateMeasurementListImage = ({ pairSegs, route, totalRiserFeet, job, un
   const displayRows = [];
   const riserDone = new Set();
   pairSegs.forEach((sg) => {
-    displayRows.push({ type: "segment", so: sg.from.sort_order ?? Infinity, text: `${itemName(sg.from)} → ${itemName(sg.to)}${sg.aerial ? "" : " (UG)"}`, ft: sg.ft });
+    if (!sg.manual) displayRows.push({ type: "segment", so: sg.from.sort_order ?? Infinity, text: `${itemName(sg.from)} → ${itemName(sg.to)}${sg.aerial ? "" : " (UG)"}`, ft: sg.ft });
     const poleB = sg.to.type === "pole" ? route.find((p) => p.id === sg.to.id) : null;
     if (poleB?.risers && poleB?.riser_height && !riserDone.has(poleB.id)) {
       const riserCount = parseInt(poleB.risers) || 0;
@@ -1149,7 +1155,7 @@ const generateMeasurementListImage = ({ pairSegs, route, totalRiserFeet, job, un
   });
   insertPathRows(displayRows, underground);
   
-  const pairFt = pairSegs.reduce((acc, x) => acc + x.ft, 0);
+  const pairFt = pairSegs.reduce((acc, x) => acc + (x.manual ? 0 : x.ft), 0);
   const pathFt = totalPathFeet(underground);
   const grandTotalFeet = pairFt + totalRiserFeet + pathFt;
   
@@ -1241,6 +1247,7 @@ export const downloadSegmentedMapPages = async ({
     deg: bearingDeg(pr.from.pos, pr.to.pos),
     mid: [(pr.from.pos[0] + pr.to.pos[0]) / 2, (pr.from.pos[1] + pr.to.pos[1]) / 2],
     aerial: pairIsAerial(pr),
+    manual: pairIsManual(pr),
   }));
   
   if (route.length === 0 && ug.length === 0) {
