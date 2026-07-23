@@ -267,8 +267,8 @@ const UndergroundForm = () => {
       return;
     }
     const validRows = formData.path_measurements.filter((m) => m.direction && m.feet !== "" && Number.isFinite(parseFloat(m.feet)));
-    if (validRows.some((m) => !m.to)) {
-      toast.error("Select a \"to\" target for each path measurement");
+    if (validRows.length > 0 && !validRows[validRows.length - 1].to) {
+      toast.error("Select a \"to\" target on the last path measurement (e.g. Down 5ft to FBT)");
       return;
     }
     setSubmitting(true);
@@ -483,7 +483,7 @@ const UndergroundForm = () => {
                 </Button>
               </div>
               {formData.path_measurements.length === 0 && (
-                <p className="text-xs text-emerald-600">Add direction + footage rows with a target (e.g. Up 6ft to MPOE). These are added to the map's overall measurements and the ASE path of approach.</p>
+                <p className="text-xs text-emerald-600">Add direction + footage rows; the last row needs a "to" target (e.g. Up 2ft, Over 3ft, Down 5ft to FBT). These are added to the map's overall measurements and the ASE path of approach.</p>
               )}
               {formData.path_measurements.map((m, i) => (
                 <div key={i} className="flex items-center gap-2 flex-wrap" data-testid={`path-measurement-row-${i}`}>
@@ -500,11 +500,12 @@ const UndergroundForm = () => {
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-mono text-zinc-400">ft</span>
                   </div>
                   <span className="text-xs font-mono text-emerald-700">to</span>
-                  <Select value={m.to || ""} onValueChange={(v) => updatePathMeasurement(i, "to", v)}>
+                  <Select value={m.to || "__blank__"} onValueChange={(v) => updatePathMeasurement(i, "to", v === "__blank__" ? "" : v)}>
                     <SelectTrigger className="h-10 flex-1 min-w-[130px] bg-white border-emerald-300 text-zinc-900" data-testid={`path-to-select-${i}`}>
                       <SelectValue placeholder="Target…" />
                     </SelectTrigger>
                     <SelectContent className="bg-zinc-50 border-zinc-300 z-[1200] max-h-60">
+                      <SelectItem value="__blank__"><span className="text-zinc-400">— blank —</span></SelectItem>
                       {targetOptions.map((t, ti) => (<SelectItem key={`${t}-${ti}`} value={t}>{t}</SelectItem>))}
                     </SelectContent>
                   </Select>
