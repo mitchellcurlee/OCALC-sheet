@@ -54,6 +54,12 @@ export async function queueAction(action, entity, entityId, data) {
   
   await db.addToSyncQueue(syncItem);
   
+  // Update pending count for the UI immediately
+  try {
+    const queue = await db.getSyncQueue();
+    notifySyncStatus({ pending: queue.length });
+  } catch (e) { /* ignore */ }
+  
   // Try to sync if online
   if (isOnline()) {
     syncPendingChanges();

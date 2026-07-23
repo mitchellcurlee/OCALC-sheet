@@ -1,0 +1,37 @@
+{
+  "summary": "Iteration 34 offline-capture E2E: verified backend /api/sync/push honors client-provided uuids for pole/underground/job creates, and updates/deletes; verified the full offline UI flow (login online, go offline, reload without logout, add pole + underground while offline, pending items merged into offline list, auto-sync on reconnect, server-side persistence with same client uuids and no duplicates). All 6 backend pytest cases PASSED. Playwright offline flow PASSED end-to-end.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_offline_sync_iter34.py",
+    "/app/test_reports/pytest/iter34_offline_sync.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "syncService.js:404 initSyncListeners uses a module-level `listenersInitialized` guard while its cleanup counterpart runs on unmount of OfflineProvider — under React 18 StrictMode / re-mounts this can cause window listeners to be attached once and then removed on the first strict-mode cleanup with the guard preventing re-init. Not observed as a bug in this run (auto-sync fired), but worth reviewing.",
+    "offlineWrites.js response error interceptor treats any axios error with no `response` as offline-queueable, including timeouts, aborts and CORS errors while online. Consider gating on !navigator.onLine OR error.code === 'ERR_NETWORK' to avoid queueing legitimate online failures as offline writes.",
+    "backend/routes/sync.py `_sync_pole` create validates job access, but `_sync_underground` create does NOT verify the caller owns the target job — an authenticated user can insert underground items into any job by sending a UUID they know. Recommend adding the same job ownership check used in `_sync_pole`.",
+    "syncService.js:270 for successful creates the code deletes+re-inserts the local record with the new server_id, but since server_id now equals the client uuid the branch is effectively dead code — safe, just noise.",
+    "Service worker v3 caches API GETs but tile/api caches have no max entries / TTL — long-running installs will grow unbounded on the device (feature request, not a bug)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_offline_sync_iter34.py (new)"
+  ],
+  "success_rate": {
+    "backend": "100% (6/6 pytest)",
+    "frontend": "100% of tested offline flows (login online, offline reload w/ auth, offline pole create, offline UG create, offline list merge, auto-sync on reconnect, server persistence)"
+  },
+  "test_credentials": "mitchell.curlee@byers.com / Dawson@2016 (as provided)",
+  "seed_data_creation": "Created and DELETED a temp job (TEST_offline_ui_*) via REST + also created/deleted TEST_ jobs inside pytest module fixtures. Seed job e5dc0bae-96bb-4cef-8001-7baf4e41d80a NOT touched.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Playwright confirmed: SW v3 registers under CRA dev server, controls the page on second load, cache-hits API GETs while offline, and auth stays alive via cached_user. When offline: POST /poles and /underground yield 202 from the axios interceptor, IndexedDB stores + sync queue populate, offline-created items are merged into the list-GET response so users see them immediately. On reconnect the online event triggers syncPendingChanges which POSTs /api/sync/push; server accepts client-provided uuids for pole, underground AND job creates (routes/sync.py _sync_job now passes id kwarg to Job). No duplicates observed after online reload. Console logs: 'Failed to fetch user' AxiosError during offline reload is expected (network error) and the AuthContext falls back to cached_user; the user is NOT logged out.",
+  "rca of the issue": "N/A — no bugs found in this iteration."
+}

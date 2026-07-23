@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/context/AuthContext";
 import { OfflineProvider } from "@/lib/OfflineContext";
 import { OfflineBanner } from "@/components/OfflineIndicator";
+import "@/lib/offlineWrites";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import JobsList from "@/pages/JobsList";
 import JobDetail from "@/pages/JobDetail";

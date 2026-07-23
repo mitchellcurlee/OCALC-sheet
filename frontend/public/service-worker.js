@@ -1,110 +1,119 @@
 /* eslint-disable no-restricted-globals */
 
-// Service Worker v2 - Simplified to avoid caching issues
-// Only caches static assets, NEVER caches API responses
+// Service Worker v3 - Full offline support
+// - Static assets: network first, cache fallback (navigation falls back to cached shell)
+// - Map tiles (ArcGIS): cache first (offline maps)
+// - API GET: network first, cache fallback (offline viewing)
+// - Writes are never intercepted (the app queues them in IndexedDB)
 
-const STATIC_CACHE = 'poledata-static-v2';
+const STATIC_CACHE = 'poledata-static-v3';
+const TILE_CACHE = 'poledata-tiles-v1';
+const API_CACHE = 'poledata-api-v1';
+const CURRENT_CACHES = [STATIC_CACHE, TILE_CACHE, API_CACHE];
 
-// Static assets to cache on install
-const STATIC_ASSETS = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-];
+const STATIC_ASSETS = ['/', '/index.html', '/manifest.json'];
 
-// Install event - cache static assets and clear old caches
 self.addEventListener('install', (event) => {
   event.waitUntil(
     (async () => {
-      // Clear ALL old caches first
-      const cacheNames = await caches.keys();
-      await Promise.all(
-        cacheNames.map((name) => caches.delete(name))
-      );
-      // Then cache static assets
       const cache = await caches.open(STATIC_CACHE);
-      console.log('[SW v2] Caching static assets');
       await cache.addAll(STATIC_ASSETS);
     })()
   );
   self.skipWaiting();
 });
 
-// Activate event - claim clients immediately
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     (async () => {
-      // Clear any remaining old caches
       const cacheNames = await caches.keys();
       await Promise.all(
         cacheNames
-          .filter((name) => name !== STATIC_CACHE)
+          .filter((name) => !CURRENT_CACHES.includes(name))
           .map((name) => caches.delete(name))
       );
-      // Take control of all clients
       await self.clients.claim();
-      console.log('[SW v2] Activated and claimed clients');
+      console.log('[SW v3] Activated');
     })()
   );
 });
 
-// Fetch event - ALWAYS go to network for API, cache fallback for static only
+// Cache-first for map tiles (opaque cross-origin responses allowed)
+async function tileCacheFirst(request) {
+  const cache = await caches.open(TILE_CACHE);
+  const cached = await cache.match(request);
+  if (cached) return cached;
+  try {
+    const response = await fetch(request);
+    if (response && (response.ok || response.type === 'opaque')) {
+      cache.put(request, response.clone());
+    }
+    return response;
+  } catch (e) {
+    return new Response('', { status: 503, statusText: 'Offline - tile not cached' });
+  }
+}
+
+// Network-first for API GETs, cache fallback for offline viewing
+async function apiNetworkFirst(request) {
+  const cache = await caches.open(API_CACHE);
+  try {
+    const response = await fetch(request);
+    if (response && response.ok) {
+      cache.put(request, response.clone());
+    }
+    return response;
+  } catch (e) {
+    const cached = await cache.match(request, { ignoreVary: true });
+    if (cached) return cached;
+    return new Response(JSON.stringify({ detail: 'Offline and not cached' }), {
+      status: 503,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+}
+
+// Network-first for static, cache fallback (+ shell fallback for navigations)
+async function staticNetworkFirst(request) {
+  const cache = await caches.open(STATIC_CACHE);
+  try {
+    const response = await fetch(request);
+    if (response && response.ok) {
+      cache.put(request, response.clone());
+    }
+    return response;
+  } catch (e) {
+    const cached = await cache.match(request);
+    if (cached) return cached;
+    if (request.mode === 'navigate') {
+      const shell = await cache.match('/');
+      if (shell) return shell;
+    }
+    return new Response('Offline', { status: 503 });
+  }
+}
+
 self.addEventListener('fetch', (event) => {
   const { request } = event;
+  if (request.method !== 'GET') return;
+
   const url = new URL(request.url);
 
-  // Skip non-GET requests
-  if (request.method !== 'GET') {
+  // Map tiles (satellite + transportation reference)
+  if (url.hostname.includes('arcgisonline.com')) {
+    event.respondWith(tileCacheFirst(request));
     return;
   }
 
-  // NEVER intercept API requests - let them go directly to network
+  // API GETs (never cache auth endpoints)
   if (url.pathname.startsWith('/api/')) {
-    return; // Don't call event.respondWith, let browser handle normally
+    if (url.pathname.startsWith('/api/auth/')) return;
+    event.respondWith(apiNetworkFirst(request));
+    return;
   }
 
-  // For static assets: network first, cache fallback
-  event.respondWith(
-    fetch(request)
-      .then((response) => {
-        if (response.ok) {
-          const responseClone = response.clone();
-          caches.open(STATIC_CACHE).then((cache) => {
-            cache.put(request, responseClone);
-          });
-        }
-        return response;
-      })
-      .catch(() => {
-        return caches.match(request).then((cachedResponse) => {
-          if (cachedResponse) {
-            return cachedResponse;
-          }
-          if (request.mode === 'navigate') {
-            return caches.match('/index.html');
-          }
-          return new Response('Offline', { status: 503 });
-        });
-      })
-  );
-});
-
-// Handle background sync (simplified)
-self.addEventListener('sync', (event) => {
-  if (event.tag === 'sync-pending-changes') {
-    event.waitUntil(
-      self.clients.matchAll().then(clients => {
-        clients.forEach(client => {
-          client.postMessage({ type: 'SYNC_REQUESTED' });
-        });
-      })
-    );
-  }
-});
-
-// Handle messages from the main thread
-self.addEventListener('message', (event) => {
-  if (event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
+  // Same-origin static assets / navigations
+  if (url.origin === self.location.origin) {
+    event.respondWith(staticNetworkFirst(request));
   }
 });

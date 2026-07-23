@@ -77,11 +77,22 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await axios.get(`/auth/me`);
       setUser(response.data);
+      safeStorage.setItem('cached_user', JSON.stringify(response.data));
     } catch (error) {
       console.error('Failed to fetch user:', error);
-      safeStorage.removeItem('token');
-      setToken(null);
-      delete axios.defaults.headers.common['Authorization'];
+      if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+        // Token invalid — real logout
+        safeStorage.removeItem('token');
+        safeStorage.removeItem('cached_user');
+        setToken(null);
+        delete axios.defaults.headers.common['Authorization'];
+      } else {
+        // Network failure (offline) — keep the session using the cached user
+        const cached = safeStorage.getItem('cached_user');
+        if (cached) {
+          try { setUser(JSON.parse(cached)); } catch (e) { /* ignore */ }
+        }
+      }
     } finally {
       setLoading(false);
     }

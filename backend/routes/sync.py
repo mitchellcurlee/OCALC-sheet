@@ -165,12 +165,16 @@ async def _sync_job(action: SyncAction, user: dict) -> SyncResult:
     
     if action.action == "create":
         data = action.data or {}
+        job_kwargs = {}
+        if data.get("id"):
+            job_kwargs["id"] = data["id"]
         job = Job(
             name=data.get("name", "Untitled"),
             description=data.get("description"),
             location=data.get("location"),
             user_id=user["id"],
-            user_email=user.get("email", "")
+            user_email=user.get("email", ""),
+            **job_kwargs
         )
         await _db.jobs.insert_one(job.model_dump())
         return SyncResult(action_id=action.id, success=True, server_id=job.id)
