@@ -67,6 +67,7 @@ const UndergroundForm = () => {
     soc_start: false,
     soc_end: false,
     end_path: false,
+    standalone: false,
   });
 
   // Material type options based on underground type
@@ -110,6 +111,7 @@ const UndergroundForm = () => {
         soc_start: !!u.soc_start,
         soc_end: !!u.soc_end,
         end_path: !!u.end_path,
+        standalone: !!u.standalone,
       });
     } catch (e) {
       toast.error("Failed to load item");
@@ -224,6 +226,7 @@ const UndergroundForm = () => {
         soc_start: !!formData.soc_start,
         soc_end: !!formData.soc_end,
         end_path: !!formData.end_path,
+        standalone: !!formData.standalone,
         path_measurements: formData.path_measurements
           .filter((m) => m.direction && m.feet !== "" && Number.isFinite(parseFloat(m.feet)))
           .map((m) => ({ direction: m.direction, feet: parseFloat(m.feet) })),
@@ -291,6 +294,14 @@ const UndergroundForm = () => {
                 <Label className="text-xs font-mono tracking-widest text-red-700 uppercase">End Path</Label>
               </div>
               <p className="text-xs text-red-600 basis-full">Marks this as the last attribute on its path. The map will not draw a line from this attribute to the next one — the next attribute starts a new path.</p>
+            </div>
+            {/* Standalone toggle — show on map without connecting to the path */}
+            <div className="flex flex-wrap items-center gap-6 p-3 bg-violet-50 border border-violet-200 rounded-lg">
+              <div className="flex items-center gap-3">
+                <Switch checked={formData.standalone} onCheckedChange={(v) => setFormData((p) => ({ ...p, standalone: v }))} data-testid="ug-standalone-toggle" />
+                <Label className="text-xs font-mono tracking-widest text-violet-700 uppercase">Standalone (Not on Path)</Label>
+              </div>
+              <p className="text-xs text-violet-600 basis-full">Shows this attribute on the interactive map without connecting it to the attribute before or after it.</p>
             </div>
             {/* FID + Primary FID toggle for fiber-bearing attribute types */}
             {showFid && (

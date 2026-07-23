@@ -20,6 +20,7 @@ class UndergroundBase(BaseModel):
     soc_start: Optional[bool] = False
     soc_end: Optional[bool] = False
     end_path: Optional[bool] = False
+    standalone: Optional[bool] = False
 
 
 class UndergroundCreate(UndergroundBase):
@@ -42,6 +43,7 @@ class UndergroundUpdate(BaseModel):
     soc_start: Optional[bool] = None
     soc_end: Optional[bool] = None
     end_path: Optional[bool] = None
+    standalone: Optional[bool] = None
 
 
 class Underground(UndergroundBase):

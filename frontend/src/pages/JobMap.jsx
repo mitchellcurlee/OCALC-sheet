@@ -8,7 +8,7 @@ import L from "leaflet";
 import domtoimage from "dom-to-image-more";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ChevronDown, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera, Hash, Link2, Move, Palette } from "lucide-react";
-import { computeRoute, fmtFeet, feetToStation, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, ugWithGps, undergroundAbbr, computeUgConnectors } from "@/lib/poleMapImage";
+import { computeRoute, fmtFeet, feetToStation, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, ugWithGps, undergroundAbbr, computeUgConnectors, computeConnectionPairs } from "@/lib/poleMapImage";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -855,7 +855,8 @@ const JobMap = () => {
         type: "pole",
         sort_order: p.sort_order ?? Infinity,
         pos: p.pos,
-        end_path: p.end_path === true
+        end_path: p.end_path === true,
+        standalone: p.standalone === true
       });
     });
     
@@ -866,7 +867,8 @@ const JobMap = () => {
         type: "underground",
         sort_order: u.sort_order ?? Infinity,
         pos: u.pos,
-        end_path: u.end_path === true
+        end_path: u.end_path === true,
+        standalone: u.standalone === true
       });
     });
     
@@ -882,6 +884,7 @@ const JobMap = () => {
       const fromItem = allItems[i];
       const toItem = allItems[i + 1];
       if (fromItem.end_path) continue;
+      if (fromItem.standalone || toItem.standalone) continue;
       
       // Determine connection type based on item types
       let connectionType = "custom";
@@ -1060,40 +1063,9 @@ const JobMap = () => {
     
     // Sort by sort_order (matching job page display order)
     allItems.sort((a, b) => a.sort_order - b.sort_order);
-    const byId = {};
-    allItems.forEach((it) => { byId[it.id] = it; });
     
-    // Build item pairs: from custom connections when present (drag-to-reconnect / end path), else consecutive chain
-    let pairs = [];
-    if (connections.length > 0) {
-      pairs = connections
-        .map((c) => ({ from: byId[c.from_item_id], to: byId[c.to_item_id], connType: c.connection_type }))
-        .filter((p) => p.from && p.to && p.from.id !== p.to.id)
-        .filter((p) => {
-          // End Path breaks auto connections; explicit custom links are honored
-          if (p.connType === "custom") return true;
-          const earlier = p.from.sort_order <= p.to.sort_order ? p.from : p.to;
-          return !earlier.end_path;
-        })
-        .sort((a, b) =>
-          (Math.min(a.from.sort_order, a.to.sort_order) - Math.min(b.from.sort_order, b.to.sort_order)) ||
-          (Math.max(a.from.sort_order, a.to.sort_order) - Math.max(b.from.sort_order, b.to.sort_order))
-        );
-      // Chain-connect items added after connections were saved (not referenced by any connection)
-      const referenced = new Set();
-      connections.forEach((c) => { referenced.add(c.from_item_id); referenced.add(c.to_item_id); });
-      for (let i = 0; i < allItems.length - 1; i++) {
-        const a = allItems[i], b = allItems[i + 1];
-        if ((!referenced.has(a.id) || !referenced.has(b.id)) && !a.end_path) {
-          pairs.push({ from: a, to: b });
-        }
-      }
-    } else {
-      for (let i = 0; i < allItems.length - 1; i++) {
-        if (allItems[i].end_path) continue;
-        pairs.push({ from: allItems[i], to: allItems[i + 1] });
-      }
-    }
+    // Pairs mirror the shared logic (custom connections, End Path breaks, standalone items)
+    const pairs = computeConnectionPairs(route, ug, connections);
     
     const mpoeItem = allItems.find((item) => item.ugType === "MPOE");
     const mpoeOrder = mpoeItem ? mpoeItem.sort_order : null;
@@ -1368,7 +1340,7 @@ const JobMap = () => {
   const downloadSegmented = useCallback(async () => {
     setDownloading(true);
     try {
-      await downloadSegmentedMapPages({ poles, job, showStops: false, underground, targetFeet: 800 });
+      await downloadSegmentedMapPages({ poles, job, showStops: false, underground, connections, targetFeet: 800 });
     } finally {
       setDownloading(false);
     }

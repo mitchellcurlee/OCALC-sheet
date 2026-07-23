@@ -95,7 +95,7 @@ const emptyFormData = () => ({
   span4_direction: "", span4_distance: "", span4_owner: "",
   latitude: "", longitude: "-", notes: "", row_information: "",
   hoa_markup_photos: [], // Photos for HOA markup/annotation
-  pole_line_start: false, pole_line_end: false, end_path: false,
+  pole_line_start: false, pole_line_end: false, end_path: false, standalone: false,
 });
 const emptyDownGuy = () => ({ _key: rowKey(), owner: "", direction: "", size: "", type: "", condition: "", height: "", lead: "", photos: [] });
 const emptyKnuckle = () => ({ _key: rowKey(), size: "", total_eyes: "", direction: "", condition: "", photos: [] });
@@ -224,6 +224,7 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
       pole_line_start: p.pole_line_start === true,
       pole_line_end: p.pole_line_end === true,
       end_path: p.end_path === true,
+      standalone: p.standalone === true,
     });
     setDownGuys(p.down_guys?.length > 0 ? p.down_guys.map(dg => ({ 
       _key: rowKey(), 
@@ -632,6 +633,15 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
               <Label className="text-xs font-mono tracking-widest text-red-700 uppercase">End Path</Label>
             </div>
             <p className="text-xs text-red-600 basis-full">Marks this pole as the last attribute on its path. The map will not draw a line from this pole to the next attribute — the next attribute starts a new path.</p>
+          </div>
+
+          {/* Standalone toggle — show on map without connecting to the path */}
+          <div className="flex flex-wrap items-center gap-6 p-3 bg-violet-50 border border-violet-200 rounded-lg">
+            <div className="flex items-center gap-3">
+              <Switch checked={formData.standalone} onCheckedChange={(v) => setFormData((p) => ({ ...p, standalone: v }))} data-testid="pole-standalone-toggle" />
+              <Label className="text-xs font-mono tracking-widest text-violet-700 uppercase">Standalone (Not on Path)</Label>
+            </div>
+            <p className="text-xs text-violet-600 basis-full">Shows this pole on the interactive map without connecting it to the attribute before or after it.</p>
           </div>
 
           {/* Basic Info */}

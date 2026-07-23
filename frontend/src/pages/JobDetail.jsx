@@ -45,7 +45,9 @@ import {
   Image as ImageIcon,
   Download,
   FileUp,
+  WifiOff,
 } from "lucide-react";
+import { cacheJobForOffline } from "@/lib/offlineTiles";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -296,6 +298,33 @@ const JobDetail = () => {
   const [importFile, setImportFile] = useState(null);
   const [importMode, setImportMode] = useState("add");
   const [importing, setImporting] = useState(false);
+
+  // Save job for offline use (pre-download map tiles + API data)
+  const [savingOffline, setSavingOffline] = useState(false);
+  const [offlineProgress, setOfflineProgress] = useState(0);
+
+  const handleSaveOffline = async () => {
+    if (!navigator.onLine) {
+      toast.error("You need a connection to save this job for offline use");
+      return;
+    }
+    setSavingOffline(true);
+    setOfflineProgress(0);
+    try {
+      const points = [
+        ...poles.filter((p) => p.latitude && p.longitude).map((p) => [p.latitude, p.longitude]),
+        ...undergroundItems.filter((u) => u.latitude && u.longitude).map((u) => [u.latitude, u.longitude]),
+      ];
+      const { tiles } = await cacheJobForOffline(jobId, points, setOfflineProgress);
+      toast.success(tiles > 0
+        ? `Job saved for offline use — ${tiles.toLocaleString()} map tiles cached`
+        : "Job data saved for offline use (no GPS items yet, so no map tiles)");
+    } catch (e) {
+      toast.error("Could not finish saving for offline — try again with better signal");
+    } finally {
+      setSavingOffline(false);
+    }
+  };
 
   const handleDownloadTemplate = async () => {
     try {
@@ -613,6 +642,18 @@ const JobDetail = () => {
               >
                 <Download className="w-4 h-4 mr-2" />
                 Photos
+              </Button>
+
+              {/* 5. Save Offline Button */}
+              <Button
+                onClick={handleSaveOffline}
+                disabled={savingOffline}
+                variant="outline"
+                className="flex-1 sm:flex-initial h-11 sm:h-10 bg-sky-50 border-sky-300 hover:bg-sky-100 text-sky-800 text-sm"
+                data-testid="save-offline-btn"
+              >
+                {savingOffline ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <WifiOff className="w-4 h-4 mr-2" />}
+                {savingOffline ? `Saving ${offlineProgress}%` : "Save Offline"}
               </Button>
             </div>
           </div>

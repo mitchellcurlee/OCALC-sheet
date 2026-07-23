@@ -6,14 +6,15 @@
  */
 
 const DB_NAME = 'PoleDataOffline';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 const STORES = {
   JOBS: 'jobs',
   POLES: 'poles',
   UNDERGROUND: 'underground',
   SYNC_QUEUE: 'syncQueue',
-  META: 'meta'
+  META: 'meta',
+  PHOTO_QUEUE: 'photoQueue'
 };
 
 let dbInstance = null;
@@ -68,6 +69,11 @@ export async function initDB() {
       // Metadata store (last sync time, etc.)
       if (!db.objectStoreNames.contains(STORES.META)) {
         db.createObjectStore(STORES.META, { keyPath: 'key' });
+      }
+
+      // Queued photo blobs captured while offline
+      if (!db.objectStoreNames.contains(STORES.PHOTO_QUEUE)) {
+        db.createObjectStore(STORES.PHOTO_QUEUE, { keyPath: 'id' });
       }
     };
   });
@@ -220,6 +226,28 @@ export async function getUndergroundByJob(jobId) {
 
 export async function deleteUnderground(id) {
   return deleteItem(STORES.UNDERGROUND, id);
+}
+
+export async function getAllUnderground() {
+  return getAllItems(STORES.UNDERGROUND);
+}
+
+// ============== PHOTO QUEUE ==============
+
+export async function savePhotoBlob(rec) {
+  return putItem(STORES.PHOTO_QUEUE, rec);
+}
+
+export async function getPhotoBlob(id) {
+  return getItem(STORES.PHOTO_QUEUE, id);
+}
+
+export async function getAllPhotoBlobs() {
+  return getAllItems(STORES.PHOTO_QUEUE);
+}
+
+export async function deletePhotoBlob(id) {
+  return deleteItem(STORES.PHOTO_QUEUE, id);
 }
 
 // ============== SYNC QUEUE ==============

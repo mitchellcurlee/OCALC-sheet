@@ -187,14 +187,16 @@ export const computeUgConnectors = (route, ug) => {
 // Aerial attribute types (kept in sync with JobMap.jsx AERIAL_ATTR_TYPES)
 export const AERIAL_ATTR_TYPES = new Set(["Loop", "Aerial Splice"]);
 
-// Build map line pairs the same way the live Job Map does (custom connections + End Path breaks)
+// Build map line pairs the same way the live Job Map does (custom connections + End Path breaks + standalone items)
 export const computeConnectionPairs = (route, ug, connections = []) => {
   const allItems = [];
-  route.forEach((p) => allItems.push({ id: p.id, type: "pole", pos: p.pos, sort_order: p.sort_order ?? Infinity, label: p.pole_number || "Pole", end_path: p.end_path === true }));
-  ug.forEach((u) => allItems.push({ id: u.id, type: "underground", ugType: u.type, pos: u.pos, sort_order: u.sort_order ?? Infinity, label: u.label || u.type, end_path: u.end_path === true }));
+  route.forEach((p) => allItems.push({ id: p.id, type: "pole", pos: p.pos, sort_order: p.sort_order ?? Infinity, label: p.pole_number || "Pole", end_path: p.end_path === true, standalone: p.standalone === true }));
+  ug.forEach((u) => allItems.push({ id: u.id, type: "underground", ugType: u.type, pos: u.pos, sort_order: u.sort_order ?? Infinity, label: u.label || u.type, end_path: u.end_path === true, standalone: u.standalone === true }));
   allItems.sort((a, b) => a.sort_order - b.sort_order);
   const byId = {};
   allItems.forEach((it) => { byId[it.id] = it; });
+  // Standalone items are excluded from the path chain entirely
+  const pathItems = allItems.filter((it) => !it.standalone);
   let pairs = [];
   if (connections.length > 0) {
     pairs = connections
@@ -202,6 +204,7 @@ export const computeConnectionPairs = (route, ug, connections = []) => {
       .filter((p) => p.from && p.to && p.from.id !== p.to.id)
       .filter((p) => {
         if (p.connType === "custom") return true;
+        if (p.from.standalone || p.to.standalone) return false;
         const earlier = p.from.sort_order <= p.to.sort_order ? p.from : p.to;
         return !earlier.end_path;
       })
@@ -211,14 +214,14 @@ export const computeConnectionPairs = (route, ug, connections = []) => {
       );
     const referenced = new Set();
     connections.forEach((c) => { referenced.add(c.from_item_id); referenced.add(c.to_item_id); });
-    for (let i = 0; i < allItems.length - 1; i++) {
-      const a = allItems[i], b = allItems[i + 1];
+    for (let i = 0; i < pathItems.length - 1; i++) {
+      const a = pathItems[i], b = pathItems[i + 1];
       if ((!referenced.has(a.id) || !referenced.has(b.id)) && !a.end_path) pairs.push({ from: a, to: b });
     }
   } else {
-    for (let i = 0; i < allItems.length - 1; i++) {
-      if (allItems[i].end_path) continue;
-      pairs.push({ from: allItems[i], to: allItems[i + 1] });
+    for (let i = 0; i < pathItems.length - 1; i++) {
+      if (pathItems[i].end_path) continue;
+      pairs.push({ from: pathItems[i], to: pathItems[i + 1] });
     }
   }
   return pairs;
@@ -769,48 +772,26 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
   }
 };
 
-// Split route into segments of approximately targetFeet (default 800ft)
-const splitRouteIntoSegments = (route, segments, targetFeet = 800) => {
-  if (route.length < 2) return [{ poles: route, segments: [], startIdx: 0, endIdx: route.length - 1, footage: 0 }];
-  
+// Split route pairs into pages of approximately targetFeet (default 800ft)
+const splitPairsIntoPages = (pairSegs, targetFeet = 800) => {
   const pages = [];
-  let currentPage = { poles: [route[0]], segments: [], startIdx: 0, footage: 0 };
-  
-  for (let i = 0; i < segments.length; i++) {
-    const seg = segments[i];
-    const nextPole = route[i + 1];
-    
-    // Add segment to current page
-    currentPage.segments.push(seg);
-    currentPage.footage += seg.ft;
-    currentPage.poles.push(nextPole);
-    currentPage.endIdx = i + 1;
-    
-    // If we've exceeded targetFeet, start a new page (unless it's the last segment)
-    if (currentPage.footage >= targetFeet && i < segments.length - 1) {
-      pages.push(currentPage);
-      // Start new page with overlap (last pole of previous page is first of next)
-      currentPage = { 
-        poles: [nextPole], 
-        segments: [], 
-        startIdx: i + 1, 
-        footage: 0 
-      };
+  let current = { pairs: [], footage: 0 };
+  pairSegs.forEach((sg, i) => {
+    current.pairs.push(sg);
+    current.footage += sg.ft;
+    if (current.footage >= targetFeet && i < pairSegs.length - 1) {
+      pages.push(current);
+      current = { pairs: [], footage: 0 };
     }
-  }
-  
-  // Add the last page if it has content
-  if (currentPage.poles.length > 0) {
-    pages.push(currentPage);
-  }
-  
+  });
+  if (current.pairs.length > 0) pages.push(current);
   return pages;
 };
 
-// Generate a single page image for a segment
+// Generate a single page image for a set of route pairs
 const generateSegmentPage = async ({ 
-  pageNum, totalPages, pagePoles, pageSegments, pageFootage,
-  startPole, endPole, job, showStops, ug, connectors, allRoute
+  pageNum, totalPages, pagePairs, pageItems, pageFootage,
+  startLabel, endLabel, job
 }) => {
   const R = 6378137;
   const mercX = (lng) => ((lng * Math.PI) / 180) * R;
@@ -821,13 +802,8 @@ const generateSegmentPage = async ({
   const headerH = 60;
   const s = 2;
 
-  // Calculate bounds for this segment's poles (with padding)
-  const allPts = pagePoles.map((p) => p.pos);
-  // Also include any underground items near these poles
-  const relevantUg = ug.filter(u => {
-    return pagePoles.some(p => distanceFeet(u.pos, p.pos) < 200);
-  });
-  relevantUg.forEach(u => allPts.push(u.pos));
+  // Calculate bounds for this page's items (with padding)
+  const allPts = pageItems.map((it) => it.pos);
   
   if (allPts.length === 0) return null;
 
@@ -885,7 +861,7 @@ const generateSegmentPage = async ({
   
   ctx.font = `${14 * s}px ui-sans-serif, system-ui, sans-serif`;
   ctx.textAlign = "center";
-  const segmentLabel = `${startPole} → ${endPole}  |  ${fmtFeet(pageFootage)}`;
+  const segmentLabel = `${startLabel} → ${endLabel}  |  ${fmtFeet(pageFootage)}`;
   ctx.fillText(segmentLabel, mapW / 2, headerH / 2);
   
   ctx.textAlign = "right";
@@ -906,42 +882,24 @@ const generateSegmentPage = async ({
     ];
   };
 
-  // Draw aerial route line (BLUE) for this segment
-  if (pagePoles.length > 1) {
-    ctx.strokeStyle = "#2563eb";
-    ctx.lineWidth = 4 * s;
+  // Draw route lines mirroring the live map (aerial BLUE solid / underground GREEN dashed)
+  pagePairs.forEach((sg) => {
+    const [x1, y1] = pt(sg.from.pos);
+    const [x2, y2] = pt(sg.to.pos);
+    ctx.save();
+    if (!sg.aerial) ctx.setLineDash([6 * s, 4 * s]);
+    ctx.strokeStyle = sg.aerial ? "#2563eb" : "#16a34a";
+    ctx.lineWidth = sg.aerial ? 4 * s : 3 * s;
     ctx.lineJoin = "round";
     ctx.beginPath();
-    pagePoles.forEach((p, i) => {
-      const [x, y] = pt(p.pos);
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    });
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
     ctx.stroke();
-  }
-
-  // Draw underground connectors for relevant UG items
-  const pageConnectors = connectors.filter(c => 
-    pagePoles.some(p => p.pole_number === c.pole)
-  );
-  if (pageConnectors.length) {
-    ctx.save();
-    ctx.setLineDash([6 * s, 4 * s]);
-    ctx.strokeStyle = "#16a34a";
-    ctx.lineWidth = 2.5 * s;
-    pageConnectors.forEach((c) => {
-      const [x1, y1] = pt(c.from);
-      const [x2, y2] = pt(c.to);
-      ctx.beginPath();
-      ctx.moveTo(x1, y1);
-      ctx.lineTo(x2, y2);
-      ctx.stroke();
-    });
     ctx.restore();
-  }
+  });
 
-  // Draw direction arrows at segment midpoints
-  pageSegments.forEach((seg) => {
+  // Draw direction arrows at aerial pair midpoints
+  pagePairs.filter((sg) => sg.aerial).forEach((seg) => {
     const [mx, my] = pt(seg.mid);
     const ang = toRad(seg.deg - 90);
     const len = 10 * s;
@@ -958,8 +916,8 @@ const generateSegmentPage = async ({
     ctx.fill();
   });
 
-  // Draw distance labels on segments
-  pageSegments.forEach((seg, i) => {
+  // Draw distance labels on pairs (blue aerial / green UG)
+  pagePairs.forEach((seg, i) => {
     const [mx, my] = pt(seg.mid);
     const ang = toRad(seg.deg - 90);
     const perp = ang + Math.PI / 2;
@@ -967,8 +925,10 @@ const generateSegmentPage = async ({
     const off = 28 * s * side;
     const lx = mx + Math.cos(perp) * off;
     const ly = my + Math.sin(perp) * off;
+    const main = seg.aerial ? "#2563eb" : "#16a34a";
+    const dark = seg.aerial ? "#1e40af" : "#166534";
     // leader line
-    ctx.strokeStyle = "rgba(37,99,235,0.6)";
+    ctx.strokeStyle = seg.aerial ? "rgba(37,99,235,0.6)" : "rgba(22,163,74,0.6)";
     ctx.lineWidth = 1.5 * s;
     ctx.beginPath();
     ctx.moveTo(mx, my);
@@ -984,17 +944,20 @@ const generateSegmentPage = async ({
     const px = lx - pw / 2;
     const py = ly - ph / 2;
     ctx.fillStyle = "#ffffff";
-    ctx.strokeStyle = "#2563eb";
+    ctx.strokeStyle = main;
     ctx.lineWidth = 2 * s;
     ctx.beginPath();
     ctx.roundRect(px, py, pw, ph, 4 * s);
     ctx.fill();
     ctx.stroke();
-    ctx.fillStyle = "#1e40af";
+    ctx.fillStyle = dark;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(text, lx, ly);
   });
+
+  const pagePoles = pageItems.filter((it) => it.type === "pole");
+  const pageUg = pageItems.filter((it) => it.type === "underground");
 
   // Draw pole markers (small RED dots with side labels)
   // Detect clustered poles
@@ -1015,7 +978,7 @@ const generateSegmentPage = async ({
 
   pageClusterInfo.forEach((p, i) => {
     const [x, y] = pt(p.pos);
-    const label = p.pole_number || `${i + 1}`;
+    const label = p.label || `${i + 1}`;
     const dotR = 6 * s;
     
     // Draw small red dot
@@ -1108,7 +1071,7 @@ const generateSegmentPage = async ({
   ctx.font = `bold ${11 * s}px ui-monospace, monospace`;
   ctx.textAlign = "left";
   ctx.textBaseline = "middle";
-  ctx.fillText(`Segment ${pageNum}: ${pagePoles.length} poles | ${fmtFeet(pageFootage)}`, 20 * s, footerY + footerH / 2);
+  ctx.fillText(`Segment ${pageNum}: ${pagePoles.length} poles${pageUg.length ? ` + ${pageUg.length} UG` : ""} | ${fmtFeet(pageFootage)}`, 20 * s, footerY + footerH / 2);
   
   // Add scale reference
   ctx.textAlign = "right";
@@ -1118,7 +1081,7 @@ const generateSegmentPage = async ({
 };
 
 // Generate a separate measurement list image showing all span measurements
-const generateMeasurementListImage = ({ route, segments, totalFeet, totalRiserFeet, grandTotalFeet, job }) => {
+const generateMeasurementListImage = ({ pairSegs, route, totalRiserFeet, job }) => {
   const s = 2;
   const panelW = 500 * s;
   const rowH = 22 * s;
@@ -1126,15 +1089,21 @@ const generateMeasurementListImage = ({ route, segments, totalFeet, totalRiserFe
   const hasRisers = totalRiserFeet > 0;
   const bottomSection = hasRisers ? 80 * s : 44 * s;
   
-  // Build display rows: interleave segments with riser info
+  const itemName = (it) => it.type === "pole"
+    ? (it.label || "Pole")
+    : `${undergroundAbbr(it.ugType)}${it.label && it.label !== it.ugType ? ` ${it.label}` : ""}`;
+  
+  // Build display rows: pair segments interleaved with riser info
   const displayRows = [];
-  for (let i = 0; i < segments.length; i++) {
-    displayRows.push({ type: "segment", text: `${segments[i].a || "?"} → ${segments[i].b || "?"}`, ft: segments[i].ft });
-    const poleB = route.find(p => p.pole_number === segments[i].b);
-    if (poleB?.risers && poleB?.riser_height) {
+  const riserDone = new Set();
+  pairSegs.forEach((sg) => {
+    displayRows.push({ type: "segment", text: `${itemName(sg.from)} → ${itemName(sg.to)}${sg.aerial ? "" : " (UG)"}`, ft: sg.ft });
+    const poleB = sg.to.type === "pole" ? route.find((p) => p.id === sg.to.id) : null;
+    if (poleB?.risers && poleB?.riser_height && !riserDone.has(poleB.id)) {
       const riserCount = parseInt(poleB.risers) || 0;
       const riserHeight = parseFloat(poleB.riser_height) || 0;
       if (riserCount > 0 && riserHeight > 0) {
+        riserDone.add(poleB.id);
         displayRows.push({ 
           type: "riser", 
           text: `  ↳ ${poleB.pole_number} Riser${riserCount > 1 ? ` x${riserCount}` : ""}`, 
@@ -1142,7 +1111,10 @@ const generateMeasurementListImage = ({ route, segments, totalFeet, totalRiserFe
         });
       }
     }
-  }
+  });
+  
+  const pairFt = pairSegs.reduce((acc, x) => acc + x.ft, 0);
+  const grandTotalFeet = pairFt + totalRiserFeet;
   
   const requiredHeight = headerH + (displayRows.length * rowH) + bottomSection + 30 * s;
   
@@ -1211,23 +1183,35 @@ const generateMeasurementListImage = ({ route, segments, totalFeet, totalRiserFe
 
 // Download segmented map pages as a ZIP file with separate measurement list
 export const downloadSegmentedMapPages = async ({ 
-  poles, job, showStops = false, underground = [], 
+  poles, job, showStops = false, underground = [], connections = [],
   targetFeet = 800 
 }) => {
-  const { route, segments, totalFeet, totalRiserFeet, grandTotalFeet } = computeRoute(poles);
+  const { route, totalRiserFeet } = computeRoute(poles);
   const ug = ugWithGps(underground);
-  const connectors = computeUgConnectors(route, ug);
+  // Mirror the live Job Map lines: custom connections + End Path breaks + standalone items
+  const pairSegs = computeConnectionPairs(route, ug, connections).map((pr) => ({
+    from: pr.from,
+    to: pr.to,
+    ft: distanceFeet(pr.from.pos, pr.to.pos),
+    deg: bearingDeg(pr.from.pos, pr.to.pos),
+    mid: [(pr.from.pos[0] + pr.to.pos[0]) / 2, (pr.from.pos[1] + pr.to.pos[1]) / 2],
+    aerial: pairIsAerial(pr),
+  }));
   
-  if (route.length === 0) {
-    toast.error("No poles with GPS coordinates to map");
+  if (route.length === 0 && ug.length === 0) {
+    toast.error("No items with GPS coordinates to map");
+    return false;
+  }
+  if (pairSegs.length === 0) {
+    toast.error("No route segments to map — add at least two connected items");
     return false;
   }
 
   try {
     toast.info("Generating map pages...");
     
-    // Split route into 800ft segments
-    const pages = splitRouteIntoSegments(route, segments, targetFeet);
+    // Split route pairs into ~targetFeet pages
+    const pages = splitPairsIntoPages(pairSegs, targetFeet);
     const totalPages = pages.length;
 
     const zip = new JSZip();
@@ -1236,36 +1220,40 @@ export const downloadSegmentedMapPages = async ({
     for (let i = 0; i < pages.length; i++) {
       const page = pages[i];
       const pageNum = i + 1;
-      const startPole = page.poles[0]?.pole_number || `Pole ${page.startIdx + 1}`;
-      const endPole = page.poles[page.poles.length - 1]?.pole_number || `Pole ${page.endIdx + 1}`;
+      // Unique items on this page (endpoints of its pairs)
+      const seen = new Set();
+      const pageItems = [];
+      page.pairs.forEach((sg) => {
+        [sg.from, sg.to].forEach((it) => {
+          if (!seen.has(it.id)) { seen.add(it.id); pageItems.push(it); }
+        });
+      });
+      const startLabel = page.pairs[0].from.label;
+      const endLabel = page.pairs[page.pairs.length - 1].to.label;
       
       toast.info(`Generating page ${pageNum} of ${totalPages}...`);
       
       const dataUrl = await generateSegmentPage({
         pageNum,
         totalPages,
-        pagePoles: page.poles,
-        pageSegments: page.segments,
+        pagePairs: page.pairs,
+        pageItems,
         pageFootage: page.footage,
-        startPole,
-        endPole,
-        job,
-        showStops,
-        ug,
-        connectors,
-        allRoute: route
+        startLabel,
+        endLabel,
+        job
       });
       
       if (dataUrl) {
         const base64 = dataUrl.split(",")[1];
-        zip.file(`page_${String(pageNum).padStart(2, "0")}_${startPole}_to_${endPole}.png`.replace(/[^a-z0-9_.-]/gi, "_"), base64, { base64: true });
+        zip.file(`page_${String(pageNum).padStart(2, "0")}_${startLabel}_to_${endLabel}.png`.replace(/[^a-z0-9_.-]/gi, "_"), base64, { base64: true });
       }
     }
     
     // Generate separate measurement list image
     toast.info("Generating measurement list...");
     const measurementDataUrl = generateMeasurementListImage({
-      route, segments, totalFeet, totalRiserFeet, grandTotalFeet, job
+      pairSegs, route, totalRiserFeet, job
     });
     const measurementBase64 = measurementDataUrl.split(",")[1];
     zip.file("00_measurement_list.png", measurementBase64, { base64: true });

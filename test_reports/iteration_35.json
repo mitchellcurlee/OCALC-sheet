@@ -1,0 +1,43 @@
+{
+  "summary": "Iteration 35 testing: (1) STANDALONE backend PUT round-trip for poles + underground PASSED (3/3 pytest); (2) Pole + Underground standalone toggle UI visible on both forms; (3) Save Offline button on Job Detail successfully triggered 402 tile fetches to server.arcgisonline.com + 7 API GETs for seed job; (4) Main Download PNG regression PASSED (A050ABC_pole_map.png downloaded). CRITICAL BUGS FOUND on Segmented Pages feature: (a) downloadSegmented callback exists in JobMap.jsx but is NEVER wired to any UI button/menu-item — user has no way to trigger the 800ft ZIP download; (b) generateSegmentPage in poleMapImage.js line 1046 references undefined `relevantUg` variable which would throw ReferenceError if ever executed (should be `pageUg`).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "JobMap Edit Map dropdown", "issue": "downloadSegmented callback (targetFeet:800 ZIP) has NO UI trigger. Dropdown only shows: Move Items, Edit Lines & Connections, Edit Individual Segment Colors, Add Note, Add Measurement. Task expected a 'Download 800ft pages' menu item.", "selector": "[data-testid=edit-map-dropdown-btn] -> missing 'download-segmented' item", "priority": "HIGH"},
+      {"component": "poleMapImage.js generateSegmentPage", "issue": "Line 1046 iterates `relevantUg.forEach(...)` but `relevantUg` is never declared — will throw `ReferenceError: relevantUg is not defined`. The variable available on that scope is `pageUg` (line 960). Segmented ZIP would crash on any page containing underground items even if the UI trigger existed.", "selector": "poleMapImage.js:1046", "priority": "CRITICAL"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_standalone_iter35.py",
+    "/app/test_reports/pytest/iter35_standalone.xml"
+  ],
+  "action_items": [
+    "Fix `relevantUg` -> `pageUg` (or reintroduce the missing definition) in /app/frontend/src/lib/poleMapImage.js around line 1046 inside generateSegmentPage — else segmented ZIP throws ReferenceError.",
+    "Add a UI trigger (e.g., new DropdownMenuItem with data-testid='download-segmented' inside the Edit Map dropdown or as a second Download option) that calls the existing downloadSegmented callback in /app/frontend/src/pages/JobMap.jsx (line 1340). Without this the feature is completely inaccessible to users.",
+    "After fixes, re-run segmented download on a job with an End Path break + moved connection to verify the pair-based splitPairsIntoPages logic + 00_measurement_list.png produce a valid ZIP without console errors."
+  ],
+  "critical_code_review_comments": [
+    "poleMapImage.js line 1046: `relevantUg.forEach` uses undefined identifier — must be `pageUg` (already computed on line 960). CRITICAL runtime bug in downloadSegmentedMapPages.",
+    "JobMap.jsx: `downloadSegmented` callback is defined (line 1340) but no button/menuitem invokes it. Feature is currently dead code from the UI perspective.",
+    "offlinePhotos.js:105-112: The `allPutsOk` gate deletes the queued blob only if every PUT for every locally-known record succeeded. Because getAllPoles / getAllUnderground return ALL cached records (not just those touching this photo), a stale/unauthorized PUT on any record can permanently prevent cleanup of this queue entry. Consider narrowing to only records that actually contain the placeholder (already filtered) AND resetting allPutsOk per photo rather than gating deletion on any historic failure.",
+    "offlineTiles.js: buildTileUrls drops the highest zooms until <=MAX_TILES=3000; if the job's bbox is huge even z13 could exceed cap and yield 0 URLs — should warn caller when kept becomes empty (currently silently returns tiles=0 with a positive success toast on the calling side)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_standalone_iter35.py (new)"
+  ],
+  "success_rate": {
+    "backend": "100% (3/3 pytest — standalone create + PUT round-trip on pole and underground)",
+    "frontend": "80% — Standalone toggles present + Save Offline works + main Download regression OK; Segmented ZIP feature broken (no UI trigger + code ReferenceError). Offline-photo capture and standalone map A->C chain skipping were not executed in browser this iteration due to context budget, but backend and file-level implementations reviewed."
+  },
+  "test_credentials": "mitchell.curlee@byers.com / Dawson@2016 (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "Created + DELETED TEST_iter35_standalone job via /api/jobs with 2 test poles + 1 UG (all cleaned up by pytest module teardown). Seed job e5dc0bae-96bb-4cef-8001-7baf4e41d80a untouched aside from Save Offline click and Download PNG (both read-only side effects).",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "The two critical segmented-download issues are (1) missing UI trigger and (2) undefined `relevantUg` in poleMapImage.js line 1046. After main agent adds the DropdownMenuItem AND fixes the reference, retest with an offline job that has (a) an end_path break and (b) a moved connection. Standalone chain behavior (A->C map line + span exclusion) was NOT exercised in the browser this run — verify by creating a temp job with 3 GPS poles in order, toggling standalone on the middle one, and confirming orderedSegments returns exactly one A->C pair (not A->B and B->C). Offline photo flow (context.set_offline + upload + reconnect) was not exercised due to context budget; code review of offlinePhotos.js suggests the logic is sound but the allPutsOk gate can starve deletion when unrelated records fail.",
+  "rca of the issue": "downloadSegmentedMapPages was refactored to pair-based using splitPairsIntoPages (correct). Inside generateSegmentPage the code likely had `const relevantUg = pageItems.filter(...)` in an earlier version and it was renamed to `pageUg` on line 960 but the second usage on line 1046 was missed during the rename — a straightforward identifier-mismatch bug. Fix: rename line 1046 to `pageUg.forEach(...)`. Independently, the JobMap dropdown that previously exposed the segmented option lost its DropdownMenuItem during the Edit Map dropdown redesign; the callback `downloadSegmented` (line 1340) remains but has no trigger. Fix: re-add DropdownMenuItem invoking downloadSegmented under Edit Map (or a secondary Download dropdown) with data-testid='download-segmented'."
+}

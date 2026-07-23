@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Camera, Upload, X, Ruler, Check, ZoomIn, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { OfflinePhoto, queuePhotoOffline } from "@/lib/offlinePhotos";
 import {
   Dialog,
   DialogContent,
@@ -43,6 +44,14 @@ export const PhotoUpload = ({ label, value, onChange, testId, showHeightTool = f
       });
       onChange(res.data.url);
     } catch (err) {
+      if (!err.response) {
+        try {
+          const placeholder = await queuePhotoOffline(file);
+          onChange(placeholder);
+          toast.warning("No signal — photo saved on this device and will upload automatically.");
+          return;
+        } catch (e2) { /* fall through to normal error */ }
+      }
       console.error("Photo upload failed", err);
       toast.error("Photo upload failed. Please try again.");
     } finally {
@@ -87,7 +96,7 @@ export const PhotoUpload = ({ label, value, onChange, testId, showHeightTool = f
                 className="cursor-pointer"
                 onClick={() => setShowLightbox(true)}
               >
-                <img src={value} alt={label} className="w-20 h-16 object-cover border border-zinc-300 hover:border-red-500 transition-colors" />
+                <OfflinePhoto src={value} alt={label} className="w-20 h-16 object-cover border border-zinc-300 hover:border-red-500 transition-colors" />
                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                   <ZoomIn className="w-4 h-4 text-white" />
                 </div>
@@ -139,7 +148,7 @@ export const PhotoUpload = ({ label, value, onChange, testId, showHeightTool = f
               </Button>
               <div className="flex flex-col items-center">
                 <p className="text-xs font-mono tracking-widest text-zinc-500 uppercase mb-2">{label}</p>
-                <img 
+                <OfflinePhoto 
                   src={value} 
                   alt={label} 
                   className="max-w-full max-h-[80vh] object-contain"
@@ -185,7 +194,7 @@ export const PhotoUpload = ({ label, value, onChange, testId, showHeightTool = f
                 className="cursor-pointer"
                 onClick={() => setShowLightbox(true)}
               >
-                <img
+                <OfflinePhoto
                   src={value}
                   alt={label}
                   className="w-full max-w-md h-48 object-cover border-2 border-zinc-300 hover:border-red-500 transition-colors"
@@ -281,7 +290,7 @@ export const PhotoUpload = ({ label, value, onChange, testId, showHeightTool = f
             </Button>
             <div className="flex flex-col items-center">
               <p className="text-xs font-mono tracking-widest text-zinc-500 uppercase mb-2">{label}</p>
-              <img 
+              <OfflinePhoto 
                 src={value} 
                 alt={label} 
                 className="max-w-full max-h-[80vh] object-contain"

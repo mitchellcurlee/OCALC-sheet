@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Camera, Upload, X, ZoomIn, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { OfflinePhoto, queuePhotoOffline } from "@/lib/offlinePhotos";
 import {
   Dialog,
   DialogContent,
@@ -70,6 +71,14 @@ export const MultiPhotoUpload = ({ label, value = [], onChange, testId, compact 
         console.log('[MultiPhotoUpload] Photo uploaded:', res.data.url);
         uploadedUrls.push(res.data.url);
       } catch (err) {
+        if (!err.response) {
+          try {
+            const placeholder = await queuePhotoOffline(file);
+            uploadedUrls.push(placeholder);
+            toast.warning(`No signal — ${file.name} saved on this device and will upload automatically.`);
+            continue;
+          } catch (e2) { /* fall through to normal error */ }
+        }
         console.error("Photo upload failed", err);
         toast.error(`Failed to upload ${file.name}`);
       }
@@ -211,7 +220,7 @@ export const MultiPhotoUpload = ({ label, value = [], onChange, testId, compact 
                       className="cursor-pointer"
                       onClick={() => setLightboxPhoto(photo)}
                     >
-                      <img 
+                      <OfflinePhoto 
                         src={photo} 
                         alt={`${label} ${index + 1}`} 
                         className="w-9 h-9 object-cover border border-zinc-300 hover:border-red-500 transition-colors" 
@@ -252,7 +261,7 @@ export const MultiPhotoUpload = ({ label, value = [], onChange, testId, compact 
               </Button>
               <div className="flex flex-col items-center">
                 <p className="text-xs font-mono tracking-widest text-zinc-500 uppercase mb-2">{label}</p>
-                <img 
+                <OfflinePhoto 
                   src={lightboxPhoto} 
                   alt={label} 
                   className="max-w-full max-h-[80vh] object-contain"
@@ -347,7 +356,7 @@ export const MultiPhotoUpload = ({ label, value = [], onChange, testId, compact 
                       className="cursor-pointer"
                       onClick={() => setLightboxPhoto(photo)}
                     >
-                      <img
+                      <OfflinePhoto
                         src={photo}
                         alt={`${label} ${index + 1}`}
                         className="w-16 h-16 object-cover border-2 border-zinc-300 hover:border-red-500 transition-colors"
@@ -395,7 +404,7 @@ export const MultiPhotoUpload = ({ label, value = [], onChange, testId, compact 
             </Button>
             <div className="flex flex-col items-center">
               <p className="text-xs font-mono tracking-widest text-zinc-500 uppercase mb-2">{label}</p>
-              <img 
+              <OfflinePhoto 
                 src={lightboxPhoto} 
                 alt={label} 
                 className="max-w-full max-h-[80vh] object-contain"
