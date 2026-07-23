@@ -1719,8 +1719,71 @@ const JobMap = () => {
                 <div className="text-xs opacity-90 mt-0.5">
                   {positionEditMode && !editMode && !connectionEditMode
                     ? "• Drag any pole or underground marker to move it • Drag measurement & label text boxes to reposition them • Saves automatically"
-                    : "• Tap a connection line, then use the panel to move / delete / add lines • Click line to change its color"}
+                    : "• Tap a connection line, then use the tools below to move / delete / add lines • Click line to change its color"}
                 </div>
+                {/* Connection tools (merged into this menu) */}
+                {connectionEditMode && (() => {
+                  const conn = connections.find((c) => c.id === selectedConn);
+                  const connLabel = conn
+                    ? `${allConnectableItems.find((i) => i.id === conn.from_item_id)?.label || "?"} → ${allConnectableItems.find((i) => i.id === conn.to_item_id)?.label || "?"}`
+                    : null;
+                  return (
+                    <div className="mt-2 pt-2 border-t border-blue-400">
+                      <div className="text-xs opacity-80 mb-1 uppercase tracking-wide font-semibold">Connections</div>
+                      <div className="bg-white rounded-md p-2 text-zinc-900 space-y-2" data-testid="conn-edit-panel">
+                        {addingConn ? (
+                          <>
+                            <div className="text-xs text-emerald-700 font-medium" data-testid="conn-panel-instruction">
+                              {addingConn.from ? `Start: ${addingConn.from.label}. Now tap the SECOND item.` : "Tap the FIRST item to connect."}
+                            </div>
+                            <Button size="sm" variant="outline" className="w-full h-8 text-xs" onClick={() => setAddingConn(null)} data-testid="conn-cancel-action-btn">Cancel</Button>
+                          </>
+                        ) : selectedConn && reconnectSide && conn ? (
+                          <>
+                            <div className="text-xs text-emerald-700 font-medium" data-testid="conn-panel-instruction">
+                              Tap the item to connect the {reconnectSide === "from" ? "START" : "END"} of {connLabel} to.
+                            </div>
+                            <Button size="sm" variant="outline" className="w-full h-8 text-xs" onClick={() => setReconnectSide(null)} data-testid="conn-cancel-action-btn">Cancel</Button>
+                          </>
+                        ) : selectedConn && conn ? (
+                          <>
+                            <div className="text-xs font-mono font-semibold" data-testid="conn-selected-label">{connLabel}</div>
+                            <Button size="sm" className="w-full h-8 text-xs bg-blue-600 hover:bg-blue-700 text-white" onClick={() => setReconnectSide("from")} data-testid="conn-move-start-btn">Move start (blue dot)</Button>
+                            <Button size="sm" className="w-full h-8 text-xs bg-red-600 hover:bg-red-700 text-white" onClick={() => setReconnectSide("to")} data-testid="conn-move-end-btn">Move end (red dot)</Button>
+                            <Button size="sm" variant="outline" className="w-full h-8 text-xs text-red-700 border-red-300 hover:bg-red-50" onClick={() => { handleConnectionDelete(selectedConn); setSelectedConn(null); }} data-testid="conn-delete-btn">Delete line</Button>
+                            <Button size="sm" variant="outline" className="w-full h-8 text-xs" onClick={() => setSelectedConn(null)} data-testid="conn-deselect-btn">Done with this line</Button>
+                          </>
+                        ) : (
+                          <>
+                            {connections.length > 0 && (
+                              <Select value="" onValueChange={(v) => { if (v) { setSelectedConn(v); setReconnectSide(null); setAddingConn(null); } }}>
+                                <SelectTrigger className="h-8 text-xs bg-white" data-testid="conn-picker-select">
+                                  <SelectValue placeholder="Pick a line to edit…" />
+                                </SelectTrigger>
+                                <SelectContent className="max-h-60 z-[1200] bg-white">
+                                  {connections.map((c) => {
+                                    const f = allConnectableItems.find((i) => i.id === c.from_item_id);
+                                    const t = allConnectableItems.find((i) => i.id === c.to_item_id);
+                                    if (!f || !t) return null;
+                                    return (
+                                      <SelectItem key={c.id} value={c.id} data-testid={`conn-picker-item-${c.id}`}>
+                                        {f.label} → {t.label}
+                                      </SelectItem>
+                                    );
+                                  })}
+                                </SelectContent>
+                              </Select>
+                            )}
+                            <div className="flex gap-2">
+                              <Button size="sm" className="flex-1 h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => { setAddingConn({ from: null }); setSelectedConn(null); setReconnectSide(null); }} data-testid="conn-add-line-btn">+ Add line</Button>
+                              <Button size="sm" variant="outline" className="flex-1 h-8 text-xs" onClick={resetConnections} data-testid="conn-reset-lines-btn">Reset lines</Button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
                 {/* Segment selector dropdown for easier selection */}
                 {orderedSegments.length > 0 && (
                   <div className="mt-2 pt-2 border-t border-blue-400">
@@ -2198,66 +2261,6 @@ const JobMap = () => {
                 </>
               )}
             </MapContainer>
-            {/* Connection tap-to-reconnect panel */}
-            {connectionEditMode && (() => {
-              const conn = connections.find((c) => c.id === selectedConn);
-              const connLabel = conn
-                ? `${allConnectableItems.find((i) => i.id === conn.from_item_id)?.label || "?"} → ${allConnectableItems.find((i) => i.id === conn.to_item_id)?.label || "?"}`
-                : null;
-              return (
-                <div className="absolute top-3 right-3 z-[1000] bg-white border border-zinc-300 rounded-lg shadow-lg p-3 w-64 space-y-2" data-testid="conn-edit-panel">
-                  <div className="text-xs font-bold text-zinc-700 uppercase tracking-wide">Connections</div>
-                  {addingConn ? (
-                    <>
-                      <div className="text-xs text-emerald-700 font-medium" data-testid="conn-panel-instruction">
-                        {addingConn.from ? `Start: ${addingConn.from.label}. Now tap the SECOND item.` : "Tap the FIRST item to connect."}
-                      </div>
-                      <Button size="sm" variant="outline" className="w-full h-8 text-xs" onClick={() => setAddingConn(null)} data-testid="conn-cancel-action-btn">Cancel</Button>
-                    </>
-                  ) : selectedConn && reconnectSide && conn ? (
-                    <>
-                      <div className="text-xs text-emerald-700 font-medium" data-testid="conn-panel-instruction">
-                        Tap the item to connect the {reconnectSide === "from" ? "START" : "END"} of {connLabel} to.
-                      </div>
-                      <Button size="sm" variant="outline" className="w-full h-8 text-xs" onClick={() => setReconnectSide(null)} data-testid="conn-cancel-action-btn">Cancel</Button>
-                    </>
-                  ) : selectedConn && conn ? (
-                    <>
-                      <div className="text-xs font-mono text-zinc-800 font-semibold" data-testid="conn-selected-label">{connLabel}</div>
-                      <Button size="sm" className="w-full h-8 text-xs bg-blue-600 hover:bg-blue-700 text-white" onClick={() => setReconnectSide("from")} data-testid="conn-move-start-btn">Move start (blue dot)</Button>
-                      <Button size="sm" className="w-full h-8 text-xs bg-red-600 hover:bg-red-700 text-white" onClick={() => setReconnectSide("to")} data-testid="conn-move-end-btn">Move end (red dot)</Button>
-                      <Button size="sm" variant="outline" className="w-full h-8 text-xs text-red-700 border-red-300 hover:bg-red-50" onClick={() => { handleConnectionDelete(selectedConn); setSelectedConn(null); }} data-testid="conn-delete-btn">Delete line</Button>
-                      <Button size="sm" variant="outline" className="w-full h-8 text-xs" onClick={() => setSelectedConn(null)} data-testid="conn-deselect-btn">Done with this line</Button>
-                    </>
-                  ) : (
-                    <>
-                      <div className="text-xs text-zinc-500" data-testid="conn-panel-instruction">Tap any line on the map to move, delete or re-route it.</div>
-                      {connections.length > 0 && (
-                        <Select value="" onValueChange={(v) => { if (v) { setSelectedConn(v); setReconnectSide(null); setAddingConn(null); } }}>
-                          <SelectTrigger className="h-8 text-xs bg-white" data-testid="conn-picker-select">
-                            <SelectValue placeholder="Or pick a line from list…" />
-                          </SelectTrigger>
-                          <SelectContent className="max-h-60 z-[1200] bg-white">
-                            {connections.map((c) => {
-                              const f = allConnectableItems.find((i) => i.id === c.from_item_id);
-                              const t = allConnectableItems.find((i) => i.id === c.to_item_id);
-                              if (!f || !t) return null;
-                              return (
-                                <SelectItem key={c.id} value={c.id} data-testid={`conn-picker-item-${c.id}`}>
-                                  {f.label} → {t.label}
-                                </SelectItem>
-                              );
-                            })}
-                          </SelectContent>
-                        </Select>
-                      )}
-                      <Button size="sm" className="w-full h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => { setAddingConn({ from: null }); setSelectedConn(null); setReconnectSide(null); }} data-testid="conn-add-line-btn">+ Add line</Button>
-                      <Button size="sm" variant="outline" className="w-full h-8 text-xs" onClick={resetConnections} data-testid="conn-reset-lines-btn">Reset lines to job order</Button>
-                    </>
-                  )}
-                </div>
-              );
-            })()}
             <div className="absolute bottom-3 right-3 z-[500] bg-white/90 border border-zinc-200 rounded px-3 py-2 text-xs font-mono shadow pointer-events-none max-w-[220px]" data-testid="map-legend">
               <div className="font-bold text-zinc-700 mb-1">LEGEND</div>
               {route.length > 0 && (
