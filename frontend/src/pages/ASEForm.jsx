@@ -17,6 +17,7 @@ import { buildSpanMeasurementTexts } from "@/lib/poleMapImage";
 import ASEChecklistTab from "@/components/ase/ASEChecklistTab";
 import ASECoordinatorTab from "@/components/ase/ASECoordinatorTab";
 import ASESVCLOutputTab from "@/components/ase/ASESVCLOutputTab";
+import ASESOWNotesTab from "@/components/ase/ASESOWNotesTab";
 
 const ASEForm = () => {
   const { jobId } = useParams();
@@ -416,7 +417,7 @@ const ASEForm = () => {
         
         {/* 3-Tab Structure - EXACT match to Excel */}
         <Tabs defaultValue="ase-cklist" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-6 bg-zinc-100 p-1 rounded-lg h-auto">
+          <TabsList className="grid w-full grid-cols-4 mb-6 bg-zinc-100 p-1 rounded-lg h-auto">
             <TabsTrigger 
               value="ase-cklist" 
               className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:text-blue-700 py-2"
@@ -441,6 +442,14 @@ const ASEForm = () => {
               <FileOutput className="w-4 h-4" />
               <span className="text-xs sm:text-sm">SVCL Output</span>
             </TabsTrigger>
+            <TabsTrigger 
+              value="sow-notes" 
+              className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:text-amber-700 py-2"
+              data-testid="tab-sow-notes"
+            >
+              <ClipboardList className="w-4 h-4" />
+              <span className="text-xs sm:text-sm">SOW Notes</span>
+            </TabsTrigger>
           </TabsList>
 
           {/* Tab 1: ASE CKLIST */}
@@ -456,6 +465,11 @@ const ASEForm = () => {
           {/* Tab 3: SVCL Output */}
           <TabsContent value="svcl-output">
             <ASESVCLOutputTab formData={formData} handleChange={handleChange} />
+          </TabsContent>
+
+          {/* Tab 4: SOW Notes (auto-generated) */}
+          <TabsContent value="sow-notes">
+            <ASESOWNotesTab formData={formData} />
           </TabsContent>
         </Tabs>
 
