@@ -467,9 +467,9 @@ const ASEForm = () => {
             <ASESVCLOutputTab formData={formData} handleChange={handleChange} />
           </TabsContent>
 
-          {/* Tab 4: SOW Notes (auto-generated) */}
+          {/* Tab 4: SOW Notes (auto-generated, user-editable) */}
           <TabsContent value="sow-notes">
-            <ASESOWNotesTab formData={formData} />
+            <ASESOWNotesTab formData={formData} handleChange={handleChange} />
           </TabsContent>
         </Tabs>
 

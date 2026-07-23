@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { Copy } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Copy, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 
 const EF_ITEMS = [
@@ -56,8 +57,10 @@ export const buildSowNotesText = (f) => {
   return lines.join("\n");
 };
 
-export default function ASESOWNotesTab({ formData }) {
-  const text = useMemo(() => buildSowNotesText(formData), [formData]);
+export default function ASESOWNotesTab({ formData, handleChange }) {
+  const autoText = useMemo(() => buildSowNotesText(formData), [formData]);
+  const isEdited = Boolean(formData.sow_notes_override);
+  const text = isEdited ? formData.sow_notes_override : autoText;
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(text);
@@ -66,15 +69,35 @@ export default function ASESOWNotesTab({ formData }) {
       toast.error("Copy failed — select the text manually");
     }
   };
+  const resetToAuto = () => {
+    handleChange("sow_notes_override", "");
+    toast.success("SOW Notes reset to auto-generated");
+  };
   return (
     <div className="space-y-3" data-testid="sow-notes-tab">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <p className="text-xs text-zinc-500 font-mono uppercase tracking-widest">Auto-generated from the ASE form — updates as fields are filled</p>
-        <Button onClick={copy} variant="outline" size="sm" data-testid="copy-sow-notes-btn">
-          <Copy className="w-4 h-4 mr-2" /> Copy
-        </Button>
+        <p className="text-xs text-zinc-500 font-mono uppercase tracking-widest">
+          {isEdited ? "Edited manually — your version is used in the export" : "Auto-generated from the ASE form — edit freely; your changes are kept"}
+        </p>
+        <div className="flex items-center gap-2">
+          {isEdited && (
+            <Button onClick={resetToAuto} variant="outline" size="sm" className="text-amber-700 border-amber-300" data-testid="reset-sow-notes-btn">
+              <RotateCcw className="w-4 h-4 mr-2" /> Reset to auto
+            </Button>
+          )}
+          <Button onClick={copy} variant="outline" size="sm" data-testid="copy-sow-notes-btn">
+            <Copy className="w-4 h-4 mr-2" /> Copy
+          </Button>
+        </div>
       </div>
-      <pre className="bg-white border border-amber-300 rounded-lg p-4 text-sm font-mono whitespace-pre-wrap text-zinc-800 leading-6" data-testid="sow-notes-text">{text}</pre>
+      <Textarea
+        value={text}
+        onChange={(e) => handleChange("sow_notes_override", e.target.value)}
+        rows={30}
+        className={`bg-white rounded-lg p-4 text-sm font-mono text-zinc-800 leading-6 min-h-[480px] ${isEdited ? "border-amber-400" : "border-zinc-300"}`}
+        data-testid="sow-notes-text"
+      />
+      <p className="text-xs text-zinc-400 font-mono">Typing switches to manual mode (auto-fill pauses). "Reset to auto" regenerates from the checklist. Remember to Save.</p>
     </div>
   );
 }

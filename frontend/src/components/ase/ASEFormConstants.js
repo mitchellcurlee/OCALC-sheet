@@ -252,6 +252,7 @@ export const INITIAL_FORM_DATA = {
   
   // Site Visit
   type_of_site_visit: "",
+  sow_notes_override: "",
   qualified_equipment: "",
   
   // Building info (calculated) - Note: multi_tenant, number_of_tenants defined in BUILDING CHARACTERISTICS

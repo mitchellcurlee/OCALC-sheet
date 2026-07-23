@@ -1768,52 +1768,60 @@ async def export_ase_excel(job_id: str, current_user: dict = Depends(get_current
     # ========== TAB: SOW NOTES (after SVCL Output) ==========
     ws_sow = wb.create_sheet(title="SOW Notes")
     setup_sheet(ws_sow, "f59e0b")
-    _sow_ef_items = [
-        ("BURIED PVC", "buried_pvc", "buried_pvc_provided"),
-        ("BURIED INNERDUCT", "buried_innerduct", "buried_innerduct_provided"),
-        ("EMT", "need_emt", "need_emt_provided"),
-        ("PLENUM", "need_plenum", "need_plenum_provided"),
-        ("CORE DRILL", "need_core_drill", "need_core_drill_provided"),
-        ("EYE-BOLT/WEATHERHEAD", "need_eyebolt", "need_eyebolt_provided"),
-        ("PULLBOX", "need_pullbox", "need_pullbox_provided"),
-        ("HOFFMAN BOX", "need_hoffman_box", "need_hoffman_box_provided"),
-        ("BACKBOARD", "need_backboard", "need_backboard_provided"),
-        ("OUTLET", "need_outlet", "need_outlet_provided"),
-        ("GROUNDBAR", "need_groundbar", "need_groundbar_provided"),
-    ]
-    def _yes(v):
-        return str(v or "").strip().upper() in ("YES", "TRUE", "Y")
-    _in_place = ase.get("site_requirements_provided") or ", ".join(l for l, _k, pk in _sow_ef_items if _yes(ase.get(pk)))
-    _needed = ", ".join(l for l, k, pk in _sow_ef_items if _yes(ase.get(k)) and not _yes(ase.get(pk)))
-    row = 1
-    row = add_section(ws_sow, row, "SOW NOTES", "f59e0b")
-    row = add_row(ws_sow, row, "ASSIGNED ATT ENG:", ase.get("assigned_att_eng", ""))
-    row = add_row(ws_sow, row, "SITE WALKED BY:", ase.get("employee_info", ""))
-    row = add_row(ws_sow, row, "SITE WALKED WITH:", ase.get("site_walked_with", ""))
-    row = add_row(ws_sow, row, "ACCESS CONTACT:", ase.get("access_contact", ""))
-    row = add_row(ws_sow, row, "SPF NEEDED:", ase.get("spf_required", ""))
-    row = add_row(ws_sow, row, "SPF CONTACT:", ase.get("spf_contact", ""))
-    row = add_row(ws_sow, row, "FIBER AT SITE:", ase.get("existing_fiber_terminal", ""))
-    row = add_row(ws_sow, row, "LAT/LONG OF THE EXISITNG/NEW FBT:", ase.get("fiber_terminal_lat_long", ""))
-    row = add_row(ws_sow, row, "PROPOSED LOCATION:", ase.get("terminal_location_description", "") or ase.get("fiber_terminal_placement", ""))
-    row = add_row(ws_sow, row, "PATH OF APPROACH:", ase.get("path_of_approach", ""))
-    row = add_row(ws_sow, row, "NEAREST FIBER FID:", ase.get("nearest_fiber_fid", ""))
-    row = add_row(ws_sow, row, "LAT/LONG OF NEAREST FIBER:", ase.get("nearest_fiber_lat_long", ""))
-    row = add_row(ws_sow, row, "POLE LINE START:", ase.get("soc_pole_line_start", "") or "N/A")
-    row = add_row(ws_sow, row, "POLE LINE END:", ase.get("soc_pole_line_end", "") or "N/A")
-    row = add_row(ws_sow, row, "SOC START:", ase.get("soc_start_lat_long", "") or "0")
-    row = add_row(ws_sow, row, "SOC END:", ase.get("soc_end_lat_long", "") or "0")
-    row = add_section(ws_sow, row, "EF REQUIREMENTS", "f59e0b")
-    row = add_row(ws_sow, row, "IN PLACE:", _in_place)
-    row = add_row(ws_sow, row, "NEEDED:", _needed)
-    row = add_row(ws_sow, row, "EXISTING NTE/EMTS @SITE:", ase.get("existing_nte", ""))
-    row = add_row(ws_sow, row, "PROPOSED EQUIPMENT LOCATION:", ase.get("nte_location_description", ""))
-    row = add_row(ws_sow, row, "LAT/LONG:", ase.get("nte_lat_long", ""))
-    row = add_row(ws_sow, row, "PROPOSED EQUIPMENT:", "CIENA 3903X OR EQUIVALENT RAD")
-    row = add_row(ws_sow, row, "PIPELINES IN VICINITY:", ase.get("pipelines_vicinity", ""))
-    row = add_row(ws_sow, row, "RAILROADS IN VICINITY:", ase.get("railroads_vicinity", ""))
-    row = add_row(ws_sow, row, "PERMITS NEEDED:", ase.get("possible_permits", ""))
-    row = add_row(ws_sow, row, "OTHER INFO:", " ".join(x for x in [ase.get("other_notes", ""), ase.get("additional_sow_notes", "")] if x))
+    if (ase.get("sow_notes_override") or "").strip():
+        # User-edited SOW notes: export their version verbatim, one line per row
+        row = 1
+        row = add_section(ws_sow, row, "SOW NOTES (edited by user)", "f59e0b")
+        for line in str(ase["sow_notes_override"]).splitlines():
+            ws_sow.cell(row=row, column=1, value=line)
+            row += 1
+    else:
+        _sow_ef_items = [
+            ("BURIED PVC", "buried_pvc", "buried_pvc_provided"),
+            ("BURIED INNERDUCT", "buried_innerduct", "buried_innerduct_provided"),
+            ("EMT", "need_emt", "need_emt_provided"),
+            ("PLENUM", "need_plenum", "need_plenum_provided"),
+            ("CORE DRILL", "need_core_drill", "need_core_drill_provided"),
+            ("EYE-BOLT/WEATHERHEAD", "need_eyebolt", "need_eyebolt_provided"),
+            ("PULLBOX", "need_pullbox", "need_pullbox_provided"),
+            ("HOFFMAN BOX", "need_hoffman_box", "need_hoffman_box_provided"),
+            ("BACKBOARD", "need_backboard", "need_backboard_provided"),
+            ("OUTLET", "need_outlet", "need_outlet_provided"),
+            ("GROUNDBAR", "need_groundbar", "need_groundbar_provided"),
+        ]
+        def _yes(v):
+            return str(v or "").strip().upper() in ("YES", "TRUE", "Y")
+        _in_place = ase.get("site_requirements_provided") or ", ".join(l for l, _k, pk in _sow_ef_items if _yes(ase.get(pk)))
+        _needed = ", ".join(l for l, k, pk in _sow_ef_items if _yes(ase.get(k)) and not _yes(ase.get(pk)))
+        row = 1
+        row = add_section(ws_sow, row, "SOW NOTES", "f59e0b")
+        row = add_row(ws_sow, row, "ASSIGNED ATT ENG:", ase.get("assigned_att_eng", ""))
+        row = add_row(ws_sow, row, "SITE WALKED BY:", ase.get("employee_info", ""))
+        row = add_row(ws_sow, row, "SITE WALKED WITH:", ase.get("site_walked_with", ""))
+        row = add_row(ws_sow, row, "ACCESS CONTACT:", ase.get("access_contact", ""))
+        row = add_row(ws_sow, row, "SPF NEEDED:", ase.get("spf_required", ""))
+        row = add_row(ws_sow, row, "SPF CONTACT:", ase.get("spf_contact", ""))
+        row = add_row(ws_sow, row, "FIBER AT SITE:", ase.get("existing_fiber_terminal", ""))
+        row = add_row(ws_sow, row, "LAT/LONG OF THE EXISITNG/NEW FBT:", ase.get("fiber_terminal_lat_long", ""))
+        row = add_row(ws_sow, row, "PROPOSED LOCATION:", ase.get("terminal_location_description", "") or ase.get("fiber_terminal_placement", ""))
+        row = add_row(ws_sow, row, "PATH OF APPROACH:", ase.get("path_of_approach", ""))
+        row = add_row(ws_sow, row, "NEAREST FIBER FID:", ase.get("nearest_fiber_fid", ""))
+        row = add_row(ws_sow, row, "LAT/LONG OF NEAREST FIBER:", ase.get("nearest_fiber_lat_long", ""))
+        row = add_row(ws_sow, row, "POLE LINE START:", ase.get("soc_pole_line_start", "") or "N/A")
+        row = add_row(ws_sow, row, "POLE LINE END:", ase.get("soc_pole_line_end", "") or "N/A")
+        row = add_row(ws_sow, row, "SOC START:", ase.get("soc_start_lat_long", "") or "0")
+        row = add_row(ws_sow, row, "SOC END:", ase.get("soc_end_lat_long", "") or "0")
+        row = add_section(ws_sow, row, "EF REQUIREMENTS", "f59e0b")
+        row = add_row(ws_sow, row, "IN PLACE:", _in_place)
+        row = add_row(ws_sow, row, "NEEDED:", _needed)
+        row = add_row(ws_sow, row, "EXISTING NTE/EMTS @SITE:", ase.get("existing_nte", ""))
+        row = add_row(ws_sow, row, "PROPOSED EQUIPMENT LOCATION:", ase.get("nte_location_description", ""))
+        row = add_row(ws_sow, row, "LAT/LONG:", ase.get("nte_lat_long", ""))
+        row = add_row(ws_sow, row, "PROPOSED EQUIPMENT:", "CIENA 3903X OR EQUIVALENT RAD")
+        row = add_row(ws_sow, row, "PIPELINES IN VICINITY:", ase.get("pipelines_vicinity", ""))
+        row = add_row(ws_sow, row, "RAILROADS IN VICINITY:", ase.get("railroads_vicinity", ""))
+        row = add_row(ws_sow, row, "PERMITS NEEDED:", ase.get("possible_permits", ""))
+        row = add_row(ws_sow, row, "OTHER INFO:", " ".join(x for x in [ase.get("other_notes", ""), ase.get("additional_sow_notes", "")] if x))
     
     # ========== TAB 4: PHOTOS ==========
     # Collect all photos
