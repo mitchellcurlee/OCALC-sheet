@@ -1144,7 +1144,7 @@ const JobMap = () => {
 
   // Distance for the list — follows custom waypoints on aerial segments (matches map pill)
   const segListDistance = useCallback((seg) => {
-    const wps = seg.isAerial ? (customRoutes[`${seg.from.id}-${seg.to.id}`] || []) : [];
+    const wps = customRoutes[`${seg.from.id}-${seg.to.id}`] || [];
     const path = [seg.fromPos, ...wps.map((w) => [w.lat, w.lng]), seg.toPos];
     const hav = (p1, p2) => {
       const R = 6371000;
