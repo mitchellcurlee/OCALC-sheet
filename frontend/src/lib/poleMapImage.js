@@ -207,17 +207,29 @@ export const computeConnectionPairs = (route, ug, connections = []) => {
         if (p.from.standalone || p.to.standalone) return false;
         const earlier = p.from.sort_order <= p.to.sort_order ? p.from : p.to;
         return !earlier.end_path;
-      })
-      .sort((a, b) =>
-        (Math.min(a.from.sort_order, a.to.sort_order) - Math.min(b.from.sort_order, b.to.sort_order)) ||
-        (Math.max(a.from.sort_order, a.to.sort_order) - Math.max(b.from.sort_order, b.to.sort_order))
-      );
+      });
     const referenced = new Set();
     connections.forEach((c) => { referenced.add(c.from_item_id); referenced.add(c.to_item_id); });
+    const unreferenced = pathItems.filter((it) => !referenced.has(it.id));
+    // Drop non-custom connections that skip over a newly added (unreferenced) path item —
+    // the chain segments through that item replace the direct line
+    if (unreferenced.length > 0) {
+      pairs = pairs.filter((p) => {
+        if (p.connType === "custom") return true;
+        const lo = Math.min(p.from.sort_order, p.to.sort_order);
+        const hi = Math.max(p.from.sort_order, p.to.sort_order);
+        return !unreferenced.some((it) => it.sort_order > lo && it.sort_order < hi);
+      });
+    }
     for (let i = 0; i < pathItems.length - 1; i++) {
       const a = pathItems[i], b = pathItems[i + 1];
       if ((!referenced.has(a.id) || !referenced.has(b.id)) && !a.end_path) pairs.push({ from: a, to: b });
     }
+    // Keep the whole list in route order (fallback pairs included)
+    pairs.sort((a, b) =>
+      (Math.min(a.from.sort_order, a.to.sort_order) - Math.min(b.from.sort_order, b.to.sort_order)) ||
+      (Math.max(a.from.sort_order, a.to.sort_order) - Math.max(b.from.sort_order, b.to.sort_order))
+    );
   } else {
     for (let i = 0; i < pathItems.length - 1; i++) {
       if (pathItems[i].end_path) continue;

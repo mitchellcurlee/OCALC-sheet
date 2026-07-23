@@ -1,0 +1,46 @@
+{
+  "verdict": "fixed",
+  "user_reported_bug": "the UG Path Start and UG Path End are still not in correct location on the span list at the bottom of the interactive map. [Follow-up clarification from user:] in the interactive map Span measurements. I added a UG path start with coordinates as an attribute and it is not showing in the span measurement list under the interactive map. The additions on the last deployment are not showing.",
+  "summary": "Focused verification passed. No relevant testing skill found. Seeded jobs through the real backend and verified in the real /jobs/{jobId}/map UI that UG Path Start and UG Path End appear in the correct SPAN MEASUREMENTS order, stale direct saved-connection entries are removed, totals are correct, empty-connection sort_order chains still work, and custom straddling connections are retained by direct computeConnectionPairs regression coverage. No MOCKED APIs were used.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/test_reports/bug_verification_41_seed.py",
+    "/app/test_reports/bug_verification_41_compute.mjs",
+    "/app/test_reports/bug_verification_41_browser_saved_conn.py",
+    "/app/test_reports/bug_verification_41_browser_ugpe.py",
+    "/app/test_reports/bug_verification_41_browser_no_conn.py",
+    "/app/test_reports/bug_verification_41_fixture.json"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Inspected uncommitted fix in /app/frontend/src/lib/poleMapImage.js: non-custom straddling connections are filtered only when an unreferenced path item has sort_order strictly between endpoints, then merged pairs are sorted by route order; custom connections are explicitly retained.",
+    "Inspected /app/frontend/src/lib/OfflineContext.jsx update-check effect and observed browser console during map tests; no update-check console errors appeared. Only non-app Cloudflare RUM request aborts were logged."
+  ],
+  "updated_files": [
+    "/app/test_reports/bug_verification_41.json",
+    "/app/test_reports/iteration_41.json",
+    "/app/test_reports/bug_verification_41_seed.py",
+    "/app/test_reports/bug_verification_41_compute.mjs",
+    "/app/test_reports/bug_verification_41_browser_saved_conn.py",
+    "/app/test_reports/bug_verification_41_browser_ugpe.py",
+    "/app/test_reports/bug_verification_41_browser_no_conn.py",
+    "/app/test_reports/bug_verification_41_fixture.json"
+  ],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "100%"
+  },
+  "seed_data_creation": "Created two temporary jobs: saved-connection job 978ce510-1e61-4c36-8562-0c6f9f8175f6 with P1/P2/HH/P3 stale saved connections plus inserted UG Path Start and then UG Path End, and no-connection job 9420e232-8432-47cd-8d99-6328fdb09619. Deleted both after testing. Also deleted prior test job ceef00bd-fd8e-4389-ae49-594e0cdff0bc during pre-seed cleanup; confirmed protected seed job e5dc0bae-96bb-4cef-8001-7baf4e41d80a still exists.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Test plan: verify exact user-visible bug on interactive Job Map SPAN MEASUREMENTS list, using saved stale connections plus newly inserted UG Path Start/End; prove correct UI order, absence of stale direct P2-HH/HH-P3 entries, correct totals, empty-connections regression, custom connection retention, and no OfflineContext console errors. Runtime evidence: saved-connection UI showed 1 P1 to P2, 2 P2 to UGP-S, 3 UGP-S to HH HH-1, 4 HH HH-1 to P3 with Total 365 ft aerial + 728 ft underground; after UG Path End UI showed 5-entry order ending HH HH-1 to UGP-E and UGP-E to P3; no-connection UI showed plain order P1 to UGP-S, UGP-S to HH HH-1, HH HH-1 to P2. Direct compute script also passed custom straddle retention. Temporary test jobs were cleaned up.",
+  "rca_of_the_issue": "Before the fix, computeConnectionPairs appended fallback pairs for unreferenced newly added path items after stored connection pairs and did not drop stale non-custom direct connections that skipped the new item, causing the span list to be out of order and double-counted. Verified fixed by UI and direct function regression tests."
+}

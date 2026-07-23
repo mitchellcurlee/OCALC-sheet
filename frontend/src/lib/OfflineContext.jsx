@@ -6,6 +6,7 @@
  */
 
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { toast } from 'sonner';
 import { initDB } from './offlineDb';
 import { 
   isOnline as checkOnline, 
@@ -66,6 +67,33 @@ export function OfflineProvider({ children }) {
           console.error('[Offline] Service Worker registration failed:', err);
         });
     }
+  }, []);
+
+  // Detect new deployments: compare the served bundle name against the loaded one
+  useEffect(() => {
+    let reloading = false;
+    const checkForUpdate = async () => {
+      if (reloading || !navigator.onLine) return;
+      try {
+        const current = document.querySelector('script[src*="static/js/main"]')?.getAttribute('src');
+        if (!current) return; // dev build — no hashed bundle
+        const res = await fetch('/index.html', { cache: 'no-store' });
+        if (!res.ok) return;
+        const html = await res.text();
+        const m = html.match(/static\/js\/main[^"]*\.js/);
+        if (m && !current.includes(m[0])) {
+          reloading = true;
+          console.log('[Update] New version detected — reloading');
+          toast.info('App updated — loading new version…');
+          setTimeout(() => window.location.reload(), 1500);
+        }
+      } catch (e) { /* offline or transient — ignore */ }
+    };
+    const t = setTimeout(checkForUpdate, 10000);
+    const interval = setInterval(checkForUpdate, 5 * 60 * 1000);
+    const onVisible = () => { if (document.visibilityState === 'visible') checkForUpdate(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => { clearTimeout(t); clearInterval(interval); document.removeEventListener('visibilitychange', onVisible); };
   }, []);
 
   // Listen for online/offline events
