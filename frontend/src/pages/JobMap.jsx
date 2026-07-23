@@ -1176,7 +1176,7 @@ const JobMap = () => {
       const r = riserInfo(item);
       if (r && !added.has(item.id)) {
         added.add(item.id);
-        entries.push({ kind: "riser", num: entries.length + 1, pos, text: `${poleName(item.label)} Riser${r.c > 1 ? ` ×${r.c}` : ""} = ${fmtFeet(r.c * r.h)}` });
+        entries.push({ kind: "riser", so: item.sort_order ?? Infinity, pos, text: `${poleName(item.label)} Riser${r.c > 1 ? ` ×${r.c}` : ""} = ${fmtFeet(r.c * r.h)}` });
       }
     };
     const pathText = (u) => {
@@ -1188,28 +1188,35 @@ const JobMap = () => {
       const u = underground.find((x) => x.id === item.id);
       if (!u || !(u.path_measurements || []).length) return;
       pathAdded.add(item.id);
-      entries.push({ kind: "path", num: entries.length + 1, pos, text: pathText(u) });
+      entries.push({ kind: "path", so: item.sort_order ?? Infinity, pos, text: pathText(u) });
     };
     orderedSegments.forEach((seg, i) => {
       pushRiser(seg.from, seg.fromPos);
       pushPath(seg.from, seg.fromPos);
-      const num = entries.length + 1;
-      nums[i] = num;
-      entries.push({ kind: "span", num, seg });
+      entries.push({ kind: "span", so: seg.from.sort_order ?? Infinity, segIndex: i, seg });
     });
     if (orderedSegments.length > 0) {
       const last = orderedSegments[orderedSegments.length - 1];
       pushRiser(last.to, last.toPos);
       pushPath(last.to, last.toPos);
     }
-    // Items with path measurements not on the route chain (e.g. no GPS) — append at end
+    // Items with path measurements not on the route chain (standalone or no GPS) —
+    // insert at their respective place in route order using sort_order
     [...underground]
       .sort((a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999))
       .filter((u) => (u.path_measurements || []).length > 0 && !pathAdded.has(u.id))
       .forEach((u) => {
         pathAdded.add(u.id);
-        entries.push({ kind: "path", num: entries.length + 1, pos: null, text: pathText(u) });
+        const so = u.sort_order ?? Infinity;
+        const entry = { kind: "path", so, pos: null, text: pathText(u) };
+        const idx = entries.findIndex((e) => (e.so ?? Infinity) > so);
+        if (idx === -1) entries.push(entry);
+        else entries.splice(idx, 0, entry);
       });
+    entries.forEach((e, idx) => {
+      e.num = idx + 1;
+      if (e.kind === "span") nums[e.segIndex] = e.num;
+    });
     return { measurementEntries: entries, spanNums: nums };
   }, [orderedSegments, route, underground]);
 
