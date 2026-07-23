@@ -1411,6 +1411,45 @@ async def export_ase_excel(job_id: str, current_user: dict = Depends(get_current
     
     # Handle None or missing ase_data
     ase = job.get("ase_data") or {}
+
+    # Server-side fallbacks mirroring the ASE form auto-population, so the export
+    # always includes coordinates/FID even if the form wasn't re-opened and saved.
+    _poles = await _db.poles.find({"job_id": job_id}, {"_id": 0}).to_list(10000)
+    _ug = await _db.underground.find({"job_id": job_id}, {"_id": 0}).to_list(10000)
+
+    def _coord(it):
+        return f"{it.get('latitude')}, {it.get('longitude')}"
+
+    def _first(items, cond):
+        return next((x for x in items if cond(x) and x.get("latitude") and x.get("longitude")), None)
+
+    if not ase.get("soc_start_lat_long"):
+        it = _first(_ug, lambda u: u.get("soc_start"))
+        if it: ase["soc_start_lat_long"] = _coord(it)
+    if not ase.get("soc_end_lat_long"):
+        it = _first(_ug, lambda u: u.get("soc_end"))
+        if it: ase["soc_end_lat_long"] = _coord(it)
+    if not ase.get("soc_pole_line_start"):
+        it = _first(_poles, lambda p: p.get("pole_line_start"))
+        if it: ase["soc_pole_line_start"] = _coord(it)
+    if not ase.get("soc_pole_line_end"):
+        it = _first(_poles, lambda p: p.get("pole_line_end"))
+        if it: ase["soc_pole_line_end"] = _coord(it)
+    if not ase.get("nearest_fiber_fid"):
+        primaries = sorted(
+            [u for u in _ug if u.get("primary_fid") and u.get("fid")],
+            key=lambda u: u.get("sort_order") if u.get("sort_order") is not None else 9999,
+        )
+        if primaries: ase["nearest_fiber_fid"] = primaries[0]["fid"]
+    if not ase.get("fiber_terminal_lat_long"):
+        if str(ase.get("pedestal_fiber_as_fbt", "")).upper() == "YES":
+            it = _first(_ug, lambda u: u.get("type") == "Pedestal" and "fiber" in str(u.get("material_type", "")).lower())
+        else:
+            it = _first(_ug, lambda u: u.get("type") in ("FBT", "FBT/NTE"))
+        if it: ase["fiber_terminal_lat_long"] = _coord(it)
+    if not ase.get("nte_lat_long"):
+        it = _first(_ug, lambda u: u.get("type") in ("NTE", "FBT/NTE"))
+        if it: ase["nte_lat_long"] = _coord(it)
     
     wb = Workbook()
     
@@ -1531,6 +1570,8 @@ async def export_ase_excel(job_id: str, current_user: dict = Depends(get_current
     row = add_row(ws1, row, "INC Required:", ase.get("inc_required", ""))
     row = add_row(ws1, row, "Existing Fiber Terminal:", ase.get("existing_fiber_terminal", ""))
     row = add_row(ws1, row, "Fiber Terminal Placement:", ase.get("fiber_terminal_placement", ""))
+    row = add_row(ws1, row, "Use Fiber Pedestal as FBT?:", ase.get("pedestal_fiber_as_fbt", ""))
+    row = add_row(ws1, row, "FBT Attribute Source:", ase.get("fbt_attribute_source", ""))
     row = add_row(ws1, row, "Fiber Terminal LAT/LONG:", ase.get("fiber_terminal_lat_long", ""))
     row = add_row(ws1, row, "Fiber Terminal FID:", ase.get("fiber_terminal_fid", ""))
     row = add_row(ws1, row, "Active Ports (FOR EXISTING):", ase.get("fiber_active_ports", ""))
@@ -1550,6 +1591,7 @@ async def export_ase_excel(job_id: str, current_user: dict = Depends(get_current
     row = add_row(ws1, row, "CLLI (FOR EXISTING):", ase.get("nte_clli", ""))
     row = add_row(ws1, row, "NTE at Terminal or another location?:", ase.get("nte_at_terminal", ""))
     row = add_row(ws1, row, "Describe existing/proposed NTE location:", ase.get("nte_location_description", ""))
+    row = add_row(ws1, row, "NTE Attribute Source:", ase.get("nte_attribute_source", ""))
     row = add_row(ws1, row, "NTE LAT/LONG:", ase.get("nte_lat_long", ""))
     row = add_row(ws1, row, "Floor #:", ase.get("nte_floor", ""))
     row = add_row(ws1, row, "Mounting Wall:", ase.get("nte_mounting_wall", ""))
