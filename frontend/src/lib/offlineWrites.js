@@ -72,6 +72,7 @@ axios.interceptors.response.use(
       return Promise.reject(error);
     }
     const parsed = parseWrite(cfg.method, cfg.url);
+    console.warn('[Offline] write failed offline:', cfg.method, cfg.url, 'parsed:', parsed ? `${parsed.action} ${parsed.entity}` : 'not-queueable');
     if (!parsed) return Promise.reject(error);
 
     let body = cfg.data;

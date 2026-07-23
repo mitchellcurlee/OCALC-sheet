@@ -15,6 +15,11 @@ export const isOfflinePhoto = (url) => typeof url === 'string' && url.startsWith
 export const queuePhotoOffline = async (file) => {
   const id = uuidv4();
   await db.savePhotoBlob({ id, blob: file, name: file.name || 'photo.jpg', created_at: new Date().toISOString() });
+  // Verify the blob actually persisted before handing out a placeholder
+  const check = await db.getPhotoBlob(id);
+  if (!check || !check.blob) {
+    throw new Error('Offline photo store write failed');
+  }
   window.dispatchEvent(new Event('offline-photos-changed'));
   return `${OFFLINE_PHOTO_PREFIX}${id}`;
 };

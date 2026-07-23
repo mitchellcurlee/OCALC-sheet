@@ -1,0 +1,59 @@
+{
+  "summary": "Iter38 RETEST of offline photo E2E after iter37's tx.oncomplete/onabort fix in offlineDb.js. The FIX ITSELF IS CORRECT — direct putItem probe confirms writes now properly reject with QuotaExceededError on tx.onabort (previously they silently resolved). However, the offline photo E2E STILL FAILS end-to-end in the preview environment because the Service Worker's caching strategy (public/service-worker.js) is filling the browser origin storage quota to 100%+ on ordinary page loads, which then causes ALL subsequent IndexedDB writes (photoQueue AND syncQueue) to abort with QuotaExceededError. This is now visible/loud (interceptor logs `[Offline] Failed to queue write: QuotaExceededError` and MultiPhotoUpload's queuePhotoOffline throws) rather than the previous silent data loss. Online photo upload path works fully (immediate real /api/files/... URL, thumbnail renders). Offline record PUT interceptor also matches correctly now (console shows `[Offline] write failed offline: put /poles/{id} parsed: update pole` — the interceptor DOES fire and would queue on any tx that isn't quota-blocked).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "public/service-worker.js (tileCacheFirst / apiNetworkFirst / staticNetworkFirst)",
+        "issue": "SW caches every static asset, every /api GET, and every map tile with no expiration/max-entries/quota policy. Origin storage.estimate() shows usage exceeds quota (measured 1.07GB used / 1.00GB quota) immediately after login + one navigation to the pole edit form in a FRESH browser context (no prior test data). This exhausts origin storage and causes ALL subsequent IndexedDB readwrite transactions on stores photoQueue and syncQueue to abort with QuotaExceededError. Net effect: offline photo cannot be queued (photoQueue stays at count=0), offline pole update cannot be queued (syncQueue stays at []), and no offline warning toast is shown to the user because queuePhotoOffline throws. Interceptor at offlineWrites.js catches it and logs `[Offline] Failed to queue write: QuotaExceededError`. MultiPhotoUpload's queuePhotoOffline catch (e2) is silent and falls through to `toast.error('Failed to upload ...')` — but that toast never actually renders visibly either (may auto-dismiss too fast, but the underlying save failure is the real bug).",
+        "selector": "input[data-testid='birthmark-file-input'] / [data-testid='save-pole-top-btn']",
+        "priority": "CRITICAL"
+      },
+      {
+        "component": "components/MultiPhotoUpload.jsx (queuePhotoOffline error branch)",
+        "issue": "When queuePhotoOffline throws (as it correctly does now on quota abort), MultiPhotoUpload swallows e2 in `catch (e2) { /* fall through to normal error */ }` without logging or showing a distinct toast. User sees only `toast.error('Failed to upload')` which is the same message the user gets for any error — no indication that offline storage is exhausted or that the photo cannot be saved offline. Should distinguish between (a) online upload failed, (b) offline queue failed due to storage full.",
+        "selector": "MultiPhotoUpload.jsx line ~76-84",
+        "priority": "HIGH"
+      }
+    ],
+    "integration_issues": [
+      {
+        "flow": "Offline photo capture → reconnect → auto-upload → PUT record",
+        "issue": "End-to-end broken in preview env because upstream photoQueue writes hit QuotaExceededError from SW-exhausted origin storage. photoQueue stays 0, no offline-photo:// placeholder is added to the form, syncOfflinePhotos on reconnect finds nothing to upload. Only pre-existing photos (from prior ONLINE runs) appear on the server. NOTE: The iter37 SILENT-DATA-LOSS bug is fixed — failures are now loud (rejected promises, console.warn/error), which is what the fix was intended to accomplish. But the SW quota problem must be fixed before the full offline flow can succeed end-to-end.",
+        "affected_selectors": ["input[data-testid='birthmark-file-input']", "[data-testid='save-pole-top-btn']"]
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/test_reports/iter38_setup.py",
+    "/app/test_reports/iter38_state.json",
+    "/app/test_reports/iter38_browser3/final.jpeg",
+    "/app/test_reports/iter38_clean/after_reload_real_url.jpeg",
+    "/app/test_reports/iter38_probe (direct putItem QuotaExceededError probe)"
+  ],
+  "action_items": [
+    "PRIMARY: Add cache size/expiration policy to public/service-worker.js. tileCacheFirst is the biggest culprit — map tiles are large opaque responses that accumulate without bound. Options: (a) cap TILE_CACHE by count with a stale-eviction pass; (b) never cache opaque responses; (c) periodically call `navigator.storage.estimate()` and evict oldest cache entries when usage > 80% of quota. Same for API_CACHE. This alone is likely enough to un-block the offline-photo E2E because writes will stop hitting QuotaExceededError.",
+    "SECONDARY: Make MultiPhotoUpload.jsx surface the quota-full error distinctly. When queuePhotoOffline throws with e2.name === 'QuotaExceededError' or e2.message.includes('offline photo store write failed'), show `toast.error('Device storage full — cannot save photo offline. Clear space and retry.')` and log console.error.",
+    "OPTIONAL: In offlineWrites.js response interceptor, when saveLocal or queueAction throws QuotaExceededError, surface a toast to the user (currently only logs console.error). The user currently sees ERR_INTERNET_DISCONNECTED and no other feedback when saving a pole while offline+quota-full.",
+    "RE-TEST after SW cache limits are in place: run the same script at /app/test_reports/iter38_browser3 (login → pole edit → set_offline → set_input_files birthmark → check photoQueue.count=1 → Save → check syncQueue has update:pole → set_online → dispatch online event → poll for real URL on backend)."
+  ],
+  "critical_code_review_comments": [
+    "offlineDb.js tx.oncomplete/tx.onabort FIX is correct and verified. Direct probe: `st.put(item)` then `tx.onabort = QuotaExceededError` correctly rejects the promise (measured txAbort='QuotaExceededError:', rerr=null). Previously (iter37) putItem resolved on request.onsuccess before commit — that path is closed.",
+    "offlinePhotos.js read-back verify (`await db.getPhotoBlob(id)`) works correctly — when the tx aborts, savePhotoBlob rejects and the getPhotoBlob wouldn't even be reached; if by any race it were reached, the record would not exist and the check throws 'Offline photo store write failed'. Good defensive layer.",
+    "public/service-worker.js is caching too aggressively with no eviction. This is a pre-existing bug that is now exposed because the tx.oncomplete fix stopped hiding it. See ui_bugs above.",
+    "MultiPhotoUpload.jsx catch (e2) at line ~80 is completely silent — replace `/* fall through to normal error */` with `console.error('Offline queue failed:', e2)` and a specific toast when e2 is a quota error.",
+    "offlineWrites.js: `[Offline] Failed to queue write:` catches at line 108 also should show a user-visible toast when the queue itself fails, not just log to console."
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "n/a (only used API for setup/cleanup — POST /api/auth/login, POST /api/jobs, POST /api/poles, GET /api/jobs/{id}/poles, DELETE /api/jobs/{id} — all returned expected 200/404)",
+    "frontend": "Offline photo E2E: FAIL (photoQueue.count=0, syncQueue=[] after offline capture+save, no real URL on backend from offline photo). Root cause is SW quota exhaustion, NOT the iter37 fix. Online photo regression: PASS (immediate real URL, thumbnail renders after save). tx.oncomplete fix: VERIFIED CORRECT (direct probe)."
+  },
+  "test_credentials": "mitchell.curlee@byers.com / Dawson@2016 (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "Created temp job TEST_iter38_offline_photo (id e4adba95-3f8c-4c21-87db-bb770f311bbf) with 1 pole TP1 (id 46f3d7c6-70dc-4367-9230-7950452d3ec2). DELETED at end of test (DELETE returned 200 'Job and all poles deleted successfully'; subsequent GET returned 404). Seed job e5dc0bae-96bb-4cef-8001-7baf4e41d80a NOT touched.",
+  "retest_needed": true,
+  "main_agent_can_self_test": false,
+  "context_for_next_testing_agent": "The iter37 fix in offlineDb.js putItem/deleteItem (resolve on tx.oncomplete, reject on tx.onabort) is CONFIRMED WORKING via direct IDB probe — see iter38_probe results. A NEW blocker was uncovered: the Service Worker's cache strategies in public/service-worker.js exhaust origin storage quota to 100%+ after just login + navigation to the edit page in a fresh context (measured 1.07GB / 1.00GB). This causes every IDB readwrite transaction to abort with QuotaExceededError, which now surfaces LOUDLY (per the fix) but blocks the offline flow. After main agent adds cache size/eviction policy to SW, re-run /app/test_reports/iter38_browser3 script (login → /jobs/{JOB_ID}/edit/{POLE_ID} → reload → set_offline(True) → set_input_files birthmark → assert photoQueue count=1 → save-pole-top-btn → assert syncQueue has update:pole → set_offline(False) → dispatch window Event('online') → poll GET /api/jobs/{JOB_ID}/poles birthmark_photos for a REAL URL). Recreate a fresh job+pole via /app/test_reports/iter38_setup.py before rerunning.",
+  "rca of the issue": "Iter37's silent-data-loss bug (putItem resolving on request.onsuccess before tx commit) IS FIXED in offlineDb.js — verified via a direct IDB probe that puts a tiny object into syncQueue/photoQueue: the wrapped Promise now correctly rejects on tx.onabort with the underlying error (QuotaExceededError in this env). However, the reason the tx aborts in the first place is that Chromium's origin storage estimate shows usage exceeding quota (1.07 GB / 1.00 GB) after only login + one navigation to the pole edit page in an ISOLATED fresh browser context — driven by the Service Worker aggressively caching map tiles (tileCacheFirst also stores OPAQUE cross-origin tile responses), API GETs, and static assets with no size cap or eviction. Fix path: implement max-entries + LRU eviction in public/service-worker.js (or refuse to cache opaque tiles), and additionally have MultiPhotoUpload + offlineWrites surface a distinct 'device storage full' toast when saveLocal/queueAction/savePhotoBlob throw QuotaExceededError. Reproduction: fresh browser context → login → GET /jobs/{id}/edit/{poleId} → reload → `navigator.storage.estimate()` → usage > quota. Any subsequent readwrite tx on PoleDataOffline will abort."
+}

@@ -97,9 +97,14 @@ async function putItem(storeName, item) {
   return new Promise((resolve, reject) => {
     const tx = db.transaction(storeName, 'readwrite');
     const store = tx.objectStore(storeName);
+    let result;
     const request = store.put(item);
-    request.onsuccess = () => resolve(request.result);
+    request.onsuccess = () => { result = request.result; };
     request.onerror = () => reject(request.error);
+    // Resolve only after the transaction actually commits
+    tx.oncomplete = () => resolve(result);
+    tx.onabort = () => reject(tx.error || new Error('IndexedDB transaction aborted'));
+    tx.onerror = () => reject(tx.error);
   });
 }
 
@@ -143,8 +148,10 @@ async function deleteItem(storeName, id) {
     const tx = db.transaction(storeName, 'readwrite');
     const store = tx.objectStore(storeName);
     const request = store.delete(id);
-    request.onsuccess = () => resolve();
     request.onerror = () => reject(request.error);
+    tx.oncomplete = () => resolve();
+    tx.onabort = () => reject(tx.error || new Error('IndexedDB transaction aborted'));
+    tx.onerror = () => reject(tx.error);
   });
 }
 
