@@ -1012,7 +1012,7 @@ const JobMap = () => {
         id: p.id,
         pos: p.pos,
         type: "pole",
-        label: p.pole_number || `Pole`,
+        label: p.pole_number ? `Pole ${p.pole_number}` : `Pole`,
         sort_order: p.sort_order ?? Infinity,
         end_path: p.end_path === true
       });
@@ -1022,7 +1022,7 @@ const JobMap = () => {
         id: u.id,
         pos: u.pos,
         type: "underground",
-        label: u.label || u.type,
+        label: u.label && u.label !== u.type ? `${u.type} · ${u.label}` : (u.type || u.label),
         sort_order: u.sort_order ?? Infinity,
         end_path: u.end_path === true
       });
@@ -1795,8 +1795,11 @@ const JobMap = () => {
                       <SelectContent className="z-[1200] bg-white">
                         {orderedSegments.map((seg, i) => {
                           const segKey = `${seg.from.id}-${seg.to.id}`;
-                          const fromLabel = seg.from.pole_number || seg.from.type || 'P' + (i+1);
-                          const toLabel = seg.to.pole_number || seg.to.type || 'P' + (i+2);
+                          const segItemLabel = (it) => it.type === 'pole'
+                            ? (it.label && it.label !== 'Pole' ? `Pole ${it.label}` : 'Pole')
+                            : (it.ugType && it.label !== it.ugType ? `${it.ugType} · ${it.label}` : (it.ugType || it.label));
+                          const fromLabel = segItemLabel(seg.from) || 'P' + (i+1);
+                          const toLabel = segItemLabel(seg.to) || 'P' + (i+2);
                           return (
                             <SelectItem key={segKey} value={segKey}>
                               <div className="flex items-center gap-2">
