@@ -1043,9 +1043,9 @@ const generateSegmentPage = async ({
   });
 
   // Draw underground items (GREEN squares)
-  relevantUg.forEach((u) => {
+  pageUg.forEach((u) => {
     const [x, y] = pt(u.pos);
-    const abbr = undergroundAbbr(u.type);
+    const abbr = undergroundAbbr(u.ugType);
     ctx.font = `bold ${10 * s}px ui-monospace, monospace`;
     const tw = ctx.measureText(abbr).width;
     const sz = Math.max(24 * s, tw + 10 * s);

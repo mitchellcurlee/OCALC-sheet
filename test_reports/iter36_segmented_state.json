@@ -1,0 +1,53 @@
+{
+  "job": {
+    "id": "8a35e9ed-5150-477f-8d85-0225abc1b0e2",
+    "name": "TEST_iter36_segmented",
+    "description": null,
+    "location": "TEST",
+    "job_type": "OCALC",
+    "user_id": "8e774e69-82da-4bf0-aed4-12c469f3b584",
+    "user_email": "mitchell.curlee@byers.com",
+    "pole_count": 0,
+    "completed": false,
+    "transferred_from": null,
+    "transferred_at": null,
+    "transfer_history": null,
+    "latitude": null,
+    "longitude": null,
+    "ase_data": null,
+    "created_at": "2026-07-23T01:03:45.051562+00:00",
+    "updated_at": "2026-07-23T01:03:45.051569+00:00"
+  },
+  "items": [
+    {
+      "kind": "pole",
+      "label": "P1",
+      "id": "a252fd2b-fcf4-4857-903a-274d699366ee",
+      "sort_order": 0
+    },
+    {
+      "kind": "pole",
+      "label": "P2",
+      "id": "25dd7bfc-d96e-4faa-8558-b53275e3d28f",
+      "sort_order": 1
+    },
+    {
+      "kind": "ug",
+      "label": "UG1",
+      "id": "2aecd956-e05b-432a-bcda-32a21e8b9c1a",
+      "sort_order": 2
+    },
+    {
+      "kind": "pole",
+      "label": "P3",
+      "id": "78c3702e-236a-44b5-ae3d-f1986e393104",
+      "sort_order": 3
+    },
+    {
+      "kind": "pole",
+      "label": "P4",
+      "id": "fca428b2-9f97-4e7a-8356-99d937857e87",
+      "sort_order": 4
+    }
+  ]
+}

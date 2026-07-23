@@ -1344,7 +1344,7 @@ const JobMap = () => {
     } finally {
       setDownloading(false);
     }
-  }, [poles, job, underground]);
+  }, [poles, job, underground, connections]);
 
   // Screenshot the visible map frame using dom-to-image-more - captures entire app frame
   const captureMapScreenshot = useCallback(async () => {
@@ -1589,6 +1589,15 @@ const JobMap = () => {
                     >
                       <Ruler className="w-4 h-4 mr-2" />
                       Add Measurement
+                    </DropdownMenuItem>
+                    
+                    <DropdownMenuItem
+                      onClick={downloadSegmented}
+                      className="cursor-pointer border-t border-zinc-200"
+                      data-testid="download-segmented"
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Download 800ft Pages (ZIP)
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

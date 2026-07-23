@@ -40,10 +40,10 @@ const buildTileUrls = (points) => {
     return { z, urls };
   });
 
-  // Drop the highest zooms until under the cap
+  // Drop the highest zooms until under the cap (always keep the lowest zoom)
   let urls = [];
   const kept = [...perZoom];
-  while (kept.length && kept.reduce((s, g) => s + g.urls.length, 0) > MAX_TILES) {
+  while (kept.length > 1 && kept.reduce((s, g) => s + g.urls.length, 0) > MAX_TILES) {
     kept.pop();
   }
   kept.forEach((g) => { urls = urls.concat(g.urls); });

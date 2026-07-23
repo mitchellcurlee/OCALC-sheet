@@ -1,0 +1,38 @@
+{
+  "job": {
+    "id": "0a89671d-9c0a-440c-a57f-d2dc62796184",
+    "name": "TEST_iter36_standalone",
+    "description": null,
+    "location": "TEST",
+    "job_type": "OCALC",
+    "user_id": "8e774e69-82da-4bf0-aed4-12c469f3b584",
+    "user_email": "mitchell.curlee@byers.com",
+    "pole_count": 0,
+    "completed": false,
+    "transferred_from": null,
+    "transferred_at": null,
+    "transfer_history": null,
+    "latitude": null,
+    "longitude": null,
+    "ase_data": null,
+    "created_at": "2026-07-23T01:07:13.939021+00:00",
+    "updated_at": "2026-07-23T01:07:13.939029+00:00"
+  },
+  "items": [
+    {
+      "label": "A",
+      "id": "a0e0e130-be70-4f28-91ba-1d10d741c21f",
+      "sort_order": 0
+    },
+    {
+      "label": "B",
+      "id": "ec877a8a-2a00-4c60-bcf5-452621581c3d",
+      "sort_order": 1
+    },
+    {
+      "label": "C",
+      "id": "46e79cd5-31d9-49c4-8cf4-ae2cfacf8f63",
+      "sort_order": 2
+    }
+  ]
+}
