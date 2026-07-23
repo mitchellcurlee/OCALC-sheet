@@ -2116,7 +2116,7 @@ const JobMap = () => {
                     const awaitingTarget = Boolean(addingConn) || Boolean(selectedConn && reconnectSide);
                     return (
                       <Marker
-                        key={`target-${item.id}`}
+                        key={`target-${item.id}-${awaitingTarget ? "pick" : "idle"}`}
                         position={item.pos}
                         icon={L.divIcon({
                           className: "conn-target",
@@ -2162,6 +2162,15 @@ const JobMap = () => {
                             weight: isSelected ? 7 : 4,
                             opacity: isSelected ? 1 : 0.8,
                             dashArray: conn.connection_type === 'custom' ? '8, 8' : undefined
+                          }}
+                          bubblingMouseEvents={false}
+                          eventHandlers={{
+                            click: (e) => {
+                              L.DomEvent.stopPropagation(e);
+                              setSelectedConn(conn.id);
+                              setReconnectSide(null);
+                              setAddingConn(null);
+                            }
                           }}
                         />
                         {/* Wide invisible hit line for easy tapping */}
