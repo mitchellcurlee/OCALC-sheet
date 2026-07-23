@@ -1,0 +1,61 @@
+{
+  "verdict": "not_fixed",
+  "user_reported_bug": "I am still unable to move connections from pole to pole. (User clarified: in preview; they could drag an endpoint dot but the line snaps back / doesn't stay where dropped. User approved replacing drag with a tap-based flow: tap a connection line -> it highlights -> tap 'Move start' or 'Move end' -> tap the pole/attribute to connect it to.)",
+  "summary": "Focused preview verification found the new panel renders and old draggable endpoint dots are gone, but the move-start side of the approved tap flow does not persist. API proof shows PUT /connections ignores from_item_id/from_item_type, so moving a connection START from one pole/item to another cannot work end to end. No relevant testing skill found.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "PUT /api/jobs/{job_id}/connections/{connection_id}",
+        "issue": "ConnectionUpdate only allows to_item_id/to_item_type/waypoints/connection_type. Frontend sends from_item_id/from_item_type for Move start, but the backend drops those fields and returns/persists the original start endpoint.",
+        "priority": "CRITICAL"
+      }
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "JobMap connection edit hit line",
+        "issue": "In Playwright, actual mouse/locator click on the .conn-hit-line midpoint did not select the line; dispatching a DOM click did select it. This may indicate the wide hit-line click target still needs human/device self-test.",
+        "selector": ".conn-hit-line",
+        "priority": "MEDIUM"
+      }
+    ],
+    "integration_issues": [
+      {
+        "flow": "Edit Lines & Connections -> select line -> Move start -> tap different item -> reload",
+        "issue": "Move start does not update backend or persist; final connection from_item_id remained the original item after target tap/reload. API probe reproduced the same because backend ignores from_* updates.",
+        "affected_selectors": ["conn-move-start-btn", "conn-target", "conn-edit-panel"]
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/test_reports/iteration_31_connection_tap_flow_api_setup.py",
+    "/app/test_reports/iteration_31_api_probe_result.json"
+  ],
+  "action_items": [
+    "Add from_item_id and from_item_type to backend models.connection.ConnectionUpdate and verify PUT persists start-endpoint updates.",
+    "Retest full UI tap flow for both Move end and Move start after backend fix, including reload persistence and SPAN MEASUREMENTS.",
+    "Self-test real line selection/tapping on preview because mouse click on .conn-hit-line midpoint did not select in automation, although DOM dispatch did."
+  ],
+  "critical_code_review_comments": [
+    "/app/backend/models/connection.py lines 33-39 define ConnectionUpdate without from_item_id/from_item_type, while /app/frontend/src/pages/JobMap.jsx lines 982-984 sends those fields for Move start.",
+    "Endpoint visual dots are non-interactive in JobMap JSX, so the old draggable-dot snap-back path appears removed; the remaining blocker is persistence for Move start."
+  ],
+  "updated_files": [
+    "/app/test_reports/iteration_31_connection_tap_flow_api_setup.py",
+    "/app/test_reports/iteration_31_api_probe_result.json",
+    "/app/test_reports/bug_verification_31.json",
+    "/app/test_reports/iteration_31.json"
+  ],
+  "success_rate": {
+    "backend": "50%",
+    "frontend": "40%"
+  },
+  "seed_data_creation": "Created isolated temp job f96c72e8-40e0-4f43-8726-b0eb53977aa6 with 3 poles and 1 underground item via preview API; cleaned it up after testing.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "No relevant testing skill found. Credentials came from /app/memory/test_credentials.md. API probe result: moving END persisted, moving START did not. UI panel and non-draggable endpoint markers rendered; actual Playwright line click was unreliable, DOM click selected line. Temp seed job was deleted.",
+  "rca_of_the_issue": "Frontend implements Move start by calling handleConnectionUpdate with {from_item_id, from_item_type}, but backend ConnectionUpdate schema omits those fields. Pydantic ignores them, so PUT returns 200 with unchanged from_item_id/from_item_type; after reload the line appears snapped back at the original start. Repro: create/select a connection, click Move start, choose a different pole/UG item, then GET /api/jobs/{job_id}/connections shows the original from_item_id still stored."
+}

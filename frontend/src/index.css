@@ -259,6 +259,13 @@ body {
     isolation: isolate;
 }
 
+/* Pulsing connection target circles (tap-to-reconnect mode) */
+@keyframes connPulse {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.15); opacity: 0.65; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
 /* Improve map container on mobile */
 @media (max-width: 640px) {
     .leaflet-container {
