@@ -185,7 +185,7 @@ export const computeUgConnectors = (route, ug) => {
 };
 
 // Aerial attribute types (kept in sync with JobMap.jsx AERIAL_ATTR_TYPES)
-export const AERIAL_ATTR_TYPES = new Set(["Loop", "Aerial Splice"]);
+export const AERIAL_ATTR_TYPES = new Set(["Loop", "Aerial Splice", "X-Messenger"]);
 
 // Build map line pairs the same way the live Job Map does (custom connections + End Path breaks + standalone items)
 export const computeConnectionPairs = (route, ug, connections = []) => {

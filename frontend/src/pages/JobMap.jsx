@@ -110,7 +110,7 @@ const arrowIcon = (deg) =>
 
 // Aerial footage pill with ORANGE dotted arrow pointing to segment (closer to span)
 // Attribute types treated as AERIAL (blue) on the map
-const AERIAL_ATTR_TYPES = new Set(["Loop", "Aerial Splice"]);
+const AERIAL_ATTR_TYPES = new Set(["Loop", "Aerial Splice", "X-Messenger"]);
 
 const numberBadgeIcon = (num, color = "#ea580c", anchor = [13, 13]) =>
   L.divIcon({

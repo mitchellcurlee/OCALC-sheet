@@ -572,14 +572,14 @@ const JobDetail = () => {
                     Pole Terminal
                   </DropdownMenuItem>
                   <div className="px-2 py-1.5 text-xs font-mono text-sky-700 bg-sky-50">Aerial</div>
-                  {["Aerial Splice", "Loop", "Power"].map((t) => (
+                  {["Aerial Splice", "Loop", "Power", "X-Messenger"].map((t) => (
                     <DropdownMenuItem key={t} onClick={() => navigate(`/jobs/${jobId}/underground/add?type=${encodeURIComponent(t)}`)} data-testid={`add-aerial-${t}`} className="cursor-pointer">
                       <span className="font-mono text-xs text-sky-700 w-12 inline-block">{undergroundAbbr(t)}</span>
                       {t}
                     </DropdownMenuItem>
                   ))}
                   <div className="px-2 py-1.5 text-xs font-mono text-amber-700 bg-amber-50">Underground</div>
-                  {UNDERGROUND_TYPES.filter((t) => t !== "Aerial Splice" && t !== "Loop" && t !== "Power").map((t) => (
+                  {UNDERGROUND_TYPES.filter((t) => t !== "Aerial Splice" && t !== "Loop" && t !== "Power" && t !== "X-Messenger").map((t) => (
                     <DropdownMenuItem key={t} onClick={() => navigate(`/jobs/${jobId}/underground/add?type=${encodeURIComponent(t)}`)} data-testid={`add-ug-${t}`} className="cursor-pointer">
                       <span className="font-mono text-xs text-amber-700 w-12 inline-block">{undergroundAbbr(t)}</span>
                       {t}

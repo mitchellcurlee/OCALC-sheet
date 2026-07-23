@@ -40,6 +40,7 @@ const UG_MARKERS = [
   { type: "DW-S", label: "DW Start", color: "#0891b2" },
   { type: "DW-E", label: "DW End", color: "#0891b2" },
   { type: "PWR", label: "Power", color: "#dc2626" },
+  { type: "X-Mes.", label: "X-Messenger", color: "#2563eb" },
 ];
 
 const LINE_COLORS = [
