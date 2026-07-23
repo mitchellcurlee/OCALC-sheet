@@ -47,7 +47,7 @@ import {
   FileUp,
   WifiOff,
 } from "lucide-react";
-import { cacheJobForOffline } from "@/lib/offlineTiles";
+import { cacheJobForOffline, markJobSavedOffline } from "@/lib/offlineTiles";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -316,6 +316,7 @@ const JobDetail = () => {
         ...undergroundItems.filter((u) => u.latitude && u.longitude).map((u) => [u.latitude, u.longitude]),
       ];
       const { tiles } = await cacheJobForOffline(jobId, points, setOfflineProgress);
+      markJobSavedOffline(jobId);
       toast.success(tiles > 0
         ? `Job saved for offline use — ${tiles.toLocaleString()} map tiles cached`
         : "Job data saved for offline use (no GPS items yet, so no map tiles)");

@@ -79,3 +79,17 @@ export const cacheJobForOffline = async (jobId, points, onProgress) => {
   if (onProgress) onProgress(100);
   return { tiles: urls.length };
 };
+
+// Track which jobs have been saved for offline use
+const SAVED_KEY = 'offline_saved_jobs_v1';
+
+export const getOfflineSavedJobs = () => {
+  try { return JSON.parse(localStorage.getItem(SAVED_KEY) || '{}'); } catch (e) { return {}; }
+};
+
+export const markJobSavedOffline = (jobId) => {
+  const saved = getOfflineSavedJobs();
+  saved[jobId] = new Date().toISOString();
+  localStorage.setItem(SAVED_KEY, JSON.stringify(saved));
+  window.dispatchEvent(new Event('offline-saved-jobs-changed'));
+};

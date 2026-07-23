@@ -52,7 +52,9 @@ import {
   Search,
   X,
   Map as MapIcon,
+  WifiOff,
 } from "lucide-react";
+import { getOfflineSavedJobs } from "@/lib/offlineTiles";
 import { useAuth } from "@/context/AuthContext";
 import { OfflineIndicator } from "@/components/OfflineIndicator";
 
@@ -109,6 +111,12 @@ const JobsList = () => {
   const navigate = useNavigate();
   const { user, logout, isAdmin } = useAuth();
   const [jobs, setJobs] = useState([]);
+  const [offlineSavedJobs, setOfflineSavedJobs] = useState(() => getOfflineSavedJobs());
+  useEffect(() => {
+    const refresh = () => setOfflineSavedJobs(getOfflineSavedJobs());
+    window.addEventListener("offline-saved-jobs-changed", refresh);
+    return () => window.removeEventListener("offline-saved-jobs-changed", refresh);
+  }, []);
   const [loading, setLoading] = useState(true);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -279,6 +287,16 @@ const JobsList = () => {
           <span className={`text-xs font-mono uppercase ${job.completed ? "text-green-600 font-bold" : "text-zinc-500"}`}>
             {job.completed ? "Complete" : "Mark Complete"}
           </span>
+          {offlineSavedJobs[job.id] && (
+            <span
+              className="inline-flex items-center gap-1 text-[10px] font-mono uppercase tracking-wide bg-sky-100 text-sky-700 border border-sky-300 rounded px-1.5 py-0.5 ml-1"
+              title={`Saved for offline use ${new Date(offlineSavedJobs[job.id]).toLocaleDateString()}`}
+              data-testid={`job-offline-badge-${job.id}`}
+            >
+              <WifiOff className="w-3 h-3" />
+              Saved Offline
+            </span>
+          )}
         </label>
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <Button
