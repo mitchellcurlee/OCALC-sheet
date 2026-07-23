@@ -232,6 +232,28 @@ export const pairIsAerial = (pr) => {
   return aerialItem(pr.from) && aerialItem(pr.to);
 };
 
+// Insert UG path-measurement rows into a display-row list at their route position (by sort_order)
+const insertPathRows = (displayRows, underground) => {
+  [...(underground || [])]
+    .filter((u) => (u.path_measurements || []).length > 0)
+    .sort((a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999))
+    .forEach((u) => {
+      const ft = u.path_measurements.reduce((s, m) => s + (parseFloat(m.feet) || 0), 0);
+      const row = {
+        type: "path",
+        so: u.sort_order ?? Infinity,
+        text: `${undergroundAbbr(u.type)}${u.label && u.label !== u.type ? ` ${u.label}` : ""}: ${u.path_measurements.map((m) => `${m.direction} ${m.feet}ft`).join(", ")}`,
+        ft,
+      };
+      const idx = displayRows.findIndex((r) => (r.so ?? Infinity) >= row.so);
+      if (idx === -1) displayRows.push(row);
+      else displayRows.splice(idx, 0, row);
+    });
+};
+
+const totalPathFeet = (underground) =>
+  (underground || []).reduce((acc, u) => acc + (u.path_measurements || []).reduce((s, m) => s + (parseFloat(m.feet) || 0), 0), 0);
+
 // Fetch a single satellite image (via backend proxy) and draw the annotated
 // pole-route exhibit, then trigger a PNG download. Returns true on success.
 export const downloadPoleMapImage = async ({ poles, job, showStops = false, underground = [], connections = [] }) => {
@@ -248,7 +270,8 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
   }));
   const aerialFt = pairSegs.reduce((acc, x) => acc + (x.aerial ? x.ft : 0), 0);
   const ugFt = pairSegs.reduce((acc, x) => acc + (x.aerial ? 0 : x.ft), 0);
-  const grandFt = aerialFt + ugFt + totalRiserFeet;
+  const pathFt = totalPathFeet(underground);
+  const grandFt = aerialFt + ugFt + totalRiserFeet + pathFt;
   if (route.length === 0 && ug.length === 0) {
     toast.error("No poles or underground items with GPS coordinates to map");
     return false;
@@ -542,6 +565,7 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
     const ugPart = ug.length ? `, ${ug.length} UG` : "";
     const titleParts = [`${fmtFeet(aerialFt)} aerial`];
     if (ugFt > 0) titleParts.push(`${fmtFeet(ugFt)} UG`);
+    if (pathFt > 0) titleParts.push(`${fmtFeet(pathFt)} path`);
     if (totalRiserFeet > 0) titleParts.push(`${fmtFeet(totalRiserFeet)} risers`);
     const title = `${job?.name || "Job"}  -  ${route.length} poles${ugPart}, ${titleParts.join(" + ")} = ${fmtFeet(grandFt)} total`;
     ctx.font = `700 ${13 * s}px ui-monospace, monospace`;
@@ -683,7 +707,7 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
     const displayRows = [];
     const riserDone = new Set();
     pairSegs.forEach((sg) => {
-      displayRows.push({ type: "segment", text: `${itemName(sg.from)} -> ${itemName(sg.to)}${sg.aerial ? "" : " (UG)"}`, ft: sg.ft });
+      displayRows.push({ type: "segment", so: sg.from.sort_order ?? Infinity, text: `${itemName(sg.from)} -> ${itemName(sg.to)}${sg.aerial ? "" : " (UG)"}`, ft: sg.ft });
       const poleB = sg.to.type === "pole" ? route.find((p) => p.id === sg.to.id) : null;
       if (poleB?.risers && poleB?.riser_height && !riserDone.has(poleB.id)) {
         const riserCount = parseInt(poleB.risers) || 0;
@@ -692,12 +716,14 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
           riserDone.add(poleB.id);
           displayRows.push({ 
             type: "riser", 
+            so: sg.to.sort_order ?? Infinity,
             text: `  ↳ ${poleB.pole_number} Riser${riserCount > 1 ? ` x${riserCount}` : ""}`, 
             ft: riserCount * riserHeight 
           });
         }
       }
     });
+    insertPathRows(displayRows, underground);
     
     // Calculate required height to show all measurements
     const requiredPanelHeight = headerH + (displayRows.length * rowH) + bottomSection + 20 * s;
@@ -724,13 +750,21 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
     fctx.font = `${11 * s}px ui-monospace, monospace`;
     
     // Draw ALL measurements - no truncation
+    const fitText = (t, maxW) => {
+      if (fctx.measureText(t).width <= maxW) return t;
+      let s2 = t;
+      while (s2.length > 1 && fctx.measureText(s2 + "…").width > maxW) s2 = s2.slice(0, -1);
+      return s2 + "…";
+    };
     for (let i = 0; i < displayRows.length; i++) {
       const row = displayRows[i];
-      fctx.fillStyle = row.type === "riser" ? "#f97316" : "#18181b";
+      fctx.fillStyle = row.type === "riser" ? "#f97316" : row.type === "path" ? "#059669" : "#18181b";
+      const valText = row.type === "riser" ? `+${fmtFeet(row.ft)}` : fmtFeet(row.ft);
+      const maxTextW = panelW - 28 * s - fctx.measureText(valText).width - 6 * s;
       fctx.textAlign = "left";
-      fctx.fillText(row.text, mapW + 14 * s, yy);
+      fctx.fillText(fitText(row.text, maxTextW), mapW + 14 * s, yy);
       fctx.textAlign = "right";
-      fctx.fillText(row.type === "riser" ? `+${fmtFeet(row.ft)}` : fmtFeet(row.ft), mapW + panelW - 14 * s, yy);
+      fctx.fillText(valText, mapW + panelW - 14 * s, yy);
       yy += rowH;
     }
     
@@ -1081,7 +1115,7 @@ const generateSegmentPage = async ({
 };
 
 // Generate a separate measurement list image showing all span measurements
-const generateMeasurementListImage = ({ pairSegs, route, totalRiserFeet, job }) => {
+const generateMeasurementListImage = ({ pairSegs, route, totalRiserFeet, job, underground = [] }) => {
   const s = 2;
   const panelW = 500 * s;
   const rowH = 22 * s;
@@ -1097,7 +1131,7 @@ const generateMeasurementListImage = ({ pairSegs, route, totalRiserFeet, job }) 
   const displayRows = [];
   const riserDone = new Set();
   pairSegs.forEach((sg) => {
-    displayRows.push({ type: "segment", text: `${itemName(sg.from)} → ${itemName(sg.to)}${sg.aerial ? "" : " (UG)"}`, ft: sg.ft });
+    displayRows.push({ type: "segment", so: sg.from.sort_order ?? Infinity, text: `${itemName(sg.from)} → ${itemName(sg.to)}${sg.aerial ? "" : " (UG)"}`, ft: sg.ft });
     const poleB = sg.to.type === "pole" ? route.find((p) => p.id === sg.to.id) : null;
     if (poleB?.risers && poleB?.riser_height && !riserDone.has(poleB.id)) {
       const riserCount = parseInt(poleB.risers) || 0;
@@ -1106,15 +1140,18 @@ const generateMeasurementListImage = ({ pairSegs, route, totalRiserFeet, job }) 
         riserDone.add(poleB.id);
         displayRows.push({ 
           type: "riser", 
+          so: sg.to.sort_order ?? Infinity,
           text: `  ↳ ${poleB.pole_number} Riser${riserCount > 1 ? ` x${riserCount}` : ""}`, 
           ft: riserCount * riserHeight 
         });
       }
     }
   });
+  insertPathRows(displayRows, underground);
   
   const pairFt = pairSegs.reduce((acc, x) => acc + x.ft, 0);
-  const grandTotalFeet = pairFt + totalRiserFeet;
+  const pathFt = totalPathFeet(underground);
+  const grandTotalFeet = pairFt + totalRiserFeet + pathFt;
   
   const requiredHeight = headerH + (displayRows.length * rowH) + bottomSection + 30 * s;
   
@@ -1145,12 +1182,20 @@ const generateMeasurementListImage = ({ pairSegs, route, totalRiserFeet, job }) 
   let yy = headerH + 16 * s;
   ctx.font = `${12 * s}px ui-monospace, monospace`;
   
+  const fitText = (t, maxW) => {
+    if (ctx.measureText(t).width <= maxW) return t;
+    let s2 = t;
+    while (s2.length > 1 && ctx.measureText(s2 + "…").width > maxW) s2 = s2.slice(0, -1);
+    return s2 + "…";
+  };
   for (const row of displayRows) {
-    ctx.fillStyle = row.type === "riser" ? "#f97316" : "#18181b";
+    ctx.fillStyle = row.type === "riser" ? "#f97316" : row.type === "path" ? "#059669" : "#18181b";
+    const valText = row.type === "riser" ? `+${fmtFeet(row.ft)}` : fmtFeet(row.ft);
+    const maxTextW = panelW - 32 * s - ctx.measureText(valText).width - 6 * s;
     ctx.textAlign = "left";
-    ctx.fillText(row.text, 16 * s, yy);
+    ctx.fillText(fitText(row.text, maxTextW), 16 * s, yy);
     ctx.textAlign = "right";
-    ctx.fillText(row.type === "riser" ? `+${fmtFeet(row.ft)}` : fmtFeet(row.ft), panelW - 16 * s, yy);
+    ctx.fillText(valText, panelW - 16 * s, yy);
     yy += rowH;
   }
   
@@ -1253,7 +1298,7 @@ export const downloadSegmentedMapPages = async ({
     // Generate separate measurement list image
     toast.info("Generating measurement list...");
     const measurementDataUrl = generateMeasurementListImage({
-      pairSegs, route, totalRiserFeet, job
+      pairSegs, route, totalRiserFeet, job, underground
     });
     const measurementBase64 = measurementDataUrl.split(",")[1];
     zip.file("00_measurement_list.png", measurementBase64, { base64: true });
