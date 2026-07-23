@@ -269,6 +269,84 @@ const insertPathRows = (displayRows, underground) => {
 const totalPathFeet = (underground) =>
   (underground || []).reduce((acc, u) => acc + (u.path_measurements || []).reduce((s, m) => s + (parseFloat(m.feet) || 0), 0), 0);
 
+// Build the exact text lines shown in the interactive map's Span Measurements list.
+// Used by the ASE checklist "path of approach" so both always match.
+export const buildSpanMeasurementTexts = ({ poles, underground = [], connections = [], includeStations = false }) => {
+  const { route } = computeRoute(poles);
+  const ug = ugWithGps(underground);
+  const pairs = computeConnectionPairs(route, ug, connections);
+  const itemName = (it) => it.type === "pole"
+    ? (/^\d/.test(String(it.label || "")) ? `P${it.label}` : (it.label || "Pole"))
+    : `${undergroundAbbr(it.ugType)}${it.label && it.label !== it.ugType ? ` ${it.label}` : ""}`;
+
+  // Cumulative station numbers per item (matches the map's Sta #'s toggle)
+  const stations = {};
+  if (includeStations) {
+    const all = [
+      ...ug.map((u) => ({ id: u.id, pos: u.pos, so: u.sort_order ?? Infinity })),
+      ...route.map((p) => ({ id: p.id, pos: p.pos, so: p.sort_order ?? Infinity })),
+    ].sort((a, b) => a.so - b.so);
+    let run = 0, prev = null;
+    all.forEach((it) => {
+      if (prev) run += distanceFeet(prev.pos, it.pos);
+      stations[it.id] = feetToStation(run);
+      prev = it;
+    });
+  }
+  const nameWithSta = (it) => `${itemName(it)}${includeStations && stations[it.id] ? ` ${stations[it.id]}` : ""}`;
+
+  const rows = [];
+  const riserDone = new Set();
+  const pathDone = new Set();
+  const pathTextOf = (u) => {
+    const t = (u.path_measurements || []).reduce((s, m) => s + (parseFloat(m.feet) || 0), 0);
+    return `${undergroundAbbr(u.type)}${u.label && u.label !== u.type ? ` ${u.label}` : ""}: ${u.path_measurements.map((m) => `${m.direction} ${m.feet}ft${m.to ? ` to ${m.to}` : ""}`).join(", ")} = ${fmtFeet(t)}`;
+  };
+  const pushRiser = (it) => {
+    if (it.type !== "pole" || riserDone.has(it.id)) return;
+    const p = route.find((x) => x.id === it.id);
+    const c = parseInt(p?.risers) || 0, h = parseFloat(p?.riser_height) || 0;
+    if (c > 0 && h > 0) {
+      riserDone.add(it.id);
+      rows.push({ so: it.sort_order ?? Infinity, text: `${itemName(it)} Riser${c > 1 ? ` x${c}` : ""} = ${fmtFeet(c * h)}` });
+    }
+  };
+  const pushPath = (it) => {
+    if (it.type === "pole" || pathDone.has(it.id)) return;
+    const u = underground.find((x) => x.id === it.id);
+    if (!u || !(u.path_measurements || []).length) return;
+    pathDone.add(it.id);
+    rows.push({ so: it.sort_order ?? Infinity, text: pathTextOf(u) });
+  };
+  pairs.forEach((pr) => {
+    pushRiser(pr.from);
+    pushPath(pr.from);
+    if (!pairIsManual(pr)) {
+      rows.push({
+        so: pr.from.sort_order ?? Infinity,
+        text: `${nameWithSta(pr.from)} to ${nameWithSta(pr.to)} = ${fmtFeet(distanceFeet(pr.from.pos, pr.to.pos))}${pairIsAerial(pr) ? "" : " (UG)"}`,
+      });
+    }
+  });
+  if (pairs.length > 0) {
+    const last = pairs[pairs.length - 1];
+    pushRiser(last.to);
+    pushPath(last.to);
+  }
+  [...underground]
+    .sort((a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999))
+    .filter((u) => (u.path_measurements || []).length > 0 && !pathDone.has(u.id))
+    .forEach((u) => {
+      pathDone.add(u.id);
+      const so = u.sort_order ?? Infinity;
+      const row = { so, text: pathTextOf(u) };
+      const idx = rows.findIndex((r) => (r.so ?? Infinity) > so);
+      if (idx === -1) rows.push(row);
+      else rows.splice(idx, 0, row);
+    });
+  return rows.map((r) => r.text);
+};
+
 // Fetch a single satellite image (via backend proxy) and draw the annotated
 // pole-route exhibit, then trigger a PNG download. Returns true on success.
 export const downloadPoleMapImage = async ({ poles, job, showStops = false, underground = [], connections = [] }) => {

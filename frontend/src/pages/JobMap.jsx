@@ -225,7 +225,12 @@ const JobMap = () => {
   const [annotations, setAnnotations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
-  const [showStationNumbers, setShowStationNumbers] = useState(false);
+  const [showStationNumbers, setShowStationNumbers] = useState(() => {
+    try { return localStorage.getItem(`staToggle:${jobId}`) === '1'; } catch (e) { return false; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem(`staToggle:${jobId}`, showStationNumbers ? '1' : '0'); } catch (e) { /* ignore */ }
+  }, [showStationNumbers, jobId]);
   const [editMode, setEditMode] = useState(false);
   const [connectionEditMode, setConnectionEditMode] = useState(false);
   const [selectedConn, setSelectedConn] = useState(null);
@@ -1111,11 +1116,6 @@ const JobMap = () => {
     return segments;
   }, [route, ug, connections]);
 
-  // Total underground footage (segments that touch an underground item, per combined order)
-  const ugFeet = useMemo(
-    () => orderedSegments.reduce((sum, s) => sum + (s.segmentType === "underground" && !s.manualMeasured ? s.distFt : 0), 0),
-    [orderedSegments]
-  );
 
   // Total path measurement footage (In/Over/Up/Down entries on attributes)
   const pathFeet = useMemo(
@@ -1145,8 +1145,7 @@ const JobMap = () => {
 
   // Distance for the list — follows custom waypoints on aerial segments (matches map pill)
   const segListDistance = useCallback((seg) => {
-    if (!seg.isAerial) return seg.distFt;
-    const wps = customRoutes[`${seg.from.id}-${seg.to.id}`] || [];
+    const wps = seg.isAerial ? (customRoutes[`${seg.from.id}-${seg.to.id}`] || []) : [];
     const path = [seg.fromPos, ...wps.map((w) => [w.lat, w.lng]), seg.toPos];
     const hav = (p1, p2) => {
       const R = 6371000;
@@ -1157,6 +1156,12 @@ const JobMap = () => {
     };
     return path.reduce((sum, p, k) => (k === 0 ? 0 : sum + hav(path[k - 1], p)), 0);
   }, [customRoutes]);
+
+  // Total underground footage (segments that touch an underground item, per combined order)
+  const ugFeet = useMemo(
+    () => orderedSegments.reduce((sum, s) => sum + (s.segmentType === "underground" && !s.manualMeasured ? segListDistance(s) : 0), 0),
+    [orderedSegments, segListDistance]
+  );
 
   // Combined numbered measurement entries (spans + inline risers + inline path measurements, in route order)
   const { measurementEntries, spanNums } = useMemo(() => {

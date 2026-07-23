@@ -13,6 +13,7 @@ import { ArrowLeft, Save, FileSpreadsheet, Loader2, ClipboardList, Users, FileOu
 
 // Import ASE sub-components
 import { INITIAL_FORM_DATA } from "@/components/ase";
+import { buildSpanMeasurementTexts } from "@/lib/poleMapImage";
 import ASEChecklistTab from "@/components/ase/ASEChecklistTab";
 import ASECoordinatorTab from "@/components/ase/ASECoordinatorTab";
 import ASESVCLOutputTab from "@/components/ase/ASESVCLOutputTab";
@@ -35,11 +36,12 @@ const ASEForm = () => {
 
   const fetchJobAndASE = useCallback(async () => {
     try {
-      const [jobRes, aseRes, polesRes, undergroundRes] = await Promise.all([
+      const [jobRes, aseRes, polesRes, undergroundRes, connectionsRes] = await Promise.all([
         axios.get(`/jobs/${jobId}`),
         axios.get(`/jobs/${jobId}/ase-data`),
         axios.get(`/jobs/${jobId}/poles`),
-        axios.get(`/jobs/${jobId}/underground`)
+        axios.get(`/jobs/${jobId}/underground`),
+        axios.get(`/jobs/${jobId}/connections`)
       ]);
       setJob(jobRes.data);
       setPoles(polesRes.data || []);
@@ -53,6 +55,7 @@ const ASEForm = () => {
       const jobData = jobRes.data;
       const polesData = polesRes.data || [];
       const ugData = undergroundRes.data || [];
+      const connectionsData = connectionsRes.data || [];
       
       setFormData(prev => {
         const updated = { ...prev };
@@ -223,177 +226,14 @@ const ASEForm = () => {
           }
         }
         
-        // Path of approach with station numbers (0+00 format) and directions
+        // Path of approach — mirrors the interactive map's Span Measurements list
+        // (station numbers included only when the map's Sta #'s toggle is on)
         if (!updated.path_of_approach) {
-          // Helper function to convert feet to station format
-          const feetToStation = (feet) => {
-            const stations = Math.floor(feet / 100);
-            const remainder = Math.round(feet % 100);
-            return `${stations}+${remainder.toString().padStart(2, '0')}`;
-          };
-          
-          // Helper function to calculate distance in feet between two GPS coordinates
-          const distanceFeet = (lat1, lng1, lat2, lng2) => {
-            const R = 6371000; // Earth radius in meters
-            const lat1Rad = (lat1 * Math.PI) / 180;
-            const lat2Rad = (lat2 * Math.PI) / 180;
-            const dLat = lat2Rad - lat1Rad;
-            const dLng = ((lng2 - lng1) * Math.PI) / 180;
-            const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1Rad) * Math.cos(lat2Rad) * Math.sin(dLng / 2) ** 2;
-            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) * 3.28084; // meters to feet
-          };
-          
-          // Helper function to calculate compass bearing between two GPS points
-          const calculateBearing = (lat1, lng1, lat2, lng2) => {
-            const lat1Rad = (lat1 * Math.PI) / 180;
-            const lat2Rad = (lat2 * Math.PI) / 180;
-            const dLng = ((lng2 - lng1) * Math.PI) / 180;
-            
-            const y = Math.sin(dLng) * Math.cos(lat2Rad);
-            const x = Math.cos(lat1Rad) * Math.sin(lat2Rad) - Math.sin(lat1Rad) * Math.cos(lat2Rad) * Math.cos(dLng);
-            
-            let bearing = Math.atan2(y, x) * (180 / Math.PI);
-            bearing = (bearing + 360) % 360; // Normalize to 0-360
-            return bearing;
-          };
-          
-          // Helper function to convert bearing to compass direction
-          const bearingToDirection = (bearing) => {
-            const directions = ['North', 'Northeast', 'East', 'Southeast', 'South', 'Southwest', 'West', 'Northwest'];
-            const index = Math.round(bearing / 45) % 8;
-            return directions[index];
-          };
-          
-          // Build ordered list of all items with GPS
-          const allItems = [];
-          
-          // Add underground items with GPS
-          ugData.forEach(item => {
-            if (item.latitude && item.longitude) {
-              allItems.push({
-                type: 'underground',
-                name: item.label || item.type,
-                lat: parseFloat(item.latitude),
-                lng: parseFloat(item.longitude),
-                order: item.sort_order ?? item.order ?? 0,
-                ugType: item.type,
-                notes: item.notes || '',
-                tie_in_measurements: item.tie_in_measurements || ''
-              });
-            }
-          });
-          
-          // Add poles with GPS
-          polesData.forEach((pole, idx) => {
-            if (pole.latitude && pole.longitude) {
-              allItems.push({
-                type: 'pole',
-                name: pole.pole_number || pole.pole_tag || `P${idx + 1}`,
-                lat: parseFloat(pole.latitude),
-                lng: parseFloat(pole.longitude),
-                order: pole.sort_order ?? pole.order ?? (100 + idx), // Poles come after underground by default
-                spanDistance: pole.span1_distance ? parseFloat(pole.span1_distance) : 0,
-                notes: pole.notes || '',
-                row_information: pole.row_information || '',
-                condition: pole.condition || '',
-                pole_owner: pole.pole_owner || ''
-              });
-            }
-          });
-          
-          // Sort by order
-          allItems.sort((a, b) => a.order - b.order);
-          
-          // Build path with cumulative station numbers and directions
-          const pathSegments = [];
-          let runningDistance = 0;
-          let prevItem = null;
-          let firstPoleIdx = -1;
-          let lastPoleIdx = -1;
-          
-          // Find first and last pole indices
-          allItems.forEach((item, idx) => {
-            if (item.type === 'pole') {
-              if (firstPoleIdx === -1) firstPoleIdx = idx;
-              lastPoleIdx = idx;
-            }
-          });
-          
-          allItems.forEach((item, idx) => {
-            // Calculate distance and direction from previous item using GPS
-            let direction = '';
-            if (prevItem && item.lat && item.lng && prevItem.lat && prevItem.lng) {
-              const dist = distanceFeet(prevItem.lat, prevItem.lng, item.lat, item.lng);
-              runningDistance += dist;
-              const bearing = calculateBearing(prevItem.lat, prevItem.lng, item.lat, item.lng);
-              direction = bearingToDirection(bearing);
-            }
-            
-            const stationNum = feetToStation(runningDistance);
-            
-            if (item.type === 'underground') {
-              // For underground items, include name, station, direction, and notes
-              let segment = `${item.name} ${stationNum}`;
-              if (direction) {
-                segment += ` ${direction}`;
-              }
-              // Add notes if present (exclude tie-in measurements from path)
-              if (item.notes) {
-                segment += ` - ${item.notes}`;
-              }
-              pathSegments.push(segment);
-            } else if (item.type === 'pole') {
-              let segment = '';
-              if (idx === firstPoleIdx) {
-                // First pole - show "aerial [pole] [station] [direction]"
-                segment = `aerial ${item.name} ${stationNum}`;
-                if (direction) {
-                  segment += ` ${direction}`;
-                }
-              } else if (idx === lastPoleIdx && idx !== firstPoleIdx) {
-                // Last pole - show "[prevPole] to [pole] [direction] [station]"
-                const prevPole = allItems.slice(0, idx).reverse().find(i => i.type === 'pole');
-                if (prevPole) {
-                  segment = `${prevPole.name} to ${item.name} ${direction} ${stationNum}`;
-                } else {
-                  segment = `to ${item.name} ${direction} ${stationNum}`;
-                }
-              } else {
-                // Middle pole - show "[prevPole] to [pole] [direction] [station]"
-                const prevPole = allItems.slice(0, idx).reverse().find(i => i.type === 'pole');
-                if (prevPole) {
-                  segment = `${prevPole.name} to ${item.name} ${direction} ${stationNum}`;
-                }
-              }
-              // Add notes if present (exclude ROW and owner from path)
-              if (segment && item.notes) {
-                segment += ` - ${item.notes}`;
-              }
-              if (segment) {
-                pathSegments.push(segment);
-              }
-            }
-            
-            prevItem = item;
-          });
-          
-          if (pathSegments.length > 0) {
-            updated.path_of_approach = pathSegments.join(', ');
+          const includeStations = localStorage.getItem(`staToggle:${jobId}`) === '1';
+          const texts = buildSpanMeasurementTexts({ poles: polesData, underground: ugData, connections: connectionsData, includeStations });
+          if (texts.length > 0) {
+            updated.path_of_approach = texts.join(', ');
           }
-        }
-        
-        // Append attribute path measurements (In/Over/Up/Down + ft) into path of approach
-        {
-          const pmTexts = ugData
-            .filter((i) => (i.path_measurements || []).length > 0)
-            .map((i) => `${i.label || i.type}: ${i.path_measurements.map((m) => `${m.direction} ${m.feet}ft${m.to ? ` to ${m.to}` : ''}`).join(', ')}`);
-          pmTexts.forEach((t) => {
-            if (!updated.path_of_approach) {
-              updated.path_of_approach = t;
-            } else if (!updated.path_of_approach.includes(t)) {
-              updated.path_of_approach += `, ${t}`;
-            }
-          });
         }
         
         // Auto-calculate SVCL Output fields
