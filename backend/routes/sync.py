@@ -151,9 +151,12 @@ async def _sync_pole(action: SyncAction, user: dict) -> SyncResult:
         return SyncResult(action_id=action.id, success=True, server_id=action.entity_id)
     
     elif action.action == "delete":
-        result = await _db.poles.delete_one({"id": action.entity_id})
-        if result.deleted_count == 0:
+        from routes.trash import archive_entity
+        existing = await _db.poles.find_one({"id": action.entity_id}, {"_id": 0})
+        if not existing:
             return SyncResult(action_id=action.id, success=False, error="Pole not found")
+        await archive_entity(_db, "pole", existing, user)
+        await _db.poles.delete_one({"id": action.entity_id})
         return SyncResult(action_id=action.id, success=True)
     
     return SyncResult(action_id=action.id, success=False, error=f"Unknown action: {action.action}")
@@ -197,8 +200,13 @@ async def _sync_job(action: SyncAction, user: dict) -> SyncResult:
         if not existing:
             return SyncResult(action_id=action.id, success=False, error="Job not found")
         
-        await _db.poles.delete_many({"job_id": action.entity_id})
-        await _db.underground.delete_many({"job_id": action.entity_id})
+        from routes.trash import archive_entity, JOB_CHILD_COLLECTIONS
+        children = {}
+        for key in JOB_CHILD_COLLECTIONS:
+            children[key] = await _db[key].find({"job_id": action.entity_id}, {"_id": 0}).to_list(10000)
+        await archive_entity(_db, "job", existing, user, children=children)
+        for key in JOB_CHILD_COLLECTIONS:
+            await _db[key].delete_many({"job_id": action.entity_id})
         await _db.jobs.delete_one({"id": action.entity_id})
         return SyncResult(action_id=action.id, success=True)
     
@@ -231,9 +239,12 @@ async def _sync_underground(action: SyncAction, user: dict) -> SyncResult:
         return SyncResult(action_id=action.id, success=True, server_id=action.entity_id)
     
     elif action.action == "delete":
-        result = await _db.underground.delete_one({"id": action.entity_id})
-        if result.deleted_count == 0:
+        from routes.trash import archive_entity
+        existing = await _db.underground.find_one({"id": action.entity_id}, {"_id": 0})
+        if not existing:
             return SyncResult(action_id=action.id, success=False, error="Underground item not found")
+        await archive_entity(_db, "underground", existing, user)
+        await _db.underground.delete_one({"id": action.entity_id})
         return SyncResult(action_id=action.id, success=True)
     
     return SyncResult(action_id=action.id, success=False, error=f"Unknown action: {action.action}")

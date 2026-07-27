@@ -192,15 +192,20 @@ async def update_job(job_id: str, job_data: JobUpdate, current_user: dict = Depe
 
 @router.delete("/jobs/{job_id}")
 async def delete_job(job_id: str, current_user: dict = Depends(get_current_user)):
-    """Delete a job and all its poles"""
+    """Move a job and everything inside it to the user's Deleted Items (restorable)"""
+    from routes.trash import archive_entity, JOB_CHILD_COLLECTIONS
     existing = await can_access_job(job_id, current_user)
     if not existing:
         raise HTTPException(status_code=404, detail="Job not found")
-    
-    await _db.poles.delete_many({"job_id": job_id})
-    await _db.underground.delete_many({"job_id": job_id})
+
+    children = {}
+    for key in JOB_CHILD_COLLECTIONS:
+        children[key] = await _db[key].find({"job_id": job_id}, {"_id": 0}).to_list(10000)
+    await archive_entity(_db, "job", existing, current_user, children=children)
+    for key in JOB_CHILD_COLLECTIONS:
+        await _db[key].delete_many({"job_id": job_id})
     await _db.jobs.delete_one({"id": job_id})
-    return {"message": "Job and all poles deleted successfully"}
+    return {"message": "Job moved to Deleted Items"}
 
 
 @router.get("/jobs/{job_id}/poles", response_model=List[Pole])
@@ -500,6 +505,7 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
             "NTE": "NTE", "FBT/NTE": "FBT/NTE", "PFP": "PFP", "SOC Start": "SOC-S", 
             "SOC End": "SOC-E", "Riser": "RSR", "MPOE": "MPOE",
             "Aerial Splice": "AS", "Loop": "LOOP",
+            "Culvert": "CULV", "Drainage Start": "DR-S", "Drainage End": "DR-E",
         }
         ws.cell(row=current_row, column=1, value="UNDERGROUND").fill = header_fill
         ws.cell(row=current_row, column=1).font = header_font

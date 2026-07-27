@@ -1,0 +1,42 @@
+{
+  "summary": "Iteration 43 — Deleted Items (Trash) + delete-confirmations + Culvert/Drainage/PFP verify. Backend: 7 pytest tests passing (options endpoint underground_types includes Culvert/Drainage Start/Drainage End; DELETE /api/poles archives + restore; DELETE /api/underground archives + restore; orphan UG restore returns 400; DELETE /api/jobs cascades with pole_count/underground_count in trash listing; restore brings back children with proper counts; per-user isolation — user B gets 404 on user A's trash list/restore/purge; single-item purge; empty trash). Frontend E2E via Playwright: login → create job with PFP job_type → delete from JobsList (AlertDialog confirms with text mentioning 'Deleted Items') → job disappears → /trash page loads (data-testid=trash-page) → item found (trash-item-<id>) → restore returns job to JobsList → delete again → purge via trash-purge-btn opens confirm (purge-confirm-btn + purge-cancel-btn) → item removed → trash-empty-btn opens empty-confirm-btn dialog. Code-level verified selectors in JobMap.jsx (conn-delete-btn/conn-delete-confirm-btn/conn-delete-cancel-btn/conn-reset-lines-btn/reset-lines-confirm-btn) and PhotoUpload/MultiPhotoUpload ({testId}-remove-confirm/{testId}-remove-cancel with 'Remove this photo?' title). Culvert/Drainage Start/Drainage End present in UNDERGROUND_TYPES options, poleMapImage.js UNDERGROUND_ABBR (CULV/DR-S/DR-E), and PhotoMarkupEditor.jsx MARKER list. PFP present in JOB_TYPES.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/poles, /api/underground", "issue": "Return 201 Created while /api/jobs POST returns 200 OK — inconsistent success codes across create endpoints (not a blocker; tests accept both)."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "New Job dialog", "issues": ["Missing DialogDescription — console warns 'Missing Description or aria-describedby' from Radix Dialog (accessibility warning)."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_trash_iter43.py",
+    "/app/test_reports/pytest/iter43_trash.xml"
+  ],
+  "action_items": [
+    "Optional: add DialogDescription to New Job / Edit Job dialogs to silence Radix a11y warning.",
+    "Optional: align create endpoints on 200 vs 201 consistently."
+  ],
+  "critical_code_review_comments": [
+    "trash.py archive_entity strips top-level _id but children docs come from `_db[key].find(..., {'_id': 0})` before being passed in — good, no ObjectId leakage.",
+    "GET /trash pipeline correctly projects size of children arrays and excludes heavy data payload.",
+    "restore_trash returns 409 on entity_id collision — correct.",
+    "delete_job archives children as one entry then hard-deletes them — atomicity is best-effort (no txn); acceptable for single-user offline app.",
+    "JobsList.jsx delete icon button previously lacked data-testid — added `job-delete-btn-<jobId>` and testids on the confirm/cancel actions (job-delete-confirm-btn / job-delete-cancel-btn)."
+  ],
+  "updated_files": [
+    "/app/frontend/src/pages/JobsList.jsx (added data-testid: job-delete-btn-<id>, job-delete-confirm-btn, job-delete-cancel-btn)",
+    "/app/backend/tests/test_trash_iter43.py (new pytest suite)"
+  ],
+  "success_rate": {"backend": "100% (7/7 executed, 1 skipped by design)", "frontend": "100% of executed flows"},
+  "test_credentials": "Regular: mitchell.curlee@byers.com / Dawson@2016 ; Admin: Admin@mastec.com / Mastecbyers12345",
+  "seed_data_creation": "None persistent — all TEST_ prefixed jobs and trash entries cleaned up after run. Seed job A050ABC (e5dc0bae-...) untouched.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Trash feature verified end-to-end. Frontend delete buttons on job cards now have data-testid=`job-delete-btn-<jobId>`. Jobs are grouped by month folders on the landing page — to find a job by name use the search input (data-testid=job-search-input) to bypass folder navigation. Note: create endpoints return mixed 200/201 status codes; test with `in (200, 201)`. Backend POST /api/poles requires `pole_size` and `condition`.",
+  "rca of the issue": "N/A — no bugs found."
+}

@@ -37,5 +37,5 @@ UNDERGROUND_TYPES = [
     "Handhole", "Manhole", "Brooks Enclosure", "Flowerpot", "Hoffman Box", "Pedestal",
     "Point of Intersection", "FBT", "NTE", "FBT/NTE", "PFP", "SOC Start", "SOC End", "Riser", "MPOE",
     "EOP", "ROW", "DW Start", "DW End", "UG Path Start", "UG Path End", "Gas Line", "Aerial Splice", "Loop", "Power",
-    "X-Messenger",
+    "X-Messenger", "Culvert", "Drainage Start", "Drainage End",
 ]

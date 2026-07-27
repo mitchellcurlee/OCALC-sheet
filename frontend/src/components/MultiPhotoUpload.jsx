@@ -6,6 +6,16 @@ import { Camera, Upload, X, ZoomIn, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { OfflinePhoto, queuePhotoOffline } from "@/lib/offlinePhotos";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Dialog,
   DialogContent,
 } from "@/components/ui/dialog";
@@ -27,6 +37,7 @@ export const MultiPhotoUpload = ({ label, value = [], onChange, testId, compact 
   const [uploading, setUploading] = useState(false);
   const [uploadCount, setUploadCount] = useState(0);
   const [lightboxPhoto, setLightboxPhoto] = useState(null);
+  const [pendingRemove, setPendingRemove] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   
   // Use refs to always have access to latest props (avoids stale closure issues)
@@ -159,6 +170,23 @@ export const MultiPhotoUpload = ({ label, value = [], onChange, testId, compact 
     onChange(updated);
   };
 
+  const removeConfirmDialog = (
+    <AlertDialog open={pendingRemove !== null} onOpenChange={(o) => { if (!o) setPendingRemove(null); }}>
+      <AlertDialogContent className="bg-zinc-50 border-zinc-200">
+        <AlertDialogHeader>
+          <AlertDialogTitle className="text-zinc-900">Remove this photo?</AlertDialogTitle>
+          <AlertDialogDescription className="text-zinc-600">
+            The photo will be removed from {label || "this item"}. Removing a single photo cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel className="bg-zinc-100 border-zinc-300 text-zinc-900" data-testid={`${testId}-remove-cancel`}>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={() => { if (pendingRemove !== null) removePhoto(pendingRemove); setPendingRemove(null); }} className="bg-red-600 hover:bg-red-700 text-white" data-testid={`${testId}-remove-confirm`}>Remove Photo</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+
   // Compact layout for inline use (e.g., in dynamic rows)
   if (compact) {
     return (
@@ -236,7 +264,7 @@ export const MultiPhotoUpload = ({ label, value = [], onChange, testId, compact 
                       variant="destructive"
                       size="icon"
                       className="absolute -top-1 -right-1 h-4 w-4 bg-red-600 hover:bg-red-700 opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={(e) => { e.stopPropagation(); removePhoto(index); }}
+                      onClick={(e) => { e.stopPropagation(); setPendingRemove(index); }}
                     >
                       <X className="w-2 h-2" />
                     </Button>
@@ -253,6 +281,7 @@ export const MultiPhotoUpload = ({ label, value = [], onChange, testId, compact 
           </div>
         </div>
         {/* Lightbox */}
+        {removeConfirmDialog}
         <Dialog open={!!lightboxPhoto} onOpenChange={() => setLightboxPhoto(null)}>
           <DialogContent className="bg-zinc-50 border-zinc-200 max-w-4xl max-h-[90vh] p-2">
             <div className="relative">
@@ -375,7 +404,7 @@ export const MultiPhotoUpload = ({ label, value = [], onChange, testId, compact 
                       variant="destructive"
                       size="icon"
                       className="absolute -top-1 -right-1 h-5 w-5 bg-red-600 hover:bg-red-700"
-                      onClick={(e) => { e.stopPropagation(); removePhoto(index); }}
+                      onClick={(e) => { e.stopPropagation(); setPendingRemove(index); }}
                       data-testid={`${testId}-remove-${index}`}
                     >
                       <X className="w-3 h-3" />

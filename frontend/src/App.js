@@ -16,6 +16,7 @@ import JobMap from "@/pages/JobMap";
 import UndergroundForm from "@/pages/UndergroundForm";
 import ASEForm from "@/pages/ASEForm";
 import DataRecovery from "@/pages/DataRecovery";
+import Trash from "@/pages/Trash";
 import ASEPhotoGallery from "@/pages/ASEPhotoGallery";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
@@ -47,6 +48,7 @@ function App() {
             <Route path="/jobs/:jobId/underground/edit/:id" element={<ProtectedRoute><UndergroundForm /></ProtectedRoute>} />
             <Route path="/jobs/:jobId/ase" element={<ProtectedRoute><ASEForm /></ProtectedRoute>} />
             <Route path="/recovery" element={<ProtectedRoute><DataRecovery /></ProtectedRoute>} />
+            <Route path="/trash" element={<ProtectedRoute><Trash /></ProtectedRoute>} />
           </Routes>
         </BrowserRouter>
       </AuthProvider>

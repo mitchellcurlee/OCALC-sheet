@@ -1,8 +1,9 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from typing import List
 from datetime import datetime, timezone
 
 from models.underground import Underground, UndergroundCreate, UndergroundUpdate
+from services.auth import get_current_user
 
 router = APIRouter(tags=["underground"])
 
@@ -50,8 +51,11 @@ async def update_underground(item_id: str, data: UndergroundUpdate):
 
 
 @router.delete("/underground/{item_id}")
-async def delete_underground(item_id: str):
-    result = await _db.underground.delete_one({"id": item_id})
-    if result.deleted_count == 0:
+async def delete_underground(item_id: str, current_user: dict = Depends(get_current_user)):
+    from routes.trash import archive_entity
+    existing = await _db.underground.find_one({"id": item_id}, {"_id": 0})
+    if not existing:
         raise HTTPException(status_code=404, detail="Underground item not found")
-    return {"message": "Underground item deleted successfully"}
+    await archive_entity(_db, "underground", existing, current_user)
+    await _db.underground.delete_one({"id": item_id})
+    return {"message": "Underground item moved to Deleted Items"}

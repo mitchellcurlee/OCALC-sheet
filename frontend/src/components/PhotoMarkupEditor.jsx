@@ -41,6 +41,9 @@ const UG_MARKERS = [
   { type: "DW-E", label: "DW End", color: "#0891b2" },
   { type: "PWR", label: "Power", color: "#dc2626" },
   { type: "X-Mes.", label: "X-Messenger", color: "#2563eb" },
+  { type: "CULV", label: "Culvert", color: "#0891b2" },
+  { type: "DR-S", label: "Drainage Start", color: "#0891b2" },
+  { type: "DR-E", label: "Drainage End", color: "#0891b2" },
 ];
 
 const LINE_COLORS = [

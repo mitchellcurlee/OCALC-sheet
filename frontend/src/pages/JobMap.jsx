@@ -236,6 +236,8 @@ const JobMap = () => {
   const [selectedConn, setSelectedConn] = useState(null);
   const [reconnectSide, setReconnectSide] = useState(null);
   const [addingConn, setAddingConn] = useState(null);
+  const [confirmDeleteConn, setConfirmDeleteConn] = useState(null);
+  const [confirmResetLines, setConfirmResetLines] = useState(false);
   const [positionEditMode, setPositionEditMode] = useState(false);
   const [connections, setConnections] = useState([]);
   const [addingType, setAddingType] = useState(null); // "note" or "measurement"
@@ -1762,7 +1764,7 @@ const JobMap = () => {
                             <div className="text-xs font-mono font-semibold" data-testid="conn-selected-label">{connLabel}</div>
                             <Button size="sm" className="w-full h-8 text-xs bg-blue-600 hover:bg-blue-700 text-white" onClick={() => setReconnectSide("from")} data-testid="conn-move-start-btn">Move start (blue dot)</Button>
                             <Button size="sm" className="w-full h-8 text-xs bg-red-600 hover:bg-red-700 text-white" onClick={() => setReconnectSide("to")} data-testid="conn-move-end-btn">Move end (red dot)</Button>
-                            <Button size="sm" variant="outline" className="w-full h-8 text-xs text-red-700 border-red-300 hover:bg-red-50" onClick={() => { handleConnectionDelete(selectedConn); setSelectedConn(null); }} data-testid="conn-delete-btn">Delete line</Button>
+                            <Button size="sm" variant="outline" className="w-full h-8 text-xs text-red-700 border-red-300 hover:bg-red-50" onClick={() => setConfirmDeleteConn(selectedConn)} data-testid="conn-delete-btn">Delete line</Button>
                             <Button size="sm" variant="outline" className="w-full h-8 text-xs" onClick={() => setSelectedConn(null)} data-testid="conn-deselect-btn">Done with this line</Button>
                           </>
                         ) : (
@@ -1788,7 +1790,7 @@ const JobMap = () => {
                             )}
                             <div className="flex gap-2">
                               <Button size="sm" className="flex-1 h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => { setAddingConn({ from: null }); setSelectedConn(null); setReconnectSide(null); }} data-testid="conn-add-line-btn">+ Add line</Button>
-                              <Button size="sm" variant="outline" className="flex-1 h-8 text-xs" onClick={resetConnections} data-testid="conn-reset-lines-btn">Reset lines</Button>
+                              <Button size="sm" variant="outline" className="flex-1 h-8 text-xs" onClick={() => setConfirmResetLines(true)} data-testid="conn-reset-lines-btn">Reset lines</Button>
                             </div>
                           </>
                         )}
@@ -2337,6 +2339,36 @@ const JobMap = () => {
           </div>
         )}
       </main>
+
+      <AlertDialog open={!!confirmDeleteConn} onOpenChange={(o) => { if (!o) setConfirmDeleteConn(null); }}>
+        <AlertDialogContent className="bg-zinc-50 border-zinc-200">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-zinc-900">Delete this line?</AlertDialogTitle>
+            <AlertDialogDescription className="text-zinc-600">
+              The connection line will be removed from the map. You can re-add it with the "+ Add line" tool.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-zinc-100 border-zinc-300 text-zinc-900" data-testid="conn-delete-cancel-btn">Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { handleConnectionDelete(confirmDeleteConn); setSelectedConn(null); setConfirmDeleteConn(null); }} className="bg-red-600 hover:bg-red-700 text-white" data-testid="conn-delete-confirm-btn">Delete Line</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmResetLines} onOpenChange={setConfirmResetLines}>
+        <AlertDialogContent className="bg-zinc-50 border-zinc-200">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-zinc-900">Reset all lines?</AlertDialogTitle>
+            <AlertDialogDescription className="text-zinc-600">
+              This will delete ALL custom line edits and rebuild the default connections from the item order. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-zinc-100 border-zinc-300 text-zinc-900" data-testid="reset-lines-cancel-btn">Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { resetConnections(); setConfirmResetLines(false); }} className="bg-red-600 hover:bg-red-700 text-white" data-testid="reset-lines-confirm-btn">Reset Lines</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

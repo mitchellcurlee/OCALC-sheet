@@ -410,12 +410,15 @@ async def update_pole(pole_id: str, pole_data: PoleUpdate):
 
 
 @router.delete("/poles/{pole_id}")
-async def delete_pole(pole_id: str):
-    """Delete a pole entry"""
-    result = await _db.poles.delete_one({"id": pole_id})
-    if result.deleted_count == 0:
+async def delete_pole(pole_id: str, current_user: dict = Depends(get_current_user)):
+    """Move a pole to the user's Deleted Items (restorable)"""
+    from routes.trash import archive_entity
+    existing = await _db.poles.find_one({"id": pole_id}, {"_id": 0})
+    if not existing:
         raise HTTPException(status_code=404, detail="Pole not found")
-    return {"message": "Pole deleted successfully"}
+    await archive_entity(_db, "pole", existing, current_user)
+    await _db.poles.delete_one({"id": pole_id})
+    return {"message": "Pole moved to Deleted Items"}
 
 
 @router.get("/poles/{pole_id}/gallery", response_class=HTMLResponse)

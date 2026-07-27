@@ -139,7 +139,7 @@ const ViewPole = () => {
   const handleDelete = async () => {
     try {
       await axios.delete(`/poles/${id}`);
-      toast.success("Pole deleted successfully");
+      toast.success("Pole moved to Deleted Items — restore it anytime from the trash folder");
       navigate(backUrl);
     } catch (error) {
       toast.error("Failed to delete pole");
@@ -606,7 +606,7 @@ const ViewPole = () => {
           <AlertDialogHeader>
             <AlertDialogTitle className="text-zinc-900">Delete Pole?</AlertDialogTitle>
             <AlertDialogDescription className="text-zinc-600">
-              This action cannot be undone. This will permanently delete the pole data.
+              The pole will be moved to your Deleted Items folder, where you can restore it later.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

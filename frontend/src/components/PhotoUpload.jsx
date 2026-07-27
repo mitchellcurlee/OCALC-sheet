@@ -7,6 +7,16 @@ import { Camera, Upload, X, Ruler, Check, ZoomIn, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { OfflinePhoto, queuePhotoOffline } from "@/lib/offlinePhotos";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -20,6 +30,24 @@ export const PhotoUpload = ({ label, value, onChange, testId, showHeightTool = f
   const [showHeightDialog, setShowHeightDialog] = useState(false);
   const [showLightbox, setShowLightbox] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
+
+  const removeConfirmDialog = (
+    <AlertDialog open={confirmRemove} onOpenChange={setConfirmRemove}>
+      <AlertDialogContent className="bg-zinc-50 border-zinc-200">
+        <AlertDialogHeader>
+          <AlertDialogTitle className="text-zinc-900">Remove this photo?</AlertDialogTitle>
+          <AlertDialogDescription className="text-zinc-600">
+            The {label || "photo"} will be removed from this form. Removing a single photo cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel className="bg-zinc-100 border-zinc-300 text-zinc-900" data-testid={`${testId}-remove-cancel`}>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={() => { onChange(""); setConfirmRemove(false); }} className="bg-red-600 hover:bg-red-700 text-white" data-testid={`${testId}-remove-confirm`}>Remove Photo</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -111,7 +139,7 @@ export const PhotoUpload = ({ label, value, onChange, testId, showHeightTool = f
                 variant="destructive"
                 size="icon"
                 className="absolute -top-1 -right-1 h-4 w-4 bg-red-600 hover:bg-red-700"
-                onClick={(e) => { e.stopPropagation(); onChange(""); }}
+                onClick={(e) => { e.stopPropagation(); setConfirmRemove(true); }}
               >
                 <X className="w-2 h-2" />
               </Button>
@@ -140,6 +168,7 @@ export const PhotoUpload = ({ label, value, onChange, testId, showHeightTool = f
           )}
         </div>
         {/* Lightbox for compact mode */}
+        {removeConfirmDialog}
         <Dialog open={showLightbox} onOpenChange={setShowLightbox}>
           <DialogContent className="bg-zinc-50 border-zinc-200 max-w-4xl max-h-[90vh] p-2">
             <div className="relative">
@@ -213,7 +242,7 @@ export const PhotoUpload = ({ label, value, onChange, testId, showHeightTool = f
                 variant="destructive"
                 size="icon"
                 className="absolute top-1 right-1 h-6 w-6 bg-red-600 hover:bg-red-700"
-                onClick={(e) => { e.stopPropagation(); onChange(""); }}
+                onClick={(e) => { e.stopPropagation(); setConfirmRemove(true); }}
               >
                 <X className="w-3 h-3" />
               </Button>

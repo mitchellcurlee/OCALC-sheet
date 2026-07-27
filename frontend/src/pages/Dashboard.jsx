@@ -86,7 +86,7 @@ const Dashboard = () => {
     if (!deleteId) return;
     try {
       await axios.delete(`/poles/${deleteId}`);
-      toast.success("Pole deleted successfully");
+      toast.success("Pole moved to Deleted Items — restore it anytime from the trash folder");
       setDeleteId(null);
       fetchPoles();
       fetchStats();
@@ -436,8 +436,8 @@ const Dashboard = () => {
           <AlertDialogHeader>
             <AlertDialogTitle className="text-zinc-900">Delete Pole?</AlertDialogTitle>
             <AlertDialogDescription className="text-zinc-600">
-              This action cannot be undone. This will permanently delete the pole
-              data from the database.
+              The pole will be moved to your Deleted Items folder, where you
+              can restore it later.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

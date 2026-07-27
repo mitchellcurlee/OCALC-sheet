@@ -419,10 +419,10 @@ const JobDetail = () => {
     try {
       if (deleteType === "underground") {
         await axios.delete(`/underground/${deleteId}`);
-        toast.success("Underground item deleted successfully");
+        toast.success("Underground item moved to Deleted Items — restore it anytime from the trash folder");
       } else {
         await axios.delete(`/poles/${deleteId}`);
-        toast.success("Pole deleted successfully");
+        toast.success("Pole moved to Deleted Items — restore it anytime from the trash folder");
       }
       setDeleteId(null);
       setDeleteType(null);

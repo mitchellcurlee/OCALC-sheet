@@ -59,7 +59,7 @@ import { getOfflineSavedJobs } from "@/lib/offlineTiles";
 import { useAuth } from "@/context/AuthContext";
 import { OfflineIndicator } from "@/components/OfflineIndicator";
 
-const JOB_TYPES = ["OCALC", "DMG", "ABF", "BAU", "ASE", "PBB", "SEAL", "SV", "CELL SITE"];
+const JOB_TYPES = ["OCALC", "DMG", "ABF", "BAU", "ASE", "PBB", "SEAL", "SV", "CELL SITE", "PFP"];
 
 const jobPinIcon = (name, completed = false) => {
   const color = completed ? "#16a34a" : "#dc2626";
@@ -210,7 +210,7 @@ const JobsList = () => {
   const handleDelete = async () => {
     try {
       await axios.delete(`/jobs/${deleteId}`);
-      toast.success("Job deleted successfully");
+      toast.success("Job moved to Deleted Items — restore it anytime from the trash folder");
       setDeleteId(null);
       fetchJobs();
     } catch (error) {
@@ -323,6 +323,7 @@ const JobsList = () => {
             variant="ghost"
             className="h-8 w-8 text-zinc-600 hover:text-red-600"
             onClick={(e) => { e.stopPropagation(); setDeleteId(job.id); }}
+            data-testid={`job-delete-btn-${job.id}`}
           >
             <Trash2 className="w-4 h-4" />
           </Button>
@@ -415,6 +416,16 @@ const JobsList = () => {
                 data-testid="device-recovery-btn"
               >
                 <LifeBuoy className="w-4 h-4" />
+              </Button>
+              <Button
+                onClick={() => navigate("/trash")}
+                size="icon"
+                variant="ghost"
+                className="text-zinc-400 hover:text-red-400 hover:bg-zinc-800"
+                title="Deleted items"
+                data-testid="deleted-items-btn"
+              >
+                <Trash2 className="w-4 h-4" />
               </Button>
               {user && (
                 <div className="hidden sm:flex items-center gap-2">
@@ -727,12 +738,12 @@ const JobsList = () => {
           <AlertDialogHeader>
             <AlertDialogTitle className="text-zinc-900">Delete Job?</AlertDialogTitle>
             <AlertDialogDescription className="text-zinc-600">
-              This will permanently delete this job and ALL poles in it. This action cannot be undone.
+              This will delete this job and EVERYTHING inside it (poles, attributes, photos and map data). It will be moved to your Deleted Items folder, where you can restore it later.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="bg-zinc-100 border-zinc-300 text-zinc-900">Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700 text-white">
+            <AlertDialogCancel className="bg-zinc-100 border-zinc-300 text-zinc-900" data-testid="job-delete-cancel-btn">Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700 text-white" data-testid="job-delete-confirm-btn">
               Delete Job
             </AlertDialogAction>
           </AlertDialogFooter>
