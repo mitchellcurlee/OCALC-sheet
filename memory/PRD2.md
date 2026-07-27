@@ -27,7 +27,8 @@ Frontend:
 - options.py UNDERGROUND_TYPES + Excel UG_ABBR (CULV/DR-S/DR-E) in jobs.py export; frontend poleMapImage.js UNDERGROUND_ABBR; PhotoMarkupEditor markers (cyan #0891b2); JobDetail Add Attribute dropdown gets them via UNDERGROUND_TYPES; JobsList JOB_TYPES includes "PFP".
 
 ### Known notes
-- Deployment of this batch requested via deployer agent (queued). PRODUCTION = https://poletracker.emergent.host — user devices auto-update within ~5 min / on tab focus.
+- HOTFIX (2026-07-27, redeployed): JobMap.jsx AlertDialog import silently didn't persist on first edit → map page crashed blank ("AlertDialog is not defined"). Import restored, map + delete-line confirm verified via screenshot, redeployed successfully. LESSON reconfirmed: grep-verify IMPORTS too after search_replace, not just usage sites.
+- Deployment of this batch completed successfully (trash + Culvert/Drainage/PFP + map hotfix live). PRODUCTION = https://poletracker.emergent.host — user devices auto-update within ~5 min / on tab focus.
 - Minor (accepted): POST /api/poles & /api/underground return 201 while POST /api/jobs returns 200 (inconsistent but harmless).
 - Pre-existing non-blocking build warning: ViewPole.jsx useEffect deps.
 
