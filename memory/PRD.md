@@ -103,6 +103,7 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 
 ## Backlog
 - P1: User verification of new gallery flow on production (needs redeploy).
+- SEE /app/memory/PRD2.md for 2026-07 session updates (Deleted Items trash system, Culvert/Drainage/PFP).
 
 - P2: Refactor PhotoMarkupEditor.jsx into /components/markup/* stubs (or delete stubs).
 

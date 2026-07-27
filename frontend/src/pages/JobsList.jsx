@@ -14,6 +14,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
@@ -581,6 +582,7 @@ const JobsList = () => {
         <DialogContent className="bg-zinc-50 border-zinc-200">
           <DialogHeader>
             <DialogTitle className="text-zinc-900">Create New Job</DialogTitle>
+            <DialogDescription className="text-zinc-500 text-xs">Set the job name, type and location details.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
@@ -640,6 +642,7 @@ const JobsList = () => {
         <DialogContent className="bg-zinc-50 border-zinc-200">
           <DialogHeader>
             <DialogTitle className="text-zinc-900">Edit Job</DialogTitle>
+            <DialogDescription className="text-zinc-500 text-xs">Update the job name, type and location details.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
