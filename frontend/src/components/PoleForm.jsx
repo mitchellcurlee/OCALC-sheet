@@ -500,10 +500,6 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.pole_size || !formData.condition) {
-      toast.error("Please fill in Pole Size and Condition");
-      return;
-    }
 
     const submitData = {
       ...formData,
@@ -694,7 +690,7 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Pole Size *</Label>
+                <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Pole Size</Label>
                 <Select value={formData.pole_size} onValueChange={(v) => handleSelectChange("pole_size", v)}>
                   <SelectTrigger className="h-12 sm:h-10 bg-white border-zinc-300 text-zinc-900" data-testid="pole-size-select">
                     <SelectValue placeholder="Feet" />
@@ -732,7 +728,7 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Condition *</Label>
+                <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Condition</Label>
                 <Select value={formData.condition} onValueChange={(v) => handleSelectChange("condition", v)}>
                   <SelectTrigger className="h-12 sm:h-10 bg-white border-zinc-300 text-zinc-900" data-testid="condition-select">
                     <SelectValue placeholder="Select condition" />

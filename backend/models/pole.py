@@ -38,11 +38,11 @@ class PoleBase(BaseModel):
     job_id: Optional[str] = None
     job_number: Optional[str] = None
     pole_number: Optional[str] = None
-    pole_size: str
+    pole_size: Optional[str] = None
     pole_size_type: Optional[str] = None
     pole_class: Optional[str] = None
     pole_type: Optional[str] = None
-    condition: str
+    condition: Optional[str] = None
     pole_owner: Optional[str] = None
     access: Optional[str] = None
     pole_photo: Optional[str] = None  # Main pole picture

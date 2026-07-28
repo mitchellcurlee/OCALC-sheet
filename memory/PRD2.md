@@ -26,6 +26,9 @@ Frontend:
 ### Culvert / Drainage Start / Drainage End + PFP job type — verified iteration_43, DEPLOY REQUESTED
 - options.py UNDERGROUND_TYPES + Excel UG_ABBR (CULV/DR-S/DR-E) in jobs.py export; frontend poleMapImage.js UNDERGROUND_ABBR; PhotoMarkupEditor markers (cyan #0891b2); JobDetail Add Attribute dropdown gets them via UNDERGROUND_TYPES; JobsList JOB_TYPES includes "PFP".
 
+### Pole save requirements removed (2026-07, curl+compile verified, preview-only until redeploy)
+- Pole Size and Condition are no longer required to save a pole: PoleBase fields now Optional (models/pole.py), PoleForm.jsx validation block + "*" labels removed. Excel export already guards missing values.
+
 ### Known notes
 - HOTFIX (2026-07-27, redeployed): JobMap.jsx AlertDialog import silently didn't persist on first edit → map page crashed blank ("AlertDialog is not defined"). Import restored, map + delete-line confirm verified via screenshot, redeployed successfully. LESSON reconfirmed: grep-verify IMPORTS too after search_replace, not just usage sites.
 - Deployment of this batch completed successfully (trash + Culvert/Drainage/PFP + map hotfix live). PRODUCTION = https://poletracker.emergent.host — user devices auto-update within ~5 min / on tab focus.
