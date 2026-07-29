@@ -57,8 +57,8 @@ const UndergroundForm = () => {
   const [formData, setFormData] = useState({
     type: searchParams.get("type") || "",
     material_type: "", // Subtype for Handhole, Hoffman Box, Pedestal
-    latitude: "",
-    longitude: "-",
+    latitude: searchParams.get("lat") || "",
+    longitude: searchParams.get("lng") || "-",
     label: "",
     notes: "",
     photos: [],

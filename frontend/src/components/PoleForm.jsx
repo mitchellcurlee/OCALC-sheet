@@ -182,6 +182,16 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
     fetchOptions();
   }, [fetchOptions]);
 
+  // Prefill GPS from ?lat=&lng= query params (map tap-to-place)
+  useEffect(() => {
+    const qLat = searchParams.get("lat");
+    const qLng = searchParams.get("lng");
+    if (mode === "create" && qLat && qLng) {
+      setFormData((prev) => ({ ...prev, latitude: qLat, longitude: qLng }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // When editing, populate the form from the loaded pole
   // We wait for options to be loaded so Radix Select can match values to items
   useEffect(() => {

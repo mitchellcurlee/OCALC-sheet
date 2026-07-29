@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { useParams, useSearchParams, Link } from "react-router-dom";
+import { useParams, useSearchParams, Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
 import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap, useMapEvents } from "react-leaflet";
@@ -7,8 +7,8 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import domtoimage from "dom-to-image-more";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ChevronDown, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera, Hash, Link2, Move, Palette } from "lucide-react";
-import { computeRoute, fmtFeet, feetToStation, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, ugWithGps, undergroundAbbr, computeUgConnectors, computeConnectionPairs } from "@/lib/poleMapImage";
+import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ChevronDown, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera, Hash, Link2, Move, Palette, Plus } from "lucide-react";
+import { computeRoute, fmtFeet, feetToStation, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, ugWithGps, undergroundAbbr, computeUgConnectors, computeConnectionPairs, UNDERGROUND_TYPES } from "@/lib/poleMapImage";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,6 +39,14 @@ import {
 } from "@/components/ui/alert-dialog";
 import EditableRoute from "@/components/EditableRoute";
 import MapAnnotations from "@/components/MapAnnotations";
+
+const MAP_AERIAL_ADD_TYPES = ["Loop", "Aerial Splice", "Power", "X-Messenger"];
+
+// Captures a single map tap while placing a new attribute
+const PlaceAttributeHandler = ({ onPlace }) => {
+  useMapEvents({ click: (e) => onPlace(e.latlng) });
+  return null;
+};
 
 // Path color options
 const PATH_COLORS = {
@@ -242,6 +250,8 @@ const JobMap = () => {
     try { localStorage.setItem(`staToggle:${jobId}`, showStationNumbers ? '1' : '0'); } catch (e) { /* ignore */ }
   }, [showStationNumbers, jobId]);
   const [editMode, setEditMode] = useState(false);
+  const [placingType, setPlacingType] = useState(null); // "__pole__" | underground type name
+  const navigate = useNavigate();
   const [connectionEditMode, setConnectionEditMode] = useState(false);
   const [selectedConn, setSelectedConn] = useState(null);
   const [reconnectSide, setReconnectSide] = useState(null);
@@ -1536,6 +1546,37 @@ const JobMap = () => {
               {downloading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
               Download
             </Button>
+            {/* Add attribute dropdown */}
+            {!editMode && !connectionEditMode && !positionEditMode && !placingType && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" data-testid="map-add-dropdown-btn">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add
+                    <ChevronDown className="w-4 h-4 ml-2" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 max-h-80 overflow-y-auto bg-white">
+                  <DropdownMenuItem onClick={() => { setPlacingType("__pole__"); toast.info("Tap the map where the Pole goes"); }} data-testid="map-add-pole" className="cursor-pointer font-medium">
+                    Add Pole
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel className="text-xs text-zinc-500 uppercase tracking-wider">Aerial</DropdownMenuLabel>
+                  {MAP_AERIAL_ADD_TYPES.map((t) => (
+                    <DropdownMenuItem key={t} onClick={() => { setPlacingType(t); toast.info(`Tap the map where the ${t} goes`); }} data-testid={`map-add-${t}`} className="cursor-pointer">
+                      {t}
+                    </DropdownMenuItem>
+                  ))}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel className="text-xs text-zinc-500 uppercase tracking-wider">Underground</DropdownMenuLabel>
+                  {UNDERGROUND_TYPES.filter((t) => !MAP_AERIAL_ADD_TYPES.includes(t)).map((t) => (
+                    <DropdownMenuItem key={t} onClick={() => { setPlacingType(t); toast.info(`Tap the map where the ${t} goes`); }} data-testid={`map-add-${t}`} className="cursor-pointer">
+                      {t}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
             {/* Edit mode toggle */}
             {!editMode && !connectionEditMode && !positionEditMode ? (
               <div className="flex gap-2">
@@ -1765,6 +1806,12 @@ const JobMap = () => {
       </header>
 
       <main className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-4">
+        {placingType && (
+          <div className="flex items-center justify-between gap-3 bg-emerald-600 text-white rounded-lg px-4 py-2.5 text-sm font-medium shadow" data-testid="placing-banner">
+            <span>Tap the map where the {placingType === "__pole__" ? "Pole" : placingType} goes — the form will open with that location filled in</span>
+            <Button size="sm" variant="outline" className="h-7 text-xs bg-white text-zinc-900 hover:bg-zinc-100 border-0 shrink-0" onClick={() => setPlacingType(null)} data-testid="placing-cancel-btn">Cancel</Button>
+          </div>
+        )}
         {missing.length > 0 && (
           <div className="flex items-start gap-3 border border-amber-300 bg-amber-50 px-4 py-3 rounded" data-testid="missing-gps-banner">
             <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
@@ -2002,6 +2049,21 @@ const JobMap = () => {
               <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}" maxNativeZoom={19} maxZoom={22} crossOrigin="anonymous" />
               <FitBounds points={allPoints} disabled={editMode} />
               <MapRefSetter mapRef={mapRef} />
+              {placingType && (
+                <PlaceAttributeHandler
+                  onPlace={(latlng) => {
+                    const lat = latlng.lat.toFixed(6);
+                    const lng = latlng.lng.toFixed(6);
+                    const t = placingType;
+                    setPlacingType(null);
+                    if (t === "__pole__") {
+                      navigate(`/jobs/${jobId}/add?lat=${lat}&lng=${lng}`);
+                    } else {
+                      navigate(`/jobs/${jobId}/underground/add?type=${encodeURIComponent(t)}&lat=${lat}&lng=${lng}`);
+                    }
+                  }}
+                />
+              )}
               
               {/* ALL SEGMENTS - rendered in sort_order (job page order) */}
               {orderedSegments.map((seg, i) => {

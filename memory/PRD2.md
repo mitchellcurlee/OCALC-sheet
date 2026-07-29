@@ -26,6 +26,13 @@ Frontend:
 ### Culvert / Drainage Start / Drainage End + PFP job type — verified iteration_43, DEPLOY REQUESTED
 - options.py UNDERGROUND_TYPES + Excel UG_ABBR (CULV/DR-S/DR-E) in jobs.py export; frontend poleMapImage.js UNDERGROUND_ABBR; PhotoMarkupEditor markers (cyan #0891b2); JobDetail Add Attribute dropdown gets them via UNDERGROUND_TYPES; JobsList JOB_TYPES includes "PFP".
 
+### FEATURE: Add attribute from interactive map (2026-07, browser-verified, preview-only until redeploy)
+User choices: tap-to-place; menu has EVERYTHING (Pole + Aerial Loop/AS/Power/X-Mes + all UG types); opens the full form after placing.
+- JobMap header: green "Add" dropdown (map-add-dropdown-btn) before Edit Map — Add Pole (map-add-pole), Aerial section, Underground section (map-add-{type}); hidden while any edit/placing mode active.
+- Flow: pick type → emerald placing banner (placing-banner + placing-cancel-btn) → PlaceAttributeHandler (useMapEvents click) captures tap → navigates to /jobs/{id}/add?lat&lng (pole) or /jobs/{id}/underground/add?type&lat&lng.
+- UndergroundForm initial state reads lat/lng params; PoleForm new mount effect prefills lat/lng in create mode.
+- Verified: menu (30 items), banner, tap → UG form Type=Handhole + coords prefilled; pole form coords prefilled via direct URL.
+
 ### FEATURE: full editing of auto-generated map lines + Aerial/UG type switch (2026-07, browser-verified, preview-only until redeploy)
 User: auto-generated lines only offered color change; needed delete/move/type. Root cause: fallback chain pairs (items added after connections saved) had NO backing doc → not in picker, taps fell through to color handler.
 Fixes:
