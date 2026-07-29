@@ -193,8 +193,8 @@ export const AERIAL_ATTR_TYPES = new Set(["Loop", "Aerial Splice", "X-Messenger"
 // Build map line pairs the same way the live Job Map does (custom connections + End Path breaks + standalone items)
 export const computeConnectionPairs = (route, ug, connections = []) => {
   const allItems = [];
-  route.forEach((p) => allItems.push({ id: p.id, type: "pole", pos: p.pos, sort_order: p.sort_order ?? Infinity, label: p.pole_number || "Pole", end_path: p.end_path === true, standalone: p.standalone === true }));
-  ug.forEach((u) => allItems.push({ id: u.id, type: "underground", ugType: u.type, pos: u.pos, sort_order: u.sort_order ?? Infinity, label: u.label || u.type, end_path: u.end_path === true, standalone: u.standalone === true, hasPath: (u.path_measurements || []).length > 0 }));
+  route.forEach((p) => allItems.push({ id: p.id, type: "pole", pos: p.pos, sort_order: p.sort_order ?? Infinity, label: p.pole_number || "Pole", end_path: p.end_path === true, standalone: p.standalone === true, markerColor: p.marker_color || null }));
+  ug.forEach((u) => allItems.push({ id: u.id, type: "underground", ugType: u.type, pos: u.pos, sort_order: u.sort_order ?? Infinity, label: u.label || u.type, end_path: u.end_path === true, standalone: u.standalone === true, hasPath: (u.path_measurements || []).length > 0, markerColor: u.marker_color || null }));
   allItems.sort((a, b) => a.sort_order - b.sort_order);
   const byId = {};
   allItems.forEach((it) => { byId[it.id] = it; });
@@ -508,9 +508,10 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
       const [x, y] = pt(p.pos);
       const label = markerLabel(p, i, showStops);
       const dotR = 6 * s; // smaller dot radius
+      const poleColor = p.marker_color || "#dc2626";
       
-      // Draw small red dot
-      ctx.fillStyle = "#dc2626";
+      // Draw pole dot (custom color or red)
+      ctx.fillStyle = poleColor;
       ctx.strokeStyle = "#ffffff";
       ctx.lineWidth = 2 * s;
       ctx.beginPath();
@@ -535,7 +536,7 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
         labelY = y + Math.sin(rad) * arrowDist;
         
         // Draw arrow line
-        ctx.strokeStyle = "#dc2626";
+        ctx.strokeStyle = poleColor;
         ctx.lineWidth = 1.5 * s;
         ctx.beginPath();
         ctx.moveTo(x, y);
@@ -545,7 +546,7 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
         // Draw arrowhead pointing to dot
         const headLen = 6 * s;
         const headAngle = Math.atan2(y - labelY, x - labelX);
-        ctx.fillStyle = "#dc2626";
+        ctx.fillStyle = poleColor;
         ctx.beginPath();
         ctx.moveTo(x - Math.cos(headAngle) * dotR, y - Math.sin(headAngle) * dotR);
         ctx.lineTo(x - Math.cos(headAngle) * dotR - headLen * Math.cos(headAngle - 0.4), y - Math.sin(headAngle) * dotR - headLen * Math.sin(headAngle - 0.4));
@@ -560,7 +561,7 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
       }
       
       // Draw label background
-      ctx.fillStyle = "#dc2626";
+      ctx.fillStyle = poleColor;
       ctx.strokeStyle = "#ffffff";
       ctx.lineWidth = 1.5 * s;
       ctx.beginPath();
@@ -605,7 +606,7 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
       const w = Math.max(h, tw + 12 * s);
       const rx = x - w / 2;
       const ry = y - h / 2;
-      ctx.fillStyle = "#16a34a";
+      ctx.fillStyle = u.marker_color || "#16a34a";
       ctx.strokeStyle = "#ffffff";
       ctx.lineWidth = 2 * s;
       ctx.beginPath();
@@ -1135,9 +1136,10 @@ const generateSegmentPage = async ({
     const [x, y] = pt(p.pos);
     const label = p.label || `${i + 1}`;
     const dotR = 6 * s;
+    const poleColor = p.markerColor || "#dc2626";
     
-    // Draw small red dot
-    ctx.fillStyle = "#dc2626";
+    // Draw pole dot (custom color or red)
+    ctx.fillStyle = poleColor;
     ctx.strokeStyle = "#ffffff";
     ctx.lineWidth = 2 * s;
     ctx.beginPath();
@@ -1161,7 +1163,7 @@ const generateSegmentPage = async ({
       labelX = x + Math.cos(rad) * arrowDist;
       labelY = y + Math.sin(rad) * arrowDist;
       
-      ctx.strokeStyle = "#dc2626";
+      ctx.strokeStyle = poleColor;
       ctx.lineWidth = 1.5 * s;
       ctx.beginPath();
       ctx.moveTo(x, y);
@@ -1170,7 +1172,7 @@ const generateSegmentPage = async ({
       
       const headLen = 6 * s;
       const headAngle = Math.atan2(y - labelY, x - labelX);
-      ctx.fillStyle = "#dc2626";
+      ctx.fillStyle = poleColor;
       ctx.beginPath();
       ctx.moveTo(x - Math.cos(headAngle) * dotR, y - Math.sin(headAngle) * dotR);
       ctx.lineTo(x - Math.cos(headAngle) * dotR - headLen * Math.cos(headAngle - 0.4), y - Math.sin(headAngle) * dotR - headLen * Math.sin(headAngle - 0.4));
@@ -1183,7 +1185,7 @@ const generateSegmentPage = async ({
       labelY = y;
     }
     
-    ctx.fillStyle = "#dc2626";
+    ctx.fillStyle = poleColor;
     ctx.strokeStyle = "#ffffff";
     ctx.lineWidth = 1.5 * s;
     ctx.beginPath();
@@ -1204,7 +1206,7 @@ const generateSegmentPage = async ({
     ctx.font = `bold ${10 * s}px ui-monospace, monospace`;
     const tw = ctx.measureText(abbr).width;
     const sz = Math.max(24 * s, tw + 10 * s);
-    ctx.fillStyle = "#16a34a";
+    ctx.fillStyle = u.markerColor || "#16a34a";
     ctx.strokeStyle = "#ffffff";
     ctx.lineWidth = 2.5 * s;
     ctx.beginPath();

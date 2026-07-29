@@ -26,6 +26,11 @@ Frontend:
 ### Culvert / Drainage Start / Drainage End + PFP job type — verified iteration_43, DEPLOY REQUESTED
 - options.py UNDERGROUND_TYPES + Excel UG_ABBR (CULV/DR-S/DR-E) in jobs.py export; frontend poleMapImage.js UNDERGROUND_ABBR; PhotoMarkupEditor markers (cyan #0891b2); JobDetail Add Attribute dropdown gets them via UNDERGROUND_TYPES; JobsList JOB_TYPES includes "PFP".
 
+### FEATURE: colored markers in exhibits (2026-07, verified via generated exhibit PNG, DEPLOY REQUESTED with riser fields)
+- Main exhibit (poleMapImage.js): pole dot/arrow/label use p.marker_color || red; UG squares use u.marker_color || green.
+- Segmented ZIP pages: computeConnectionPairs allItems now carry markerColor (pole + UG); pageClusterInfo/pageUg draw with it.
+- NOTE: pole/UG PUT handlers drop None values — marker_color cannot be unset via null, only overwritten (reset = set "#dc2626"/default hex).
+
 ### FEATURE: Existing Risers field + rename (2026-07, screenshot-verified, preview-only until redeploy)
 - Pole form: "How Many Risers" → "How Many New Risers"; NEW "Existing Risers" dropdown (1-10, existing-risers-select) to its LEFT on the same row (Pole Terminal moved to full-width row above via sm:col-span-2).
 - Backend: `existing_risers` on PoleBase + PoleUpdate; Excel export rows now "Existing Risers" + "New Risers".
