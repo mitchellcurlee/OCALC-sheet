@@ -429,7 +429,8 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
                 current_row += 1
         label_value_row([
             ("Pole Terminal", pole.get("pole_terminal", "")),
-            ("Risers", pole.get("risers", "")),
+            ("Existing Risers", pole.get("existing_risers", "")),
+            ("New Risers", pole.get("risers", "")),
         ])
 
         down_guys = pole.get("down_guys", [])

@@ -87,7 +87,7 @@ const emptyFormData = () => ({
   ocalc_left_photo: "", ocalc_middle_photo: "", ocalc_right_photo: "",
   has_birthmark: true, birthmark_photos: [],
   mgnv: "", mgnv_condition: "", mgnv_photos: [],
-  pole_terminal: "", risers: "", riser_height: "",
+  pole_terminal: "", risers: "", existing_risers: "", riser_height: "",
   use_manual_spans: false,
   span1_direction: "", span1_distance: "", span1_owner: "",
   span2_direction: "", span2_distance: "", span2_owner: "",
@@ -223,7 +223,7 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
       ocalc_left_photo: p.ocalc_left_photo || "", ocalc_middle_photo: p.ocalc_middle_photo || "", ocalc_right_photo: p.ocalc_right_photo || "",
       has_birthmark: p.has_birthmark !== false, birthmark_photos: birthmarkPhotos,
       mgnv: p.mgnv || "", mgnv_condition: p.mgnv_condition || "", mgnv_photos: mgnvPhotos,
-      pole_terminal: p.pole_terminal || "", risers: p.risers || "", riser_height: p.riser_height?.toString() || "",
+      pole_terminal: p.pole_terminal || "", risers: p.risers || "", existing_risers: p.existing_risers || "", riser_height: p.riser_height?.toString() || "",
       use_manual_spans: p.use_manual_spans === true,
       span1_direction: p.span1_direction || "", span1_distance: p.span1_distance?.toString() || "", span1_owner: p.span1_owner || "",
       span2_direction: p.span2_direction || "", span2_distance: p.span2_distance?.toString() || "", span2_owner: p.span2_owner || "",
@@ -1059,7 +1059,7 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
               {/* Pole Terminal and Risers */}
               <div className="mt-4 pt-4 border-t border-zinc-300">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
+                  <div className="space-y-2 sm:col-span-2">
                     <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Pole Terminal</Label>
                     <Select value={formData.pole_terminal} onValueChange={(v) => handleSelectChange("pole_terminal", v)}>
                       <SelectTrigger className="h-10 bg-white border-zinc-300 text-zinc-900" data-testid="pole-terminal-select">
@@ -1073,7 +1073,19 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">How Many Risers</Label>
+                    <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Existing Risers</Label>
+                    <Select value={formData.existing_risers} onValueChange={(v) => handleSelectChange("existing_risers", v)}>
+                      <SelectTrigger className="h-10 bg-white border-zinc-300 text-zinc-900" data-testid="existing-risers-select">
+                        <SelectValue placeholder="Select #" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-zinc-50 border-zinc-300">
+                        <SelectItem value={BLANK} className="text-zinc-500">—</SelectItem>
+                        {["1","2","3","4","5","6","7","8","9","10"].map((r) => (<SelectItem key={r} value={r}>{r}</SelectItem>))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">How Many New Risers</Label>
                     <div className="flex gap-2">
                       <Select value={formData.risers} onValueChange={(v) => handleSelectChange("risers", v)}>
                         <SelectTrigger className="h-10 bg-white border-zinc-300 text-zinc-900 flex-1" data-testid="risers-select">

@@ -60,6 +60,7 @@ class PoleBase(BaseModel):
     attachments: Optional[List[Attachment]] = []
     pole_terminal: Optional[str] = None
     risers: Optional[str] = None
+    existing_risers: Optional[str] = None
     riser_height: Optional[float] = None
     pole_line_start: Optional[bool] = False
     pole_line_end: Optional[bool] = False
@@ -116,6 +117,7 @@ class PoleUpdate(BaseModel):
     attachments: Optional[List[Attachment]] = None
     pole_terminal: Optional[str] = None
     risers: Optional[str] = None
+    existing_risers: Optional[str] = None
     riser_height: Optional[float] = None
     pole_line_start: Optional[bool] = None
     pole_line_end: Optional[bool] = None

@@ -26,6 +26,10 @@ Frontend:
 ### Culvert / Drainage Start / Drainage End + PFP job type — verified iteration_43, DEPLOY REQUESTED
 - options.py UNDERGROUND_TYPES + Excel UG_ABBR (CULV/DR-S/DR-E) in jobs.py export; frontend poleMapImage.js UNDERGROUND_ABBR; PhotoMarkupEditor markers (cyan #0891b2); JobDetail Add Attribute dropdown gets them via UNDERGROUND_TYPES; JobsList JOB_TYPES includes "PFP".
 
+### FEATURE: Existing Risers field + rename (2026-07, screenshot-verified, preview-only until redeploy)
+- Pole form: "How Many Risers" → "How Many New Risers"; NEW "Existing Risers" dropdown (1-10, existing-risers-select) to its LEFT on the same row (Pole Terminal moved to full-width row above via sm:col-span-2).
+- Backend: `existing_risers` on PoleBase + PoleUpdate; Excel export rows now "Existing Risers" + "New Risers".
+
 ### FEATURE: pole marker color + popup quick edit (2026-07, browser-verified, DEPLOY REQUESTED with UG version)
 UG VERSION (2026-07, browser-verified): Underground model + UndergroundUpdate get `marker_color`; UgPopupEditor in UG popups — Quick Edit Label/FID (ug-label-input / ug-fid-input / ug-quickedit-save) + same 6-color swatch row (ug-color-{hex}); itemColor honors u.marker_color (falls back aerial-blue/UG-green); UG Popup also closeOnClick/autoClose false. Verified: HH label+FID save, purple recolor live; seed HH-1 fid/color reset after test.
 - Pole model + PoleUpdate: new `marker_color` field. poleIcon/poleIconWithArrow parameterized with color (default #dc2626).
