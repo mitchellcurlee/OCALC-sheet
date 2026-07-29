@@ -42,7 +42,7 @@ import MapAnnotations from "@/components/MapAnnotations";
 
 const MAP_AERIAL_ADD_TYPES = ["Loop", "Aerial Splice", "Power", "X-Messenger"];
 
-const MARKER_COLOR_CHOICES = ["#dc2626", "#2563eb", "#16a34a", "#84cc16", "#ea580c", "#9333ea", "#facc15"];
+const MARKER_COLOR_CHOICES = ["#dc2626", "#2563eb", "#16a34a", "#39ff14", "#ea580c", "#ff6600", "#9333ea", "#facc15"];
 
 // Inline quick-edit + marker color picker shown inside underground attribute popups
 const UgPopupEditor = ({ item, defaultColor, onSaved }) => {
@@ -2578,10 +2578,10 @@ const JobMap = () => {
                 <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-red-600 border border-white inline-block flex-shrink-0"></span>Pole (Red)</div>
               )}
               {route.length > 0 && (
-                <div className="flex items-center gap-2 mt-0.5" data-testid="legend-fst"><span className="w-3 h-3 rounded-full border border-white inline-block flex-shrink-0" style={{ backgroundColor: "#84cc16" }}></span>FST (Lime Green)</div>
+                <div className="flex items-center gap-2 mt-0.5" data-testid="legend-fst"><span className="w-3 h-3 rounded-full border border-white inline-block flex-shrink-0" style={{ backgroundColor: "#39ff14" }}></span>FST (Neon Green)</div>
               )}
               {route.length > 0 && (
-                <div className="flex items-center gap-2 mt-0.5" data-testid="legend-fbt"><span className="w-3 h-3 rounded-full border border-white inline-block flex-shrink-0" style={{ backgroundColor: "#ea580c" }}></span>FBT (Orange)</div>
+                <div className="flex items-center gap-2 mt-0.5" data-testid="legend-fbt"><span className="w-3 h-3 rounded-full border border-white inline-block flex-shrink-0" style={{ backgroundColor: "#ff6600" }}></span>FBT (Neon Orange)</div>
               )}
               {route.length > 1 && (
                 <div className="flex items-center gap-2 mt-0.5"><span className="w-4 h-0.5 inline-block flex-shrink-0" style={{ backgroundColor: aerialColorHex }}></span>Aerial Path ({PATH_COLORS[aerialColor]?.name})</div>

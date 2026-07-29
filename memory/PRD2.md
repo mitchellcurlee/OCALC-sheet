@@ -34,7 +34,7 @@ UG VERSION (2026-07, browser-verified): Underground model + UndergroundUpdate ge
 - Verified: quick edit saved class 3/size 40 (API-confirmed), blue marker recolor visually confirmed; seed pole color reset to red after test.
 
 - LIME GREEN (2026-07, deployed): added #84cc16 to MARKER_COLOR_CHOICES (7 colors) for pole + UG popup pickers; verified both popups.
-- LEGEND FST/FBT (2026-07, screenshot-verified, preview-only until redeploy): interactive map legend now lists "FST (Lime Green)" + "FBT (Orange)" dots after Pole (Red) (legend-fst / legend-fbt testids) whenever poles exist.
+- LEGEND FST/FBT + NEON COLORS (2026-07, verified map screenshot + exhibit PNG, DEPLOY REQUESTED): MARKER_COLOR_CHOICES now 8 colors — lime replaced by Neon Green #39ff14, Neon Orange #ff6600 added. Map legend: "FST (Neon Green)" / "FBT (Neon Orange)" (legend-fst/legend-fbt). Exhibit legend (poleMapImage.js): new "dot" legend kind renders FST/FBT colored circles after Pole (Red).
 ### FEATURE: Add attribute from interactive map (2026-07, browser-verified, preview-only until redeploy)
 User choices: tap-to-place; menu has EVERYTHING (Pole + Aerial Loop/AS/Power/X-Mes + all UG types); opens the full form after placing.
 - JobMap header: green "Add" dropdown (map-add-dropdown-btn) before Edit Map — Add Pole (map-add-pole), Aerial section, Underground section (map-add-{type}); hidden while any edit/placing mode active.

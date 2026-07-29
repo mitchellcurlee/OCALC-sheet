@@ -751,6 +751,8 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
     const presentUg = [...new Set(ug.map((u) => u.type))];
     const legendLines = [];
     if (route.length) legendLines.push({ kind: "pole", text: "Pole (Red)" });
+    if (route.length) legendLines.push({ kind: "dot", color: "#39ff14", text: "FST (Neon Green)" });
+    if (route.length) legendLines.push({ kind: "dot", color: "#ff6600", text: "FBT (Neon Orange)" });
     if (route.length > 1) legendLines.push({ kind: "aerial", text: "Aerial Path (Blue)" });
     if (ug.length) legendLines.push({ kind: "ug", text: "Underground (Green)" });
     presentUg.forEach((t) => legendLines.push({ kind: "key", abbr: undergroundAbbr(t), text: t }));
@@ -780,8 +782,8 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
       ly += rowH;
       legendLines.forEach((ln) => {
         const sx = bx + 12 * s;
-        if (ln.kind === "pole") {
-          ctx.fillStyle = "#dc2626";
+        if (ln.kind === "pole" || ln.kind === "dot") {
+          ctx.fillStyle = ln.kind === "dot" ? ln.color : "#dc2626";
           ctx.beginPath();
           ctx.arc(sx + 7 * s, ly, 7 * s, 0, Math.PI * 2);
           ctx.fill();
