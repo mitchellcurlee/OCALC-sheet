@@ -834,10 +834,8 @@ const JobMap = () => {
 
   // ======== CONNECTION MANAGEMENT ========
   // Initialize default connections based on sort_order (matching job page order)
-  const initializeConnections = useCallback(async () => {
-    // Only initialize if no custom connections exist
-    if (connections.length > 0) return;
-    
+  // Build the default chain connections from current item order (no guard)
+  const buildDefaultConnections = useCallback(() => {
     // Combine all items (poles + underground) with their sort_order
     const allItems = [];
     
@@ -896,7 +894,13 @@ const JobMap = () => {
         connection_type: connectionType
       });
     }
-    
+    return defaultConnections;
+  }, [jobId, route, ug]);
+
+  const initializeConnections = useCallback(async () => {
+    // Only initialize if no custom connections exist
+    if (connections.length > 0) return;
+    const defaultConnections = buildDefaultConnections();
     if (defaultConnections.length > 0) {
       try {
         const response = await axios.post(`/jobs/${jobId}/connections/bulk`, defaultConnections);
@@ -905,7 +909,7 @@ const JobMap = () => {
         console.error("Failed to initialize connections:", e);
       }
     }
-  }, [jobId, route, ug, connections.length]);
+  }, [jobId, buildDefaultConnections, connections.length]);
 
   // Update a connection endpoint
   const handleConnectionUpdate = useCallback(async (connectionId, updates) => {
@@ -918,12 +922,12 @@ const JobMap = () => {
     }
   }, [jobId]);
 
-  // Delete a connection
+  // Delete a connection — mark as "removed" tombstone so the auto-chain doesn't redraw it
   const handleConnectionDelete = useCallback(async (connectionId) => {
     try {
-      await axios.delete(`/jobs/${jobId}/connections/${connectionId}`);
-      setConnections(prev => prev.filter(c => c.id !== connectionId));
-      toast.success("Connection deleted");
+      const response = await axios.put(`/jobs/${jobId}/connections/${connectionId}`, { connection_type: "removed" });
+      setConnections(prev => prev.map(c => c.id === connectionId ? response.data : c));
+      toast.success("Line deleted");
     } catch (e) {
       toast.error("Failed to delete connection");
     }
@@ -984,18 +988,16 @@ const JobMap = () => {
 
   // Reset connections to default (recomputed from current poles/underground)
   const resetConnections = useCallback(async () => {
-    // Delete all and reinitialize
+    // Replace all connections with the freshly computed default chain in ONE bulk call
     try {
-      await axios.post(`/jobs/${jobId}/connections/bulk`, []);
-      setConnections([]);
-      // Let next render trigger initialization
-      setTimeout(() => {
-        initializeConnections();
-      }, 100);
+      const defaults = buildDefaultConnections();
+      const response = await axios.post(`/jobs/${jobId}/connections/bulk`, defaults);
+      setConnections(response.data);
+      toast.success("Lines reset to default");
     } catch (e) {
       toast.error("Failed to reset connections");
     }
-  }, [jobId, initializeConnections]);
+  }, [jobId, buildDefaultConnections]);
 
   // All connectable items for the connection editor (sorted by sort_order)
   const allConnectableItems = useMemo(() => {
@@ -1788,7 +1790,7 @@ const JobMap = () => {
                                   {connections.map((c) => {
                                     const f = allConnectableItems.find((i) => i.id === c.from_item_id);
                                     const t = allConnectableItems.find((i) => i.id === c.to_item_id);
-                                    if (!f || !t) return null;
+                                    if (!f || !t || c.connection_type === 'removed') return null;
                                     return (
                                       <SelectItem key={c.id} value={c.id} data-testid={`conn-picker-item-${c.id}`}>
                                         {f.label} → {t.label}
@@ -2204,6 +2206,7 @@ const JobMap = () => {
                     const toItem = allConnectableItems.find(i => i.id === conn.to_item_id);
                     
                     if (!fromItem || !toItem) return null;
+                    if (conn.connection_type === 'removed') return null;
                     // Hide auto connections broken by an End Path toggle
                     const earlierItem = fromItem.sort_order <= toItem.sort_order ? fromItem : toItem;
                     if (conn.connection_type !== 'custom' && earlierItem.end_path) return null;

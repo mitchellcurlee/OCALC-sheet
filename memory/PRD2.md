@@ -26,6 +26,12 @@ Frontend:
 ### Culvert / Drainage Start / Drainage End + PFP job type — verified iteration_43, DEPLOY REQUESTED
 - options.py UNDERGROUND_TYPES + Excel UG_ABBR (CULV/DR-S/DR-E) in jobs.py export; frontend poleMapImage.js UNDERGROUND_ABBR; PhotoMarkupEditor markers (cyan #0891b2); JobDetail Add Attribute dropdown gets them via UNDERGROUND_TYPES; JobsList JOB_TYPES includes "PFP".
 
+### BUG FIX: can't delete auto-generated map lines (2026-07, browser-verified, preview-only until redeploy)
+Two root causes in JobMap/poleMapImage:
+1. Deleting a connection doc made its endpoints "unreferenced" → computeConnectionPairs' chain fallback instantly re-drew the line. FIX: delete now writes a `connection_type: "removed"` TOMBSTONE (PUT, not DELETE); computeConnectionPairs filters removed pairs from drawing but still counts their endpoints as referenced (no resurrection). JobMap render + picker skip removed. Exhibits/segmented ZIP/ASE inherit via shared computeConnectionPairs. "Reset lines" wipes tombstones → defaults return.
+2. "Reset lines" stale closure: it bulk-cleared docs then called an old initializeConnections whose `connections.length > 0` guard aborted → zero docs left, lines became untappable auto-chain visuals. FIX: extracted buildDefaultConnections(); resetConnections now bulk-POSTs the computed defaults in ONE call.
+Verified: 3 lines → delete → 2 (persists across reload, span list correct) → Reset → 3 back and editable.
+
 ### Pole save requirements removed (2026-07, curl+compile verified, preview-only until redeploy)
 - Pole Size and Condition are no longer required to save a pole: PoleBase fields now Optional (models/pole.py), PoleForm.jsx validation block + "*" labels removed. Excel export already guards missing values.
 

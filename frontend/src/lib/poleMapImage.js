@@ -202,7 +202,10 @@ export const computeConnectionPairs = (route, ug, connections = []) => {
   const pathItems = allItems.filter((it) => !it.standalone);
   let pairs = [];
   if (connections.length > 0) {
+    // "removed" tombstones: user deleted this auto line — draw nothing, but keep
+    // the endpoints counted as referenced so the chain fallback doesn't resurrect it
     pairs = connections
+      .filter((c) => c.connection_type !== "removed")
       .map((c) => ({ from: byId[c.from_item_id], to: byId[c.to_item_id], connType: c.connection_type }))
       .filter((p) => p.from && p.to && p.from.id !== p.to.id)
       .filter((p) => {
