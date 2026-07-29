@@ -26,6 +26,13 @@ Frontend:
 ### Culvert / Drainage Start / Drainage End + PFP job type — verified iteration_43, DEPLOY REQUESTED
 - options.py UNDERGROUND_TYPES + Excel UG_ABBR (CULV/DR-S/DR-E) in jobs.py export; frontend poleMapImage.js UNDERGROUND_ABBR; PhotoMarkupEditor markers (cyan #0891b2); JobDetail Add Attribute dropdown gets them via UNDERGROUND_TYPES; JobsList JOB_TYPES includes "PFP".
 
+### FEATURE: full editing of auto-generated map lines + Aerial/UG type switch (2026-07, browser-verified, preview-only until redeploy)
+User: auto-generated lines only offered color change; needed delete/move/type. Root cause: fallback chain pairs (items added after connections saved) had NO backing doc → not in picker, taps fell through to color handler.
+Fixes:
+1. initializeConnections now SYNCS on entering Edit Lines & Connections: creates docs for every drawn pair lacking one, tombstones ("removed") old non-custom docs straddling a newly added item (mirrors computeConnectionPairs skip-over rule), then refetches. Every visible line is now editable (move/delete/type/color).
+2. NEW `type_override` field ("aerial"|"underground") on Connection (+Create/Update models). conn-edit-panel has "Aerial (blue)" / "UG (green)" buttons (conn-type-aerial-btn / conn-type-underground-btn) with effective-type highlight. pairIsAerial + JobMap orderedSegments honor typeOverride → main map color, dash style, footage split (aerial vs UG), span list "(UG)" tags, exhibits and ASE all follow. Edit-overlay line color uses type_override first.
+Verified in browser: added mid-route item via API → edit mode picker listed both new chain lines, old straddling line gone; forced pole→HH line to Aerial → totals moved 178 ft UG→aerial. Seed job restored to original 3 connections after test.
+
 ### BUG FIX: can't delete auto-generated map lines (2026-07, browser-verified, preview-only until redeploy)
 Two root causes in JobMap/poleMapImage:
 1. Deleting a connection doc made its endpoints "unreferenced" → computeConnectionPairs' chain fallback instantly re-drew the line. FIX: delete now writes a `connection_type: "removed"` TOMBSTONE (PUT, not DELETE); computeConnectionPairs filters removed pairs from drawing but still counts their endpoints as referenced (no resurrection). JobMap render + picker skip removed. Exhibits/segmented ZIP/ASE inherit via shared computeConnectionPairs. "Reset lines" wipes tombstones → defaults return.

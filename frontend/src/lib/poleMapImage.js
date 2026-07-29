@@ -206,7 +206,7 @@ export const computeConnectionPairs = (route, ug, connections = []) => {
     // the endpoints counted as referenced so the chain fallback doesn't resurrect it
     pairs = connections
       .filter((c) => c.connection_type !== "removed")
-      .map((c) => ({ from: byId[c.from_item_id], to: byId[c.to_item_id], connType: c.connection_type }))
+      .map((c) => ({ from: byId[c.from_item_id], to: byId[c.to_item_id], connType: c.connection_type, typeOverride: c.type_override }))
       .filter((p) => p.from && p.to && p.from.id !== p.to.id)
       .filter((p) => {
         if (p.connType === "custom") return true;
@@ -246,6 +246,8 @@ export const computeConnectionPairs = (route, ug, connections = []) => {
 };
 
 export const pairIsAerial = (pr) => {
+  if (pr.typeOverride === "aerial") return true;
+  if (pr.typeOverride === "underground") return false;
   const aerialItem = (it) => it.type === "pole" || AERIAL_ATTR_TYPES.has(it.ugType);
   return aerialItem(pr.from) && aerialItem(pr.to);
 };

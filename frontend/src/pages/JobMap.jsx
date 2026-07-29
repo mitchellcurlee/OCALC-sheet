@@ -898,18 +898,60 @@ const JobMap = () => {
   }, [jobId, route, ug]);
 
   const initializeConnections = useCallback(async () => {
-    // Only initialize if no custom connections exist
-    if (connections.length > 0) return;
-    const defaultConnections = buildDefaultConnections();
-    if (defaultConnections.length > 0) {
-      try {
-        const response = await axios.post(`/jobs/${jobId}/connections/bulk`, defaultConnections);
-        setConnections(response.data);
-      } catch (e) {
-        console.error("Failed to initialize connections:", e);
+    if (connections.length === 0) {
+      const defaultConnections = buildDefaultConnections();
+      if (defaultConnections.length > 0) {
+        try {
+          const response = await axios.post(`/jobs/${jobId}/connections/bulk`, defaultConnections);
+          setConnections(response.data);
+        } catch (e) {
+          console.error("Failed to initialize connections:", e);
+        }
       }
+      return;
     }
-  }, [jobId, buildDefaultConnections, connections.length]);
+    // SYNC: make every auto-drawn line a real, editable connection record
+    try {
+      const pairs = computeConnectionPairs(route, ug, connections);
+      const pairKey = (a, b) => (a < b ? `${a}|${b}` : `${b}|${a}`);
+      const docKeys = new Set(connections.filter((c) => c.connection_type !== "removed").map((c) => pairKey(c.from_item_id, c.to_item_id)));
+      const isAerialItem = (it) => it.type === "pole" || AERIAL_ATTR_TYPES.has(it.ugType);
+      const creates = pairs
+        .filter((p) => !docKeys.has(pairKey(p.from.id, p.to.id)))
+        .map((p) => ({
+          job_id: jobId,
+          from_item_id: p.from.id,
+          from_item_type: p.from.type,
+          to_item_id: p.to.id,
+          to_item_type: p.to.type,
+          connection_type: isAerialItem(p.from) && isAerialItem(p.to) ? "aerial" : "underground",
+        }));
+      // Old direct lines currently hidden because a NEW item sits between their endpoints
+      // must be tombstoned, otherwise materializing the chain would make them reappear
+      const itemSort = {};
+      route.forEach((p) => { itemSort[p.id] = p.sort_order ?? Infinity; });
+      ug.forEach((u) => { itemSort[u.id] = u.sort_order ?? Infinity; });
+      const referenced = new Set();
+      connections.forEach((c) => { referenced.add(c.from_item_id); referenced.add(c.to_item_id); });
+      const unref = [...route, ...ug].filter((it) => it.standalone !== true && !referenced.has(it.id));
+      const hidden = connections.filter((c) => {
+        if (c.connection_type === "removed" || c.connection_type === "custom") return false;
+        const fs = itemSort[c.from_item_id], ts = itemSort[c.to_item_id];
+        if (fs === undefined || ts === undefined) return false;
+        const lo = Math.min(fs, ts), hi = Math.max(fs, ts);
+        return unref.some((it) => (it.sort_order ?? Infinity) > lo && (it.sort_order ?? Infinity) < hi);
+      });
+      if (creates.length === 0 && hidden.length === 0) return;
+      await Promise.all([
+        ...creates.map((c) => axios.post(`/jobs/${jobId}/connections`, c)),
+        ...hidden.map((c) => axios.put(`/jobs/${jobId}/connections/${c.id}`, { connection_type: "removed" })),
+      ]);
+      const res = await axios.get(`/jobs/${jobId}/connections`);
+      setConnections(res.data || []);
+    } catch (e) {
+      console.error("Failed to sync connections:", e);
+    }
+  }, [jobId, buildDefaultConnections, connections, route, ug]);
 
   // Update a connection endpoint
   const handleConnectionUpdate = useCallback(async (connectionId, updates) => {
@@ -1067,7 +1109,8 @@ const JobMap = () => {
     
     // Create segments from pairs
     const segments = [];
-    pairs.forEach(({ from: fromItem, to: toItem }) => {
+    pairs.forEach((pr) => {
+      const { from: fromItem, to: toItem } = pr;
       // Calculate distance
       const latDiff = (toItem.pos[0] - fromItem.pos[0]) * 364000;
       const lngDiff = (toItem.pos[1] - fromItem.pos[1]) * 288200;
@@ -1081,7 +1124,7 @@ const JobMap = () => {
       
       // Determine segment type and styling (Loop / Aerial Splice are aerial attributes)
       const aerialItem = (it) => it.type === "pole" || AERIAL_ATTR_TYPES.has(it.ugType);
-      const isAerial = aerialItem(fromItem) && aerialItem(toItem);
+      const isAerial = pr.typeOverride ? pr.typeOverride === "aerial" : (aerialItem(fromItem) && aerialItem(toItem));
       const hasUnderground = fromItem.type === "underground" || toItem.type === "underground";
       
       // Check if either item is MPOE or after MPOE
@@ -1774,6 +1817,16 @@ const JobMap = () => {
                         ) : selectedConn && conn ? (
                           <>
                             <div className="text-xs font-mono font-semibold" data-testid="conn-selected-label">{connLabel}</div>
+                            {(() => {
+                              const isA = (id) => route.some((p) => p.id === id) || AERIAL_ATTR_TYPES.has((ug.find((x) => x.id === id) || {}).type);
+                              const eff = conn.type_override || ((isA(conn.from_item_id) && isA(conn.to_item_id)) ? "aerial" : "underground");
+                              return (
+                                <div className="flex gap-2">
+                                  <Button size="sm" variant="outline" className={`flex-1 h-8 text-xs border-blue-300 text-blue-700 hover:bg-blue-50 ${eff === "aerial" ? "bg-blue-100 ring-1 ring-blue-400 font-bold" : ""}`} onClick={() => handleConnectionUpdate(conn.id, { type_override: "aerial" })} data-testid="conn-type-aerial-btn">Aerial (blue)</Button>
+                                  <Button size="sm" variant="outline" className={`flex-1 h-8 text-xs border-emerald-300 text-emerald-700 hover:bg-emerald-50 ${eff === "underground" ? "bg-emerald-100 ring-1 ring-emerald-400 font-bold" : ""}`} onClick={() => handleConnectionUpdate(conn.id, { type_override: "underground" })} data-testid="conn-type-underground-btn">UG (green)</Button>
+                                </div>
+                              );
+                            })()}
                             <Button size="sm" className="w-full h-8 text-xs bg-blue-600 hover:bg-blue-700 text-white" onClick={() => setReconnectSide("from")} data-testid="conn-move-start-btn">Move start (blue dot)</Button>
                             <Button size="sm" className="w-full h-8 text-xs bg-red-600 hover:bg-red-700 text-white" onClick={() => setReconnectSide("to")} data-testid="conn-move-end-btn">Move end (red dot)</Button>
                             <Button size="sm" variant="outline" className="w-full h-8 text-xs text-red-700 border-red-300 hover:bg-red-50" onClick={() => setConfirmDeleteConn(selectedConn)} data-testid="conn-delete-btn">Delete line</Button>

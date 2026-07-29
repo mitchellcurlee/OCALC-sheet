@@ -13,7 +13,8 @@ class Connection(BaseModel):
     from_item_type: str  # "pole" or "underground"
     to_item_id: str  # Target item ID (pole or underground)
     to_item_type: str  # "pole" or "underground"
-    connection_type: str = "aerial"  # "aerial", "underground", "custom"
+    connection_type: str = "aerial"  # "aerial", "underground", "custom", "removed"
+    type_override: Optional[str] = None  # user-forced "aerial" | "underground" classification
     waypoints: List[dict] = []  # Intermediate points [{lat, lng}]
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
@@ -27,6 +28,7 @@ class ConnectionCreate(BaseModel):
     to_item_id: str
     to_item_type: str
     connection_type: str = "aerial"
+    type_override: Optional[str] = None
     waypoints: List[dict] = []
 
 
@@ -38,3 +40,4 @@ class ConnectionUpdate(BaseModel):
     to_item_type: Optional[str] = None
     waypoints: Optional[List[dict]] = None
     connection_type: Optional[str] = None
+    type_override: Optional[str] = None
