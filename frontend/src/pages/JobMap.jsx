@@ -2577,6 +2577,12 @@ const JobMap = () => {
               {route.length > 0 && (
                 <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-red-600 border border-white inline-block flex-shrink-0"></span>Pole (Red)</div>
               )}
+              {route.length > 0 && (
+                <div className="flex items-center gap-2 mt-0.5" data-testid="legend-fst"><span className="w-3 h-3 rounded-full border border-white inline-block flex-shrink-0" style={{ backgroundColor: "#84cc16" }}></span>FST (Lime Green)</div>
+              )}
+              {route.length > 0 && (
+                <div className="flex items-center gap-2 mt-0.5" data-testid="legend-fbt"><span className="w-3 h-3 rounded-full border border-white inline-block flex-shrink-0" style={{ backgroundColor: "#ea580c" }}></span>FBT (Orange)</div>
+              )}
               {route.length > 1 && (
                 <div className="flex items-center gap-2 mt-0.5"><span className="w-4 h-0.5 inline-block flex-shrink-0" style={{ backgroundColor: aerialColorHex }}></span>Aerial Path ({PATH_COLORS[aerialColor]?.name})</div>
               )}
