@@ -42,7 +42,7 @@ import MapAnnotations from "@/components/MapAnnotations";
 
 const MAP_AERIAL_ADD_TYPES = ["Loop", "Aerial Splice", "Power", "X-Messenger"];
 
-const MARKER_COLOR_CHOICES = ["#dc2626", "#2563eb", "#16a34a", "#ea580c", "#9333ea", "#facc15"];
+const MARKER_COLOR_CHOICES = ["#dc2626", "#2563eb", "#16a34a", "#84cc16", "#ea580c", "#9333ea", "#facc15"];
 
 // Inline quick-edit + marker color picker shown inside underground attribute popups
 const UgPopupEditor = ({ item, defaultColor, onSaved }) => {
