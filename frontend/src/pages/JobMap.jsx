@@ -54,7 +54,8 @@ const PATH_COLORS = {
   green: { name: "Green", hex: "#16a34a" },
   orange: { name: "Orange", hex: "#ea580c" },
   purple: { name: "Purple", hex: "#9333ea" },
-  yellow: { name: "Yellow", hex: "#ca8a04" },
+  yellow: { name: "Yellow", hex: "#facc15" },
+  red: { name: "Red", hex: "#dc2626" },
 };
 
 // Default colors
