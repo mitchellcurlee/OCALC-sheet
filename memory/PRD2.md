@@ -32,6 +32,7 @@ User choices: tap-to-place; menu has EVERYTHING (Pole + Aerial Loop/AS/Power/X-M
 - Flow: pick type → emerald placing banner (placing-banner + placing-cancel-btn) → PlaceAttributeHandler (useMapEvents click) captures tap → navigates to /jobs/{id}/add?lat&lng (pole) or /jobs/{id}/underground/add?type&lat&lng.
 - UndergroundForm initial state reads lat/lng params; PoleForm new mount effect prefills lat/lng in create mode.
 - Verified: menu (30 items), banner, tap → UG form Type=Handhole + coords prefilled; pole form coords prefilled via direct URL.
+- RETURN TO MAP (2026-07, browser-verified): map placements append `&from=map`; AddPole + UndergroundForm backUrl → /jobs/{id}/map when from=map (back arrow AND post-save). E2E: placed+saved Handhole → landed back on map with marker chained. Deploy requested.
 
 ### FEATURE: full editing of auto-generated map lines + Aerial/UG type switch (2026-07, browser-verified, preview-only until redeploy)
 User: auto-generated lines only offered color change; needed delete/move/type. Root cause: fallback chain pairs (items added after connections saved) had NO backing doc → not in picker, taps fell through to color handler.

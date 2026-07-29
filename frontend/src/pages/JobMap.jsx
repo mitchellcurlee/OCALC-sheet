@@ -2057,9 +2057,9 @@ const JobMap = () => {
                     const t = placingType;
                     setPlacingType(null);
                     if (t === "__pole__") {
-                      navigate(`/jobs/${jobId}/add?lat=${lat}&lng=${lng}`);
+                      navigate(`/jobs/${jobId}/add?lat=${lat}&lng=${lng}&from=map`);
                     } else {
-                      navigate(`/jobs/${jobId}/underground/add?type=${encodeURIComponent(t)}&lat=${lat}&lng=${lng}`);
+                      navigate(`/jobs/${jobId}/underground/add?type=${encodeURIComponent(t)}&lat=${lat}&lng=${lng}&from=map`);
                     }
                   }}
                 />

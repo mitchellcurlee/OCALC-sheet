@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
 import { PoleForm } from "@/components/PoleForm";
@@ -7,8 +7,10 @@ import { PoleForm } from "@/components/PoleForm";
 const AddPole = () => {
   const navigate = useNavigate();
   const { jobId } = useParams();
+  const [searchParams] = useSearchParams();
   const [submitting, setSubmitting] = useState(false);
-  const backUrl = jobId ? `/jobs/${jobId}` : "/";
+  const fromMap = searchParams.get("from") === "map";
+  const backUrl = jobId ? (fromMap ? `/jobs/${jobId}/map` : `/jobs/${jobId}`) : "/";
 
   // Scroll to top when starting a new pole entry
   useEffect(() => {
