@@ -33,6 +33,7 @@ UG VERSION (2026-07, browser-verified): Underground model + UndergroundUpdate ge
 - CRITICAL FIX found during testing: Popup needed `closeOnClick={false} autoClose={false}` — otherwise clicking buttons inside the popup closed it (Leaflet map click-through). LESSON: any interactive pole/UG popup content needs these props.
 - Verified: quick edit saved class 3/size 40 (API-confirmed), blue marker recolor visually confirmed; seed pole color reset to red after test.
 
+- LIME GREEN (2026-07, deployed): added #84cc16 to MARKER_COLOR_CHOICES (7 colors) for pole + UG popup pickers; verified both popups.
 ### FEATURE: Add attribute from interactive map (2026-07, browser-verified, preview-only until redeploy)
 User choices: tap-to-place; menu has EVERYTHING (Pole + Aerial Loop/AS/Power/X-Mes + all UG types); opens the full form after placing.
 - JobMap header: green "Add" dropdown (map-add-dropdown-btn) before Edit Map — Add Pole (map-add-pole), Aerial section, Underground section (map-add-{type}); hidden while any edit/placing mode active.
