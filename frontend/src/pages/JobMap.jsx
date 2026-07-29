@@ -1560,6 +1560,9 @@ const JobMap = () => {
                   <DropdownMenuItem onClick={() => { setPlacingType("__pole__"); toast.info("Tap the map where the Pole goes"); }} data-testid="map-add-pole" className="cursor-pointer font-medium">
                     Add Pole
                   </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => { setPlacingType("__pole_terminal__"); toast.info("Tap the map where the Pole Terminal goes"); }} data-testid="map-add-pole-terminal" className="cursor-pointer font-medium">
+                    Add Pole Terminal
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuLabel className="text-xs text-zinc-500 uppercase tracking-wider">Aerial</DropdownMenuLabel>
                   {MAP_AERIAL_ADD_TYPES.map((t) => (
@@ -1808,7 +1811,7 @@ const JobMap = () => {
       <main className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-4">
         {placingType && (
           <div className="flex items-center justify-between gap-3 bg-emerald-600 text-white rounded-lg px-4 py-2.5 text-sm font-medium shadow" data-testid="placing-banner">
-            <span>Tap the map where the {placingType === "__pole__" ? "Pole" : placingType} goes — the form will open with that location filled in</span>
+            <span>Tap the map where the {placingType === "__pole__" ? "Pole" : placingType === "__pole_terminal__" ? "Pole Terminal" : placingType} goes — the form will open with that location filled in</span>
             <Button size="sm" variant="outline" className="h-7 text-xs bg-white text-zinc-900 hover:bg-zinc-100 border-0 shrink-0" onClick={() => setPlacingType(null)} data-testid="placing-cancel-btn">Cancel</Button>
           </div>
         )}
@@ -2058,6 +2061,8 @@ const JobMap = () => {
                     setPlacingType(null);
                     if (t === "__pole__") {
                       navigate(`/jobs/${jobId}/add?lat=${lat}&lng=${lng}&from=map`);
+                    } else if (t === "__pole_terminal__") {
+                      navigate(`/jobs/${jobId}/add?terminal=true&lat=${lat}&lng=${lng}&from=map`);
                     } else {
                       navigate(`/jobs/${jobId}/underground/add?type=${encodeURIComponent(t)}&lat=${lat}&lng=${lng}&from=map`);
                     }
