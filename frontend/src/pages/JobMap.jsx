@@ -1556,7 +1556,7 @@ const JobMap = () => {
                     <ChevronDown className="w-4 h-4 ml-2" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56 max-h-80 overflow-y-auto bg-white">
+                <DropdownMenuContent align="end" className="w-56 bg-white z-[1100]">
                   <DropdownMenuItem onClick={() => { setPlacingType("__pole__"); toast.info("Tap the map where the Pole goes"); }} data-testid="map-add-pole" className="cursor-pointer font-medium">
                     Add Pole
                   </DropdownMenuItem>
@@ -1564,19 +1564,26 @@ const JobMap = () => {
                     Add Pole Terminal
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuLabel className="text-xs text-zinc-500 uppercase tracking-wider">Aerial</DropdownMenuLabel>
-                  {MAP_AERIAL_ADD_TYPES.map((t) => (
-                    <DropdownMenuItem key={t} onClick={() => { setPlacingType(t); toast.info(`Tap the map where the ${t} goes`); }} data-testid={`map-add-${t}`} className="cursor-pointer">
-                      {t}
-                    </DropdownMenuItem>
-                  ))}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuLabel className="text-xs text-zinc-500 uppercase tracking-wider">Underground</DropdownMenuLabel>
-                  {UNDERGROUND_TYPES.filter((t) => !MAP_AERIAL_ADD_TYPES.includes(t)).map((t) => (
-                    <DropdownMenuItem key={t} onClick={() => { setPlacingType(t); toast.info(`Tap the map where the ${t} goes`); }} data-testid={`map-add-${t}`} className="cursor-pointer">
-                      {t}
-                    </DropdownMenuItem>
-                  ))}
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger className="cursor-pointer" data-testid="map-add-aerial-sub">Aerial Attribute</DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent className="w-52 bg-white z-[1100]">
+                      {MAP_AERIAL_ADD_TYPES.map((t) => (
+                        <DropdownMenuItem key={t} onClick={() => { setPlacingType(t); toast.info(`Tap the map where the ${t} goes`); }} data-testid={`map-add-${t}`} className="cursor-pointer">
+                          {t}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger className="cursor-pointer" data-testid="map-add-underground-sub">Underground Attribute</DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent className="w-52 max-h-72 overflow-y-auto bg-white z-[1100]">
+                      {UNDERGROUND_TYPES.filter((t) => !MAP_AERIAL_ADD_TYPES.includes(t)).map((t) => (
+                        <DropdownMenuItem key={t} onClick={() => { setPlacingType(t); toast.info(`Tap the map where the ${t} goes`); }} data-testid={`map-add-${t}`} className="cursor-pointer">
+                          {t}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
@@ -1596,7 +1603,7 @@ const JobMap = () => {
                       <ChevronDown className="w-4 h-4 ml-2" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56 bg-white">
+                  <DropdownMenuContent align="end" className="w-56 bg-white z-[1100]">
                     <DropdownMenuLabel className="text-xs text-zinc-500 uppercase tracking-wider">Path Colors</DropdownMenuLabel>
                     
                     {/* Aerial Path Color */}
