@@ -42,6 +42,86 @@ import MapAnnotations from "@/components/MapAnnotations";
 
 const MAP_AERIAL_ADD_TYPES = ["Loop", "Aerial Splice", "Power", "X-Messenger"];
 
+const MARKER_COLOR_CHOICES = ["#dc2626", "#2563eb", "#16a34a", "#ea580c", "#9333ea", "#facc15"];
+
+// Inline quick-edit + marker color picker shown inside the pole popup
+const PolePopupEditor = ({ pole, onSaved }) => {
+  const [editing, setEditing] = useState(false);
+  const [num, setNum] = useState(pole.pole_number || "");
+  const [cls, setCls] = useState(pole.pole_class || "");
+  const [size, setSize] = useState(pole.pole_size || "");
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const res = await axios.put(`/poles/${pole.id}`, { pole_number: num, pole_class: cls, pole_size: size });
+      onSaved(res.data);
+      toast.success("Pole updated");
+      setEditing(false);
+    } catch (e) {
+      toast.error("Failed to update pole");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const setColor = async (hex) => {
+    try {
+      const res = await axios.put(`/poles/${pole.id}`, { marker_color: hex });
+      onSaved(res.data);
+      toast.success("Marker color updated");
+    } catch (e) {
+      toast.error("Failed to update color");
+    }
+  };
+
+  const inputCls = "w-full h-7 px-2 text-xs border border-zinc-300 rounded bg-white text-zinc-900";
+  return (
+    <div className="mt-2 border-t border-zinc-200 pt-2 space-y-2">
+      {editing ? (
+        <div className="space-y-1.5" data-testid={`pole-quickedit-form-${pole.id}`}>
+          <div>
+            <label className="text-[10px] text-zinc-400 uppercase">Pole Number</label>
+            <input className={inputCls} value={num} onChange={(e) => setNum(e.target.value)} data-testid="pole-num-input" />
+          </div>
+          <div className="flex gap-1.5">
+            <div className="flex-1">
+              <label className="text-[10px] text-zinc-400 uppercase">Class</label>
+              <input className={inputCls} value={cls} onChange={(e) => setCls(e.target.value)} data-testid="pole-class-input" />
+            </div>
+            <div className="flex-1">
+              <label className="text-[10px] text-zinc-400 uppercase">Size (ft)</label>
+              <input className={inputCls} value={size} onChange={(e) => setSize(e.target.value)} data-testid="pole-size-input" />
+            </div>
+          </div>
+          <div className="flex gap-1.5">
+            <Button size="sm" className="flex-1 h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white" disabled={saving} onClick={save} data-testid="pole-quickedit-save">{saving ? "Saving…" : "Save"}</Button>
+            <Button size="sm" variant="outline" className="h-7 text-xs bg-zinc-100 border-zinc-300 text-zinc-900" onClick={() => setEditing(false)} data-testid="pole-quickedit-cancel">Cancel</Button>
+          </div>
+        </div>
+      ) : (
+        <Button size="sm" variant="outline" className="w-full h-7 text-xs bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900" onClick={() => setEditing(true)} data-testid={`pole-quickedit-btn-${pole.id}`}>Quick Edit #/Class/Size</Button>
+      )}
+      <div>
+        <div className="text-[10px] text-zinc-400 uppercase mb-1">Marker Color</div>
+        <div className="flex gap-1.5" data-testid={`pole-color-row-${pole.id}`}>
+          {MARKER_COLOR_CHOICES.map((hex) => (
+            <button
+              key={hex}
+              type="button"
+              onClick={() => setColor(hex)}
+              className={`w-5 h-5 rounded-full border-2 ${(pole.marker_color || "#dc2626") === hex ? "border-zinc-900 ring-2 ring-offset-1 ring-zinc-400" : "border-white shadow"}`}
+              style={{ backgroundColor: hex }}
+              data-testid={`pole-color-${hex.replace("#", "")}`}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Captures a single map tap while placing a new attribute
 const PlaceAttributeHandler = ({ onPlace }) => {
   useMapEvents({ click: (e) => onPlace(e.latlng) });
@@ -74,7 +154,7 @@ const formatRiserHeight = (value) => {
 };
 
 // Small red dot for pole marker with label on the side
-const poleIcon = (label, offsetDir = "right") => {
+const poleIcon = (label, offsetDir = "right", color = "#dc2626") => {
   // offsetDir: "right", "left", "top", "bottom" for label placement
   const dotSize = 8; // Smaller dot
   const labelOffset = offsetDir === "right" ? "left: 18px;" : 
@@ -86,8 +166,8 @@ const poleIcon = (label, offsetDir = "right") => {
     className: "pole-route-marker",
     html: `
       <div style="position:relative;">
-        <div style="background:#dc2626;border:1.5px solid #fff;border-radius:50%;width:${dotSize}px;height:${dotSize}px;box-shadow:0 1px 3px rgba(0,0,0,.4);"></div>
-        <div style="position:absolute;${labelOffset}top:50%;transform:translateY(-50%);background:#dc2626;color:#fff;border:1px solid #fff;border-radius:5px;padding:2px 5px;font:600 9px/1.2 ui-monospace,monospace;white-space:nowrap;box-shadow:0 1px 2px rgba(0,0,0,.3);">${label}</div>
+        <div style="background:${color};border:1.5px solid #fff;border-radius:50%;width:${dotSize}px;height:${dotSize}px;box-shadow:0 1px 3px rgba(0,0,0,.4);"></div>
+        <div style="position:absolute;${labelOffset}top:50%;transform:translateY(-50%);background:${color};color:#fff;border:1px solid #fff;border-radius:5px;padding:2px 5px;font:600 9px/1.2 ui-monospace,monospace;white-space:nowrap;box-shadow:0 1px 2px rgba(0,0,0,.3);">${label}</div>
       </div>
     `,
     iconSize: [dotSize, dotSize],
@@ -96,7 +176,7 @@ const poleIcon = (label, offsetDir = "right") => {
 };
 
 // Pole marker with arrow pointing to the dot (for clustered poles)
-const poleIconWithArrow = (label, arrowAngle, distance = 45) => {
+const poleIconWithArrow = (label, arrowAngle, distance = 45, color = "#dc2626") => {
   const dotSize = 8; // Smaller dot
   const rad = (arrowAngle * Math.PI) / 180;
   const labelX = Math.cos(rad) * distance;
@@ -106,11 +186,11 @@ const poleIconWithArrow = (label, arrowAngle, distance = 45) => {
     className: "pole-route-marker-arrow",
     html: `
       <div style="position:relative;">
-        <div style="background:#dc2626;border:1.5px solid #fff;border-radius:50%;width:${dotSize}px;height:${dotSize}px;box-shadow:0 1px 3px rgba(0,0,0,.4);"></div>
+        <div style="background:${color};border:1.5px solid #fff;border-radius:50%;width:${dotSize}px;height:${dotSize}px;box-shadow:0 1px 3px rgba(0,0,0,.4);"></div>
         <svg style="position:absolute;left:${dotSize/2}px;top:${dotSize/2}px;overflow:visible;pointer-events:none;" width="1" height="1">
-          <line x1="0" y1="0" x2="${labelX}" y2="${labelY}" stroke="#dc2626" stroke-width="1.5" stroke-dasharray="3,2"/>
+          <line x1="0" y1="0" x2="${labelX}" y2="${labelY}" stroke="${color}" stroke-width="1.5" stroke-dasharray="3,2"/>
         </svg>
-        <div style="position:absolute;left:${labelX + dotSize/2 - 20}px;top:${labelY + dotSize/2 - 10}px;background:#dc2626;color:#fff;border:1px solid #fff;border-radius:5px;padding:2px 5px;font:600 9px/1.2 ui-monospace,monospace;white-space:nowrap;box-shadow:0 1px 2px rgba(0,0,0,.3);">${label}</div>
+        <div style="position:absolute;left:${labelX + dotSize/2 - 20}px;top:${labelY + dotSize/2 - 10}px;background:${color};color:#fff;border:1px solid #fff;border-radius:5px;padding:2px 5px;font:600 9px/1.2 ui-monospace,monospace;white-space:nowrap;box-shadow:0 1px 2px rgba(0,0,0,.3);">${label}</div>
       </div>
     `,
     iconSize: [dotSize, dotSize],
@@ -2184,8 +2264,8 @@ const JobMap = () => {
                 // Hide pole number label when station numbers are active
                 const displayLabel = showStationNumbers ? "" : poleLabel;
                 const icon = p.isCluster 
-                  ? poleIconWithArrow(displayLabel, p.labelAngle, 45)
-                  : poleIcon(displayLabel, p.labelDir);
+                  ? poleIconWithArrow(displayLabel, p.labelAngle, 45, p.marker_color || "#dc2626")
+                  : poleIcon(displayLabel, p.labelDir, p.marker_color || "#dc2626");
                 return (
                   <React.Fragment key={p.id}>
                     <DraggableMarker 
@@ -2195,7 +2275,7 @@ const JobMap = () => {
                       onDragEnd={(lat, lng) => handlePoleDragEnd(p.id, lat, lng)}
                       zIndexOffset={positionEditMode ? 1500 : 0}
                     >
-                      <Popup>
+                      <Popup closeOnClick={false} autoClose={false}>
                         <div className="min-w-[180px] font-mono" data-testid={`pole-popup-${p.id}`}>
                           <div className="text-base font-bold text-zinc-900">{p.pole_number || "(unnumbered)"}</div>
                           {stationLabel && <div className="text-xs text-indigo-600 font-bold">Station: {stationLabel}</div>}
@@ -2214,6 +2294,12 @@ const JobMap = () => {
                                 <Button size="sm" variant="outline" className="w-full h-8 bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900" data-testid={`popup-edit-${p.id}`}>Edit</Button>
                               </Link>
                             </div>
+                          )}
+                          {!positionEditMode && (
+                            <PolePopupEditor
+                              pole={p}
+                              onSaved={(updated) => setPoles((prev) => prev.map((x) => (x.id === updated.id ? { ...x, ...updated } : x)))}
+                            />
                           )}
                           {positionEditMode && (
                             <div className="mt-2 text-xs text-green-600 font-medium">Drag marker to reposition</div>

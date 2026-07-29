@@ -26,6 +26,12 @@ Frontend:
 ### Culvert / Drainage Start / Drainage End + PFP job type — verified iteration_43, DEPLOY REQUESTED
 - options.py UNDERGROUND_TYPES + Excel UG_ABBR (CULV/DR-S/DR-E) in jobs.py export; frontend poleMapImage.js UNDERGROUND_ABBR; PhotoMarkupEditor markers (cyan #0891b2); JobDetail Add Attribute dropdown gets them via UNDERGROUND_TYPES; JobsList JOB_TYPES includes "PFP".
 
+### FEATURE: pole marker color + popup quick edit (2026-07, browser-verified, preview-only until redeploy)
+- Pole model + PoleUpdate: new `marker_color` field. poleIcon/poleIconWithArrow parameterized with color (default #dc2626).
+- Pole popup (JobMap): new PolePopupEditor component — "Quick Edit #/Class/Size" inline form (pole-num-input / pole-class-input / pole-size-input / pole-quickedit-save) PUTs /poles/{id} and updates poles state; "Marker Color" swatch row (6 colors, pole-color-{hex}) sets marker_color instantly (marker dot + label recolor live).
+- CRITICAL FIX found during testing: Popup needed `closeOnClick={false} autoClose={false}` — otherwise clicking buttons inside the popup closed it (Leaflet map click-through). LESSON: any interactive pole/UG popup content needs these props.
+- Verified: quick edit saved class 3/size 40 (API-confirmed), blue marker recolor visually confirmed; seed pole color reset to red after test.
+
 ### FEATURE: Add attribute from interactive map (2026-07, browser-verified, preview-only until redeploy)
 User choices: tap-to-place; menu has EVERYTHING (Pole + Aerial Loop/AS/Power/X-Mes + all UG types); opens the full form after placing.
 - JobMap header: green "Add" dropdown (map-add-dropdown-btn) before Edit Map — Add Pole (map-add-pole), Aerial section, Underground section (map-add-{type}); hidden while any edit/placing mode active.
