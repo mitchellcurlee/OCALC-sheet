@@ -44,6 +44,77 @@ const MAP_AERIAL_ADD_TYPES = ["Loop", "Aerial Splice", "Power", "X-Messenger"];
 
 const MARKER_COLOR_CHOICES = ["#dc2626", "#2563eb", "#16a34a", "#ea580c", "#9333ea", "#facc15"];
 
+// Inline quick-edit + marker color picker shown inside underground attribute popups
+const UgPopupEditor = ({ item, defaultColor, onSaved }) => {
+  const [editing, setEditing] = useState(false);
+  const [label, setLabel] = useState(item.label || "");
+  const [fid, setFid] = useState(item.fid || "");
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const res = await axios.put(`/underground/${item.id}`, { label, fid });
+      onSaved(res.data);
+      toast.success("Attribute updated");
+      setEditing(false);
+    } catch (e) {
+      toast.error("Failed to update attribute");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const setColor = async (hex) => {
+    try {
+      const res = await axios.put(`/underground/${item.id}`, { marker_color: hex });
+      onSaved(res.data);
+      toast.success("Marker color updated");
+    } catch (e) {
+      toast.error("Failed to update color");
+    }
+  };
+
+  const inputCls = "w-full h-7 px-2 text-xs border border-zinc-300 rounded bg-white text-zinc-900";
+  return (
+    <div className="mt-2 border-t border-zinc-200 pt-2 space-y-2">
+      {editing ? (
+        <div className="space-y-1.5" data-testid={`ug-quickedit-form-${item.id}`}>
+          <div>
+            <label className="text-[10px] text-zinc-400 uppercase">Label / ID</label>
+            <input className={inputCls} value={label} onChange={(e) => setLabel(e.target.value)} data-testid="ug-label-input" />
+          </div>
+          <div>
+            <label className="text-[10px] text-zinc-400 uppercase">FID</label>
+            <input className={inputCls} value={fid} onChange={(e) => setFid(e.target.value)} data-testid="ug-fid-input" />
+          </div>
+          <div className="flex gap-1.5">
+            <Button size="sm" className="flex-1 h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white" disabled={saving} onClick={save} data-testid="ug-quickedit-save">{saving ? "Saving…" : "Save"}</Button>
+            <Button size="sm" variant="outline" className="h-7 text-xs bg-zinc-100 border-zinc-300 text-zinc-900" onClick={() => setEditing(false)} data-testid="ug-quickedit-cancel">Cancel</Button>
+          </div>
+        </div>
+      ) : (
+        <Button size="sm" variant="outline" className="w-full h-7 text-xs bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900" onClick={() => setEditing(true)} data-testid={`ug-quickedit-btn-${item.id}`}>Quick Edit Label/FID</Button>
+      )}
+      <div>
+        <div className="text-[10px] text-zinc-400 uppercase mb-1">Marker Color</div>
+        <div className="flex gap-1.5" data-testid={`ug-color-row-${item.id}`}>
+          {MARKER_COLOR_CHOICES.map((hex) => (
+            <button
+              key={hex}
+              type="button"
+              onClick={() => setColor(hex)}
+              className={`w-5 h-5 rounded-full border-2 ${(item.marker_color || defaultColor) === hex ? "border-zinc-900 ring-2 ring-offset-1 ring-zinc-400" : "border-white shadow"}`}
+              style={{ backgroundColor: hex }}
+              data-testid={`ug-color-${hex.replace("#", "")}`}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Inline quick-edit + marker color picker shown inside the pole popup
 const PolePopupEditor = ({ pole, onSaved }) => {
   const [editing, setEditing] = useState(false);
@@ -2325,7 +2396,7 @@ const JobMap = () => {
                 const isRed = isMPOE || ugIsAfterMPOE;
                 const stationLabel = showStationNumbers && stationNumbers[u.id] ? stationNumbers[u.id] : null;
                 // Loop / Aerial Splice are aerial attributes — render them blue
-                const itemColor = AERIAL_ATTR_TYPES.has(u.type) ? "#2563eb" : undergroundColorHex;
+                const itemColor = u.marker_color || (AERIAL_ATTR_TYPES.has(u.type) ? "#2563eb" : undergroundColorHex);
                 // Hide underground type label when station numbers are active
                 const ugDisplayLabel = showStationNumbers ? "" : undergroundAbbr(u.type);
                 return (
@@ -2337,16 +2408,23 @@ const JobMap = () => {
                     onDragEnd={(lat, lng) => handleUndergroundDragEnd(u.id, lat, lng)}
                     zIndexOffset={positionEditMode ? 1500 : 0}
                   >
-                    <Popup>
+                    <Popup closeOnClick={false} autoClose={false}>
                       <div className="min-w-[170px] font-mono" data-testid={`ug-popup-${u.id}`}>
                         <div className="text-sm font-bold" style={{ color: isRed ? '#dc2626' : itemColor }}>{undergroundAbbr(u.type)} · {u.type}</div>
                         {stationLabel && <div className="text-xs text-indigo-600 font-bold">Station: {stationLabel}</div>}
                         {u.label && <div className="text-xs text-zinc-600 mt-1">{u.label}</div>}
                         {u.notes && <div className="text-xs text-zinc-500 mt-1">{u.notes}</div>}
                         {!positionEditMode && (
-                          <Link to={`/jobs/${jobId}/underground/edit/${u.id}`}>
-                            <Button size="sm" className="w-full h-8 mt-2 text-white" style={{ backgroundColor: isRed ? '#dc2626' : itemColor }} data-testid={`ug-edit-${u.id}`}>Edit</Button>
-                          </Link>
+                          <>
+                            <Link to={`/jobs/${jobId}/underground/edit/${u.id}`}>
+                              <Button size="sm" className="w-full h-8 mt-2 text-white" style={{ backgroundColor: isRed ? '#dc2626' : itemColor }} data-testid={`ug-edit-${u.id}`}>Edit</Button>
+                            </Link>
+                            <UgPopupEditor
+                              item={u}
+                              defaultColor={AERIAL_ATTR_TYPES.has(u.type) ? "#2563eb" : undergroundColorHex}
+                              onSaved={(updated) => setUnderground((prev) => prev.map((x) => (x.id === updated.id ? { ...x, ...updated } : x)))}
+                            />
+                          </>
                         )}
                         {positionEditMode && (
                           <div className="mt-2 text-xs font-medium" style={{ color: undergroundColorHex }}>Drag marker to reposition</div>
