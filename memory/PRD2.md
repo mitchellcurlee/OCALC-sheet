@@ -31,10 +31,9 @@ Frontend:
 - Classified AERIAL (blue markers, aerial footage). Verified: aerial submenu shows all 7; Eyebolt tap-to-placed → blue EB marker + legend auto-entry "EB Eyebolt (Aerial)"; test item cleaned up.
 - Markup editor stamps EB/PB/WH added (PhotoMarkupEditor MARKERS, blue #2563eb). DEPLOY REQUESTED for whole batch.
 
-### FEATURE: USGS basemap toggle (2026-07, browser-verified, DEPLOY REQUESTED)
-- JobMap: Esri | USGS button group top-right of map (basemap-toggle / basemap-esri-btn / basemap-usgs-btn); USGS tiles: basemap.nationalmap.gov USGSImageryOnly (maxNativeZoom 16); choice persisted in localStorage.
-- EXHIBITS HONOR SELECTION: /api/maps/static gained `source=esri|usgs` param (files.py, proxies USGS export service); downloadPoleMapImage/downloadSegmentedMapPages/generateSegmentPage accept `basemap`; JobMap passes it (FIX: had to add basemap to downloadImage/downloadSegmented useCallback deps — stale closure sent esri). Verified via exhibit PNG pixel diff.
-- Bing Maps ruled out (retired: free tier dead 6/2025, enterprise ends 2028 → Azure Maps w/ key). Google tiles offered as paid option, user chose free USGS.
+### FEATURE: USGS basemap toggle — REMOVED by user request (2026-07, screenshot-verified, removal preview-only until redeploy)
+- Toggle UI + basemap state removed from JobMap; Esri-only again; exhibits default source=esri. Backend /api/maps/static still accepts source param (harmless, unused).
+- History: was added+deployed, then user found it not useful and asked for removal.
 
 ### FEATURE: colored markers in exhibits (2026-07, verified via generated exhibit PNG, DEPLOY REQUESTED with riser fields)
 - Main exhibit (poleMapImage.js): pole dot/arrow/label use p.marker_color || red; UG squares use u.marker_color || green.

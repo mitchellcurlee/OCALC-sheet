@@ -403,7 +403,7 @@ const JobMap = () => {
   }, [showStationNumbers, jobId]);
   const [editMode, setEditMode] = useState(false);
   const [placingType, setPlacingType] = useState(null); // "__pole__" | "__pole_terminal__" | underground type name
-  const [basemap, setBasemap] = useState(() => localStorage.getItem("basemap") || "esri");
+  const basemap = "esri";
   const navigate = useNavigate();
   const [connectionEditMode, setConnectionEditMode] = useState(false);
   const [selectedConn, setSelectedConn] = useState(null);
@@ -2196,20 +2196,6 @@ const JobMap = () => {
                 </div>
               </div>
             )}
-            <div className="absolute top-2 right-2 z-[500] flex rounded-md overflow-hidden shadow border border-zinc-300 bg-white" data-testid="basemap-toggle">
-              <button
-                type="button"
-                onClick={() => { setBasemap("esri"); localStorage.setItem("basemap", "esri"); }}
-                className={`px-2.5 py-1 text-[11px] font-mono font-semibold ${basemap === "esri" ? "bg-zinc-900 text-white" : "bg-white text-zinc-700 hover:bg-zinc-100"}`}
-                data-testid="basemap-esri-btn"
-              >Esri</button>
-              <button
-                type="button"
-                onClick={() => { setBasemap("usgs"); localStorage.setItem("basemap", "usgs"); }}
-                className={`px-2.5 py-1 text-[11px] font-mono font-semibold border-l border-zinc-300 ${basemap === "usgs" ? "bg-zinc-900 text-white" : "bg-white text-zinc-700 hover:bg-zinc-100"}`}
-                data-testid="basemap-usgs-btn"
-              >USGS</button>
-            </div>
             <MapContainer 
               center={center} 
               zoom={18} 
@@ -2222,14 +2208,8 @@ const JobMap = () => {
               style={{ height: "100%", width: "100%" }} 
               className="z-0"
             >
-              {basemap === "usgs" ? (
-                <TileLayer key="usgs" url="https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}" attribution="&copy; USGS The National Map" maxNativeZoom={16} maxZoom={22} crossOrigin="anonymous" />
-              ) : (
-                <>
-                  <TileLayer key="esri" url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" attribution="&copy; Esri" maxNativeZoom={19} maxZoom={22} crossOrigin="anonymous" />
-                  <TileLayer key="esri-roads" url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}" maxNativeZoom={19} maxZoom={22} crossOrigin="anonymous" />
-                </>
-              )}
+              <TileLayer key="esri" url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" attribution="&copy; Esri" maxNativeZoom={19} maxZoom={22} crossOrigin="anonymous" />
+              <TileLayer key="esri-roads" url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}" maxNativeZoom={19} maxZoom={22} crossOrigin="anonymous" />
               <FitBounds points={allPoints} disabled={editMode} />
               <MapRefSetter mapRef={mapRef} />
               {placingType && (
