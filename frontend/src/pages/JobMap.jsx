@@ -1563,20 +1563,20 @@ const JobMap = () => {
   const downloadImage = useCallback(async () => {
     setDownloading(true);
     try {
-      await downloadPoleMapImage({ poles, job, showStops: false, underground, connections, routes: customRoutes });
+      await downloadPoleMapImage({ poles, job, showStops: false, underground, connections, routes: customRoutes, basemap });
     } finally {
       setDownloading(false);
     }
-  }, [poles, job, underground, connections, customRoutes]);
+  }, [poles, job, underground, connections, customRoutes, basemap]);
 
   const downloadSegmented = useCallback(async () => {
     setDownloading(true);
     try {
-      await downloadSegmentedMapPages({ poles, job, showStops: false, underground, connections, routes: customRoutes, targetFeet: 800 });
+      await downloadSegmentedMapPages({ poles, job, showStops: false, underground, connections, routes: customRoutes, targetFeet: 800, basemap });
     } finally {
       setDownloading(false);
     }
-  }, [poles, job, underground, connections, customRoutes]);
+  }, [poles, job, underground, connections, customRoutes, basemap]);
 
   // Screenshot the visible map frame using dom-to-image-more - captures entire app frame
   const captureMapScreenshot = useCallback(async () => {

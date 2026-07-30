@@ -370,7 +370,7 @@ export const buildSpanMeasurementTexts = ({ poles, underground = [], connections
 
 // Fetch a single satellite image (via backend proxy) and draw the annotated
 // pole-route exhibit, then trigger a PNG download. Returns true on success.
-export const downloadPoleMapImage = async ({ poles, job, showStops = false, underground = [], connections = [], routes = {} }) => {
+export const downloadPoleMapImage = async ({ poles, job, showStops = false, underground = [], connections = [], routes = {}, basemap = "esri" }) => {
   const { route, totalRiserFeet } = computeRoute(poles);
   const ug = ugWithGps(underground);
   // Mirror the live Job Map lines: custom connections + End Path breaks
@@ -430,7 +430,7 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
     }
 
     const res = await axios.get("/maps/static", {
-      params: { bbox: `${xmin},${ymin},${xmax},${ymax}`, size: `${mapW},${mapH}` },
+      params: { bbox: `${xmin},${ymin},${xmax},${ymax}`, size: `${mapW},${mapH}`, source: basemap || "esri" },
       responseType: "blob",
     });
     const imgUrl = URL.createObjectURL(res.data);
@@ -947,7 +947,7 @@ const splitPairsIntoPages = (pairSegs, targetFeet = 800) => {
 // Generate a single page image for a set of route pairs
 const generateSegmentPage = async ({ 
   pageNum, totalPages, pagePairs, pageItems, pageFootage,
-  startLabel, endLabel, job
+  startLabel, endLabel, job, basemap = "esri"
 }) => {
   const R = 6378137;
   const mercX = (lng) => ((lng * Math.PI) / 180) * R;
@@ -987,7 +987,7 @@ const generateSegmentPage = async ({
 
   // Fetch satellite image for this segment's bounds
   const res = await axios.get("/maps/static", {
-    params: { bbox: `${xmin},${ymin},${xmax},${ymax}`, size: `${mapW},${mapH}` },
+    params: { bbox: `${xmin},${ymin},${xmax},${ymax}`, size: `${mapW},${mapH}`, source: basemap || "esri" },
     responseType: "blob",
   });
   const imgUrl = URL.createObjectURL(res.data);
@@ -1352,7 +1352,7 @@ const generateMeasurementListImage = ({ pairSegs, route, totalRiserFeet, job, un
 // Download segmented map pages as a ZIP file with separate measurement list
 export const downloadSegmentedMapPages = async ({ 
   poles, job, showStops = false, underground = [], connections = [], routes = {},
-  targetFeet = 800 
+  targetFeet = 800, basemap = "esri" 
 }) => {
   const { route, totalRiserFeet } = computeRoute(poles);
   const ug = ugWithGps(underground);
@@ -1409,6 +1409,7 @@ export const downloadSegmentedMapPages = async ({
       const dataUrl = await generateSegmentPage({
         pageNum,
         totalPages,
+        basemap,
         pagePairs: page.pairs,
         pageItems,
         pageFootage: page.footage,

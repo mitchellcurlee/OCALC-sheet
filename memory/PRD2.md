@@ -26,8 +26,9 @@ Frontend:
 ### Culvert / Drainage Start / Drainage End + PFP job type — verified iteration_43, DEPLOY REQUESTED
 - options.py UNDERGROUND_TYPES + Excel UG_ABBR (CULV/DR-S/DR-E) in jobs.py export; frontend poleMapImage.js UNDERGROUND_ABBR; PhotoMarkupEditor markers (cyan #0891b2); JobDetail Add Attribute dropdown gets them via UNDERGROUND_TYPES; JobsList JOB_TYPES includes "PFP".
 
-### FEATURE: USGS basemap toggle (2026-07, browser-verified, preview-only until redeploy)
-- JobMap: Esri | USGS button group top-right of map (basemap-toggle / basemap-esri-btn / basemap-usgs-btn); USGS tiles: basemap.nationalmap.gov USGSImageryOnly (maxNativeZoom 16); choice persisted in localStorage. Downloaded exhibits still render Esri tiles (poleMapImage fetches Esri directly — not changed).
+### FEATURE: USGS basemap toggle (2026-07, browser-verified, DEPLOY REQUESTED)
+- JobMap: Esri | USGS button group top-right of map (basemap-toggle / basemap-esri-btn / basemap-usgs-btn); USGS tiles: basemap.nationalmap.gov USGSImageryOnly (maxNativeZoom 16); choice persisted in localStorage.
+- EXHIBITS HONOR SELECTION: /api/maps/static gained `source=esri|usgs` param (files.py, proxies USGS export service); downloadPoleMapImage/downloadSegmentedMapPages/generateSegmentPage accept `basemap`; JobMap passes it (FIX: had to add basemap to downloadImage/downloadSegmented useCallback deps — stale closure sent esri). Verified via exhibit PNG pixel diff.
 - Bing Maps ruled out (retired: free tier dead 6/2025, enterprise ends 2028 → Azure Maps w/ key). Google tiles offered as paid option, user chose free USGS.
 
 ### FEATURE: colored markers in exhibits (2026-07, verified via generated exhibit PNG, DEPLOY REQUESTED with riser fields)

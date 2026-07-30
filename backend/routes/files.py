@@ -68,17 +68,18 @@ async def serve_file(path: str):
 
 
 @router.get("/maps/static")
-async def maps_static(bbox: str, size: str = "1400,1050"):
-    """Proxy a single satellite image from the free Esri World Imagery export service."""
+async def maps_static(bbox: str, size: str = "1400,1050", source: str = "esri"):
+    """Proxy a single satellite image from Esri World Imagery or USGS Imagery export services."""
     if not re.fullmatch(r"-?\d+(\.\d+)?(,-?\d+(\.\d+)?){3}", bbox or ""):
         raise HTTPException(status_code=400, detail="Invalid bbox")
     m = re.fullmatch(r"(\d{2,4}),(\d{2,4})", size or "")
     if not m or int(m.group(1)) > 2048 or int(m.group(2)) > 2048:
         raise HTTPException(status_code=400, detail="Invalid size")
-    url = (
-        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export"
-        f"?bbox={bbox}&bboxSR=3857&imageSR=3857&size={size}&format=png&transparent=false&f=image"
-    )
+    if source == "usgs":
+        base = "https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/export"
+    else:
+        base = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export"
+    url = f"{base}?bbox={bbox}&bboxSR=3857&imageSR=3857&size={size}&format=png&transparent=false&f=image"
     try:
         resp = await asyncio.to_thread(lambda: requests.get(url, timeout=30))
         resp.raise_for_status()
