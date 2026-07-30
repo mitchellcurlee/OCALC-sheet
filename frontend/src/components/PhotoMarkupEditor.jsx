@@ -44,6 +44,9 @@ const UG_MARKERS = [
   { type: "CULV", label: "Culvert", color: "#0891b2" },
   { type: "DR-S", label: "Drainage Start", color: "#0891b2" },
   { type: "DR-E", label: "Drainage End", color: "#0891b2" },
+  { type: "EB", label: "Eyebolt", color: "#2563eb" },
+  { type: "PB", label: "Pullbox", color: "#2563eb" },
+  { type: "WH", label: "Weather Head", color: "#2563eb" },
 ];
 
 const LINE_COLORS = [

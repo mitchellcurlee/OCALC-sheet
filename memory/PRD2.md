@@ -29,6 +29,7 @@ Frontend:
 ### FEATURE: Eyebolt / Pullbox / Weather Head aerial attributes (2026-07, browser-verified, preview-only until redeploy)
 - Added to: options.py UNDERGROUND_TYPES; jobs.py Excel abbr map (EB/PB/WH); poleMapImage UNDERGROUND_ABBR + AERIAL_ATTR_TYPES (both files — JobMap has its own copy line ~283); MAP_AERIAL_ADD_TYPES (map Add menu); JobDetail aerial list + UG filter.
 - Classified AERIAL (blue markers, aerial footage). Verified: aerial submenu shows all 7; Eyebolt tap-to-placed → blue EB marker + legend auto-entry "EB Eyebolt (Aerial)"; test item cleaned up.
+- Markup editor stamps EB/PB/WH added (PhotoMarkupEditor MARKERS, blue #2563eb). DEPLOY REQUESTED for whole batch.
 
 ### FEATURE: USGS basemap toggle (2026-07, browser-verified, DEPLOY REQUESTED)
 - JobMap: Esri | USGS button group top-right of map (basemap-toggle / basemap-esri-btn / basemap-usgs-btn); USGS tiles: basemap.nationalmap.gov USGSImageryOnly (maxNativeZoom 16); choice persisted in localStorage.
