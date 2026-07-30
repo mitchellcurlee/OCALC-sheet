@@ -7,7 +7,7 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import domtoimage from "dom-to-image-more";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ChevronDown, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera, Hash, Link2, Move, Palette, Plus } from "lucide-react";
+import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ChevronDown, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera, Hash, Link2, Move, Palette, Plus, Map as MapIcon } from "lucide-react";
 import { computeRoute, fmtFeet, feetToStation, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, ugWithGps, undergroundAbbr, computeUgConnectors, computeConnectionPairs, UNDERGROUND_TYPES } from "@/lib/poleMapImage";
 import {
   DropdownMenu,
@@ -404,6 +404,12 @@ const JobMap = () => {
   const [editMode, setEditMode] = useState(false);
   const [placingType, setPlacingType] = useState(null); // "__pole__" | "__pole_terminal__" | underground type name
   const basemap = "esri";
+  const [mapLayer, setMapLayer] = useState(() => {
+    try { return localStorage.getItem('mapLayer') || 'aerial'; } catch (e) { return 'aerial'; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem('mapLayer', mapLayer); } catch (e) { /* ignore */ }
+  }, [mapLayer]);
   const navigate = useNavigate();
   const [connectionEditMode, setConnectionEditMode] = useState(false);
   const [selectedConn, setSelectedConn] = useState(null);
@@ -1675,6 +1681,10 @@ const JobMap = () => {
               <Crosshair className="w-4 h-4 mr-2" />
               Fit all
             </Button>
+            <Button onClick={() => setMapLayer((v) => (v === "street" ? "aerial" : "street"))} aria-pressed={mapLayer === "street"} variant="outline" className={mapLayer === "street" ? "bg-emerald-600 border-emerald-600 hover:bg-emerald-700 text-white" : "bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900"} data-testid="toggle-street-btn" title="Switch between aerial imagery and street map">
+              <MapIcon className="w-4 h-4 mr-2" />
+              {mapLayer === "street" ? "Street" : "Aerial"}
+            </Button>
             <Button onClick={() => setShowStationNumbers((v) => !v)} disabled={route.length === 0 && ug.length === 0} aria-pressed={showStationNumbers} variant="outline" className={showStationNumbers ? "bg-indigo-600 border-indigo-600 hover:bg-indigo-700 text-white" : "bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900"} data-testid="toggle-station-btn">
               <Hash className="w-4 h-4 mr-2" />
               Sta #{"'"}s
@@ -2208,8 +2218,14 @@ const JobMap = () => {
               style={{ height: "100%", width: "100%" }} 
               className="z-0"
             >
-              <TileLayer key="esri" url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" attribution="&copy; Esri" maxNativeZoom={19} maxZoom={22} crossOrigin="anonymous" />
-              <TileLayer key="esri-roads" url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}" maxNativeZoom={19} maxZoom={22} crossOrigin="anonymous" />
+              {mapLayer === "street" ? (
+                <TileLayer key="osm" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap contributors" maxNativeZoom={19} maxZoom={22} crossOrigin="anonymous" />
+              ) : (
+                <>
+                <TileLayer key="esri" url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" attribution="&copy; Esri" maxNativeZoom={19} maxZoom={22} crossOrigin="anonymous" />
+                <TileLayer key="esri-roads" url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}" maxNativeZoom={19} maxZoom={22} crossOrigin="anonymous" />
+                </>
+              )}
               <FitBounds points={allPoints} disabled={editMode} />
               <MapRefSetter mapRef={mapRef} />
               {placingType && (

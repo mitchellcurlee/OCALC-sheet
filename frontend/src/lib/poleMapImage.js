@@ -1222,6 +1222,52 @@ const generateSegmentPage = async ({
     ctx.fillText(abbr, x, y + 1 * s);
   });
 
+  // North arrow (top-right, below header)
+  const nax = mapW - 34 * s;
+  const nay = headerH + 30 * s;
+  ctx.fillStyle = "rgba(255,255,255,0.92)";
+  ctx.beginPath();
+  ctx.arc(nax, nay, 20 * s, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#dc2626";
+  ctx.beginPath();
+  ctx.moveTo(nax, nay - 12 * s);
+  ctx.lineTo(nax - 6 * s, nay + 4 * s);
+  ctx.lineTo(nax + 6 * s, nay + 4 * s);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = "#18181b";
+  ctx.font = `700 ${10 * s}px ui-monospace, monospace`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("N", nax, nay + 12 * s);
+
+  // Scale bar (bottom-left, above footer)
+  const segCenterLat = ((2 * Math.atan(Math.exp(((ymin + ymax) / 2) / R)) - Math.PI / 2) * 180) / Math.PI;
+  const segFeetPerPx = ((xmax - xmin) / mapW) * Math.cos((segCenterLat * Math.PI) / 180) * FEET_PER_METER;
+  const segTarget = segFeetPerPx * 110;
+  const segPw = Math.pow(10, Math.floor(Math.log10(segTarget)));
+  let segBarFeet = segPw;
+  [1, 2, 5, 10].forEach((m) => { const o = m * segPw; if (o <= segTarget) segBarFeet = o; });
+  const segBarPx = segBarFeet / segFeetPerPx;
+  const sbx2 = 16 * s;
+  const sby2 = headerH + mapH - 40 * s - 14 * s;
+  ctx.fillStyle = "rgba(255,255,255,0.9)";
+  ctx.fillRect(sbx2 - 6 * s, sby2 - 16 * s, segBarPx + 12 * s, 26 * s);
+  ctx.strokeStyle = "#18181b";
+  ctx.lineWidth = 2 * s;
+  ctx.beginPath();
+  ctx.moveTo(sbx2, sby2 - 6 * s);
+  ctx.lineTo(sbx2, sby2);
+  ctx.lineTo(sbx2 + segBarPx, sby2);
+  ctx.lineTo(sbx2 + segBarPx, sby2 - 6 * s);
+  ctx.stroke();
+  ctx.fillStyle = "#18181b";
+  ctx.font = `${10 * s}px ui-monospace, monospace`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "bottom";
+  ctx.fillText(fmtFeet(segBarFeet), sbx2 + segBarPx / 2, sby2 - 7 * s);
+
   // Add page footer with segment summary
   const footerH = 40 * s;
   const footerY = mapH + headerH - footerH;
