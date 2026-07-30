@@ -507,6 +507,7 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
             "SOC End": "SOC-E", "Riser": "RSR", "MPOE": "MPOE",
             "Aerial Splice": "AS", "Loop": "LOOP",
             "Culvert": "CULV", "Drainage Start": "DR-S", "Drainage End": "DR-E",
+            "Eyebolt": "EB", "Pullbox": "PB", "Weather Head": "WH",
         }
         ws.cell(row=current_row, column=1, value="UNDERGROUND").fill = header_fill
         ws.cell(row=current_row, column=1).font = header_font

@@ -40,7 +40,7 @@ import {
 import EditableRoute from "@/components/EditableRoute";
 import MapAnnotations from "@/components/MapAnnotations";
 
-const MAP_AERIAL_ADD_TYPES = ["Loop", "Aerial Splice", "Power", "X-Messenger"];
+const MAP_AERIAL_ADD_TYPES = ["Loop", "Aerial Splice", "Power", "X-Messenger", "Eyebolt", "Pullbox", "Weather Head"];
 
 const MARKER_COLOR_CHOICES = ["#dc2626", "#2563eb", "#16a34a", "#39ff14", "#ea580c", "#ff6600", "#9333ea", "#facc15"];
 
@@ -280,7 +280,7 @@ const arrowIcon = (deg) =>
 
 // Aerial footage pill with ORANGE dotted arrow pointing to segment (closer to span)
 // Attribute types treated as AERIAL (blue) on the map
-const AERIAL_ATTR_TYPES = new Set(["Loop", "Aerial Splice", "X-Messenger"]);
+const AERIAL_ATTR_TYPES = new Set(["Loop", "Aerial Splice", "X-Messenger", "Eyebolt", "Pullbox", "Weather Head"]);
 
 const numberBadgeIcon = (num, color = "#ea580c", anchor = [13, 13]) =>
   L.divIcon({

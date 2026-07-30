@@ -80,6 +80,9 @@ export const UNDERGROUND_ABBR = {
   Culvert: "CULV",
   "Drainage Start": "DR-S",
   "Drainage End": "DR-E",
+  Eyebolt: "EB",
+  Pullbox: "PB",
+  "Weather Head": "WH",
 };
 export const undergroundAbbr = (type) => UNDERGROUND_ABBR[type] || String(type || "").slice(0, 3).toUpperCase();
 export const UNDERGROUND_TYPES = Object.keys(UNDERGROUND_ABBR);
@@ -188,7 +191,7 @@ export const computeUgConnectors = (route, ug) => {
 };
 
 // Aerial attribute types (kept in sync with JobMap.jsx AERIAL_ATTR_TYPES)
-export const AERIAL_ATTR_TYPES = new Set(["Loop", "Aerial Splice", "X-Messenger"]);
+export const AERIAL_ATTR_TYPES = new Set(["Loop", "Aerial Splice", "X-Messenger", "Eyebolt", "Pullbox", "Weather Head"]);
 
 // Build map line pairs the same way the live Job Map does (custom connections + End Path breaks + standalone items)
 export const computeConnectionPairs = (route, ug, connections = []) => {
