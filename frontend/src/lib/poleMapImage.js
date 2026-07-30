@@ -329,7 +329,7 @@ export const buildSpanMeasurementTexts = ({ poles, underground = [], connections
     const c = parseInt(p?.risers) || 0, h = parseFloat(p?.riser_height) || 0;
     if (c > 0 && h > 0) {
       riserDone.add(it.id);
-      rows.push({ so: it.sort_order ?? Infinity, text: `${itemName(it)} Riser${c > 1 ? ` x${c}` : ""} = ${fmtFeet(c * h)}` });
+      rows.push({ so: it.sort_order ?? Infinity, text: `${itemName(it)} New Riser${c > 1 ? ` x${c}` : ""} = ${fmtFeet(c * h)}` });
     }
   };
   const pushPath = (it) => {
@@ -686,7 +686,7 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
     const titleParts = [`${fmtFeet(aerialFt)} aerial`];
     if (ugFt > 0) titleParts.push(`${fmtFeet(ugFt)} UG`);
     if (pathFt > 0) titleParts.push(`${fmtFeet(pathFt)} path`);
-    if (totalRiserFeet > 0) titleParts.push(`${fmtFeet(totalRiserFeet)} risers`);
+    if (totalRiserFeet > 0) titleParts.push(`${fmtFeet(totalRiserFeet)} new risers`);
     const title = `${job?.name || "Job"}  -  ${route.length} poles${ugPart}, ${titleParts.join(" + ")} = ${fmtFeet(grandFt)} total`;
     ctx.font = `700 ${13 * s}px ui-monospace, monospace`;
     const bw = ctx.measureText(title).width + 20 * s;

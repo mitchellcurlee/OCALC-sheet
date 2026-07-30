@@ -37,6 +37,7 @@ Frontend:
 - NOTE: pole/UG PUT handlers drop None values — marker_color cannot be unset via null, only overwritten (reset = set "#dc2626"/default hex).
 
 ### FEATURE: Existing Risers field + rename (2026-07, screenshot-verified, preview-only until redeploy)
+- NEW RISER LABELS (2026-07, screenshot-verified): totals + span list + popups + exhibits now say "new risers"/"New Riser" (JobMap header/total/popup/entry text; poleMapImage pushRiser, exhibit rows, exhibit title). Footage math unchanged — only `risers` (new) counts; existing_risers is informational only.
 - Pole form: "How Many Risers" → "How Many New Risers"; NEW "Existing Risers" dropdown (1-10, existing-risers-select) to its LEFT on the same row (Pole Terminal moved to full-width row above via sm:col-span-2).
 - Backend: `existing_risers` on PoleBase + PoleUpdate; Excel export rows now "Existing Risers" + "New Risers".
 

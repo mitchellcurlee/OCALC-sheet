@@ -1401,7 +1401,7 @@ const JobMap = () => {
       const r = riserInfo(item);
       if (r && !added.has(item.id)) {
         added.add(item.id);
-        entries.push({ kind: "riser", so: item.sort_order ?? Infinity, pos, text: `${poleName(item.label)} Riser${r.c > 1 ? ` ×${r.c}` : ""} = ${fmtFeet(r.c * r.h)}` });
+        entries.push({ kind: "riser", so: item.sort_order ?? Infinity, pos, text: `${poleName(item.label)} New Riser${r.c > 1 ? ` ×${r.c}` : ""} = ${fmtFeet(r.c * r.h)}` });
       }
     };
     const pathText = (u) => {
@@ -1665,7 +1665,7 @@ const JobMap = () => {
                 {job?.name || "Job"} — Pole Map
               </h1>
               <p className="text-xs font-mono text-zinc-500" data-testid="map-measurements-summary">
-                {route.length} pole(s){ug.length ? ` · ${ug.length} underground` : ""} · {fmtFeet(aerialFeetTotal)} aerial{ugFeet > 0 ? ` + ${fmtFeet(ugFeet)} underground` : ""}{totalRiserFeet > 0 ? ` + ${fmtFeet(totalRiserFeet)} risers` : ""}{pathFeet > 0 ? ` + ${fmtFeet(pathFeet)} path` : ""} = {fmtFeet(aerialFeetTotal + totalRiserFeet + ugFeet + pathFeet)} total
+                {route.length} pole(s){ug.length ? ` · ${ug.length} underground` : ""} · {fmtFeet(aerialFeetTotal)} aerial{ugFeet > 0 ? ` + ${fmtFeet(ugFeet)} underground` : ""}{totalRiserFeet > 0 ? ` + ${fmtFeet(totalRiserFeet)} new risers` : ""}{pathFeet > 0 ? ` + ${fmtFeet(pathFeet)} path` : ""} = {fmtFeet(aerialFeetTotal + totalRiserFeet + ugFeet + pathFeet)} total
                 {usingManualSpans && <span className="ml-2 text-indigo-600">(Manual)</span>}
               </p>
             </div>
@@ -2375,7 +2375,7 @@ const JobMap = () => {
                             <div><span className="text-zinc-400">Size:</span> {p.pole_size ? `${p.pole_size}'` : "—"}</div>
                             <div><span className="text-zinc-400">Class:</span> {p.pole_class || "—"}</div>
                             <div><span className="text-zinc-400">Condition:</span> {p.condition || "—"}</div>
-                            {p.risers && <div><span className="text-zinc-400">Risers:</span> {p.risers}{p.riser_height ? ` @ ${formatRiserHeight(p.riser_height)}` : ""}</div>}
+                            {p.risers && <div><span className="text-zinc-400">New Risers:</span> {p.risers}{p.riser_height ? ` @ ${formatRiserHeight(p.riser_height)}` : ""}</div>}
                           </div>
                           {!positionEditMode && (
                             <div className="mt-2 flex gap-2">
@@ -2666,7 +2666,7 @@ const JobMap = () => {
               ))}
             </ol>
             <div className="mt-3 pt-3 border-t border-zinc-300 font-mono text-sm font-bold text-zinc-900" data-testid="span-measurements-total">
-              Total: {fmtFeet(aerialFeetTotal)} aerial{ugFeet > 0 ? ` + ${fmtFeet(ugFeet)} underground` : ""}{totalRiserFeet > 0 ? ` + ${fmtFeet(totalRiserFeet)} risers` : ""}{pathFeet > 0 ? ` + ${fmtFeet(pathFeet)} path` : ""} = {fmtFeet(aerialFeetTotal + totalRiserFeet + ugFeet + pathFeet)}
+              Total: {fmtFeet(aerialFeetTotal)} aerial{ugFeet > 0 ? ` + ${fmtFeet(ugFeet)} underground` : ""}{totalRiserFeet > 0 ? ` + ${fmtFeet(totalRiserFeet)} new risers` : ""}{pathFeet > 0 ? ` + ${fmtFeet(pathFeet)} path` : ""} = {fmtFeet(aerialFeetTotal + totalRiserFeet + ugFeet + pathFeet)}
             </div>
           </div>
         )}
