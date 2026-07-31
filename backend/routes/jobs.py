@@ -76,6 +76,27 @@ async def can_access_job(job_id: str, current_user: dict) -> dict:
         return await _db.jobs.find_one({"id": job_id, "user_id": current_user["id"]}, {"_id": 0})
 
 
+_COMPANY_DOMAINS = ("@mastec.com", "@byers.com", "@mastecbyers.com")
+
+
+def _is_company_email(email: str) -> bool:
+    return (email or "").lower().endswith(_COMPANY_DOMAINS)
+
+
+async def can_view_job(job_id: str, current_user: dict) -> dict:
+    """Read-only access: owners/admins, plus any company user for company-owned jobs"""
+    job = await can_access_job(job_id, current_user)
+    if job:
+        return job
+    if _is_company_email(current_user.get("email")):
+        job = await _db.jobs.find_one({"id": job_id}, {"_id": 0})
+        if job:
+            owner = await _db.users.find_one({"id": job.get("user_id")}, {"_id": 0, "email": 1})
+            if owner and _is_company_email(owner.get("email")):
+                return job
+    return None
+
+
 @router.post("/jobs", response_model=Job)
 async def create_job(job_data: JobCreate, current_user: dict = Depends(get_current_user)):
     """Create a new job"""
@@ -167,7 +188,7 @@ async def get_jobs(current_user: dict = Depends(get_current_user)):
 @router.get("/jobs/{job_id}", response_model=Job)
 async def get_job(job_id: str, current_user: dict = Depends(get_current_user)):
     """Get a specific job"""
-    job = await can_access_job(job_id, current_user)
+    job = await can_view_job(job_id, current_user)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
     job["pole_count"] = await _db.poles.count_documents({"job_id": job_id})
@@ -213,10 +234,7 @@ async def get_job_poles(job_id: str, current_user: dict = Depends(get_current_us
     """Get all poles for a specific job"""
     from routes.poles import convert_legacy_photos
     
-    if is_admin_user(current_user):
-        job = await _db.jobs.find_one({"id": job_id})
-    else:
-        job = await _db.jobs.find_one({"id": job_id, "user_id": current_user["id"]})
+    job = await can_view_job(job_id, current_user)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
     
