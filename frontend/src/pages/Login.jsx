@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import { Zap, Loader2, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 
 const Login = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login } = useAuth();
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -32,7 +33,7 @@ const Login = () => {
     try {
       await login(email, password);
       toast.success('Login successful!');
-      navigate('/');
+      navigate(location.state?.from || '/');
     } catch (error) {
       console.error('Login error:', error);
       const message = error.response?.data?.detail || error.message || 'Login failed. Please check your credentials.';
