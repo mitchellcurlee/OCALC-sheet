@@ -575,6 +575,26 @@ const JobMap = () => {
     }
   };
 
+  const saveSpanOrderSync = async (items) => {
+    setSavingOrder(true);
+    try {
+      await axios.put(`/jobs/${jobId}/reorder-items`, items.map((it, i) => ({ id: it.id, type: it._type, sort_order: i })));
+      // Rebuild default connections around the new order: keep only user-drawn custom lines
+      const customs = connections
+        .filter((c) => c.connection_type === "custom")
+        .map((c) => ({ job_id: jobId, from_item_id: c.from_item_id, from_item_type: c.from_item_type, to_item_id: c.to_item_id, to_item_type: c.to_item_type, connection_type: c.connection_type, type_override: c.type_override || null, waypoints: c.waypoints || [] }));
+      await axios.post(`/jobs/${jobId}/connections/bulk`, customs);
+      const syncRes = await axios.post(`/jobs/${jobId}/sync-map-distances`);
+      toast.success(`Order saved, lines synced${syncRes.data?.updated ? ` & ${syncRes.data.updated} distances updated` : ""}`);
+      setSpanReorder(false);
+      await fetchData();
+    } catch (e) {
+      toast.error("Failed to save and sync");
+    } finally {
+      setSavingOrder(false);
+    }
+  };
+
 
   const { route, missing, segments, totalFeet, totalRiserFeet, grandTotalFeet, usingManualSpans } = useMemo(() => computeRoute(poles), [poles]);
   const ug = useMemo(() => ugWithGps(underground), [underground]);
@@ -2697,7 +2717,7 @@ const JobMap = () => {
               )}
             </div>
             {spanReorder ? (
-              <SpanReorderList initialItems={combinedOrderItems()} onSave={saveSpanOrder} onCancel={() => setSpanReorder(false)} saving={savingOrder} />
+              <SpanReorderList initialItems={combinedOrderItems()} onSave={saveSpanOrder} onSaveSync={saveSpanOrderSync} onCancel={() => setSpanReorder(false)} saving={savingOrder} />
             ) : (
             <ol className="space-y-1 font-mono text-sm text-zinc-800">
               {measurementEntries.map((e) => (

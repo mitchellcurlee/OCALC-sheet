@@ -2,7 +2,7 @@ import { useState } from "react";
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Loader2, Check, X, Zap } from "lucide-react";
+import { GripVertical, Loader2, Check, X, Zap, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { undergroundAbbr } from "@/lib/poleMapImage";
 
@@ -32,7 +32,7 @@ const Row = ({ item, index }) => {
   );
 };
 
-export const SpanReorderList = ({ initialItems, onSave, onCancel, saving }) => {
+export const SpanReorderList = ({ initialItems, onSave, onSaveSync, onCancel, saving }) => {
   const [items, setItems] = useState(initialItems);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   const handleDragEnd = ({ active, over }) => {
@@ -54,6 +54,9 @@ export const SpanReorderList = ({ initialItems, onSave, onCancel, saving }) => {
         <Button variant="outline" size="sm" onClick={onCancel} disabled={saving} className="bg-white" data-testid="span-reorder-cancel-btn"><X className="w-4 h-4 mr-1" />Cancel</Button>
         <Button size="sm" onClick={() => onSave(items)} disabled={saving} className="bg-green-600 hover:bg-green-700 text-white" data-testid="span-reorder-save-btn">
           {saving ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Check className="w-4 h-4 mr-1" />}Save Order
+        </Button>
+        <Button size="sm" onClick={() => onSaveSync(items)} disabled={saving} className="bg-blue-600 hover:bg-blue-700 text-white" title="Save order, rebuild default connection lines to match it, and re-sync span distances from GPS" data-testid="span-reorder-save-sync-btn">
+          {saving ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-1" />}Save &amp; Sync
         </Button>
       </div>
     </div>
