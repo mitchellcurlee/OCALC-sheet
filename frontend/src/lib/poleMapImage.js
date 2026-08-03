@@ -652,7 +652,7 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
       const w = Math.max(h, tw + 12 * s);
       const rx = x - w / 2;
       const ry = y - h / 2;
-      ctx.fillStyle = u.marker_color || (isAerialAttr(u) ? "#2563eb" : "#16a34a");
+      ctx.fillStyle = u.marker_color || (u.aerial_override === "neutral" ? "#9333ea" : isAerialAttr(u) ? "#2563eb" : "#16a34a");
       ctx.strokeStyle = "#ffffff";
       ctx.lineWidth = 2 * s;
       ctx.beginPath();
@@ -794,14 +794,16 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
     ctx.textBaseline = "bottom";
     ctx.fillText(fmtFeet(barFeet), sbx + barPx / 2, sby - 7 * s);
 
-    // 7b) Legend (bottom-right of map): red pole, blue aerial, green underground
+    // 7b) Legend (bottom-right of map): only what's in use
     const presentUg = [...new Set(ug.map((u) => u.type))];
+    const colorInUse = (hex) => route.some((p) => p.marker_color === hex) || ug.some((u) => u.marker_color === hex);
     const legendLines = [];
     if (route.length) legendLines.push({ kind: "pole", text: "Pole (Red)" });
-    if (route.length) legendLines.push({ kind: "dot", color: "#39ff14", text: "FST (Neon Green)" });
-    if (route.length) legendLines.push({ kind: "dot", color: "#ff6600", text: "FBT (Neon Orange)" });
-    if (route.length > 1) legendLines.push({ kind: "aerial", text: "Aerial Path (Blue)" });
-    if (ug.length) legendLines.push({ kind: "ug", text: "Underground (Green)" });
+    if (colorInUse("#39ff14")) legendLines.push({ kind: "dot", color: "#39ff14", text: "FST (Neon Green)" });
+    if (colorInUse("#ff6600")) legendLines.push({ kind: "dot", color: "#ff6600", text: "FBT (Neon Orange)" });
+    if (ug.some((u) => u.aerial_override === "neutral")) legendLines.push({ kind: "dot", color: "#9333ea", text: "Neutral (Purple)" });
+    if (pairSegs.some((sg) => sg.aerial)) legendLines.push({ kind: "aerial", text: "Aerial Path (Blue)" });
+    if (pairSegs.some((sg) => !sg.aerial)) legendLines.push({ kind: "ug", text: "Underground (Green)" });
     presentUg.forEach((t) => legendLines.push({ kind: "key", abbr: undergroundAbbr(t), text: t }));
     if (legendLines.length) {
       ctx.font = `${11 * s}px ui-monospace, monospace`;

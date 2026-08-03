@@ -41,7 +41,7 @@ import {
 import EditableRoute from "@/components/EditableRoute";
 import MapAnnotations from "@/components/MapAnnotations";
 
-const MAP_AERIAL_ADD_TYPES = ["Loop", "Aerial Splice", "Power", "X-Messenger", "Eyebolt", "Pullbox", "Weather Head", "Aerial NTE", "Aerial PI", "Aerial FBT"];
+const MAP_AERIAL_ADD_TYPES = ["Loop", "Aerial Splice", "Power", "X-Messenger", "Eyebolt", "Pullbox", "Weather Head"];
 
 const MARKER_COLOR_CHOICES = ["#dc2626", "#2563eb", "#16a34a", "#39ff14", "#ea580c", "#ff6600", "#9333ea", "#facc15"];
 
@@ -2442,7 +2442,7 @@ const JobMap = () => {
                       onDragEnd={(lat, lng) => handlePoleDragEnd(p.id, lat, lng)}
                       zIndexOffset={positionEditMode ? 1500 : 0}
                     >
-                      <Popup closeOnClick={false} autoClose={false}>
+                      <Popup>
                         <div className="min-w-[180px] font-mono" data-testid={`pole-popup-${p.id}`}>
                           <div className="text-base font-bold text-zinc-900">{p.pole_number || "(unnumbered)"}</div>
                           {stationLabel && <div className="text-xs text-indigo-600 font-bold">Station: {stationLabel}</div>}
@@ -2492,7 +2492,7 @@ const JobMap = () => {
                 const isRed = isMPOE || ugIsAfterMPOE;
                 const stationLabel = showStationNumbers && stationNumbers[u.id] ? stationNumbers[u.id] : null;
                 // Loop / Aerial Splice are aerial attributes — render them blue
-                const itemColor = u.marker_color || (isAerialAttr(u) ? "#2563eb" : undergroundColorHex);
+                const itemColor = u.marker_color || (u.aerial_override === "neutral" ? "#9333ea" : isAerialAttr(u) ? "#2563eb" : undergroundColorHex);
                 // Hide underground type label when station numbers are active
                 const ugDisplayLabel = showStationNumbers ? "" : undergroundAbbr(u.type);
                 return (
@@ -2504,7 +2504,7 @@ const JobMap = () => {
                     onDragEnd={(lat, lng) => handleUndergroundDragEnd(u.id, lat, lng)}
                     zIndexOffset={positionEditMode ? 1500 : 0}
                   >
-                    <Popup closeOnClick={false} autoClose={false}>
+                    <Popup>
                       <div className="min-w-[170px] font-mono" data-testid={`ug-popup-${u.id}`}>
                         <div className="text-sm font-bold" style={{ color: isRed ? '#dc2626' : itemColor }}>{undergroundAbbr(u.type)} · {u.type}</div>
                         {stationLabel && <div className="text-xs text-indigo-600 font-bold">Station: {stationLabel}</div>}
@@ -2517,7 +2517,7 @@ const JobMap = () => {
                             </Link>
                             <UgPopupEditor
                               item={u}
-                              defaultColor={isAerialAttr(u) ? "#2563eb" : undergroundColorHex}
+                              defaultColor={u.aerial_override === "neutral" ? "#9333ea" : isAerialAttr(u) ? "#2563eb" : undergroundColorHex}
                               onSaved={(updated) => setUnderground((prev) => prev.map((x) => (x.id === updated.id ? { ...x, ...updated } : x)))}
                             />
                           </>
@@ -2673,16 +2673,19 @@ const JobMap = () => {
               {route.length > 0 && (
                 <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-red-600 border border-white inline-block flex-shrink-0"></span>Pole (Red)</div>
               )}
-              {route.length > 0 && (
+              {(poles.some((p) => p.marker_color === "#39ff14") || underground.some((u) => u.marker_color === "#39ff14")) && (
                 <div className="flex items-center gap-2 mt-0.5" data-testid="legend-fst"><span className="w-3 h-3 rounded-full border border-white inline-block flex-shrink-0" style={{ backgroundColor: "#39ff14" }}></span>FST (Neon Green)</div>
               )}
-              {route.length > 0 && (
+              {(poles.some((p) => p.marker_color === "#ff6600") || underground.some((u) => u.marker_color === "#ff6600")) && (
                 <div className="flex items-center gap-2 mt-0.5" data-testid="legend-fbt"><span className="w-3 h-3 rounded-full border border-white inline-block flex-shrink-0" style={{ backgroundColor: "#ff6600" }}></span>FBT (Neon Orange)</div>
               )}
-              {route.length > 1 && (
+              {underground.some((u) => u.aerial_override === "neutral") && (
+                <div className="flex items-center gap-2 mt-0.5" data-testid="legend-neutral"><span className="w-3 h-3 rounded-full border border-white inline-block flex-shrink-0" style={{ backgroundColor: "#9333ea" }}></span>Neutral (Purple)</div>
+              )}
+              {orderedSegments.some((s) => s.isAerial) && (
                 <div className="flex items-center gap-2 mt-0.5"><span className="w-4 h-0.5 inline-block flex-shrink-0" style={{ backgroundColor: aerialColorHex }}></span>Aerial Path ({PATH_COLORS[aerialColor]?.name})</div>
               )}
-              {ug.length > 0 && (
+              {orderedSegments.some((s) => !s.isAerial) && (
                 <div className="flex items-center gap-2 mt-0.5"><span className="w-3 h-3 border border-white inline-block flex-shrink-0" style={{ backgroundColor: undergroundColorHex }}></span>Underground ({PATH_COLORS[undergroundColor]?.name})</div>
               )}
               {annotations.filter(a => a.type === "note").length > 0 && (
