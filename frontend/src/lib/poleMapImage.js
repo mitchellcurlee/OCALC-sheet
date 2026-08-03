@@ -313,21 +313,30 @@ export const buildSpanMeasurementTexts = ({ poles, underground = [], connections
     ? (/^\d/.test(String(it.label || "")) ? `P${it.label}` : (it.label || "Pole"))
     : `${undergroundAbbr(it.ugType)}${it.label && it.label !== it.ugType ? ` ${it.label}` : ""}`;
 
-  // Cumulative station numbers per item (matches the map's Sta #'s toggle)
+  // Cumulative station numbers per item (matches the map's Sta #'s toggle).
+  // New-riser footage advances the chainage after its pole.
   const stations = {};
+  const riserStations = {};
   if (includeStations) {
     const all = [
-      ...ug.map((u) => ({ id: u.id, pos: u.pos, so: u.sort_order ?? Infinity })),
-      ...route.map((p) => ({ id: p.id, pos: p.pos, so: p.sort_order ?? Infinity })),
+      ...ug.map((u) => ({ id: u.id, pos: u.pos, so: u.sort_order ?? Infinity, riserFeet: 0 })),
+      ...route.map((p) => ({ id: p.id, pos: p.pos, so: p.sort_order ?? Infinity, riserFeet: (parseInt(p.risers) || 0) * (parseFloat(p.riser_height) || 0) })),
     ].sort((a, b) => a.so - b.so);
     let run = 0, prev = null;
     all.forEach((it) => {
       if (prev) run += distanceFeet(prev.pos, it.pos);
       stations[it.id] = feetToStation(run);
+      if (it.riserFeet > 0) {
+        run += it.riserFeet;
+        riserStations[it.id] = feetToStation(run);
+      }
       prev = it;
     });
   }
-  const nameWithSta = (it) => `${itemName(it)}${includeStations && stations[it.id] ? ` ${stations[it.id]}` : ""}`;
+  const nameWithSta = (it, departure = false) => {
+    const sta = departure ? (riserStations[it.id] || stations[it.id]) : stations[it.id];
+    return `${itemName(it)}${includeStations && sta ? ` ${sta}` : ""}`;
+  };
 
   const rows = [];
   const riserDone = new Set();
@@ -342,7 +351,12 @@ export const buildSpanMeasurementTexts = ({ poles, underground = [], connections
     const c = parseInt(p?.risers) || 0, h = parseFloat(p?.riser_height) || 0;
     if (c > 0 && h > 0) {
       riserDone.add(it.id);
-      rows.push({ so: it.sort_order ?? Infinity, text: `${itemName(it)} New Riser${c > 1 ? ` x${c}` : ""} = ${fmtFeet(c * h)}` });
+      rows.push({
+        so: it.sort_order ?? Infinity,
+        text: stationsOnly
+          ? `${itemName(it)} New Riser${c > 1 ? ` x${c}` : ""} ${riserStations[it.id] || stations[it.id] || ""}`.trim()
+          : `${itemName(it)} New Riser${c > 1 ? ` x${c}` : ""} = ${fmtFeet(c * h)}`,
+      });
     }
   };
   const pushPath = (it) => {
@@ -359,8 +373,8 @@ export const buildSpanMeasurementTexts = ({ poles, underground = [], connections
       rows.push({
         so: pr.from.sort_order ?? Infinity,
         text: stationsOnly
-          ? `${nameWithSta(pr.from)} to ${nameWithSta(pr.to)}${pairIsAerial(pr) ? "" : " (UG)"}`
-          : `${nameWithSta(pr.from)} to ${nameWithSta(pr.to)} = ${fmtFeet(pathFeet(segPath(pr, routes)))}${pairIsAerial(pr) ? "" : " (UG)"}`,
+          ? `${nameWithSta(pr.from, true)} to ${nameWithSta(pr.to)}${pairIsAerial(pr) ? "" : " (UG)"}`
+          : `${nameWithSta(pr.from, true)} to ${nameWithSta(pr.to)} = ${fmtFeet(pathFeet(segPath(pr, routes)))}${pairIsAerial(pr) ? "" : " (UG)"}`,
       });
     }
   });

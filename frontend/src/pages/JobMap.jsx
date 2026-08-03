@@ -690,7 +690,8 @@ const JobMap = () => {
         id: pole.id,
         type: 'pole',
         pos: pole.pos,
-        sortOrder: pole.sort_order ?? Infinity
+        sortOrder: pole.sort_order ?? Infinity,
+        riserFeet: (parseInt(pole.risers) || 0) * (parseFloat(pole.riser_height) || 0)
       });
     });
     
@@ -2779,3 +2780,4 @@ const JobMap = () => {
 };
 
 export default JobMap;
+
