@@ -319,15 +319,15 @@ export const buildSpanMeasurementTexts = ({ poles, underground = [], connections
   const riserStations = {};
   if (includeStations) {
     const all = [
-      ...ug.map((u) => ({ id: u.id, pos: u.pos, so: u.sort_order ?? Infinity, riserFeet: 0 })),
-      ...route.map((p) => ({ id: p.id, pos: p.pos, so: p.sort_order ?? Infinity, riserFeet: (parseInt(p.risers) || 0) * (parseFloat(p.riser_height) || 0) })),
+      ...ug.map((u) => ({ id: u.id, pos: u.pos, so: u.sort_order ?? Infinity, extraFeet: (u.path_measurements || []).reduce((s, m) => s + (parseFloat(m.feet) || 0), 0) })),
+      ...route.map((p) => ({ id: p.id, pos: p.pos, so: p.sort_order ?? Infinity, extraFeet: (parseInt(p.risers) || 0) * (parseFloat(p.riser_height) || 0) })),
     ].sort((a, b) => a.so - b.so);
     let run = 0, prev = null;
     all.forEach((it) => {
       if (prev) run += distanceFeet(prev.pos, it.pos);
       stations[it.id] = feetToStation(run);
-      if (it.riserFeet > 0) {
-        run += it.riserFeet;
+      if (it.extraFeet > 0) {
+        run += it.extraFeet;
         riserStations[it.id] = feetToStation(run);
       }
       prev = it;
@@ -343,7 +343,8 @@ export const buildSpanMeasurementTexts = ({ poles, underground = [], connections
   const pathDone = new Set();
   const pathTextOf = (u) => {
     const t = (u.path_measurements || []).reduce((s, m) => s + (parseFloat(m.feet) || 0), 0);
-    return `${undergroundAbbr(u.type)}${u.label && u.label !== u.type ? ` ${u.label}` : ""}: ${u.path_measurements.map((m) => `${m.direction} ${m.feet}ft${m.to ? ` to ${m.to}` : ""}`).join(", ")} = ${fmtFeet(t)}`;
+    const base = `${undergroundAbbr(u.type)}${u.label && u.label !== u.type ? ` ${u.label}` : ""}: ${u.path_measurements.map((m) => `${m.direction} ${m.feet}ft${m.to ? ` to ${m.to}` : ""}`).join(", ")} = ${fmtFeet(t)}`;
+    return stationsOnly && riserStations[u.id] ? `${base} (${stations[u.id]} to ${riserStations[u.id]})` : base;
   };
   const pushRiser = (it) => {
     if (it.type !== "pole" || riserDone.has(it.id)) return;

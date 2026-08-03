@@ -674,13 +674,14 @@ const JobMap = () => {
     // Build ordered list of all items by sort_order
     const allItems = [];
     
-    // Add underground items
+    // Add underground items (path measurements advance the chainage)
     ug.forEach(item => {
       allItems.push({
         id: item.id,
         type: 'underground',
         pos: item.pos,
-        sortOrder: item.sort_order ?? Infinity
+        sortOrder: item.sort_order ?? Infinity,
+        riserFeet: (item.path_measurements || []).reduce((s, m) => s + (parseFloat(m.feet) || 0), 0)
       });
     });
     
@@ -1490,7 +1491,7 @@ const JobMap = () => {
       const u = underground.find((x) => x.id === item.id);
       if (!u || !(u.path_measurements || []).length) return;
       pathAdded.add(item.id);
-      entries.push({ kind: "path", so: item.sort_order ?? Infinity, pos, text: pathText(u) });
+      entries.push({ kind: "path", so: item.sort_order ?? Infinity, pos, itemId: item.id, text: pathText(u) });
     };
     orderedSegments.forEach((seg, i) => {
       pushRiser(seg.from, seg.fromPos);
@@ -1510,7 +1511,7 @@ const JobMap = () => {
       .forEach((u) => {
         pathAdded.add(u.id);
         const so = u.sort_order ?? Infinity;
-        const entry = { kind: "path", so, pos: null, text: pathText(u) };
+        const entry = { kind: "path", so, pos: null, itemId: u.id, text: pathText(u) };
         const idx = entries.findIndex((e) => (e.so ?? Infinity) > so);
         if (idx === -1) entries.push(entry);
         else entries.splice(idx, 0, entry);
@@ -2737,7 +2738,7 @@ const JobMap = () => {
                   </li>
                 ) : (
                   <li key={`entry-${e.num}`} data-testid={`path-measurement-${e.num}`}>
-                    <span className="font-bold text-emerald-700">{e.num}.</span> {e.text}
+                    <span className="font-bold text-emerald-700">{e.num}.</span> {e.text}{showStationNumbers && e.itemId && stationNumbers[`${e.itemId}:out`] ? <span className="text-indigo-700"> ({stationNumbers[e.itemId]} to {stationNumbers[`${e.itemId}:out`]})</span> : null}
                   </li>
                 )
               ))}
