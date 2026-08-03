@@ -1814,22 +1814,27 @@ async def export_ase_excel(job_id: str, current_user: dict = Depends(get_current
             row += 1
     else:
         _sow_ef_items = [
-            ("BURIED PVC", "buried_pvc", "buried_pvc_provided"),
-            ("BURIED INNERDUCT", "buried_innerduct", "buried_innerduct_provided"),
-            ("EMT", "need_emt", "need_emt_provided"),
-            ("PLENUM", "need_plenum", "need_plenum_provided"),
-            ("CORE DRILL", "need_core_drill", "need_core_drill_provided"),
-            ("EYE-BOLT/WEATHERHEAD", "need_eyebolt", "need_eyebolt_provided"),
-            ("PULLBOX", "need_pullbox", "need_pullbox_provided"),
-            ("HOFFMAN BOX", "need_hoffman_box", "need_hoffman_box_provided"),
-            ("BACKBOARD", "need_backboard", "need_backboard_provided"),
-            ("OUTLET", "need_outlet", "need_outlet_provided"),
-            ("GROUNDBAR", "need_groundbar", "need_groundbar_provided"),
+            ("BURIED PVC", "buried_pvc", "buried_pvc_provided", "buried_pvc_length", "FT"),
+            ("BURIED INNERDUCT", "buried_innerduct", "buried_innerduct_provided", "buried_innerduct_length", "FT"),
+            ("EMT", "need_emt", "need_emt_provided", "emt_length", "FT"),
+            ("PLENUM", "need_plenum", "need_plenum_provided", "plenum_length", "FT"),
+            ("CORE DRILL", "need_core_drill", "need_core_drill_provided", "core_drill_qty", "QTY"),
+            ("EYE-BOLT/WEATHERHEAD", "need_eyebolt", "need_eyebolt_provided", None, None),
+            ("PULLBOX", "need_pullbox", "need_pullbox_provided", "pullbox_qty", "QTY"),
+            ("HOFFMAN BOX", "need_hoffman_box", "need_hoffman_box_provided", "hoffman_box_qty", "QTY"),
+            ("BACKBOARD", "need_backboard", "need_backboard_provided", "backboard_qty", "QTY"),
+            ("OUTLET", "need_outlet", "need_outlet_provided", None, None),
+            ("GROUNDBAR", "need_groundbar", "need_groundbar_provided", "groundbar_qty", "QTY"),
         ]
         def _yes(v):
             return str(v or "").strip().upper() in ("YES", "TRUE", "Y")
-        _in_place = ase.get("site_requirements_provided") or ", ".join(l for l, _k, pk in _sow_ef_items if _yes(ase.get(pk)))
-        _needed = ", ".join(l for l, k, pk in _sow_ef_items if _yes(ase.get(k)) and not _yes(ase.get(pk)))
+        def _with_qty(label, qty_key, unit):
+            v = str(ase.get(qty_key) or "").strip() if qty_key else ""
+            if not v:
+                return label
+            return f"{label} ({v} FT)" if unit == "FT" else f"{label} (QTY {v})"
+        _in_place = ase.get("site_requirements_provided") or ", ".join(l for l, _k, pk, _q, _u in _sow_ef_items if _yes(ase.get(pk)))
+        _needed = ", ".join(_with_qty(l, qk, u) for l, k, _pk, qk, u in _sow_ef_items if _yes(ase.get(k)))
         row = 1
         row = add_section(ws_sow, row, "SOW NOTES", "f59e0b")
         row = add_row(ws_sow, row, "ASSIGNED ATT ENG:", ase.get("assigned_att_eng", ""))
