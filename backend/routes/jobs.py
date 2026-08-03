@@ -9,7 +9,7 @@ import os
 import json
 import asyncio
 from openpyxl import Workbook
-from openpyxl.styles import Font, PatternFill, Border, Side
+from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
 
 from models.job import Job, JobCreate, JobUpdate
 from models.pole import Pole
@@ -1538,6 +1538,20 @@ async def export_ase_excel(job_id: str, current_user: dict = Depends(get_current
         v2_cell.font = value_font
         v2_cell.fill = filled_fill if value2 else empty_fill
         return row + 1
+
+    def add_wide_row(ws, row, label, value):
+        """Long text in ONE merged, wrapped box spanning columns B-D"""
+        ws.cell(row=row, column=1, value=label).font = label_font
+        ws.cell(row=row, column=1).alignment = Alignment(wrap_text=True, vertical="top")
+        value_cell = ws.cell(row=row, column=2, value=value or "")
+        value_cell.font = value_font
+        value_cell.fill = filled_fill if value else empty_fill
+        value_cell.alignment = Alignment(wrap_text=True, vertical="top")
+        ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=4)
+        text = str(value or "")
+        lines = max(1, -(-len(text) // 85) + text.count("\n"))
+        ws.row_dimensions[row].height = min(15 * lines + 4, 240)
+        return row + 1
     
     # ========== TAB 1: ASE CKLIST ==========
     ws1 = wb.active
@@ -1678,7 +1692,7 @@ async def export_ase_excel(job_id: str, current_user: dict = Depends(get_current
     row = add_row(ws1, row, "Nearest fiber Lat/Long:", ase.get("nearest_fiber_lat_long", ""))
     row = add_row(ws1, row, "Starting FH/MH/POLE tie in measurements:", ase.get("starting_tie_in_measurements", ""))
     row = add_row(ws1, row, "Nearest fiber FID:", ase.get("nearest_fiber_fid", ""))
-    row = add_row(ws1, row, "Describe path of approach, include SOC length:", ase.get("path_of_approach", ""))
+    row = add_wide_row(ws1, row, "Describe path of approach, include SOC length:", ase.get("path_of_approach", ""))
     row = add_row(ws1, row, "POLE LINE START Lat/Long:", ase.get("soc_pole_line_start", ""))
     row = add_row(ws1, row, "POLE LINE END Lat/Long:", ase.get("soc_pole_line_end", ""))
     row = add_row(ws1, row, "SOC START Lat/Long:", ase.get("soc_start_lat_long", ""))
@@ -1846,7 +1860,7 @@ async def export_ase_excel(job_id: str, current_user: dict = Depends(get_current
         row = add_row(ws_sow, row, "FIBER AT SITE:", ase.get("existing_fiber_terminal", ""))
         row = add_row(ws_sow, row, "LAT/LONG OF THE EXISITNG/NEW FBT:", ase.get("fiber_terminal_lat_long", ""))
         row = add_row(ws_sow, row, "PROPOSED LOCATION:", ase.get("terminal_location_description", "") or ase.get("fiber_terminal_placement", ""))
-        row = add_row(ws_sow, row, "PATH OF APPROACH:", ase.get("path_of_approach", ""))
+        row = add_wide_row(ws_sow, row, "PATH OF APPROACH:", ase.get("path_of_approach", ""))
         row = add_row(ws_sow, row, "NEAREST FIBER FID:", ase.get("nearest_fiber_fid", ""))
         row = add_row(ws_sow, row, "LAT/LONG OF NEAREST FIBER:", ase.get("nearest_fiber_lat_long", ""))
         row = add_row(ws_sow, row, "POLE LINE START:", ase.get("soc_pole_line_start", "") or "N/A")
