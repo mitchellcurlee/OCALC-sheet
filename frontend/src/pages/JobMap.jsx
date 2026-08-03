@@ -709,6 +709,10 @@ const JobMap = () => {
         runningDistance += dist;
       }
       stations[item.id] = toStation(runningDistance);
+      if (item.riserFeet > 0) {
+        runningDistance += item.riserFeet;
+        stations[`${item.id}:out`] = toStation(runningDistance);
+      }
       prevItem = item;
     });
     
@@ -1474,7 +1478,7 @@ const JobMap = () => {
       const r = riserInfo(item);
       if (r && !added.has(item.id)) {
         added.add(item.id);
-        entries.push({ kind: "riser", so: item.sort_order ?? Infinity, pos, text: `${poleName(item.label)} New Riser${r.c > 1 ? ` ×${r.c}` : ""} = ${fmtFeet(r.c * r.h)}` });
+        entries.push({ kind: "riser", so: item.sort_order ?? Infinity, pos, itemId: item.id, text: `${poleName(item.label)} New Riser${r.c > 1 ? ` ×${r.c}` : ""} = ${fmtFeet(r.c * r.h)}` });
       }
     };
     const pathText = (u) => {
@@ -2724,12 +2728,12 @@ const JobMap = () => {
               {measurementEntries.map((e) => (
                 e.kind === "span" ? (
                   <li key={`entry-${e.num}`} data-testid={`span-measurement-${e.num}`}>
-                    <span className="font-bold text-orange-700">{e.num}.</span> {segItemName(e.seg.from)} to {segItemName(e.seg.to)} = {fmtFeet(segListDistance(e.seg))}
+                    <span className="font-bold text-orange-700">{e.num}.</span> {segItemName(e.seg.from)}{showStationNumbers && (stationNumbers[`${e.seg.from.id}:out`] || stationNumbers[e.seg.from.id]) ? <span className="text-indigo-700"> {stationNumbers[`${e.seg.from.id}:out`] || stationNumbers[e.seg.from.id]}</span> : null} to {segItemName(e.seg.to)}{showStationNumbers && stationNumbers[e.seg.to.id] ? <span className="text-indigo-700"> {stationNumbers[e.seg.to.id]}</span> : null} = {fmtFeet(segListDistance(e.seg))}
                     {!e.seg.isAerial && <span className="text-emerald-700 text-xs ml-1">(UG)</span>}
                   </li>
                 ) : e.kind === "riser" ? (
                   <li key={`entry-${e.num}`} data-testid={`riser-measurement-${e.num}`}>
-                    <span className="font-bold text-violet-700">{e.num}.</span> {e.text}
+                    <span className="font-bold text-violet-700">{e.num}.</span> {e.text}{showStationNumbers && e.itemId && stationNumbers[`${e.itemId}:out`] ? <span className="text-indigo-700"> ({stationNumbers[e.itemId]} to {stationNumbers[`${e.itemId}:out`]})</span> : null}
                   </li>
                 ) : (
                   <li key={`entry-${e.num}`} data-testid={`path-measurement-${e.num}`}>
