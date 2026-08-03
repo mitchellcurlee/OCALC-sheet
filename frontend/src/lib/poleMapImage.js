@@ -202,11 +202,28 @@ export const isAerialAttr = (u) =>
     ? u.aerial_override === "aerial"
     : AERIAL_ATTR_TYPES.has(u.type);
 
+// Class of a pair item: "aerial" | "underground" | "neutral" (pass-through)
+export const pairItemClass = (it) => {
+  if (it.type === "pole") return "aerial";
+  if (it.aerialOverride === "neutral") return "neutral";
+  if (it.aerialOverride) return it.aerialOverride;
+  return AERIAL_ATTR_TYPES.has(it.ugType) ? "aerial" : "underground";
+};
+
+// Resolve a segment's aerial-ness: neutral items inherit from the other end
+export const resolvePairAerial = (fromItem, toItem) => {
+  const cf = pairItemClass(fromItem), ct = pairItemClass(toItem);
+  if (cf === "neutral" && ct === "neutral") return true;
+  if (cf === "neutral") return ct === "aerial";
+  if (ct === "neutral") return cf === "aerial";
+  return cf === "aerial" && ct === "aerial";
+};
+
 // Build map line pairs the same way the live Job Map does (custom connections + End Path breaks + standalone items)
 export const computeConnectionPairs = (route, ug, connections = []) => {
   const allItems = [];
   route.forEach((p) => allItems.push({ id: p.id, type: "pole", pos: p.pos, sort_order: p.sort_order ?? Infinity, label: p.pole_number || "Pole", end_path: p.end_path === true, standalone: p.standalone === true, markerColor: p.marker_color || null }));
-  ug.forEach((u) => allItems.push({ id: u.id, type: "underground", ugType: u.type, aerialOverride: (u.aerial_override === "aerial" || u.aerial_override === "underground") ? u.aerial_override : null, pos: u.pos, sort_order: u.sort_order ?? Infinity, label: u.label || u.type, end_path: u.end_path === true, standalone: u.standalone === true, hasPath: (u.path_measurements || []).length > 0, markerColor: u.marker_color || null }));
+  ug.forEach((u) => allItems.push({ id: u.id, type: "underground", ugType: u.type, aerialOverride: ["aerial", "underground", "neutral"].includes(u.aerial_override) ? u.aerial_override : null, pos: u.pos, sort_order: u.sort_order ?? Infinity, label: u.label || u.type, end_path: u.end_path === true, standalone: u.standalone === true, hasPath: (u.path_measurements || []).length > 0, markerColor: u.marker_color || null }));
   allItems.sort((a, b) => a.sort_order - b.sort_order);
   const byId = {};
   allItems.forEach((it) => { byId[it.id] = it; });
@@ -260,8 +277,7 @@ export const computeConnectionPairs = (route, ug, connections = []) => {
 export const pairIsAerial = (pr) => {
   if (pr.typeOverride === "aerial") return true;
   if (pr.typeOverride === "underground") return false;
-  const aerialItem = (it) => it.type === "pole" || (it.aerialOverride ? it.aerialOverride === "aerial" : AERIAL_ATTR_TYPES.has(it.ugType));
-  return aerialItem(pr.from) && aerialItem(pr.to);
+  return resolvePairAerial(pr.from, pr.to);
 };
 
 // A pair whose FROM item has manual path measurements: its auto GPS footage is replaced

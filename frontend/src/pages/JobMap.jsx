@@ -9,7 +9,7 @@ import domtoimage from "dom-to-image-more";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ChevronDown, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera, Hash, Link2, Move, Palette, Plus, Map as MapIcon, GripVertical } from "lucide-react";
 import SpanReorderList from "@/components/SpanReorderList";
-import { computeRoute, fmtFeet, feetToStation, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, ugWithGps, undergroundAbbr, computeUgConnectors, computeConnectionPairs, UNDERGROUND_TYPES, isAerialAttr } from "@/lib/poleMapImage";
+import { computeRoute, fmtFeet, feetToStation, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, ugWithGps, undergroundAbbr, computeUgConnectors, computeConnectionPairs, UNDERGROUND_TYPES, isAerialAttr, resolvePairAerial } from "@/lib/poleMapImage";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -80,12 +80,14 @@ const UgPopupEditor = ({ item, defaultColor, onSaved }) => {
     try {
       const res = await axios.put(`/underground/${item.id}`, { aerial_override: val });
       onSaved(res.data);
-      toast.success(`Marked as ${val === "aerial" ? "Aerial" : "Underground"}`);
+      toast.success(`Marked as ${val === "aerial" ? "Aerial" : val === "neutral" ? "Neutral" : "Underground"}`);
     } catch (e) {
       toast.error("Failed to update type");
     }
   };
-  const effAerial = isAerialAttr(item);
+  const isNeutral = item.aerial_override === "neutral";
+  const effAerial = !isNeutral && isAerialAttr(item);
+  const neutralAllowed = ["Point of Intersection", "FBT", "NTE", "Pullbox", "Aerial PI", "Aerial FBT", "Aerial NTE"].includes(item.type);
 
   const inputCls = "w-full h-7 px-2 text-xs border border-zinc-300 rounded bg-white text-zinc-900";
   return (
@@ -112,7 +114,10 @@ const UgPopupEditor = ({ item, defaultColor, onSaved }) => {
         <div className="text-[10px] text-zinc-400 uppercase mb-1">Attribute Type</div>
         <div className="flex gap-1.5" data-testid={`ug-class-row-${item.id}`}>
           <Button size="sm" onClick={() => setClass("aerial")} className={`flex-1 h-7 text-xs ${effAerial ? "bg-blue-600 hover:bg-blue-700 text-white" : "bg-zinc-100 border border-zinc-300 text-zinc-900 hover:bg-zinc-200"}`} data-testid={`ug-class-aerial-${item.id}`}>Aerial</Button>
-          <Button size="sm" onClick={() => setClass("underground")} className={`flex-1 h-7 text-xs ${!effAerial ? "bg-green-600 hover:bg-green-700 text-white" : "bg-zinc-100 border border-zinc-300 text-zinc-900 hover:bg-zinc-200"}`} data-testid={`ug-class-ug-${item.id}`}>Underground</Button>
+          <Button size="sm" onClick={() => setClass("underground")} className={`flex-1 h-7 text-xs ${!isNeutral && !effAerial ? "bg-green-600 hover:bg-green-700 text-white" : "bg-zinc-100 border border-zinc-300 text-zinc-900 hover:bg-zinc-200"}`} data-testid={`ug-class-ug-${item.id}`}>Underground</Button>
+          {neutralAllowed && (
+            <Button size="sm" onClick={() => setClass("neutral")} title="Pass-through: connected spans take their type from the other end" className={`flex-1 h-7 text-xs ${isNeutral ? "bg-zinc-600 hover:bg-zinc-700 text-white" : "bg-zinc-100 border border-zinc-300 text-zinc-900 hover:bg-zinc-200"}`} data-testid={`ug-class-neutral-${item.id}`}>Neutral</Button>
+          )}
         </div>
       </div>
       <div>
@@ -1156,7 +1161,6 @@ const JobMap = () => {
       const pairs = computeConnectionPairs(route, ug, connections);
       const pairKey = (a, b) => (a < b ? `${a}|${b}` : `${b}|${a}`);
       const docKeys = new Set(connections.filter((c) => c.connection_type !== "removed").map((c) => pairKey(c.from_item_id, c.to_item_id)));
-      const isAerialItem = (it) => it.type === "pole" || (it.aerialOverride ? it.aerialOverride === "aerial" : AERIAL_ATTR_TYPES.has(it.ugType));
       const creates = pairs
         .filter((p) => !docKeys.has(pairKey(p.from.id, p.to.id)))
         .map((p) => ({
@@ -1165,7 +1169,7 @@ const JobMap = () => {
           from_item_type: p.from.type,
           to_item_id: p.to.id,
           to_item_type: p.to.type,
-          connection_type: isAerialItem(p.from) && isAerialItem(p.to) ? "aerial" : "underground",
+          connection_type: resolvePairAerial(p.from, p.to) ? "aerial" : "underground",
         }));
       // Old direct lines currently hidden because a NEW item sits between their endpoints
       // must be tombstoned, otherwise materializing the chain would make them reappear
@@ -1363,9 +1367,8 @@ const JobMap = () => {
         (fromItem.pos[1] + toItem.pos[1]) / 2
       ];
       
-      // Determine segment type and styling (Loop / Aerial Splice are aerial attributes)
-      const aerialItem = (it) => it.type === "pole" || (it.aerialOverride ? it.aerialOverride === "aerial" : AERIAL_ATTR_TYPES.has(it.ugType));
-      const isAerial = pr.typeOverride ? pr.typeOverride === "aerial" : (aerialItem(fromItem) && aerialItem(toItem));
+      // Determine segment type and styling (neutral items inherit from the other end)
+      const isAerial = pr.typeOverride ? pr.typeOverride === "aerial" : resolvePairAerial(fromItem, toItem);
       const hasUnderground = fromItem.type === "underground" || toItem.type === "underground";
       
       // Check if either item is MPOE or after MPOE
@@ -2110,8 +2113,12 @@ const JobMap = () => {
                           <>
                             <div className="text-xs font-mono font-semibold" data-testid="conn-selected-label">{connLabel}</div>
                             {(() => {
-                              const isA = (id) => route.some((p) => p.id === id) || (() => { const f = ug.find((x) => x.id === id); return f ? isAerialAttr(f) : false; })();
-                              const eff = conn.type_override || ((isA(conn.from_item_id) && isA(conn.to_item_id)) ? "aerial" : "underground");
+                              const asPair = (id) => {
+                                if (route.some((p) => p.id === id)) return { type: "pole" };
+                                const f = ug.find((x) => x.id === id);
+                                return f ? { type: "underground", ugType: f.type, aerialOverride: ["aerial", "underground", "neutral"].includes(f.aerial_override) ? f.aerial_override : null } : { type: "pole" };
+                              };
+                              const eff = conn.type_override || (resolvePairAerial(asPair(conn.from_item_id), asPair(conn.to_item_id)) ? "aerial" : "underground");
                               return (
                                 <div className="flex gap-2">
                                   <Button size="sm" variant="outline" className={`flex-1 h-8 text-xs border-blue-300 text-blue-700 hover:bg-blue-50 ${eff === "aerial" ? "bg-blue-100 ring-1 ring-blue-400 font-bold" : ""}`} onClick={() => handleConnectionUpdate(conn.id, { type_override: "aerial" })} data-testid="conn-type-aerial-btn">Aerial (blue)</Button>
@@ -2785,4 +2792,3 @@ const JobMap = () => {
 };
 
 export default JobMap;
-

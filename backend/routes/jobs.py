@@ -538,11 +538,15 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
         current_row += 1
         for u in underground:
             ov = u.get("aerial_override")
-            is_aer = ov == "aerial" if ov in ("aerial", "underground") else u.get("type", "") in EXPORT_AERIAL_TYPES
+            if ov == "neutral":
+                class_val, class_color = "Neutral", "71717A"
+            else:
+                is_aer = ov == "aerial" if ov in ("aerial", "underground") else u.get("type", "") in EXPORT_AERIAL_TYPES
+                class_val, class_color = ("Aerial", "2563EB") if is_aer else ("Underground", "16A34A")
             ws.cell(row=current_row, column=1, value=UG_ABBR.get(u.get("type", ""), ""))
             ws.cell(row=current_row, column=2, value=u.get("type", ""))
-            class_cell = ws.cell(row=current_row, column=3, value="Aerial" if is_aer else "Underground")
-            class_cell.font = Font(color="2563EB" if is_aer else "16A34A", bold=True, size=9)
+            class_cell = ws.cell(row=current_row, column=3, value=class_val)
+            class_cell.font = Font(color=class_color, bold=True, size=9)
             ws.cell(row=current_row, column=4, value=u.get("label", ""))
             ws.cell(row=current_row, column=5, value=u.get("latitude", ""))
             ws.cell(row=current_row, column=6, value=u.get("longitude", ""))
