@@ -551,6 +551,31 @@ const JobMap = () => {
     fetchData();
   }, [fetchData]);
 
+  const combinedOrderItems = () => {
+    const all = [...poles.map((p) => ({ ...p, _type: "pole" })), ...underground.map((u) => ({ ...u, _type: "underground" }))];
+    all.sort((a, b) => {
+      const oa = a.sort_order ?? Infinity, ob = b.sort_order ?? Infinity;
+      if (oa !== ob) return oa - ob;
+      return (a.created_at || "").localeCompare(b.created_at || "");
+    });
+    return all;
+  };
+
+  const saveSpanOrder = async (items) => {
+    setSavingOrder(true);
+    try {
+      await axios.put(`/jobs/${jobId}/reorder-items`, items.map((it, i) => ({ id: it.id, type: it._type, sort_order: i })));
+      toast.success("Route order updated");
+      setSpanReorder(false);
+      await fetchData();
+    } catch (e) {
+      toast.error("Failed to save order");
+    } finally {
+      setSavingOrder(false);
+    }
+  };
+
+
   const { route, missing, segments, totalFeet, totalRiserFeet, grandTotalFeet, usingManualSpans } = useMemo(() => computeRoute(poles), [poles]);
   const ug = useMemo(() => ugWithGps(underground), [underground]);
   const ugConnectors = useMemo(() => computeUgConnectors(route, ug), [route, ug]);
