@@ -1,0 +1,39 @@
+{
+  "summary": "Tested iter44 nearest-position route insert, aerial types, aerial_override persistence, Excel Class column, and frontend map behaviors. Backend fully passes (4/4). Frontend flows (span list order, Aerial submenu, ug-class toggle & marker/color/footage effect, street toggle) all pass EXCEPT the SPAN MEASUREMENTS Reorder button which crashes JobMap with a ReferenceError.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "JobMap.jsx SPAN MEASUREMENTS Reorder",
+        "issue": "Clicking data-testid='span-reorder-btn' triggers 'Uncaught runtime error: combinedOrderItems is not defined' at JobMap line 2675. JobMap references combinedOrderItems() and saveSpanOrder as props to <SpanReorderList/>, but neither is defined/imported in JobMap.jsx (only spanReorder/savingOrder state exist). Reorder feature is completely non-functional — cannot open panel, cannot drag, cannot save.",
+        "selector": "[data-testid='span-reorder-btn']",
+        "priority": "CRITICAL"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_route_insert_and_aerial.py",
+    "/app/test_reports/pytest/iter44_backend.xml",
+    "/app/test_reports/iter44_seed.py"
+  ],
+  "action_items": [
+    "Define combinedOrderItems() and saveSpanOrder in /app/frontend/src/pages/JobMap.jsx. combinedOrderItems should return a merged list of poles + underground items in current sort order, each with {id,type,label,sort_order}. saveSpanOrder(newItems) should PUT to /api/jobs/{job_id}/poles/reorder (or the existing bulk-reorder endpoint at jobs.py:251), then toast 'Route order updated', refresh state, and close the panel. Ensure error handling for saving failures.",
+    "Manually retest reorder drag+save after fix (dnd-kit activationConstraint distance>=5px)."
+  ],
+  "critical_code_review_comments": [
+    "JobMap.jsx line 2675 uses combinedOrderItems() and saveSpanOrder without any definition -> production crash the moment the reorder button is clicked; likely a partial commit.",
+    "JobMap.jsx WebSocket errors on localhost due to WDS_SOCKET_PORT=443 (frontend/.env) — non-blocking but noisy in dev."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_route_insert_and_aerial.py"
+  ],
+  "success_rate": {"backend": "100% (4/4)", "frontend": "~85% (6/7 flows OK; Reorder broken)"},
+  "test_credentials": "Admin@mastec.com / Mastecbyers12345 (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "Created + deleted (soft/trash) TEST_ITER44 and TEST_ITER44_FE jobs via API for isolated testing.",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend tests in test_route_insert_and_aerial.py cover: options list, nearest-position insert (mid + append + no-GPS), aerial_override persistence, Excel Class column (with override winning). Frontend: span list correctly rendered as P1 to PI (UG), PI to PB (UG), PB to P2, and toggling a Handhole's Attribute Type -> Aerial correctly turns marker blue, removes (UG) tag, and shifts footage from underground to aerial (verified 401->292 UG, 255->365 aerial for a 109ft segment). Only Reorder panel crashes JobMap due to missing definitions.",
+  "rca of the issue": "In /app/frontend/src/pages/JobMap.jsx around line 2675, <SpanReorderList initialItems={combinedOrderItems()} onSave={saveSpanOrder} .../> references two identifiers that are never declared in this file (grep shows only useState hooks for spanReorder/savingOrder). React throws ReferenceError: combinedOrderItems is not defined and unmounts JobMap. Reproduction: open any job map with >=2 items, click 'Reorder' button in SPAN MEASUREMENTS header. Fix: implement combinedOrderItems (merge poles + underground sorted by sort_order) and saveSpanOrder (PUT bulk-reorder endpoint then refresh + close panel + toast)."
+}

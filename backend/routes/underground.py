@@ -64,11 +64,11 @@ async def _insert_into_route_order(item):
     n = len(chain)
     best_k, best = n, _dist2(p, _pos(chain[-1]))
     c0 = _dist2(p, _pos(chain[0]))
-    if c0 < best:
+    if c0 < best - 0.01:
         best, best_k = c0, 0
     for i in range(n - 1):
         c = _seg_dist2(p, _pos(chain[i]), _pos(chain[i + 1]))
-        if c < best:
+        if c < best - 0.01:
             best, best_k = c, i + 1
     if best_k >= n:
         full_idx = len(all_items)

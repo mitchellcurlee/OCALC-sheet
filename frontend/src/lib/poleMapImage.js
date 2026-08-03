@@ -83,6 +83,9 @@ export const UNDERGROUND_ABBR = {
   Eyebolt: "EB",
   Pullbox: "PB",
   "Weather Head": "WH",
+  "Aerial NTE": "NTE",
+  "Aerial PI": "PI",
+  "Aerial FBT": "FBT",
 };
 export const undergroundAbbr = (type) => UNDERGROUND_ABBR[type] || String(type || "").slice(0, 3).toUpperCase();
 export const UNDERGROUND_TYPES = Object.keys(UNDERGROUND_ABBR);
@@ -191,13 +194,19 @@ export const computeUgConnectors = (route, ug) => {
 };
 
 // Aerial attribute types (kept in sync with JobMap.jsx AERIAL_ATTR_TYPES)
-export const AERIAL_ATTR_TYPES = new Set(["Loop", "Aerial Splice", "X-Messenger", "Eyebolt", "Pullbox", "Weather Head"]);
+export const AERIAL_ATTR_TYPES = new Set(["Loop", "Aerial Splice", "X-Messenger", "Eyebolt", "Pullbox", "Weather Head", "Aerial NTE", "Aerial PI", "Aerial FBT"]);
+
+// Per-item aerial/underground classification: explicit override wins, else by type
+export const isAerialAttr = (u) =>
+  (u.aerial_override === "aerial" || u.aerial_override === "underground")
+    ? u.aerial_override === "aerial"
+    : AERIAL_ATTR_TYPES.has(u.type);
 
 // Build map line pairs the same way the live Job Map does (custom connections + End Path breaks + standalone items)
 export const computeConnectionPairs = (route, ug, connections = []) => {
   const allItems = [];
   route.forEach((p) => allItems.push({ id: p.id, type: "pole", pos: p.pos, sort_order: p.sort_order ?? Infinity, label: p.pole_number || "Pole", end_path: p.end_path === true, standalone: p.standalone === true, markerColor: p.marker_color || null }));
-  ug.forEach((u) => allItems.push({ id: u.id, type: "underground", ugType: u.type, pos: u.pos, sort_order: u.sort_order ?? Infinity, label: u.label || u.type, end_path: u.end_path === true, standalone: u.standalone === true, hasPath: (u.path_measurements || []).length > 0, markerColor: u.marker_color || null }));
+  ug.forEach((u) => allItems.push({ id: u.id, type: "underground", ugType: u.type, aerialOverride: (u.aerial_override === "aerial" || u.aerial_override === "underground") ? u.aerial_override : null, pos: u.pos, sort_order: u.sort_order ?? Infinity, label: u.label || u.type, end_path: u.end_path === true, standalone: u.standalone === true, hasPath: (u.path_measurements || []).length > 0, markerColor: u.marker_color || null }));
   allItems.sort((a, b) => a.sort_order - b.sort_order);
   const byId = {};
   allItems.forEach((it) => { byId[it.id] = it; });
@@ -251,7 +260,7 @@ export const computeConnectionPairs = (route, ug, connections = []) => {
 export const pairIsAerial = (pr) => {
   if (pr.typeOverride === "aerial") return true;
   if (pr.typeOverride === "underground") return false;
-  const aerialItem = (it) => it.type === "pole" || AERIAL_ATTR_TYPES.has(it.ugType);
+  const aerialItem = (it) => it.type === "pole" || (it.aerialOverride ? it.aerialOverride === "aerial" : AERIAL_ATTR_TYPES.has(it.ugType));
   return aerialItem(pr.from) && aerialItem(pr.to);
 };
 
@@ -609,7 +618,7 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
       const w = Math.max(h, tw + 12 * s);
       const rx = x - w / 2;
       const ry = y - h / 2;
-      ctx.fillStyle = u.marker_color || "#16a34a";
+      ctx.fillStyle = u.marker_color || (isAerialAttr(u) ? "#2563eb" : "#16a34a");
       ctx.strokeStyle = "#ffffff";
       ctx.lineWidth = 2 * s;
       ctx.beginPath();

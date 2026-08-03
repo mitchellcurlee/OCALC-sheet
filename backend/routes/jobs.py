@@ -522,27 +522,34 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
             "Handhole": "HH", "Manhole": "MH", "Brooks Enclosure": "BE", "Flowerpot": "FP",
             "Hoffman Box": "HB", "Pedestal": "PED", "Point of Intersection": "PI", "FBT": "FBT",
             "NTE": "NTE", "FBT/NTE": "FBT/NTE", "PFP": "PFP", "SOC Start": "SOC-S", 
-            "SOC End": "SOC-E", "Riser": "RSR", "MPOE": "MPOE",
-            "Aerial Splice": "AS", "Loop": "LOOP",
+            "SOC End": "SOC-E", "Riser": "RSR", "MPOE": "MPOE", "EOP": "EOP", "ROW": "ROW",
+            "DW Start": "DW-S", "DW End": "DW-E", "UG Path Start": "UGP-S", "UG Path End": "UGP-E",
+            "Aerial Splice": "AS", "Loop": "LOOP", "Power": "PWR", "X-Messenger": "XM",
             "Culvert": "CULV", "Drainage Start": "DR-S", "Drainage End": "DR-E",
             "Eyebolt": "EB", "Pullbox": "PB", "Weather Head": "WH",
+            "Aerial NTE": "NTE", "Aerial PI": "PI", "Aerial FBT": "FBT",
         }
+        EXPORT_AERIAL_TYPES = {"Loop", "Aerial Splice", "X-Messenger", "Eyebolt", "Pullbox", "Weather Head", "Aerial NTE", "Aerial PI", "Aerial FBT"}
         ws.cell(row=current_row, column=1, value="UNDERGROUND").fill = header_fill
         ws.cell(row=current_row, column=1).font = header_font
         current_row += 1
-        for h_i, h in enumerate(["Abbr", "Type", "Label", "Latitude", "Longitude", "Notes", "Map", "Photos"], 1):
+        for h_i, h in enumerate(["Abbr", "Type", "Class", "Label", "Latitude", "Longitude", "Notes", "Map", "Photos"], 1):
             ws.cell(row=current_row, column=h_i, value=h).font = Font(bold=True, size=9)
         current_row += 1
         for u in underground:
+            ov = u.get("aerial_override")
+            is_aer = ov == "aerial" if ov in ("aerial", "underground") else u.get("type", "") in EXPORT_AERIAL_TYPES
             ws.cell(row=current_row, column=1, value=UG_ABBR.get(u.get("type", ""), ""))
             ws.cell(row=current_row, column=2, value=u.get("type", ""))
-            ws.cell(row=current_row, column=3, value=u.get("label", ""))
-            ws.cell(row=current_row, column=4, value=u.get("latitude", ""))
-            ws.cell(row=current_row, column=5, value=u.get("longitude", ""))
-            ws.cell(row=current_row, column=6, value=u.get("notes", ""))
+            class_cell = ws.cell(row=current_row, column=3, value="Aerial" if is_aer else "Underground")
+            class_cell.font = Font(color="2563EB" if is_aer else "16A34A", bold=True, size=9)
+            ws.cell(row=current_row, column=4, value=u.get("label", ""))
+            ws.cell(row=current_row, column=5, value=u.get("latitude", ""))
+            ws.cell(row=current_row, column=6, value=u.get("longitude", ""))
+            ws.cell(row=current_row, column=7, value=u.get("notes", ""))
             # Add Map link for each underground item
             map_url = f"{public_base}/jobs/{job_id}/map"
-            map_cell = ws.cell(row=current_row, column=7, value="View Map")
+            map_cell = ws.cell(row=current_row, column=8, value="View Map")
             map_cell.hyperlink = map_url
             map_cell.font = Font(color="2563EB", underline="single", bold=True)
             
@@ -550,11 +557,11 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
             ug_photo_items = underground_photo_items(u)
             if ug_photo_items:
                 ug_anchor_url = f"{public_base}/api/jobs/{job_id}/photos?token={job_photos_token}#ug-{u.get('id')}"
-                photo_cell = ws.cell(row=current_row, column=8, value=f"View Photos ({len(ug_photo_items)})")
+                photo_cell = ws.cell(row=current_row, column=9, value=f"View Photos ({len(ug_photo_items)})")
                 photo_cell.hyperlink = ug_anchor_url
                 photo_cell.font = Font(color="2563EB", underline="single", bold=True)
             else:
-                ws.cell(row=current_row, column=8, value="No photos")
+                ws.cell(row=current_row, column=9, value="No photos")
             
             current_row += 1
     

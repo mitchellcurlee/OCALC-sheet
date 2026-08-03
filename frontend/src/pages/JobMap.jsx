@@ -7,8 +7,9 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import domtoimage from "dom-to-image-more";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ChevronDown, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera, Hash, Link2, Move, Palette, Plus, Map as MapIcon } from "lucide-react";
-import { computeRoute, fmtFeet, feetToStation, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, ugWithGps, undergroundAbbr, computeUgConnectors, computeConnectionPairs, UNDERGROUND_TYPES } from "@/lib/poleMapImage";
+import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ChevronDown, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera, Hash, Link2, Move, Palette, Plus, Map as MapIcon, GripVertical } from "lucide-react";
+import SpanReorderList from "@/components/SpanReorderList";
+import { computeRoute, fmtFeet, feetToStation, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, ugWithGps, undergroundAbbr, computeUgConnectors, computeConnectionPairs, UNDERGROUND_TYPES, isAerialAttr } from "@/lib/poleMapImage";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -40,7 +41,7 @@ import {
 import EditableRoute from "@/components/EditableRoute";
 import MapAnnotations from "@/components/MapAnnotations";
 
-const MAP_AERIAL_ADD_TYPES = ["Loop", "Aerial Splice", "Power", "X-Messenger", "Eyebolt", "Pullbox", "Weather Head"];
+const MAP_AERIAL_ADD_TYPES = ["Loop", "Aerial Splice", "Power", "X-Messenger", "Eyebolt", "Pullbox", "Weather Head", "Aerial NTE", "Aerial PI", "Aerial FBT"];
 
 const MARKER_COLOR_CHOICES = ["#dc2626", "#2563eb", "#16a34a", "#39ff14", "#ea580c", "#ff6600", "#9333ea", "#facc15"];
 
@@ -75,6 +76,17 @@ const UgPopupEditor = ({ item, defaultColor, onSaved }) => {
     }
   };
 
+  const setClass = async (val) => {
+    try {
+      const res = await axios.put(`/underground/${item.id}`, { aerial_override: val });
+      onSaved(res.data);
+      toast.success(`Marked as ${val === "aerial" ? "Aerial" : "Underground"}`);
+    } catch (e) {
+      toast.error("Failed to update type");
+    }
+  };
+  const effAerial = isAerialAttr(item);
+
   const inputCls = "w-full h-7 px-2 text-xs border border-zinc-300 rounded bg-white text-zinc-900";
   return (
     <div className="mt-2 border-t border-zinc-200 pt-2 space-y-2">
@@ -96,6 +108,13 @@ const UgPopupEditor = ({ item, defaultColor, onSaved }) => {
       ) : (
         <Button size="sm" variant="outline" className="w-full h-7 text-xs bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900" onClick={() => setEditing(true)} data-testid={`ug-quickedit-btn-${item.id}`}>Quick Edit Label/FID</Button>
       )}
+      <div>
+        <div className="text-[10px] text-zinc-400 uppercase mb-1">Attribute Type</div>
+        <div className="flex gap-1.5" data-testid={`ug-class-row-${item.id}`}>
+          <Button size="sm" onClick={() => setClass("aerial")} className={`flex-1 h-7 text-xs ${effAerial ? "bg-blue-600 hover:bg-blue-700 text-white" : "bg-zinc-100 border border-zinc-300 text-zinc-900 hover:bg-zinc-200"}`} data-testid={`ug-class-aerial-${item.id}`}>Aerial</Button>
+          <Button size="sm" onClick={() => setClass("underground")} className={`flex-1 h-7 text-xs ${!effAerial ? "bg-green-600 hover:bg-green-700 text-white" : "bg-zinc-100 border border-zinc-300 text-zinc-900 hover:bg-zinc-200"}`} data-testid={`ug-class-ug-${item.id}`}>Underground</Button>
+        </div>
+      </div>
       <div>
         <div className="text-[10px] text-zinc-400 uppercase mb-1">Marker Color</div>
         <div className="flex gap-1.5" data-testid={`ug-color-row-${item.id}`}>
@@ -280,7 +299,7 @@ const arrowIcon = (deg) =>
 
 // Aerial footage pill with ORANGE dotted arrow pointing to segment (closer to span)
 // Attribute types treated as AERIAL (blue) on the map
-const AERIAL_ATTR_TYPES = new Set(["Loop", "Aerial Splice", "X-Messenger", "Eyebolt", "Pullbox", "Weather Head"]);
+const AERIAL_ATTR_TYPES = new Set(["Loop", "Aerial Splice", "X-Messenger", "Eyebolt", "Pullbox", "Weather Head", "Aerial NTE", "Aerial PI", "Aerial FBT"]);
 
 const numberBadgeIcon = (num, color = "#ea580c", anchor = [13, 13]) =>
   L.divIcon({
@@ -407,6 +426,8 @@ const JobMap = () => {
   const [mapLayer, setMapLayer] = useState(() => {
     try { return localStorage.getItem('mapLayer') || 'aerial'; } catch (e) { return 'aerial'; }
   });
+  const [spanReorder, setSpanReorder] = useState(false);
+  const [savingOrder, setSavingOrder] = useState(false);
   useEffect(() => {
     try { localStorage.setItem('mapLayer', mapLayer); } catch (e) { /* ignore */ }
   }, [mapLayer]);
@@ -1084,7 +1105,7 @@ const JobMap = () => {
       const pairs = computeConnectionPairs(route, ug, connections);
       const pairKey = (a, b) => (a < b ? `${a}|${b}` : `${b}|${a}`);
       const docKeys = new Set(connections.filter((c) => c.connection_type !== "removed").map((c) => pairKey(c.from_item_id, c.to_item_id)));
-      const isAerialItem = (it) => it.type === "pole" || AERIAL_ATTR_TYPES.has(it.ugType);
+      const isAerialItem = (it) => it.type === "pole" || (it.aerialOverride ? it.aerialOverride === "aerial" : AERIAL_ATTR_TYPES.has(it.ugType));
       const creates = pairs
         .filter((p) => !docKeys.has(pairKey(p.from.id, p.to.id)))
         .map((p) => ({
@@ -1292,7 +1313,7 @@ const JobMap = () => {
       ];
       
       // Determine segment type and styling (Loop / Aerial Splice are aerial attributes)
-      const aerialItem = (it) => it.type === "pole" || AERIAL_ATTR_TYPES.has(it.ugType);
+      const aerialItem = (it) => it.type === "pole" || (it.aerialOverride ? it.aerialOverride === "aerial" : AERIAL_ATTR_TYPES.has(it.ugType));
       const isAerial = pr.typeOverride ? pr.typeOverride === "aerial" : (aerialItem(fromItem) && aerialItem(toItem));
       const hasUnderground = fromItem.type === "underground" || toItem.type === "underground";
       
@@ -2038,7 +2059,7 @@ const JobMap = () => {
                           <>
                             <div className="text-xs font-mono font-semibold" data-testid="conn-selected-label">{connLabel}</div>
                             {(() => {
-                              const isA = (id) => route.some((p) => p.id === id) || AERIAL_ATTR_TYPES.has((ug.find((x) => x.id === id) || {}).type);
+                              const isA = (id) => route.some((p) => p.id === id) || (() => { const f = ug.find((x) => x.id === id); return f ? isAerialAttr(f) : false; })();
                               const eff = conn.type_override || ((isA(conn.from_item_id) && isA(conn.to_item_id)) ? "aerial" : "underground");
                               return (
                                 <div className="flex gap-2">
@@ -2413,7 +2434,7 @@ const JobMap = () => {
                 const isRed = isMPOE || ugIsAfterMPOE;
                 const stationLabel = showStationNumbers && stationNumbers[u.id] ? stationNumbers[u.id] : null;
                 // Loop / Aerial Splice are aerial attributes — render them blue
-                const itemColor = u.marker_color || (AERIAL_ATTR_TYPES.has(u.type) ? "#2563eb" : undergroundColorHex);
+                const itemColor = u.marker_color || (isAerialAttr(u) ? "#2563eb" : undergroundColorHex);
                 // Hide underground type label when station numbers are active
                 const ugDisplayLabel = showStationNumbers ? "" : undergroundAbbr(u.type);
                 return (
@@ -2438,7 +2459,7 @@ const JobMap = () => {
                             </Link>
                             <UgPopupEditor
                               item={u}
-                              defaultColor={AERIAL_ATTR_TYPES.has(u.type) ? "#2563eb" : undergroundColorHex}
+                              defaultColor={isAerialAttr(u) ? "#2563eb" : undergroundColorHex}
                               onSaved={(updated) => setUnderground((prev) => prev.map((x) => (x.id === updated.id ? { ...x, ...updated } : x)))}
                             />
                           </>
@@ -2639,10 +2660,20 @@ const JobMap = () => {
         {/* Numbered span measurements list */}
         {measurementEntries.length > 0 && (
           <div className="industrial-card p-4 sm:p-5" data-testid="span-measurements-list">
-            <h2 className="font-heading text-base sm:text-lg font-bold text-zinc-900 mb-3 flex items-center gap-2">
-              <div className="w-1 h-5 bg-orange-500"></div>
-              SPAN MEASUREMENTS
-            </h2>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-heading text-base sm:text-lg font-bold text-zinc-900 flex items-center gap-2">
+                <div className="w-1 h-5 bg-orange-500"></div>
+                SPAN MEASUREMENTS
+              </h2>
+              {!spanReorder && (poles.length + underground.length) >= 2 && (
+                <Button variant="outline" size="sm" onClick={() => setSpanReorder(true)} className="gap-1 bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900" data-testid="span-reorder-btn">
+                  <GripVertical className="w-4 h-4" /> Reorder
+                </Button>
+              )}
+            </div>
+            {spanReorder ? (
+              <SpanReorderList initialItems={combinedOrderItems()} onSave={saveSpanOrder} onCancel={() => setSpanReorder(false)} saving={savingOrder} />
+            ) : (
             <ol className="space-y-1 font-mono text-sm text-zinc-800">
               {measurementEntries.map((e) => (
                 e.kind === "span" ? (
@@ -2661,6 +2692,7 @@ const JobMap = () => {
                 )
               ))}
             </ol>
+            )}
             <div className="mt-3 pt-3 border-t border-zinc-300 font-mono text-sm font-bold text-zinc-900" data-testid="span-measurements-total">
               Total: {fmtFeet(aerialFeetTotal)} aerial{ugFeet > 0 ? ` + ${fmtFeet(ugFeet)} underground` : ""}{totalRiserFeet > 0 ? ` + ${fmtFeet(totalRiserFeet)} new risers` : ""}{pathFeet > 0 ? ` + ${fmtFeet(pathFeet)} path` : ""} = {fmtFeet(aerialFeetTotal + totalRiserFeet + ugFeet + pathFeet)}
             </div>

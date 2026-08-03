@@ -22,6 +22,7 @@ class UndergroundBase(BaseModel):
     end_path: Optional[bool] = False
     standalone: Optional[bool] = False
     marker_color: Optional[str] = None
+    aerial_override: Optional[str] = None  # "aerial" | "underground" | None (default by type)
 
 
 class UndergroundCreate(UndergroundBase):
@@ -46,6 +47,7 @@ class UndergroundUpdate(BaseModel):
     end_path: Optional[bool] = None
     standalone: Optional[bool] = None
     marker_color: Optional[str] = None
+    aerial_override: Optional[str] = None
 
 
 class Underground(UndergroundBase):
