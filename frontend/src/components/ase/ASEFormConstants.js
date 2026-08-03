@@ -13,7 +13,7 @@ export const ASE_OPTIONS = {
   ],
   
   // Site Visit Type (from data sheet)
-  siteVisitType: ["RB", "SITE SURVEY"],
+  siteVisitType: ["RB", "SITE SURVEY", "PHYSICAL"],
   
   // Occupancy Types (from SOURCE sheet Column C)
   occupancyTypes: [
