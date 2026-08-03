@@ -1521,35 +1521,58 @@ async def export_ase_excel(job_id: str, current_user: dict = Depends(get_current
         ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=4)
         return row + 1
     
+    wrap_align = Alignment(wrap_text=True, vertical="top")
+
+    def _calc_lines(text, width):
+        t = str(text or "")
+        if not t:
+            return 1
+        return sum(max(1, -(-len(seg) // width)) for seg in t.split("\n"))
+
+    def _fit_height(ws, row, lines):
+        if lines > 1:
+            ws.row_dimensions[row].height = min(14 * lines + 4, 240)
+
     def add_row(ws, row, label, value):
-        ws.cell(row=row, column=1, value=label).font = label_font
+        label_cell = ws.cell(row=row, column=1, value=label)
+        label_cell.font = label_font
+        label_cell.alignment = wrap_align
         value_cell = ws.cell(row=row, column=2, value=value or "")
         value_cell.font = value_font
         value_cell.fill = filled_fill if value else empty_fill
+        value_cell.alignment = wrap_align
+        _fit_height(ws, row, max(_calc_lines(label, 43), _calc_lines(value, 33)))
         return row + 1
     
     def add_row_pair(ws, row, label1, value1, label2, value2):
-        ws.cell(row=row, column=1, value=label1).font = label_font
+        l1_cell = ws.cell(row=row, column=1, value=label1)
+        l1_cell.font = label_font
+        l1_cell.alignment = wrap_align
         v1_cell = ws.cell(row=row, column=2, value=value1 or "")
         v1_cell.font = value_font
         v1_cell.fill = filled_fill if value1 else empty_fill
-        ws.cell(row=row, column=3, value=label2).font = label_font
+        v1_cell.alignment = wrap_align
+        l2_cell = ws.cell(row=row, column=3, value=label2)
+        l2_cell.font = label_font
+        l2_cell.alignment = wrap_align
         v2_cell = ws.cell(row=row, column=4, value=value2 or "")
         v2_cell.font = value_font
         v2_cell.fill = filled_fill if value2 else empty_fill
+        v2_cell.alignment = wrap_align
+        _fit_height(ws, row, max(_calc_lines(label1, 43), _calc_lines(value1, 33), _calc_lines(label2, 18), _calc_lines(value2, 28)))
         return row + 1
 
     def add_wide_row(ws, row, label, value):
         """Long text in ONE merged, wrapped box spanning columns B-D"""
-        ws.cell(row=row, column=1, value=label).font = label_font
-        ws.cell(row=row, column=1).alignment = Alignment(wrap_text=True, vertical="top")
+        label_cell = ws.cell(row=row, column=1, value=label)
+        label_cell.font = label_font
+        label_cell.alignment = wrap_align
         value_cell = ws.cell(row=row, column=2, value=value or "")
         value_cell.font = value_font
         value_cell.fill = filled_fill if value else empty_fill
-        value_cell.alignment = Alignment(wrap_text=True, vertical="top")
+        value_cell.alignment = wrap_align
         ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=4)
-        text = str(value or "")
-        lines = max(1, -(-len(text) // 85) + text.count("\n"))
+        lines = max(_calc_lines(label, 43), _calc_lines(value, 83))
         ws.row_dimensions[row].height = min(15 * lines + 4, 240)
         return row + 1
     
@@ -1824,7 +1847,11 @@ async def export_ase_excel(job_id: str, current_user: dict = Depends(get_current
         row = 1
         row = add_section(ws_sow, row, "SOW NOTES (edited by user)", "f59e0b")
         for line in str(ase["sow_notes_override"]).splitlines():
-            ws_sow.cell(row=row, column=1, value=line)
+            line_cell = ws_sow.cell(row=row, column=1, value=line)
+            line_cell.font = value_font
+            line_cell.alignment = wrap_align
+            ws_sow.merge_cells(start_row=row, start_column=1, end_row=row, end_column=4)
+            _fit_height(ws_sow, row, _calc_lines(line, 125))
             row += 1
     else:
         _sow_ef_items = [
