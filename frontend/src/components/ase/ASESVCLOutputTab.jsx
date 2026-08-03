@@ -113,7 +113,7 @@ const ASESVCLOutputTab = ({ formData, handleChange }) => {
       <Section title="Multi Tenant Eligibility (MTEI)">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FieldRow label="Multi-Tenant Eligibility">
-            <StyledInput value={formData.multi_tenant_eligibility || ""} readOnly filled={isFilled(formData.multi_tenant_eligibility)} className="bg-zinc-50" />
+            <YesNoSelect value={formData.multi_tenant_eligibility || ""} onChange={(v) => handleChange("multi_tenant_eligibility", v)} filled={isFilled(formData.multi_tenant_eligibility)} data-testid="mtei-eligibility-select" />
           </FieldRow>
           <FieldRow label="Customer Handoff Panel Location">
             <StyledInput value={formData.customer_handoff_panel_location} onChange={(e) => handleChange("customer_handoff_panel_location", e.target.value)} filled={isFilled(formData.customer_handoff_panel_location)} placeholder={isFilled(formData.nte_at_terminal) ? (formData.nte_at_terminal === "Terminal" ? "COMMON AREA/MPOE" : "SUITE") : ""} />
@@ -122,10 +122,10 @@ const ASESVCLOutputTab = ({ formData, handleChange }) => {
             <StyledInput value={formData.est_fiber_drop_length} onChange={(e) => handleChange("est_fiber_drop_length", e.target.value)} filled={isFilled(formData.est_fiber_drop_length)} placeholder={formData.distance_fbt_to_nte || ""} />
           </FieldRow>
           <FieldRow label="Router on Same Floor">
-            <StyledInput value={formData.router_on_same_floor || ""} readOnly filled={isFilled(formData.router_on_same_floor)} className="bg-zinc-50" />
+            <YesNoSelect value={formData.router_on_same_floor || ""} onChange={(v) => handleChange("router_on_same_floor", v)} filled={isFilled(formData.router_on_same_floor)} data-testid="mtei-router-floor-select" />
           </FieldRow>
           <FieldRow label="Router Within 300 (ft)">
-            <StyledInput value={formData.router_within_300ft || ""} readOnly filled={isFilled(formData.router_within_300ft)} className="bg-zinc-50" />
+            <StyledInput value={formData.router_within_300ft || ""} onChange={(e) => handleChange("router_within_300ft", e.target.value)} filled={isFilled(formData.router_within_300ft)} placeholder="Notes / distance" data-testid="mtei-router-300-input" />
           </FieldRow>
           <FieldRow label="Ceiling Height">
             <StyledInput value={formData.ceiling_height || ""} onChange={(e) => handleChange("ceiling_height", e.target.value)} filled={isFilled(formData.ceiling_height)} />

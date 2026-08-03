@@ -74,9 +74,9 @@ export const StyledTextarea = ({ filled, ...props }) => (
 );
 
 // Dropdown select component
-export const DropdownSelect = ({ value, onChange, options, placeholder = "Select...", filled }) => (
+export const DropdownSelect = ({ value, onChange, options, placeholder = "Select...", filled, ...rest }) => (
   <Select value={value || BLANK} onValueChange={(v) => onChange(v === BLANK ? "" : v)}>
-    <SelectTrigger className={`h-10 font-mono text-sm ${filled ? 'bg-green-50 border-green-300' : 'bg-amber-50 border-amber-300'}`}>
+    <SelectTrigger className={`h-10 font-mono text-sm ${filled ? 'bg-green-50 border-green-300' : 'bg-amber-50 border-amber-300'}`} {...rest}>
       <SelectValue placeholder={placeholder} />
     </SelectTrigger>
     <SelectContent>
@@ -89,8 +89,8 @@ export const DropdownSelect = ({ value, onChange, options, placeholder = "Select
 );
 
 // Yes/No Select
-export const YesNoSelect = ({ value, onChange, filled }) => (
-  <DropdownSelect value={value} onChange={onChange} options={ASE_OPTIONS.yesNo} placeholder="Select..." filled={filled} />
+export const YesNoSelect = ({ value, onChange, filled, ...rest }) => (
+  <DropdownSelect value={value} onChange={onChange} options={ASE_OPTIONS.yesNo} placeholder="Select..." filled={filled} {...rest} />
 );
 
 // Yes/No/NA Select
