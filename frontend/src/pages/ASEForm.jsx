@@ -25,6 +25,8 @@ const ASEForm = () => {
   const [job, setJob] = useState(null);
   const [poles, setPoles] = useState([]);
   const [underground, setUnderground] = useState([]);
+  const [mapConnections, setMapConnections] = useState([]);
+  const [mapRoutes, setMapRoutes] = useState({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -33,6 +35,19 @@ const ASEForm = () => {
 
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const regeneratePathOfApproach = (format) => {
+    const texts = buildSpanMeasurementTexts({
+      poles,
+      underground,
+      connections: mapConnections,
+      routes: mapRoutes,
+      includeStations: format === "stations",
+      stationsOnly: format === "stations",
+    });
+    setFormData(prev => ({ ...prev, path_of_approach: texts.join(", "), path_of_approach_format: format }));
+    toast.success(format === "stations" ? "Path of approach set to station numbers" : "Path of approach set to footage");
   };
 
   const fetchJobAndASE = useCallback(async () => {
@@ -60,6 +75,8 @@ const ASEForm = () => {
       const connectionsData = connectionsRes.data || [];
       const routesLookup = {};
       (routesRes.data || []).forEach((r) => { routesLookup[`${r.from_pole_id}-${r.to_pole_id}`] = r.waypoints || []; });
+      setMapConnections(connectionsData);
+      setMapRoutes(routesLookup);
       
       setFormData(prev => {
         const updated = { ...prev };
@@ -454,7 +471,7 @@ const ASEForm = () => {
 
           {/* Tab 1: ASE CKLIST */}
           <TabsContent value="ase-cklist">
-            <ASEChecklistTab formData={formData} handleChange={handleChange} poles={poles} underground={underground} />
+            <ASEChecklistTab formData={formData} handleChange={handleChange} poles={poles} underground={underground} onRegeneratePath={regeneratePathOfApproach} />
           </TabsContent>
 
           {/* Tab 2: Coordinator Input */}

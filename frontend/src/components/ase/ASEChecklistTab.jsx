@@ -7,7 +7,7 @@ import { PhotoMarkupEditor } from "@/components/PhotoMarkupEditor";
 import { ASEPhotoField } from "@/components/ASEPhotoField";
 import MarkupTab from "@/components/MarkupTab";
 
-const ASEChecklistTab = ({ formData, handleChange, poles = [], underground = [] }) => {
+const ASEChecklistTab = ({ formData, handleChange, poles = [], underground = [], onRegeneratePath }) => {
   // All job attributes (poles + underground) with GPS, in job-page order
   const attributeOptions = useMemo(() => {
     const items = [];
@@ -435,6 +435,25 @@ const ASEChecklistTab = ({ formData, handleChange, poles = [], underground = [] 
             <StyledInput value={formData.nearest_fiber_fid} onChange={(e) => handleChange("nearest_fiber_fid", e.target.value)} filled={isFilled(formData.nearest_fiber_fid)} />
           </FieldRow>
           <FieldRow label="Describe path of approach, include SOC length" wide>
+            {onRegeneratePath && (
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <span className="text-[10px] uppercase text-zinc-400">Measurements:</span>
+                <button
+                  type="button"
+                  onClick={() => onRegeneratePath("footage")}
+                  title="Rebuild from the map using footage (e.g. P1 to P2 = 365 ft)"
+                  className={`px-2.5 py-0.5 rounded text-[11px] font-semibold border transition-colors ${(formData.path_of_approach_format || "footage") === "footage" ? "bg-orange-600 border-orange-600 text-white" : "bg-zinc-100 border-zinc-300 text-zinc-700 hover:bg-zinc-200"}`}
+                  data-testid="poa-format-footage"
+                >Footage</button>
+                <button
+                  type="button"
+                  onClick={() => onRegeneratePath("stations")}
+                  title="Rebuild from the map using station numbers (e.g. P1 0+00 to P2 3+65)"
+                  className={`px-2.5 py-0.5 rounded text-[11px] font-semibold border transition-colors ${formData.path_of_approach_format === "stations" ? "bg-indigo-600 border-indigo-600 text-white" : "bg-zinc-100 border-zinc-300 text-zinc-700 hover:bg-zinc-200"}`}
+                  data-testid="poa-format-stations"
+                >Station #'s</button>
+              </div>
+            )}
             <StyledTextarea value={formData.path_of_approach} onChange={(e) => handleChange("path_of_approach", e.target.value)} rows={2} filled={isFilled(formData.path_of_approach)} />
           </FieldRow>
           

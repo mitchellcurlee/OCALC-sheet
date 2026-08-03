@@ -304,7 +304,8 @@ const totalPathFeet = (underground) =>
 
 // Build the exact text lines shown in the interactive map's Span Measurements list.
 // Used by the ASE checklist "path of approach" so both always match.
-export const buildSpanMeasurementTexts = ({ poles, underground = [], connections = [], includeStations = false, routes = {} }) => {
+export const buildSpanMeasurementTexts = ({ poles, underground = [], connections = [], includeStations = false, stationsOnly = false, routes = {} }) => {
+  if (stationsOnly) includeStations = true;
   const { route } = computeRoute(poles);
   const ug = ugWithGps(underground);
   const pairs = computeConnectionPairs(route, ug, connections);
@@ -357,7 +358,9 @@ export const buildSpanMeasurementTexts = ({ poles, underground = [], connections
     if (!pairIsManual(pr)) {
       rows.push({
         so: pr.from.sort_order ?? Infinity,
-        text: `${nameWithSta(pr.from)} to ${nameWithSta(pr.to)} = ${fmtFeet(pathFeet(segPath(pr, routes)))}${pairIsAerial(pr) ? "" : " (UG)"}`,
+        text: stationsOnly
+          ? `${nameWithSta(pr.from)} to ${nameWithSta(pr.to)}${pairIsAerial(pr) ? "" : " (UG)"}`
+          : `${nameWithSta(pr.from)} to ${nameWithSta(pr.to)} = ${fmtFeet(pathFeet(segPath(pr, routes)))}${pairIsAerial(pr) ? "" : " (UG)"}`,
       });
     }
   });

@@ -209,6 +209,7 @@ export const INITIAL_FORM_DATA = {
   starting_tie_in_measurements: "",
   nearest_fiber_fid: "",
   path_of_approach: "",
+  path_of_approach_format: "footage",
   soc_pole_line_start: "",
   soc_pole_line_end: "",
   soc_start_lat_long: "",
