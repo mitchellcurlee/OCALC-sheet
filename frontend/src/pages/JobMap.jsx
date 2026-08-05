@@ -7,7 +7,7 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import domtoimage from "dom-to-image-more";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ChevronDown, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera, Hash, Link2, Move, Palette, Plus, Map as MapIcon, GripVertical } from "lucide-react";
+import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ChevronDown, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera, Hash, Link2, Move, Palette, Plus, Map as MapIcon, GripVertical, Upload } from "lucide-react";
 import SpanReorderList from "@/components/SpanReorderList";
 import { computeRoute, fmtFeet, feetToStation, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, ugWithGps, undergroundAbbr, computeUgConnectors, computeConnectionPairs, UNDERGROUND_TYPES, isAerialAttr, resolvePairAerial } from "@/lib/poleMapImage";
 import {
@@ -44,6 +44,55 @@ import MapAnnotations from "@/components/MapAnnotations";
 const MAP_AERIAL_ADD_TYPES = ["Loop", "Aerial Splice", "Power", "X-Messenger", "Eyebolt", "Pullbox", "Weather Head"];
 
 const MARKER_COLOR_CHOICES = ["#dc2626", "#2563eb", "#16a34a", "#39ff14", "#ea580c", "#ff6600", "#9333ea", "#facc15"];
+
+// Camera/upload buttons in map quick-edit popups: photos go to the item's unsorted gallery
+const PopupPhotoAdder = ({ endpoint, item, onSaved }) => {
+  const camRef = useRef(null);
+  const fileRef = useRef(null);
+  const [busy, setBusy] = useState(false);
+  const handleFiles = async (e) => {
+    const files = Array.from(e.target.files || []).filter((f) => f.type.startsWith("image/"));
+    e.target.value = "";
+    if (!files.length) return;
+    setBusy(true);
+    const urls = [];
+    for (const f of files) {
+      try {
+        const fd = new FormData();
+        fd.append("file", f);
+        const res = await axios.post("/upload-photo", fd, { headers: { "Content-Type": "multipart/form-data" } });
+        urls.push(res.data.url);
+      } catch {
+        toast.error(`Failed to upload ${f.name}`);
+      }
+    }
+    if (urls.length) {
+      try {
+        const res = await axios.put(endpoint, { staged_photos: [...(item.staged_photos || []), ...urls] });
+        onSaved(res.data);
+        toast.success(`${urls.length} photo${urls.length > 1 ? "s" : ""} added — sort them in the full form`);
+      } catch {
+        toast.error("Failed to save photos");
+      }
+    }
+    setBusy(false);
+  };
+  return (
+    <div className="flex items-center gap-1.5">
+      <input ref={camRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFiles} data-testid="popup-camera-input" />
+      <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFiles} data-testid="popup-upload-input" />
+      <Button size="sm" variant="outline" disabled={busy} className="flex-1 h-7 text-xs bg-sky-50 border-sky-300 text-sky-800 hover:bg-sky-100" onClick={() => camRef.current?.click()} data-testid="popup-camera-btn">
+        <Camera className="w-3.5 h-3.5 mr-1" />{busy ? "Uploading…" : "Camera"}
+      </Button>
+      <Button size="sm" variant="outline" disabled={busy} className="flex-1 h-7 text-xs bg-sky-50 border-sky-300 text-sky-800 hover:bg-sky-100" onClick={() => fileRef.current?.click()} data-testid="popup-upload-btn">
+        <Upload className="w-3.5 h-3.5 mr-1" />Photos
+      </Button>
+      {(item.staged_photos?.length || 0) > 0 && (
+        <span className="text-[10px] font-mono text-zinc-500 whitespace-nowrap" data-testid="popup-staged-count">{item.staged_photos.length} unsorted</span>
+      )}
+    </div>
+  );
+};
 
 // Inline quick-edit + marker color picker shown inside underground attribute popups
 const UgPopupEditor = ({ item, defaultColor, onSaved }) => {
@@ -93,6 +142,7 @@ const UgPopupEditor = ({ item, defaultColor, onSaved }) => {
   // Button and form both stay mounted (CSS toggle): unmounting the clicked element mid-click detaches it from the DOM, breaking Leaflet's popup click detection and closing the popup
   return (
     <div className="mt-2 border-t border-zinc-200 pt-2 space-y-2">
+      <PopupPhotoAdder endpoint={`/underground/${item.id}`} item={item} onSaved={onSaved} />
       <div className={editing ? "space-y-1.5" : "hidden"} data-testid={`ug-quickedit-form-${item.id}`}>
         <div>
           <label className="text-[10px] text-zinc-400 uppercase">Label / ID</label>
@@ -173,6 +223,7 @@ const PolePopupEditor = ({ pole, onSaved }) => {
   // Button and form both stay mounted (CSS toggle) — see UgPopupEditor note
   return (
     <div className="mt-2 border-t border-zinc-200 pt-2 space-y-2">
+      <PopupPhotoAdder endpoint={`/poles/${pole.id}`} item={pole} onSaved={onSaved} />
       <div className={editing ? "space-y-1.5" : "hidden"} data-testid={`pole-quickedit-form-${pole.id}`}>
         <div>
           <label className="text-[10px] text-zinc-400 uppercase">Pole Number</label>

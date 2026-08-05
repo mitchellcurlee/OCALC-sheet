@@ -34,6 +34,7 @@ import { SpanDistance } from "@/components/SpanDistance";
 import { ReferenceHeightMeasurer } from "@/components/ReferenceHeightMeasurer";
 import { PhotoMarkupEditor } from "@/components/PhotoMarkupEditor";
 import { MultiPhotoUpload } from "@/components/MultiPhotoUpload";
+import { PhotoStagingGallery } from "@/components/PhotoStagingGallery";
 
 // Fix Leaflet marker icon issue
 delete L.Icon.Default.prototype._getIconUrl;
@@ -95,6 +96,7 @@ const emptyFormData = () => ({
   span4_direction: "", span4_distance: "", span4_owner: "",
   latitude: "", longitude: "-", notes: "", row_information: "",
   hoa_markup_photos: [], // Photos for HOA markup/annotation
+  staged_photos: [], // Unsorted photos from the top Photo Gallery
   pole_line_start: false, pole_line_end: false, end_path: false, standalone: false,
 });
 const emptyDownGuy = () => ({ _key: rowKey(), owner: "", direction: "", size: "", type: "", condition: "", height: "", lead: "", photos: [] });
@@ -231,6 +233,7 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
       span4_direction: p.span4_direction || "", span4_distance: p.span4_distance?.toString() || "", span4_owner: p.span4_owner || "",
       latitude: p.latitude?.toString() || "", longitude: p.longitude?.toString() || "-", notes: p.notes || "", row_information: p.row_information || "",
       hoa_markup_photos: p.hoa_markup_photos || [],
+      staged_photos: p.staged_photos || [],
       pole_line_start: p.pole_line_start === true,
       pole_line_end: p.pole_line_end === true,
       end_path: p.end_path === true,
@@ -344,6 +347,38 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
 
   const handleSelectChange = (name, value) => {
     setFormData((prev) => ({ ...prev, [name]: value === BLANK ? "" : value }));
+  };
+
+  const stagingCategories = [
+    { key: "single:pole_photo", label: "Pole Picture" },
+    { key: "single:ocalc_left_photo", label: "OCALC Left" },
+    { key: "single:ocalc_middle_photo", label: "OCALC Middle" },
+    { key: "single:ocalc_right_photo", label: "OCALC Right" },
+    { key: "array:birthmark_photos", label: "Birthmark Photos" },
+    { key: "array:mgnv_photos", label: "MGNV Photos" },
+    { key: "array:hoa_markup_photos", label: "HOA Markup Photos" },
+    ...downGuys.map((_dg, i) => ({ key: `dg:${i}`, label: `Down Guy ${i + 1} Photos` })),
+    ...knuckles.map((_k, i) => ({ key: `kn:${i}`, label: `Anchor ${i + 1} Photos` })),
+    ...attachments.map((_a, i) => ({ key: `att:${i}`, label: `HOA ${i + 1} Photos` })),
+  ];
+
+  const handleStagedAssign = (url, key) => {
+    const [kind, name] = key.split(":");
+    if (kind === "single") {
+      setFormData((p) => ({ ...p, [name]: url }));
+    } else if (kind === "array") {
+      setFormData((p) => ({ ...p, [name]: [...(p[name] || []), url] }));
+    } else if (kind === "dg") {
+      const i = parseInt(name, 10);
+      updateDownGuy(i, "photos", [...(downGuys[i]?.photos || []), url]);
+    } else if (kind === "kn") {
+      const i = parseInt(name, 10);
+      updateKnuckle(i, "photos", [...(knuckles[i]?.photos || []), url]);
+    } else if (kind === "att") {
+      const i = parseInt(name, 10);
+      updateAttachment(i, "photos", [...(attachments[i]?.photos || []), url]);
+    }
+    toast.success("Photo assigned");
   };
 
   const handlePhotoChange = (field, value) => {
@@ -618,6 +653,15 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
               {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Save className="w-4 h-4 mr-2" />{submitLabel}</>}
             </Button>
           </div>
+
+          {/* Photo Gallery — capture/upload first, sort into categories below */}
+          <PhotoStagingGallery
+            photos={formData.staged_photos || []}
+            onChange={(v) => setFormData((p) => ({ ...p, staged_photos: v }))}
+            categories={stagingCategories}
+            onAssign={handleStagedAssign}
+            testId="pole-staging"
+          />
 
           {/* Pole Line Start / End toggles — auto-populate ASE checklist */}
           <div className="flex flex-wrap items-center gap-6 p-3 bg-amber-50 border border-amber-200 rounded-lg">

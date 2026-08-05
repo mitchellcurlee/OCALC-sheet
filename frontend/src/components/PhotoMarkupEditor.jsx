@@ -1255,7 +1255,22 @@ export const PhotoMarkupEditor = ({
   };
 
   return (
-    <div className="space-y-3">
+    <div
+      className="space-y-3"
+      onDragOver={(e) => { if (e.dataTransfer.types.includes("application/x-staged-photo")) e.preventDefault(); }}
+      onDrop={(e) => {
+        const stagedUrl = e.dataTransfer.getData("application/x-staged-photo");
+        if (stagedUrl) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (!photoArray.includes(stagedUrl)) {
+            onChange([stagedUrl, ...photoArray]);
+            window.dispatchEvent(new CustomEvent("staged-photo-assigned", { detail: { url: stagedUrl } }));
+            toast.success("Photo assigned");
+          }
+        }
+      }}
+    >
       <Label className="text-sm font-mono uppercase text-zinc-600 flex items-center gap-2">
         <Pencil className="w-4 h-4" />
         {label}

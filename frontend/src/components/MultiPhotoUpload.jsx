@@ -154,6 +154,22 @@ export const MultiPhotoUpload = ({ label, value = [], onChange, testId, compact 
     e.stopPropagation();
     setIsDragging(false);
     
+    // Staged photo dragged from the top Photo Gallery → assign it here
+    const stagedUrl = e.dataTransfer.getData('application/x-staged-photo');
+    if (stagedUrl) {
+      const currentValue = valueRef.current;
+      const currentPhotos = Array.isArray(currentValue) ? currentValue : (currentValue ? [currentValue] : []);
+      if (!currentPhotos.includes(stagedUrl)) {
+        let newPhotos = [...currentPhotos, stagedUrl];
+        const max = maxPhotosRef.current;
+        if (max && newPhotos.length > max) newPhotos = newPhotos.slice(-max);
+        onChangeRef.current(newPhotos);
+        window.dispatchEvent(new CustomEvent('staged-photo-assigned', { detail: { url: stagedUrl } }));
+        toast.success("Photo assigned");
+      }
+      return;
+    }
+    
     const files = Array.from(e.dataTransfer.files || []);
     const imageFiles = files.filter(f => f.type.startsWith('image/'));
     

@@ -12,6 +12,7 @@ class UndergroundBase(BaseModel):
     label: Optional[str] = None
     notes: Optional[str] = None
     photos: Optional[List[str]] = []
+    staged_photos: Optional[List[str]] = []  # Unsorted photos from the form's top gallery
     sort_order: Optional[int] = None
     tie_in_measurements: Optional[str] = None  # For Handhole/Pole tie-in measurements
     fid: Optional[str] = None
@@ -37,6 +38,7 @@ class UndergroundUpdate(BaseModel):
     label: Optional[str] = None
     notes: Optional[str] = None
     photos: Optional[List[str]] = None
+    staged_photos: Optional[List[str]] = None
     sort_order: Optional[int] = None
     tie_in_measurements: Optional[str] = None
     fid: Optional[str] = None

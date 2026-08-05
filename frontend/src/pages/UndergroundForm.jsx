@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { PhotoMarkupEditor } from "@/components/PhotoMarkupEditor";
+import { PhotoStagingGallery } from "@/components/PhotoStagingGallery";
 import { undergroundAbbr } from "@/lib/poleMapImage";
 import { ArrowLeft, Save, Loader2, MapPin, Search, Pencil, Plus, Trash2 } from "lucide-react";
 
@@ -62,6 +63,7 @@ const UndergroundForm = () => {
     label: "",
     notes: "",
     photos: [],
+    staged_photos: [],
     tie_in_measurements: "", // For Handhole/Pole tie-in measurements
     fid: "",
     primary_fid: false,
@@ -106,6 +108,7 @@ const UndergroundForm = () => {
         label: u.label || "",
         notes: u.notes || "",
         photos: photos,
+        staged_photos: u.staged_photos || [],
         tie_in_measurements: u.tie_in_measurements || "",
         fid: u.fid || "",
         primary_fid: !!u.primary_fid,
@@ -280,6 +283,7 @@ const UndergroundForm = () => {
         label: formData.label,
         notes: formData.notes,
         photos: formData.photos,
+        staged_photos: formData.staged_photos || [],
         tie_in_measurements: formData.tie_in_measurements || null,
         fid: formData.fid || null,
         primary_fid: !!formData.primary_fid,
@@ -334,6 +338,14 @@ const UndergroundForm = () => {
 
       <main className="max-w-3xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
         <form id="ug-form" onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+          {/* Photo Gallery — capture/upload first, sort into categories below */}
+          <PhotoStagingGallery
+            photos={formData.staged_photos || []}
+            onChange={(v) => setFormData((p) => ({ ...p, staged_photos: v }))}
+            categories={[{ key: "array:photos", label: "Photos & Markups" }]}
+            onAssign={(url) => { setFormData((p) => ({ ...p, photos: [...(p.photos || []), url] })); toast.success("Photo assigned"); }}
+            testId="ug-staging"
+          />
           <div className="industrial-card p-4 sm:p-5 space-y-4">
             {/* SOC Start / SOC End toggles — auto-populate ASE checklist */}
             <div className="flex flex-wrap items-center gap-6 p-3 bg-amber-50 border border-amber-200 rounded-lg">

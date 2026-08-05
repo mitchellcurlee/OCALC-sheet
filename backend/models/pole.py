@@ -68,6 +68,7 @@ class PoleBase(BaseModel):
     standalone: Optional[bool] = False
     hoa_markup_photos: Optional[List[str]] = []  # Photos with HOA annotations/markup
     pole_markup_photos: Optional[List[str]] = []  # General pole photos with markup capability
+    staged_photos: Optional[List[str]] = []  # Unsorted photos from the form's top gallery
     use_manual_spans: Optional[bool] = False
     span1_direction: Optional[str] = None
     span1_distance: Optional[float] = None
@@ -94,6 +95,7 @@ class PoleCreate(PoleBase):
 
 class PoleUpdate(BaseModel):
     job_id: Optional[str] = None
+    staged_photos: Optional[List[str]] = None
     job_number: Optional[str] = None
     pole_number: Optional[str] = None
     marker_color: Optional[str] = None

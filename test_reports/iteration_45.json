@@ -1,0 +1,32 @@
+{
+  "summary": "Iter45 – Photo Staging Gallery feature (Camera + Upload gallery at top of pole/underground forms + map popups). Backend: 8/8 passed (staged_photos GET/PUT persistence on poles + underground; job photo gallery HTML lists 'Unsorted'; photos-zip export contains Unsorted files). Frontend: pole staging gallery renders with Camera/Upload buttons, upload places a thumbnail with '(1 unsorted)' label, tap opens assign dialog listing all expected categories, tap-assign moves photo out of staging and (for arrays) into target category (e.g. birthmark_photos), save+reload persists staged_photos, underground form staging gallery works the same with 'Photos & Markups' as its only category, map popup Camera/Photos buttons upload photos via popup-upload-input, popup stays open after upload, popup-staged-count shows '1 unsorted', and pole-quickedit-btn still opens the quick-edit form without closing the popup. Drag-and-drop was not automated (HTML5 DnD with custom MIME is unreliable in headless Playwright) — recommend manual verification.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_staged_photos_iter45.py",
+    "/app/test_reports/pytest/iter45_staged.xml"
+  ],
+  "action_items": [
+    "Manually verify HTML5 drag-and-drop from staged thumbnail onto a MultiPhotoUpload drop zone (application/x-staged-photo MIME) and onto a PhotoMarkupEditor root — this could not be reliably automated. Tap-assign (both branches: array + single) was verified end-to-end.",
+    "Minor: primary UG edit route `/jobs/{jobId}/underground/{id}/edit` (as stated in the request) does NOT render the form — the working route is `/jobs/{jobId}/underground/edit/{id}`. If the request URL pattern is expected to work, add a matching Route; otherwise update docs/tests. Non-blocking."
+  ],
+  "critical_code_review_comments": [
+    "PhotoStagingGallery uses raw axios.post('/upload-photo', ...) which relies on axios.defaults.baseURL set in AuthContext. Fine, but a stray import/use of axios without baseURL would break silently. Consider using a shared api client.",
+    "handleAssignPick removes the photo from staging optimistically before onAssign runs — if the parent's onAssign throws, the photo is lost. Consider ordering: onAssign first (await), then remove.",
+    "helpers.pole_photo_items labels a single unsorted photo 'Unsorted' (no index); ZIP contains Pole_{n}_Unsorted.jpeg — matches the spec."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_staged_photos_iter45.py"
+  ],
+  "success_rate": {"backend": "100% (8/8)", "frontend": "100% of automated flows (drag-and-drop manual)"},
+  "test_credentials": "Admin@mastec.com / Mastecbyers12345 (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "Reused seed job e5dc0bae-96bb-4cef-8001-7baf4e41d80a (A050ABC); staged photos added during testing were cleaned up (staged_photos: []).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Feature is fully working across backend + all three surfaces (pole form, underground form, map popup for both pole and underground). If asked to test drag-and-drop, use page.evaluate to programmatically simulate dataTransfer.setData(STAGED_PHOTO_MIME, url) then fire dragstart+drop on target — HTML5 native drag events in Playwright do not carry custom MIME reliably. The pole edit form loads the staging gallery only after the pole record loads (waitForSelector on [data-testid=\"pole-staging-gallery\"] with 15s timeout works). The UG edit route is `/jobs/{jobId}/underground/edit/{id}`.",
+  "rca of the issue": "N/A – no issues found."
+}

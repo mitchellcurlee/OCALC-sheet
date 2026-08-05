@@ -148,6 +148,11 @@ def pole_photo_items(pole: dict):
     for i, photo in enumerate(pole_markup_photos, 1):
         label = "Pole_Markup" if len(pole_markup_photos) == 1 else f"Pole_Markup_{i}"
         labeled.append((label, photo))
+    # Unsorted staged photos from the form's top gallery
+    staged = pole.get("staged_photos") or []
+    for i, photo in enumerate(staged, 1):
+        label = "Unsorted" if len(staged) == 1 else f"Unsorted_{i}"
+        labeled.append((label, photo))
     for label, val in labeled:
         if val:
             items.append((label, val))
@@ -169,6 +174,11 @@ def underground_photo_items(ug: dict):
     
     for i, photo in enumerate(photos, 1):
         label = base_name if len(photos) == 1 else f"{base_name}_{i}"
+        items.append((label, photo))
+    # Unsorted staged photos from the form's top gallery
+    staged = ug.get("staged_photos") or []
+    for i, photo in enumerate(staged, 1):
+        label = f"{base_name}_Unsorted" if len(staged) == 1 else f"{base_name}_Unsorted_{i}"
         items.append((label, photo))
     
     return items
