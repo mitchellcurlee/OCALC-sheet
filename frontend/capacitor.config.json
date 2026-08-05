@@ -1,0 +1,9 @@
+{
+  "appId": "com.example.poletracker",
+  "appName": "Pole Data",
+  "webDir": "build",
+  "bundledWebRuntime": false,
+  "server": {
+    "cleartext": true
+  }
+}

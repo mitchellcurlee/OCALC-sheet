@@ -63,12 +63,18 @@
     "tailwindcss-animate": "^1.0.7",
     "uuid": "^14.0.0",
     "vaul": "^1.1.2",
-    "zod": "^3.24.4"
+    "zod": "^3.24.4",
+    "@capacitor/core": "^6.0.0"
   },
   "scripts": {
     "start": "craco start",
     "build": "craco build",
-    "test": "craco test"
+    "test": "craco test",
+    "mobile:init": "npx cap init PoleTracker com.example.poletracker --web-dir=build",
+    "mobile:build": "craco build",
+    "mobile:sync": "yarn mobile:build && npx cap sync",
+    "mobile:open:android": "yarn mobile:sync && npx cap open android",
+    "mobile:open:ios": "yarn mobile:sync && npx cap open ios"
   },
   "browserslist": {
     "production": [
@@ -84,6 +90,9 @@
   },
   "devDependencies": {
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
+    "@capacitor/android": "^6.0.0",
+    "@capacitor/cli": "^6.0.0",
+    "@capacitor/ios": "^6.0.0",
     "@craco/craco": "^7.1.0",
     "@eslint/js": "9.23.0",
     "autoprefixer": "^10.4.20",
