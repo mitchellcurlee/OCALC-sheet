@@ -20,6 +20,7 @@ import Trash from "@/pages/Trash";
 import ASEPhotoGallery from "@/pages/ASEPhotoGallery";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
+import BackupAtlas from "@/pages/BackupAtlas";
 import InstallPrompt from "@/components/InstallPrompt";
 
 function App() {
@@ -49,6 +50,7 @@ function App() {
             <Route path="/jobs/:jobId/ase" element={<ProtectedRoute><ASEForm /></ProtectedRoute>} />
             <Route path="/recovery" element={<ProtectedRoute><DataRecovery /></ProtectedRoute>} />
             <Route path="/trash" element={<ProtectedRoute><Trash /></ProtectedRoute>} />
+            <Route path="/backup" element={<ProtectedRoute><BackupAtlas /></ProtectedRoute>} />
           </Routes>
         </BrowserRouter>
       </AuthProvider>

@@ -76,6 +76,7 @@ from routes import annotations as annotations_routes
 from routes import connections as connections_routes
 from routes import import_excel as import_excel_routes
 from routes import trash as trash_routes
+from routes import backup as backup_routes
 
 auth_routes.set_db(db)
 jobs_routes.set_db(db)
@@ -88,6 +89,7 @@ annotations_routes.set_db(db)
 connections_routes.set_db(db)
 import_excel_routes.set_db(db)
 trash_routes.set_db(db)
+backup_routes.set_db(db)
 
 # Include all routers
 api_router.include_router(auth_routes.router)
@@ -101,6 +103,7 @@ api_router.include_router(annotations_routes.router)
 api_router.include_router(connections_routes.router)
 api_router.include_router(import_excel_routes.router)
 api_router.include_router(trash_routes.router)
+api_router.include_router(backup_routes.router)
 
 
 # Root endpoint

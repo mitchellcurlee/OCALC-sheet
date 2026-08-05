@@ -42,6 +42,7 @@ import {
   MapPin,
   Calendar,
   Trash2,
+  DatabaseBackup,
   Pencil,
   ArrowRightLeft,
   LogOut,
@@ -428,6 +429,18 @@ const JobsList = () => {
               >
                 <Trash2 className="w-4 h-4" />
               </Button>
+              {isAdmin && (
+                <Button
+                  onClick={() => navigate("/backup")}
+                  size="icon"
+                  variant="ghost"
+                  className="text-zinc-400 hover:text-emerald-400 hover:bg-zinc-800"
+                  title="Backup to Atlas"
+                  data-testid="backup-atlas-btn"
+                >
+                  <DatabaseBackup className="w-4 h-4" />
+                </Button>
+              )}
               {user && (
                 <div className="hidden sm:flex items-center gap-2">
                   {isAdmin && (
