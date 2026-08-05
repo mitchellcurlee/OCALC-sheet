@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from models.user import User, UserCreate, UserLogin
 from services.auth import (
     get_password_hash, verify_password, create_access_token,
-    get_current_user, is_admin_user
+    get_current_user, is_admin_user, is_mastec_byers_admin
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -47,7 +47,7 @@ async def login(credentials: UserLogin):
         raise HTTPException(status_code=401, detail="Invalid email or password")
     
     token = create_access_token({"sub": user["id"]})
-    user_is_admin = is_admin_user(user)
+    user_is_admin = is_admin_user(user) or is_mastec_byers_admin(user)
     
     return {
         "access_token": token,
@@ -59,5 +59,5 @@ async def login(credentials: UserLogin):
 @router.get("/me")
 async def get_me(current_user: dict = Depends(get_current_user)):
     """Get current user info"""
-    current_user["is_admin"] = is_admin_user(current_user)
+    current_user["is_admin"] = is_admin_user(current_user) or is_mastec_byers_admin(current_user)
     return current_user
