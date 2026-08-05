@@ -165,10 +165,17 @@ async def startup_storage():
     except Exception as e:
         logger.error(f"Storage init failed (will retry on first upload): {e}")
 
+    # Nightly Atlas backup scheduler
+    app.state.backup_scheduler = asyncio.create_task(backup_routes.scheduler_loop())
+    logger.info("Atlas backup scheduler started")
+
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
     """Close database connection on shutdown"""
+    task = getattr(app.state, "backup_scheduler", None)
+    if task:
+        task.cancel()
     client.close()
 
 

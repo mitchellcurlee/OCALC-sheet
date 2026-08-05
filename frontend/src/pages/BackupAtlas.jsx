@@ -4,7 +4,9 @@ import axios from "axios";
 import { toast } from "sonner";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
-import { ArrowLeft, DatabaseBackup, Loader2, CheckCircle2, ShieldAlert } from "lucide-react";
+import { Switch } from "../components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
+import { ArrowLeft, DatabaseBackup, Loader2, CheckCircle2, ShieldAlert, Clock } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
 export default function BackupAtlas() {
@@ -56,6 +58,22 @@ export default function BackupAtlas() {
     } finally {
       setRunning(false);
     }
+  };
+
+  const saveSchedule = async (enabled, hourUtc) => {
+    try {
+      await axios.put("/admin/backup/schedule", { enabled, hour_utc: hourUtc });
+      toast.success(enabled ? "Nightly backup enabled" : "Nightly backup disabled");
+      await fetchStatus();
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Failed to update schedule");
+    }
+  };
+
+  const hourLabel = (h) => {
+    const d = new Date();
+    d.setUTCHours(h, 0, 0, 0);
+    return `${d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })} local (${String(h).padStart(2, "0")}:00 UTC)`;
   };
 
   if (!isAdmin || status?.forbidden) {
@@ -126,6 +144,42 @@ export default function BackupAtlas() {
           {status?.last_backup_at && (
             <p className="text-xs font-mono text-zinc-400" data-testid="backup-last-run">
               Last backup: {new Date(status.last_backup_at).toLocaleString()}
+            </p>
+          )}
+        </div>
+
+        {/* Nightly schedule */}
+        <div className="border border-zinc-800 bg-zinc-900 p-4 space-y-3">
+          <h2 className="text-sm font-bold font-mono uppercase text-zinc-300 flex items-center gap-2"><Clock className="w-4 h-4" />3. Nightly Auto-Backup</h2>
+          <div className="flex items-center gap-3">
+            <Switch
+              checked={!!status?.auto_enabled}
+              onCheckedChange={(v) => saveSchedule(v, status?.auto_hour_utc ?? 7)}
+              disabled={!status?.configured}
+              data-testid="backup-auto-toggle"
+            />
+            <span className="text-xs font-mono text-zinc-400">{status?.auto_enabled ? "ENABLED — runs every night" : "Disabled"}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-zinc-500">Run at:</span>
+            <Select
+              value={String(status?.auto_hour_utc ?? 7)}
+              onValueChange={(v) => saveSchedule(!!status?.auto_enabled, parseInt(v, 10))}
+              disabled={!status?.configured}
+            >
+              <SelectTrigger className="w-64 h-8 bg-zinc-950 border-zinc-700 text-zinc-100 text-xs font-mono" data-testid="backup-auto-hour-select">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-zinc-900 border-zinc-700 text-zinc-100 max-h-64">
+                {Array.from({ length: 24 }, (_, h) => (
+                  <SelectItem key={h} value={String(h)} className="text-xs font-mono">{hourLabel(h)}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {status?.last_auto_status && (
+            <p className={`text-xs font-mono ${status.last_auto_status.startsWith("failed") ? "text-red-400" : "text-emerald-400"}`} data-testid="backup-auto-status">
+              Last nightly run: {status.last_auto_status}
             </p>
           )}
         </div>
