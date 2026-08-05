@@ -37,6 +37,32 @@ def generate_download_token(resource_type: str, resource_id: str, expires_days: 
     return f"{expires}:{signature}"
 
 
+ASE_PHOTO_FIELDS = [
+    ("Address", "address_photos"),
+    ("Access Contact", "access_contact_photos"),
+    ("SPF Contact", "spf_contact_photos"),
+    ("Existing INC", "existing_inc_photos"),
+    ("Existing Fiber Terminal", "existing_fiber_terminal_photos"),
+    ("Fiber Terminal Placement", "fiber_terminal_placement_photos"),
+    ("Active Ports", "fiber_active_ports_photos"),
+    ("Fiber Reading", "fiber_reading_photos"),
+    ("Existing NTE", "existing_nte_photos"),
+    ("NTE Placement", "nte_placement_photos"),
+    ("NTE CLLI", "nte_clli_photos"),
+    ("Rack Bay/Shelf", "nte_rack_bay_shelf_photos"),
+    ("Equipment Power Config", "equipment_power_config_photos"),
+    ("Pole Line Start", "pole_line_start_photos"),
+    ("Pole Line End", "pole_line_end_photos"),
+    ("SOC Start", "soc_start_photos"),
+    ("SOC End", "soc_end_photos"),
+    ("Pipelines Vicinity", "pipelines_vicinity_photos"),
+    ("Pipelines Path", "pipelines_path_photos"),
+    ("Railroads Vicinity", "railroads_vicinity_photos"),
+    ("Railroads Path", "railroads_path_photos"),
+    ("Mark Ups", "markup_photos"),
+]
+
+
 def verify_download_token(resource_type: str, resource_id: str, token: str) -> bool:
     """Verify a download token is valid and not expired"""
     try:
@@ -674,7 +700,7 @@ async def job_photos_gallery(job_id: str, token: Optional[str] = Query(None), re
                 f'<figure class="ph" data-name="{dl_name}" data-url="{url}">'
                 '<label class="sel"><input type="checkbox" class="pick"/></label>'
                 f'<a href="{url}" target="_blank" rel="noopener"><img draggable="true" src="{url}" alt="{label}" loading="lazy"/></a>'
-                f'<figcaption>{label}</figcaption>'
+                f'<figcaption>Pole {pole_no} &middot; {label}</figcaption>'
                 '</figure>'
             )
         
@@ -700,7 +726,7 @@ async def job_photos_gallery(job_id: str, token: Optional[str] = Query(None), re
                 f'<figure class="ph" data-name="{dl_name}" data-url="{url}">'
                 '<label class="sel"><input type="checkbox" class="pick"/></label>'
                 f'<a href="{url}" target="_blank" rel="noopener"><img draggable="true" src="{url}" alt="{label}" loading="lazy"/></a>'
-                f'<figcaption>{label}</figcaption>'
+                f'<figcaption>{ug_title} &middot; {label}</figcaption>'
                 '</figure>'
             )
         
@@ -716,17 +742,22 @@ async def job_photos_gallery(job_id: str, token: Optional[str] = Query(None), re
     zip_url = f"/api/jobs/{job_id}/export/photos-zip?token={zip_token}"
     zip_sel_url = f"/api/jobs/{job_id}/export/photos-zip-selected?token={zip_token}"
     download_all_btn = f'<a class="dlall" href="{zip_url}" download>Download all {total_photos} photos (ZIP)</a>' if total_photos > 0 else ''
-    download_sel_btn = '<button id="dlsel" class="dlall selbtn" disabled>Download selected (0)</button>' if total_photos > 0 else ''
+    download_sel_btn = '<button id="dlsel" class="dlall selbtn" disabled>Download selected ZIP (0)</button>' if total_photos > 0 else ''
+    download_files_btn = '<button id="dlfiles" class="dlall filesbtn" disabled>Download selected as files (0)</button>' if total_photos > 0 else ''
     
     script_js = """
 <script>
 (function(){
   var ZIP_SEL_URL = "__ZIPSEL__";
-  var ZIP_NAME = "__ZIPNAME__";
   var btn = document.getElementById('dlsel');
+  var filesBtn = document.getElementById('dlfiles');
   if (!btn) return;
   function picked(){ return Array.prototype.slice.call(document.querySelectorAll('figure.ph')).filter(function(f){ return f.querySelector('.pick').checked; }); }
-  function refresh(){ var n = picked().length; btn.disabled = n === 0; btn.textContent = 'Download selected (' + n + ')'; }
+  function refresh(){
+    var n = picked().length;
+    btn.disabled = n === 0; btn.textContent = 'Download selected ZIP (' + n + ')';
+    if (filesBtn) { filesBtn.disabled = n === 0; filesBtn.textContent = 'Download selected as files (' + n + ')'; }
+  }
   document.addEventListener('change', function(e){
     if (e.target.classList.contains('pickall')) {
       var sec = e.target.closest('section');
@@ -734,22 +765,33 @@ async def job_photos_gallery(job_id: str, token: Optional[str] = Query(None), re
     }
     if (e.target.classList.contains('pick') || e.target.classList.contains('pickall')) refresh();
   });
+  // ZIP of selected: submit a form so the browser downloads with live progress (starts instantly)
   btn.addEventListener('click', function(){
     var photos = picked().map(function(f){ return { name: f.dataset.name, url: f.dataset.url }; });
-    btn.disabled = true; btn.textContent = 'Preparing ' + photos.length + ' photos...';
-    fetch(ZIP_SEL_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ photos: photos }) })
-      .then(function(r){ if (!r.ok) throw new Error('HTTP ' + r.status); return r.blob(); })
-      .then(function(blob){
-        var a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = ZIP_NAME;
-        document.body.appendChild(a); a.click(); a.remove();
-        setTimeout(function(){ URL.revokeObjectURL(a.href); }, 5000);
-      })
-      .catch(function(){ alert('Download failed. Please try again.'); })
-      .finally(function(){ refresh(); });
+    var form = document.createElement('form');
+    form.method = 'POST'; form.action = ZIP_SEL_URL; form.style.display = 'none';
+    var input = document.createElement('input');
+    input.type = 'hidden'; input.name = 'photos_json'; input.value = JSON.stringify(photos);
+    form.appendChild(input); document.body.appendChild(form); form.submit();
+    setTimeout(function(){ form.remove(); }, 2000);
   });
-  // Drag a single photo straight into a folder (Chrome/Edge)
+  // Individual files: each photo downloads with its label as the filename (allow multiple downloads if prompted)
+  if (filesBtn) filesBtn.addEventListener('click', function(){
+    var figs = picked();
+    filesBtn.disabled = true;
+    var i = 0;
+    (function next(){
+      if (i >= figs.length) { refresh(); return; }
+      var f = figs[i++];
+      var a = document.createElement('a');
+      a.href = f.dataset.url;
+      a.download = f.dataset.name + '.jpeg';
+      document.body.appendChild(a); a.click(); a.remove();
+      filesBtn.textContent = 'Downloading ' + i + ' of ' + figs.length + '...';
+      setTimeout(next, 400);
+    })();
+  });
+  // Drag a single photo straight into a folder (Chrome/Edge) — keeps its label as the filename
   document.addEventListener('dragstart', function(e){
     var fig = e.target.closest && e.target.closest('figure.ph');
     if (fig && e.target.tagName === 'IMG' && fig.dataset.url && fig.dataset.url.indexOf('data:') !== 0) {
@@ -759,7 +801,7 @@ async def job_photos_gallery(job_id: str, token: Optional[str] = Query(None), re
   });
 })();
 </script>"""
-    script_js = script_js.replace("__ZIPSEL__", zip_sel_url).replace("__ZIPNAME__", f"{_safe(job_name)}_selected_photos.zip")
+    script_js = script_js.replace("__ZIPSEL__", zip_sel_url)
     
     html = f"""<!doctype html><html lang="en"><head><meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -787,11 +829,14 @@ async def job_photos_gallery(job_id: str, token: Optional[str] = Query(None), re
   .selbtn{{background:#18181b;}}
   .selbtn:hover{{background:#3f3f46;}}
   .selbtn:disabled{{opacity:.45;cursor:not-allowed;}}
+  .filesbtn{{background:#16a34a;}}
+  .filesbtn:hover{{background:#15803d;}}
+  .filesbtn:disabled{{opacity:.45;cursor:not-allowed;}}
   .h2r{{display:flex;align-items:center;gap:14px;font-size:12px;font-weight:normal;}}
   .secall{{display:flex;align-items:center;gap:6px;color:#d4d4d8;cursor:pointer;user-select:none;}}
   .hint{{font-size:11px;color:#71717a;flex-basis:100%;}}
 </style></head><body>
-<header><h1><span>{job_name}</span> &middot; All Photos ({total_photos})</h1><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">{download_sel_btn}{download_all_btn}</div><span class="hint">Tip: tick photos (or "Select all" per item) then Download selected — or drag any single photo straight into a folder on your computer.</span></header>
+<header><h1><span>{job_name}</span> &middot; All Photos ({total_photos})</h1><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">{download_files_btn}{download_sel_btn}{download_all_btn}</div><span class="hint">Tip: tick photos (or "Select all" per item), then "Download selected as files" saves each photo with its label as the filename (allow multiple downloads if your browser asks) — from your Downloads folder you can drag them anywhere. You can also drag any single photo straight into a folder.</span></header>
 <main>{content}</main>
 {script_js}
 </body></html>"""
@@ -822,6 +867,82 @@ async def _fetch_photo_entries(entries, concurrency=12):
             return zip_path, None
 
     return await asyncio.gather(*[fetch_one(p, u) for p, u in entries])
+
+
+class _ZipStreamBuffer:
+    """Unseekable write sink for zipfile so ZIP bytes can be streamed as they're produced."""
+    def __init__(self):
+        self._chunks = []
+        self._pos = 0
+
+    def write(self, data):
+        self._chunks.append(bytes(data))
+        self._pos += len(data)
+        return len(data)
+
+    def tell(self):
+        return self._pos
+
+    def flush(self):
+        pass
+
+    def seekable(self):
+        return False
+
+    def drain(self):
+        if not self._chunks:
+            return b""
+        out = b"".join(self._chunks)
+        self._chunks = []
+        return out
+
+
+async def _stream_zip(entries, concurrency=20):
+    """Async generator: streams a ZIP of (zip_path, photo_url) entries, yielding bytes as each photo is fetched.
+    Download starts immediately instead of waiting for every photo. ZIP_STORED for Windows compatibility."""
+    import zipfile
+    import base64
+    from services.storage import get_object
+
+    sem = asyncio.Semaphore(concurrency)
+
+    async def fetch_one(zip_path, photo_url):
+        async with sem:
+            try:
+                if photo_url.startswith("data:"):
+                    _, b64_data = photo_url.split(",", 1)
+                    return zip_path, base64.b64decode(b64_data)
+                if photo_url.startswith("/api/files/"):
+                    data, _ = await asyncio.to_thread(get_object, photo_url.replace("/api/files/", ""))
+                    return zip_path, data
+                if not photo_url.startswith("http"):
+                    data, _ = await asyncio.to_thread(get_object, photo_url)
+                    return zip_path, data
+            except Exception:
+                pass
+            return zip_path, None
+
+    stream = _ZipStreamBuffer()
+    tasks = [asyncio.create_task(fetch_one(p, u)) for p, u in entries]
+    seen = set()
+    with zipfile.ZipFile(stream, "w", zipfile.ZIP_STORED) as zf:
+        for fut in asyncio.as_completed(tasks):
+            zip_path, data = await fut
+            if data:
+                if zip_path in seen:
+                    base, dot, ext = zip_path.rpartition(".")
+                    k = 2
+                    while f"{base}_{k}.{ext}" in seen:
+                        k += 1
+                    zip_path = f"{base}_{k}.{ext}"
+                seen.add(zip_path)
+                zf.writestr(zip_path, data)
+            chunk = stream.drain()
+            if chunk:
+                yield chunk
+    chunk = stream.drain()
+    if chunk:
+        yield chunk
 
 
 @router.get("/users/transferable")
@@ -984,7 +1105,7 @@ async def export_job_photos_zip(job_id: str, token: Optional[str] = Query(None),
         
         for label, photo_url in pole_photo_items(pole):
             safe_label = safe_name(label, "Photo")
-            entries.append((f"{job_name}/Poles/{folder_name}/{safe_label}.jpeg", photo_url))
+            entries.append((f"{job_name}/Poles/{folder_name}/Pole_{safe_name(pole_number)}_{safe_label}.jpeg", photo_url))
     
     # Underground photo entries
     for idx, ug in enumerate(underground_items, 1):
@@ -998,47 +1119,43 @@ async def export_job_photos_zip(job_id: str, token: Optional[str] = Query(None),
         
         for label, photo_url in underground_photo_items(ug):
             safe_label = safe_name(label, "Photo")
-            entries.append((f"{job_name}/Underground/{folder_name}/{safe_label}.jpeg", photo_url))
+            fname = safe_label if safe_label.startswith(folder_name) else f"{folder_name}_{safe_label}"
+            entries.append((f"{job_name}/Underground/{folder_name}/{fname}.jpeg", photo_url))
     
-    # Fetch all photos in parallel (12 concurrent)
-    results = await _fetch_photo_entries(entries)
-    
-    # Use ZIP_STORED (no compression) for better Windows compatibility
-    with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_STORED) as zf:
-        for zip_path, data in results:
-            if data:
-                zf.writestr(zip_path, data)
-                photo_count += 1
-    
-    # Check if any photos were added
-    if photo_count == 0:
+    if not entries:
         raise HTTPException(status_code=404, detail="No photos found for this job. Add photos to poles or underground items first.")
     
-    buffer.seek(0)
     zip_filename = f"{job_name}_Photos.zip"
     
     return StreamingResponse(
-        buffer,
+        _stream_zip(entries),
         media_type="application/zip",
         headers={
             "Content-Disposition": f'attachment; filename="{zip_filename}"',
-            "Content-Type": "application/zip",
-            "Content-Length": str(buffer.getbuffer().nbytes)
+            "Content-Type": "application/zip"
         }
     )
 
 
 @router.post("/jobs/{job_id}/export/photos-zip-selected")
 async def export_selected_photos_zip(job_id: str, request: Request, token: Optional[str] = Query(None)):
-    """ZIP only the photos selected in the gallery. Body: {"photos": [{"name": "...", "url": "..."}]}"""
-    import zipfile
+    """ZIP only the photos selected in the gallery. Accepts JSON {"photos": [...]} or form field photos_json."""
     if not (token and verify_download_token("job_photos", job_id, token)):
         raise HTTPException(status_code=401, detail="Invalid or expired download link.")
     job = await _db.jobs.find_one({"id": job_id}, {"_id": 0})
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
-    body = await request.json()
-    photos = body.get("photos") or []
+    content_type = request.headers.get("content-type", "")
+    if "application/json" in content_type:
+        body = await request.json()
+        photos = body.get("photos") or []
+    else:
+        form = await request.form()
+        import json as _json
+        try:
+            photos = _json.loads(form.get("photos_json") or "[]")
+        except Exception:
+            photos = []
     if not photos or len(photos) > 500:
         raise HTTPException(status_code=400, detail="Select between 1 and 500 photos")
 
@@ -1061,25 +1178,13 @@ async def export_selected_photos_zip(job_id: str, request: Request, token: Optio
     if not entries:
         raise HTTPException(status_code=400, detail="No valid photos selected")
 
-    results = await _fetch_photo_entries(entries)
-    buffer = io.BytesIO()
-    count = 0
-    with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_STORED) as zf:
-        for zp, data in results:
-            if data:
-                zf.writestr(zp, data)
-                count += 1
-    if count == 0:
-        raise HTTPException(status_code=404, detail="Selected photos could not be loaded")
-    buffer.seek(0)
-    fname = f"{safe_name(job.get('name', 'Job'))}_Selected_{count}_Photos.zip"
+    fname = f"{safe_name(job.get('name', 'Job'))}_Selected_{len(entries)}_Photos.zip"
     return StreamingResponse(
-        buffer,
+        _stream_zip(entries),
         media_type="application/zip",
         headers={
             "Content-Disposition": f'attachment; filename="{fname}"',
             "Content-Type": "application/zip",
-            "Content-Length": str(buffer.getbuffer().nbytes),
         },
     )
 
@@ -1133,23 +1238,15 @@ async def export_pole_photos_zip(pole_id: str, token: Optional[str] = Query(None
     if not photo_items:
         raise HTTPException(status_code=404, detail="No photos found for this pole")
     
-    buffer = io.BytesIO()
-    # Fetch all photos in parallel, then write ZIP (ZIP_STORED for Windows compatibility)
     entries = []
     for label, photo_url in photo_items:
         safe_label = "".join(c for c in label if c.isalnum() or c in (' ', '-', '_')).strip()
-        entries.append((f"{safe_label}.jpeg", photo_url))
-    results = await _fetch_photo_entries(entries)
-    with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_STORED) as zf:
-        for zip_path, data in results:
-            if data:
-                zf.writestr(zip_path, data)
+        entries.append((f"Pole_{safe_pole_name}_{safe_label}.jpeg", photo_url))
     
-    buffer.seek(0)
     filename = f"Pole_{safe_pole_name}_photos.zip"
     
     return StreamingResponse(
-        buffer,
+        _stream_zip(entries),
         media_type="application/x-zip-compressed",
         headers={
             "Content-Disposition": f'attachment; filename="{filename}"',
@@ -1401,30 +1498,7 @@ async def get_ase_gallery(job_id: str, token: str = None):
     ase = job.get("ase_data", {})
     
     # Collect all photos by category
-    photo_fields = [
-        ("Address", "address_photos"),
-        ("Access Contact", "access_contact_photos"),
-        ("SPF Contact", "spf_contact_photos"),
-        ("Existing INC", "existing_inc_photos"),
-        ("Existing Fiber Terminal", "existing_fiber_terminal_photos"),
-        ("Fiber Terminal Placement", "fiber_terminal_placement_photos"),
-        ("Active Ports", "fiber_active_ports_photos"),
-        ("Fiber Reading", "fiber_reading_photos"),
-        ("Existing NTE", "existing_nte_photos"),
-        ("NTE Placement", "nte_placement_photos"),
-        ("NTE CLLI", "nte_clli_photos"),
-        ("Rack Bay/Shelf", "nte_rack_bay_shelf_photos"),
-        ("Equipment Power Config", "equipment_power_config_photos"),
-        ("Pole Line Start", "pole_line_start_photos"),
-        ("Pole Line End", "pole_line_end_photos"),
-        ("SOC Start", "soc_start_photos"),
-        ("SOC End", "soc_end_photos"),
-        ("Pipelines Vicinity", "pipelines_vicinity_photos"),
-        ("Pipelines Path", "pipelines_path_photos"),
-        ("Railroads Vicinity", "railroads_vicinity_photos"),
-        ("Railroads Path", "railroads_path_photos"),
-        ("Mark Ups", "markup_photos"),
-    ]
+    photo_fields = ASE_PHOTO_FIELDS
     
     photos = {}
     for label, field in photo_fields:
@@ -1437,6 +1511,60 @@ async def get_ase_gallery(job_id: str, token: str = None):
         "job_location": job.get("location", ""),
         "photos": photos
     }
+
+
+@router.get("/jobs/{job_id}/export/ase-photos-zip")
+async def export_ase_photos_zip(job_id: str, token: Optional[str] = Query(None), request: Request = None):
+    """Streamed ZIP of all ASE Site Walk Survey photos with section labels.
+    Access via: valid ase_gallery token OR authenticated company user."""
+    from jose import jwt, JWTError
+
+    has_access = bool(token and verify_download_token("ase_gallery", job_id, token))
+    if not has_access and request:
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            try:
+                from services.auth import SECRET_KEY, ALGORITHM
+                payload = jwt.decode(auth_header.replace("Bearer ", ""), SECRET_KEY, algorithms=[ALGORITHM])
+                user_id = payload.get("sub")
+                if user_id:
+                    user = await _db.users.find_one({"id": user_id}, {"_id": 0})
+                    if user:
+                        email = user.get("email", "").lower()
+                        if user.get("is_admin") or email.endswith("@mastec.com") or email.endswith("@byers.com") or email.endswith("@mastecbyers.com"):
+                            has_access = True
+            except (JWTError, Exception):
+                pass
+    if not has_access:
+        raise HTTPException(status_code=401, detail="Invalid or expired download link. Please export a new Excel file.")
+
+    job = await _db.jobs.find_one({"id": job_id}, {"_id": 0})
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    ase = job.get("ase_data", {}) or {}
+
+    def safe_name(s, default="Photo"):
+        return "".join(c for c in str(s) if c.isalnum() or c in (' ', '-', '_')).strip().replace(' ', '_') or default
+
+    job_name = safe_name(job.get("name", "Job"))
+    entries = []
+    for label, field in ASE_PHOTO_FIELDS:
+        urls = ase.get(field, []) or []
+        for idx, url in enumerate(urls, 1):
+            suffix = f"_{idx}" if len(urls) > 1 else ""
+            entries.append((f"{job_name}_ASE/{safe_name(label)}{suffix}.jpeg", url))
+    if not entries:
+        raise HTTPException(status_code=404, detail="No ASE photos found for this job")
+
+    return StreamingResponse(
+        _stream_zip(entries),
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": f'attachment; filename="{job_name}_ASE_Photos.zip"',
+            "Content-Type": "application/zip"
+        }
+    )
+
 
 
 @router.get("/jobs/{job_id}/export/ase")
@@ -1949,7 +2077,7 @@ async def export_ase_excel(job_id: str, current_user: dict = Depends(get_current
         row += 2
         
         # Photo Download Link
-        download_url = f"{public_base}/api/jobs/{job_id}/export/photos?token={gallery_token}"
+        download_url = f"{public_base}/api/jobs/{job_id}/export/ase-photos-zip?token={gallery_token}"
         ws4.cell(row=row, column=1, value="Download All Photos (ZIP):").font = label_font
         dl_cell = ws4.cell(row=row, column=2, value="Download Photos ZIP")
         dl_cell.hyperlink = download_url
