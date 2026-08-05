@@ -90,26 +90,24 @@ const UgPopupEditor = ({ item, defaultColor, onSaved }) => {
   const neutralAllowed = ["Point of Intersection", "FBT", "NTE", "Pullbox", "Aerial PI", "Aerial FBT", "Aerial NTE"].includes(item.type);
 
   const inputCls = "w-full h-7 px-2 text-xs border border-zinc-300 rounded bg-white text-zinc-900";
+  // Button and form both stay mounted (CSS toggle): unmounting the clicked element mid-click detaches it from the DOM, breaking Leaflet's popup click detection and closing the popup
   return (
     <div className="mt-2 border-t border-zinc-200 pt-2 space-y-2">
-      {editing ? (
-        <div className="space-y-1.5" data-testid={`ug-quickedit-form-${item.id}`}>
-          <div>
-            <label className="text-[10px] text-zinc-400 uppercase">Label / ID</label>
-            <input className={inputCls} value={label} onChange={(e) => setLabel(e.target.value)} data-testid="ug-label-input" />
-          </div>
-          <div>
-            <label className="text-[10px] text-zinc-400 uppercase">FID</label>
-            <input className={inputCls} value={fid} onChange={(e) => setFid(e.target.value)} data-testid="ug-fid-input" />
-          </div>
-          <div className="flex gap-1.5">
-            <Button size="sm" className="flex-1 h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white" disabled={saving} onClick={save} data-testid="ug-quickedit-save">{saving ? "Saving…" : "Save"}</Button>
-            <Button size="sm" variant="outline" className="h-7 text-xs bg-zinc-100 border-zinc-300 text-zinc-900" onClick={() => setEditing(false)} data-testid="ug-quickedit-cancel">Cancel</Button>
-          </div>
+      <div className={editing ? "space-y-1.5" : "hidden"} data-testid={`ug-quickedit-form-${item.id}`}>
+        <div>
+          <label className="text-[10px] text-zinc-400 uppercase">Label / ID</label>
+          <input className={inputCls} value={label} onChange={(e) => setLabel(e.target.value)} data-testid="ug-label-input" />
         </div>
-      ) : (
-        <Button size="sm" variant="outline" className="w-full h-7 text-xs bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900" onClick={() => setEditing(true)} data-testid={`ug-quickedit-btn-${item.id}`}>Quick Edit Label/FID</Button>
-      )}
+        <div>
+          <label className="text-[10px] text-zinc-400 uppercase">FID</label>
+          <input className={inputCls} value={fid} onChange={(e) => setFid(e.target.value)} data-testid="ug-fid-input" />
+        </div>
+        <div className="flex gap-1.5">
+          <Button size="sm" className="flex-1 h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white" disabled={saving} onClick={save} data-testid="ug-quickedit-save">{saving ? "Saving…" : "Save"}</Button>
+          <Button size="sm" variant="outline" className="h-7 text-xs bg-zinc-100 border-zinc-300 text-zinc-900" onClick={() => setEditing(false)} data-testid="ug-quickedit-cancel">Cancel</Button>
+        </div>
+      </div>
+      <Button size="sm" variant="outline" className={`w-full h-7 text-xs bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900 ${editing ? "hidden" : ""}`} onClick={() => setEditing(true)} data-testid={`ug-quickedit-btn-${item.id}`}>Quick Edit Label/FID</Button>
       <div>
         <div className="text-[10px] text-zinc-400 uppercase mb-1">Attribute Type</div>
         <div className="flex gap-1.5" data-testid={`ug-class-row-${item.id}`}>
@@ -172,32 +170,30 @@ const PolePopupEditor = ({ pole, onSaved }) => {
   };
 
   const inputCls = "w-full h-7 px-2 text-xs border border-zinc-300 rounded bg-white text-zinc-900";
+  // Button and form both stay mounted (CSS toggle) — see UgPopupEditor note
   return (
     <div className="mt-2 border-t border-zinc-200 pt-2 space-y-2">
-      {editing ? (
-        <div className="space-y-1.5" data-testid={`pole-quickedit-form-${pole.id}`}>
-          <div>
-            <label className="text-[10px] text-zinc-400 uppercase">Pole Number</label>
-            <input className={inputCls} value={num} onChange={(e) => setNum(e.target.value)} data-testid="pole-num-input" />
+      <div className={editing ? "space-y-1.5" : "hidden"} data-testid={`pole-quickedit-form-${pole.id}`}>
+        <div>
+          <label className="text-[10px] text-zinc-400 uppercase">Pole Number</label>
+          <input className={inputCls} value={num} onChange={(e) => setNum(e.target.value)} data-testid="pole-num-input" />
+        </div>
+        <div className="flex gap-1.5">
+          <div className="flex-1">
+            <label className="text-[10px] text-zinc-400 uppercase">Class</label>
+            <input className={inputCls} value={cls} onChange={(e) => setCls(e.target.value)} data-testid="pole-class-input" />
           </div>
-          <div className="flex gap-1.5">
-            <div className="flex-1">
-              <label className="text-[10px] text-zinc-400 uppercase">Class</label>
-              <input className={inputCls} value={cls} onChange={(e) => setCls(e.target.value)} data-testid="pole-class-input" />
-            </div>
-            <div className="flex-1">
-              <label className="text-[10px] text-zinc-400 uppercase">Size (ft)</label>
-              <input className={inputCls} value={size} onChange={(e) => setSize(e.target.value)} data-testid="pole-size-input" />
-            </div>
-          </div>
-          <div className="flex gap-1.5">
-            <Button size="sm" className="flex-1 h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white" disabled={saving} onClick={save} data-testid="pole-quickedit-save">{saving ? "Saving…" : "Save"}</Button>
-            <Button size="sm" variant="outline" className="h-7 text-xs bg-zinc-100 border-zinc-300 text-zinc-900" onClick={() => setEditing(false)} data-testid="pole-quickedit-cancel">Cancel</Button>
+          <div className="flex-1">
+            <label className="text-[10px] text-zinc-400 uppercase">Size (ft)</label>
+            <input className={inputCls} value={size} onChange={(e) => setSize(e.target.value)} data-testid="pole-size-input" />
           </div>
         </div>
-      ) : (
-        <Button size="sm" variant="outline" className="w-full h-7 text-xs bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900" onClick={() => setEditing(true)} data-testid={`pole-quickedit-btn-${pole.id}`}>Quick Edit #/Class/Size</Button>
-      )}
+        <div className="flex gap-1.5">
+          <Button size="sm" className="flex-1 h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white" disabled={saving} onClick={save} data-testid="pole-quickedit-save">{saving ? "Saving…" : "Save"}</Button>
+          <Button size="sm" variant="outline" className="h-7 text-xs bg-zinc-100 border-zinc-300 text-zinc-900" onClick={() => setEditing(false)} data-testid="pole-quickedit-cancel">Cancel</Button>
+        </div>
+      </div>
+      <Button size="sm" variant="outline" className={`w-full h-7 text-xs bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900 ${editing ? "hidden" : ""}`} onClick={() => setEditing(true)} data-testid={`pole-quickedit-btn-${pole.id}`}>Quick Edit #/Class/Size</Button>
       <div>
         <div className="text-[10px] text-zinc-400 uppercase mb-1">Marker Color</div>
         <div className="flex gap-1.5" data-testid={`pole-color-row-${pole.id}`}>
