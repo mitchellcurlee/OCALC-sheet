@@ -4,6 +4,7 @@ from typing import List, Optional
 from datetime import datetime, timezone
 import json
 import io
+import math
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
 
@@ -62,94 +63,174 @@ def bearing_to_direction(bearing):
     return directions[index]
 
 
+def _compute_bearing(lat1, lon1, lat2, lon2):
+    lat1r = math.radians(lat1)
+    lat2r = math.radians(lat2)
+    dlon = math.radians(lon2 - lon1)
+    y = math.sin(dlon) * math.cos(lat2r)
+    x = math.cos(lat1r) * math.sin(lat2r) - math.sin(lat1r) * math.cos(lat2r) * math.cos(dlon)
+    return (math.degrees(math.atan2(y, x)) + 360) % 360
+
+
+async def _compute_map_pairs(job_id: str):
+    """Mirror the map's computeConnectionPairs: active connections (excluding
+    'removed' tombstones), custom lines, End Path breaks, standalone exclusion,
+    and the consecutive-chain fallback for unreferenced items."""
+    poles = await _db.poles.find({"job_id": job_id}, {"_id": 0}).to_list(1000)
+    ugs = await _db.underground.find({"job_id": job_id}, {"_id": 0}).to_list(1000)
+    conns = await _db.connections.find({"job_id": job_id}, {"_id": 0}).to_list(1000)
+
+    items = []
+    for p in poles:
+        if not has_gps(p):
+            continue
+        items.append({
+            "id": p["id"], "type": "pole",
+            "lat": float(p["latitude"]), "lon": float(p["longitude"]),
+            "sort": p["sort_order"] if p.get("sort_order") is not None else math.inf,
+            "end_path": p.get("end_path") is True,
+            "standalone": p.get("standalone") is True,
+        })
+    for u in ugs:
+        try:
+            lat, lon = float(u.get("latitude")), float(u.get("longitude"))
+        except (TypeError, ValueError):
+            continue
+        if not (math.isfinite(lat) and math.isfinite(lon)):
+            continue
+        items.append({
+            "id": u["id"], "type": "underground",
+            "lat": lat, "lon": lon,
+            "sort": u["sort_order"] if u.get("sort_order") is not None else math.inf,
+            "end_path": u.get("end_path") is True,
+            "standalone": u.get("standalone") is True,
+        })
+    items.sort(key=lambda it: it["sort"])
+    by_id = {it["id"]: it for it in items}
+    path_items = [it for it in items if not it["standalone"]]
+
+    pairs = []
+    if conns:
+        for c in conns:
+            if c.get("connection_type") == "removed":
+                continue
+            f, t = by_id.get(c.get("from_item_id")), by_id.get(c.get("to_item_id"))
+            if not f or not t or f["id"] == t["id"]:
+                continue
+            if c.get("connection_type") != "custom":
+                if f["standalone"] or t["standalone"]:
+                    continue
+                earlier = f if f["sort"] <= t["sort"] else t
+                if earlier["end_path"]:
+                    continue
+            pairs.append({"from": f, "to": t, "conn_type": c.get("connection_type")})
+        referenced = set()
+        for c in conns:
+            referenced.add(c.get("from_item_id"))
+            referenced.add(c.get("to_item_id"))
+        unreferenced = [it for it in path_items if it["id"] not in referenced]
+        if unreferenced:
+            pairs = [
+                pr for pr in pairs
+                if pr["conn_type"] == "custom"
+                or not any(
+                    min(pr["from"]["sort"], pr["to"]["sort"]) < it["sort"] < max(pr["from"]["sort"], pr["to"]["sort"])
+                    for it in unreferenced
+                )
+            ]
+        for i in range(len(path_items) - 1):
+            a, b = path_items[i], path_items[i + 1]
+            if (a["id"] not in referenced or b["id"] not in referenced) and not a["end_path"]:
+                pairs.append({"from": a, "to": b, "conn_type": None})
+    else:
+        for i in range(len(path_items) - 1):
+            if path_items[i]["end_path"]:
+                continue
+            pairs.append({"from": path_items[i], "to": path_items[i + 1], "conn_type": None})
+    return pairs
+
+
+async def _route_waypoints_lookup(job_id: str):
+    docs = await _db.routes.find({"job_id": job_id}, {"_id": 0}).to_list(1000)
+    lookup = {}
+    for d in docs:
+        wps = [
+            (w.get("lat"), w.get("lng"))
+            for w in (d.get("waypoints") or [])
+            if w.get("lat") is not None and w.get("lng") is not None
+        ]
+        if wps:
+            lookup[(d.get("from_pole_id"), d.get("to_pole_id"))] = wps
+    return lookup
+
+
+def _pole_span_updates(pole, pairs, wp_lookup):
+    """Span 1 = active map line to the next item in route order, Span 2 = to the
+    previous one. Cleared when no active (non-deleted) line exists that way."""
+    pid = pole["id"]
+    forward = None
+    backward = None
+    for pr in pairs:
+        if pr["from"]["id"] != pid and pr["to"]["id"] != pid:
+            continue
+        me = pr["from"] if pr["from"]["id"] == pid else pr["to"]
+        other = pr["to"] if pr["from"]["id"] == pid else pr["from"]
+        if other["sort"] >= me["sort"]:
+            if forward is None or other["sort"] < forward[1]["sort"]:
+                forward = (pr, other, me)
+        else:
+            if backward is None or other["sort"] > backward[1]["sort"]:
+                backward = (pr, other, me)
+    update = {}
+    for slot, hit in (("span1", forward), ("span2", backward)):
+        if hit:
+            pr, other, me = hit
+            wps = wp_lookup.get((pr["from"]["id"], pr["to"]["id"])) or wp_lookup.get((pr["to"]["id"], pr["from"]["id"])) or []
+            pts = [(pr["from"]["lat"], pr["from"]["lon"])] + list(wps) + [(pr["to"]["lat"], pr["to"]["lon"])]
+            dist = sum(haversine_feet(pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1]) for i in range(len(pts) - 1))
+            update[f"{slot}_distance"] = str(round(dist))
+            update[f"{slot}_direction"] = bearing_to_direction(_compute_bearing(me["lat"], me["lon"], other["lat"], other["lon"]))
+        else:
+            update[f"{slot}_distance"] = None
+            update[f"{slot}_direction"] = ""
+    return update
+
+
+def _span_val_norm(v):
+    return "" if v is None or v == "" else str(v)
+
+
 async def _sync_job_distances(job_id: str):
     """
-    Internal helper to sync GPS-calculated distances for a job.
-    Returns dict with message, updated count, and pole details.
+    Sync map-line distances into each pole's span1/span2 fields.
+    Follows active map connections (deleted lines clear the span).
     Skips poles that have use_manual_spans enabled.
     """
-    import math
-    
-    # Get all poles for this job
     poles = await _db.poles.find({"job_id": job_id}, {"_id": 0}).to_list(1000)
     if not poles:
         return {"message": "No poles found for this job", "updated": 0, "poles": []}
-    
-    # Create a lookup for manual spans setting
-    manual_spans_lookup = {p["id"]: p.get("use_manual_spans", False) for p in poles}
-    
-    # Sort poles by natural order (same as map display)
-    sorted_poles = sorted(poles, key=pole_sort_key)
-    
-    # Filter to only poles with valid GPS
-    route_poles = []
-    for p in sorted_poles:
-        if has_gps(p):
-            route_poles.append({
-                "id": p["id"],
-                "pole_number": p.get("pole_number", ""),
-                "lat": float(p.get("latitude")),
-                "lon": float(p.get("longitude")),
-            })
-    
-    if len(route_poles) < 2:
-        return {"message": "Need at least 2 poles with GPS to sync distances", "updated": 0, "poles": []}
-    
+
+    pairs = await _compute_map_pairs(job_id)
+    wp_lookup = await _route_waypoints_lookup(job_id)
+
     updates = []
-    
-    for i, pole in enumerate(route_poles):
-        # Skip if this pole has manual spans enabled
-        if manual_spans_lookup.get(pole["id"], False):
+    for p in poles:
+        if p.get("use_manual_spans", False) or not has_gps(p):
             continue
-            
-        update_data = {}
-        
-        # Calculate distance/direction to NEXT pole (span1)
-        if i < len(route_poles) - 1:
-            next_pole = route_poles[i + 1]
-            dist_to_next = haversine_feet(pole["lat"], pole["lon"], next_pole["lat"], next_pole["lon"])
-            
-            # Calculate bearing to next pole
-            lat1 = math.radians(pole["lat"])
-            lat2 = math.radians(next_pole["lat"])
-            dlon = math.radians(next_pole["lon"] - pole["lon"])
-            y = math.sin(dlon) * math.cos(lat2)
-            x = math.cos(lat1) * math.sin(lat2) - math.sin(lat1) * math.cos(lat2) * math.cos(dlon)
-            bearing = (math.degrees(math.atan2(y, x)) + 360) % 360
-            
-            update_data["span1_distance"] = str(round(dist_to_next))
-            update_data["span1_direction"] = bearing_to_direction(bearing)
-        
-        # Calculate distance/direction to PREVIOUS pole (span2)
-        if i > 0:
-            prev_pole = route_poles[i - 1]
-            dist_to_prev = haversine_feet(pole["lat"], pole["lon"], prev_pole["lat"], prev_pole["lon"])
-            
-            # Calculate bearing to previous pole
-            lat1 = math.radians(pole["lat"])
-            lat2 = math.radians(prev_pole["lat"])
-            dlon = math.radians(prev_pole["lon"] - pole["lon"])
-            y = math.sin(dlon) * math.cos(lat2)
-            x = math.cos(lat1) * math.sin(lat2) - math.sin(lat1) * math.cos(lat2) * math.cos(dlon)
-            bearing = (math.degrees(math.atan2(y, x)) + 360) % 360
-            
-            update_data["span2_distance"] = str(round(dist_to_prev))
-            update_data["span2_direction"] = bearing_to_direction(bearing)
-        
-        if update_data:
-            update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
-            await _db.poles.update_one(
-                {"id": pole["id"]},
-                {"$set": update_data}
-            )
-            updates.append({
-                "pole_number": pole["pole_number"],
-                "span1_distance": update_data.get("span1_distance"),
-                "span1_direction": update_data.get("span1_direction"),
-                "span2_distance": update_data.get("span2_distance"),
-                "span2_direction": update_data.get("span2_direction"),
-            })
-    
+        update_data = _pole_span_updates(p, pairs, wp_lookup)
+        changed = any(_span_val_norm(p.get(k)) != _span_val_norm(v) for k, v in update_data.items())
+        if not changed:
+            continue
+        update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+        await _db.poles.update_one({"id": p["id"]}, {"$set": update_data})
+        updates.append({
+            "pole_number": p.get("pole_number", ""),
+            "span1_distance": update_data.get("span1_distance"),
+            "span1_direction": update_data.get("span1_direction"),
+            "span2_distance": update_data.get("span2_distance"),
+            "span2_direction": update_data.get("span2_direction"),
+        })
+
     return {
         "message": f"Updated {len(updates)} poles with GPS-calculated distances",
         "updated": len(updates),
@@ -159,88 +240,33 @@ async def _sync_job_distances(job_id: str):
 
 async def _sync_single_pole_distances(pole_id: str):
     """
-    Sync GPS-calculated distances for a single pole based on its neighbors in the job.
+    Sync map-line distances for a single pole (same connection-aware logic as the job sync).
     Returns dict with message and updated flag.
     """
-    import math
-    
-    # Get the pole
     pole = await _db.poles.find_one({"id": pole_id}, {"_id": 0})
     if not pole:
         return {"message": "Pole not found", "updated": False}
-    
+
     job_id = pole.get("job_id")
     if not job_id:
         return {"message": "Pole not associated with a job", "updated": False}
-    
+
     if not has_gps(pole):
         return {"message": "Pole has no GPS coordinates", "updated": False}
-    
+
     if pole.get("use_manual_spans"):
         return {"message": "Pole uses manual spans (skipped)", "updated": False}
-    
-    # Get all poles for this job with GPS
-    all_poles = await _db.poles.find({"job_id": job_id}, {"_id": 0}).to_list(1000)
-    sorted_poles = sorted(all_poles, key=pole_sort_key)
-    
-    route_poles = []
-    target_index = -1
-    for i, p in enumerate(sorted_poles):
-        if has_gps(p):
-            if p["id"] == pole_id:
-                target_index = len(route_poles)
-            route_poles.append({
-                "id": p["id"],
-                "pole_number": p.get("pole_number", ""),
-                "lat": float(p.get("latitude")),
-                "lon": float(p.get("longitude")),
-            })
-    
-    if target_index == -1:
-        return {"message": "Pole not found in route", "updated": False}
-    
-    if len(route_poles) < 2:
-        return {"message": "Need at least 2 poles with GPS to calculate distances", "updated": False}
-    
-    target = route_poles[target_index]
-    update_data = {}
-    
-    # Calculate distance/direction to NEXT pole (span1)
-    if target_index < len(route_poles) - 1:
-        next_pole = route_poles[target_index + 1]
-        dist_to_next = haversine_feet(target["lat"], target["lon"], next_pole["lat"], next_pole["lon"])
-        
-        lat1 = math.radians(target["lat"])
-        lat2 = math.radians(next_pole["lat"])
-        dlon = math.radians(next_pole["lon"] - target["lon"])
-        y = math.sin(dlon) * math.cos(lat2)
-        x = math.cos(lat1) * math.sin(lat2) - math.sin(lat1) * math.cos(lat2) * math.cos(dlon)
-        bearing = (math.degrees(math.atan2(y, x)) + 360) % 360
-        
-        update_data["span1_distance"] = str(round(dist_to_next))
-        update_data["span1_direction"] = bearing_to_direction(bearing)
-    
-    # Calculate distance/direction to PREVIOUS pole (span2)
-    if target_index > 0:
-        prev_pole = route_poles[target_index - 1]
-        dist_to_prev = haversine_feet(target["lat"], target["lon"], prev_pole["lat"], prev_pole["lon"])
-        
-        lat1 = math.radians(target["lat"])
-        lat2 = math.radians(prev_pole["lat"])
-        dlon = math.radians(prev_pole["lon"] - target["lon"])
-        y = math.sin(dlon) * math.cos(lat2)
-        x = math.cos(lat1) * math.sin(lat2) - math.sin(lat1) * math.cos(lat2) * math.cos(dlon)
-        bearing = (math.degrees(math.atan2(y, x)) + 360) % 360
-        
-        update_data["span2_distance"] = str(round(dist_to_prev))
-        update_data["span2_direction"] = bearing_to_direction(bearing)
-    
-    if update_data:
-        update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
-        await _db.poles.update_one({"id": pole_id}, {"$set": update_data})
-        return {"message": "Distances synced", "updated": True, "span1": update_data.get("span1_distance"), "span2": update_data.get("span2_distance")}
-    
-    return {"message": "No updates needed", "updated": False}
+
+    pairs = await _compute_map_pairs(job_id)
+    wp_lookup = await _route_waypoints_lookup(job_id)
+    update_data = _pole_span_updates(pole, pairs, wp_lookup)
+    changed = any(_span_val_norm(pole.get(k)) != _span_val_norm(v) for k, v in update_data.items())
+    if not changed:
+        return {"message": "No updates needed", "updated": False}
+
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    await _db.poles.update_one({"id": pole_id}, {"$set": update_data})
+    return {"message": "Distances synced", "updated": True, "span1": update_data.get("span1_distance"), "span2": update_data.get("span2_distance")}
 
 
 @router.post("/poles/{pole_id}/sync-distances")

@@ -1250,6 +1250,7 @@ const JobMap = () => {
     try {
       const response = await axios.put(`/jobs/${jobId}/connections/${connectionId}`, updates);
       setConnections(prev => prev.map(c => c.id === connectionId ? response.data : c));
+      axios.post(`/jobs/${jobId}/sync-map-distances`).catch(() => {});
       toast.success("Connection updated");
     } catch (e) {
       toast.error("Failed to update connection");
@@ -1261,6 +1262,7 @@ const JobMap = () => {
     try {
       const response = await axios.put(`/jobs/${jobId}/connections/${connectionId}`, { connection_type: "removed" });
       setConnections(prev => prev.map(c => c.id === connectionId ? response.data : c));
+      axios.post(`/jobs/${jobId}/sync-map-distances`).catch(() => {});
       toast.success("Line deleted");
     } catch (e) {
       toast.error("Failed to delete connection");
@@ -1279,6 +1281,7 @@ const JobMap = () => {
         connection_type: "custom"
       });
       setConnections(prev => [...prev, response.data]);
+      axios.post(`/jobs/${jobId}/sync-map-distances`).catch(() => {});
       toast.success("Connection added");
     } catch (e) {
       toast.error("Failed to add connection");
@@ -1327,6 +1330,7 @@ const JobMap = () => {
       const defaults = buildDefaultConnections();
       const response = await axios.post(`/jobs/${jobId}/connections/bulk`, defaults);
       setConnections(response.data);
+      axios.post(`/jobs/${jobId}/sync-map-distances`).catch(() => {});
       toast.success("Lines reset to default");
     } catch (e) {
       toast.error("Failed to reset connections");

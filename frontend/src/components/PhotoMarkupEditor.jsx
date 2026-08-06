@@ -11,6 +11,7 @@ import {
   Waypoints, GitBranch
 } from "lucide-react";
 import { toast } from "sonner";
+import { ZoomableImage } from "@/components/ZoomableImage";
 import {
   Dialog,
   DialogContent,
@@ -2127,7 +2128,7 @@ export const PhotoMarkupEditor = ({
       <Dialog open={!!lightboxPhoto} onOpenChange={() => setLightboxPhoto(null)}>
         <DialogContent className="max-w-4xl p-2 bg-black/90">
           {lightboxPhoto && (
-            <img src={lightboxPhoto} alt="" className="max-h-[80vh] w-auto mx-auto object-contain" />
+            <ZoomableImage src={lightboxPhoto} alt="Photo" className="w-full" />
           )}
         </DialogContent>
       </Dialog>

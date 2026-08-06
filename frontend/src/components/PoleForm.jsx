@@ -155,11 +155,11 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
       const response = await axios.post(`/poles/${initialPole.id}/sync-distances`);
       if (response.data.updated) {
         toast.success(`Synced: Span 1 = ${response.data.span1 || 'N/A'}ft, Span 2 = ${response.data.span2 || 'N/A'}ft`);
-        // Update the form data with the new values
+        // Update the form data with the new values (null = line deleted, clears the span)
         setFormData((prev) => ({
           ...prev,
-          span1_distance: response.data.span1 || prev.span1_distance,
-          span2_distance: response.data.span2 || prev.span2_distance,
+          span1_distance: response.data.span1 ?? "",
+          span2_distance: response.data.span2 ?? "",
         }));
       } else {
         toast.info(response.data.message || "No changes needed");

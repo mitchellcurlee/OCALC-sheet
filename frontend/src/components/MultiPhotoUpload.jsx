@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Camera, Upload, X, ZoomIn, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { OfflinePhoto, queuePhotoOffline } from "@/lib/offlinePhotos";
+import { ZoomableImage } from "@/components/ZoomableImage";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -311,11 +312,7 @@ export const MultiPhotoUpload = ({ label, value = [], onChange, testId, compact 
               </Button>
               <div className="flex flex-col items-center">
                 <p className="text-xs font-mono tracking-widest text-zinc-500 uppercase mb-2">{label}</p>
-                <OfflinePhoto 
-                  src={lightboxPhoto} 
-                  alt={label} 
-                  className="max-w-full max-h-[80vh] object-contain"
-                />
+                <ZoomableImage src={lightboxPhoto} alt={label} className="w-full" />
               </div>
             </div>
           </DialogContent>
@@ -454,11 +451,7 @@ export const MultiPhotoUpload = ({ label, value = [], onChange, testId, compact 
             </Button>
             <div className="flex flex-col items-center">
               <p className="text-xs font-mono tracking-widest text-zinc-500 uppercase mb-2">{label}</p>
-              <OfflinePhoto 
-                src={lightboxPhoto} 
-                alt={label} 
-                className="max-w-full max-h-[80vh] object-contain"
-              />
+              <ZoomableImage src={lightboxPhoto} alt={label} className="w-full" />
             </div>
           </div>
         </DialogContent>
