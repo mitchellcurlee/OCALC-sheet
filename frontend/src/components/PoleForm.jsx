@@ -1010,6 +1010,11 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
               </h2>
               <div className="flex items-center gap-2">
                 <ReferenceHeightMeasurer 
+                  suggestedPhotos={[
+                    formData.ocalc_left_photo && { label: "OCALC Left", url: formData.ocalc_left_photo },
+                    formData.ocalc_middle_photo && { label: "OCALC Middle", url: formData.ocalc_middle_photo },
+                    formData.ocalc_right_photo && { label: "OCALC Right", url: formData.ocalc_right_photo },
+                  ].filter(Boolean)}
                   onHeightsDetected={(heights) => {
                     // Add measured heights as new attachment rows
                     const newAttachments = heights.map(h => ({

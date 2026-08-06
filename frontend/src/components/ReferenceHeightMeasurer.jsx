@@ -55,7 +55,7 @@ const toDecimalFeet = (decimalFeet) => {
  * 
  * Auto-saves progress to localStorage to prevent data loss if app is closed.
  */
-export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "outline", sessionId = "default" }) => {
+export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "outline", sessionId = "default", suggestedPhotos = [] }) => {
   const storageKey = `${STORAGE_KEY_PREFIX}${sessionId}`;
   const [open, setOpen] = useState(false);
   const [imagePreview, setImagePreview] = useState(null);
@@ -154,6 +154,30 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
     };
     reader.readAsDataURL(file);
     e.target.value = "";
+  };
+
+  // Load one of the pole's existing photos (e.g. OCALC L/M/R) into the measurer
+  const loadSuggestedPhoto = async (url) => {
+    try {
+      let dataUrl = url;
+      if (!url.startsWith("data:")) {
+        const resp = await fetch(url);
+        const blob = await resp.blob();
+        dataUrl = await new Promise((resolve, reject) => {
+          const r = new FileReader();
+          r.onload = (ev) => resolve(ev.target.result);
+          r.onerror = reject;
+          r.readAsDataURL(blob);
+        });
+      }
+      setImagePreview(dataUrl);
+      setImageBase64(dataUrl);
+      setStep(2);
+      setMarkers({ refBottom: null, refTop: null, attachments: [] });
+      setPixelsPerFoot(null);
+    } catch {
+      toast.error("Could not load that photo");
+    }
   };
 
   // Calculate pixels per foot when reference points are set
@@ -566,6 +590,25 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
                     Upload Photo
                   </Button>
                 </div>
+                {suggestedPhotos.length > 0 && (
+                  <div className="space-y-1.5 pt-1" data-testid="measurer-suggested-photos">
+                    <Label className="text-xs text-zinc-500">Or use a photo already on this pole:</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {suggestedPhotos.map((sp, i) => (
+                        <button
+                          key={`${sp.url}-${i}`}
+                          type="button"
+                          onClick={() => loadSuggestedPhoto(sp.url)}
+                          className="group text-center"
+                          data-testid={`measurer-suggested-${i}`}
+                        >
+                          <img src={sp.url} alt={sp.label} className="w-20 h-16 object-cover border-2 border-zinc-300 rounded group-hover:border-sky-500 transition-colors" />
+                          <span className="block text-[10px] text-zinc-500 mt-0.5">{sp.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}

@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import axios from "axios";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Camera, Upload, X, Images, Loader2, FolderInput } from "lucide-react";
+import { Camera, Upload, X, Images, Loader2, FolderInput, Check } from "lucide-react";
 import { toast } from "sonner";
 import { OfflinePhoto, queuePhotoOffline } from "@/lib/offlinePhotos";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -23,6 +23,7 @@ export const PhotoStagingGallery = ({ photos = [], onChange, categories = [], on
   const camRef = useRef(null);
   const [uploading, setUploading] = useState(false);
   const [assignPhoto, setAssignPhoto] = useState(null);
+  const [selectedCats, setSelectedCats] = useState([]);
 
   const photosRef = useRef(photos);
   const onChangeRef = useRef(onChange);
@@ -87,12 +88,17 @@ export const PhotoStagingGallery = ({ photos = [], onChange, categories = [], on
     e.target.value = "";
   };
 
-  const handleAssignPick = (catKey) => {
-    if (assignPhoto) {
-      onAssign(assignPhoto, catKey);
+  const toggleCat = (key) => {
+    setSelectedCats((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
+  };
+
+  const handleAssignConfirm = () => {
+    if (assignPhoto && selectedCats.length) {
+      selectedCats.forEach((key) => onAssign(assignPhoto, key));
       onChangeRef.current(photosRef.current.filter((p) => p !== assignPhoto));
     }
     setAssignPhoto(null);
+    setSelectedCats([]);
   };
 
   return (
@@ -126,7 +132,7 @@ export const PhotoStagingGallery = ({ photos = [], onChange, categories = [], on
                     e.dataTransfer.setData("text/plain", url);
                     e.dataTransfer.effectAllowed = "move";
                   }}
-                  onClick={() => setAssignPhoto(url)}
+                  onClick={() => { setSelectedCats([]); setAssignPhoto(url); }}
                   className="cursor-pointer active:cursor-grabbing"
                   title="Drag onto a category below, or tap to pick one"
                   data-testid={`${testId}-photo-${i}`}
@@ -148,22 +154,43 @@ export const PhotoStagingGallery = ({ photos = [], onChange, categories = [], on
         </>
       )}
 
-      <Dialog open={!!assignPhoto} onOpenChange={(o) => !o && setAssignPhoto(null)}>
-        <DialogContent className="max-w-sm bg-white" data-testid={`${testId}-assign-dialog`}>
+      <Dialog open={!!assignPhoto} onOpenChange={(o) => { if (!o) { setAssignPhoto(null); setSelectedCats([]); } }}>
+        <DialogContent className="max-w-xl bg-white" data-testid={`${testId}-assign-dialog`}>
           <DialogHeader>
             <DialogTitle className="text-sm font-mono uppercase flex items-center gap-2"><FolderInput className="w-4 h-4" />Assign photo to…</DialogTitle>
           </DialogHeader>
           {assignPhoto && (
-            <div className="flex justify-center">
-              <OfflinePhoto src={assignPhoto} alt="Assign" className="h-28 object-contain border border-zinc-200 rounded" />
+            <div className="flex justify-center bg-zinc-950/5 rounded-lg p-2">
+              <OfflinePhoto src={assignPhoto} alt="Assign" className="max-h-[45vh] w-auto max-w-full object-contain rounded" />
             </div>
           )}
-          <div className="grid grid-cols-1 gap-1.5 max-h-64 overflow-y-auto">
-            {categories.map((cat) => (
-              <Button key={cat.key} type="button" variant="outline" size="sm" className="justify-start h-9 text-xs bg-zinc-50 border-zinc-300 text-zinc-800 hover:bg-sky-50 hover:border-sky-300" onClick={() => handleAssignPick(cat.key)} data-testid={`${testId}-assign-${cat.key.replace(/[:]/g, "-")}`}>
-                {cat.label}
-              </Button>
-            ))}
+          <p className="text-xs text-zinc-500">Pick one or more categories — the photo will be added to each.</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-52 overflow-y-auto">
+            {categories.map((cat) => {
+              const active = selectedCats.includes(cat.key);
+              return (
+                <Button
+                  key={cat.key}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className={`justify-start h-9 text-xs border ${active ? "bg-sky-100 border-sky-400 text-sky-900 hover:bg-sky-100" : "bg-zinc-50 border-zinc-300 text-zinc-800 hover:bg-sky-50 hover:border-sky-300"}`}
+                  onClick={() => toggleCat(cat.key)}
+                  data-testid={`${testId}-assign-${cat.key.replace(/[:]/g, "-")}`}
+                >
+                  <span className={`mr-2 inline-flex w-4 h-4 items-center justify-center rounded-sm border ${active ? "bg-sky-600 border-sky-600 text-white" : "border-zinc-300 bg-white"}`}>
+                    {active && <Check className="w-3 h-3" />}
+                  </span>
+                  {cat.label}
+                </Button>
+              );
+            })}
+          </div>
+          <div className="flex justify-end gap-2 pt-1">
+            <Button type="button" variant="outline" size="sm" className="h-9 text-xs bg-zinc-50 border-zinc-300 text-zinc-700" onClick={() => { setAssignPhoto(null); setSelectedCats([]); }} data-testid={`${testId}-assign-cancel`}>Cancel</Button>
+            <Button type="button" size="sm" disabled={!selectedCats.length} className="h-9 text-xs bg-sky-600 hover:bg-sky-700 text-white" onClick={handleAssignConfirm} data-testid={`${testId}-assign-confirm`}>
+              Assign{selectedCats.length > 0 && ` to ${selectedCats.length} ${selectedCats.length === 1 ? "category" : "categories"}`}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
