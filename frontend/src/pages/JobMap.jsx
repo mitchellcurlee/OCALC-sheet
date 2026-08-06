@@ -1557,6 +1557,21 @@ const JobMap = () => {
       pushRiser(last.to, last.toPos);
       pushPath(last.to, last.toPos);
     }
+    // Poles with new risers not touched by any active segment (deleted lines,
+    // standalone, single-pole jobs) — insert at their place in route order
+    [...route]
+      .sort((a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999))
+      .filter((p) => !added.has(p.id))
+      .forEach((p) => {
+        const r = riserInfo({ type: "pole", id: p.id });
+        if (!r) return;
+        added.add(p.id);
+        const so = p.sort_order ?? Infinity;
+        const entry = { kind: "riser", so, pos: p.pos, itemId: p.id, text: `${poleName(p.pole_number)} New Riser${r.c > 1 ? ` ×${r.c}` : ""} = ${fmtFeet(r.c * r.h)}` };
+        const idx = entries.findIndex((e) => (e.so ?? Infinity) > so);
+        if (idx === -1) entries.push(entry);
+        else entries.splice(idx, 0, entry);
+      });
     // Items with path measurements not on the route chain (standalone or no GPS) —
     // insert at their respective place in route order using sort_order
     [...underground]
@@ -2457,22 +2472,32 @@ const JobMap = () => {
                         pathOptions={{ color: "#fff", weight: 7, opacity: 0.5 }}
                       />
                     )}
-                    {/* Numbered badge — measurement is in the list below the map */}
+                    {/* Numbered badge — click to see the distance */}
                     {!showStationNumbers && spanNums[i] != null && (
-                      <Marker position={ugBadgePos} icon={numberBadgeIcon(spanNums[i])} interactive={false} zIndexOffset={800} />
+                      <Marker position={ugBadgePos} icon={numberBadgeIcon(spanNums[i])} zIndexOffset={800}>
+                        <Popup>
+                          <div className="text-sm font-mono" data-testid={`span-badge-popup-${spanNums[i]}`}>
+                            {segItemName(seg.from)} to {segItemName(seg.to)} = {fmtFeet(segListDistance(seg))} (UG)
+                          </div>
+                        </Popup>
+                      </Marker>
                     )}
                   </React.Fragment>
                 );
               })}
 
-              {/* Riser number badges at their pole */}
+              {/* Riser number badges at their pole — click to see the measurement */}
               {!showStationNumbers && measurementEntries.filter((e) => e.kind === "riser" && e.pos).map((e) => (
-                <Marker key={`riser-num-${e.num}`} position={e.pos} icon={numberBadgeIcon(e.num, "#7c3aed", [-6, 32])} interactive={false} zIndexOffset={800} />
+                <Marker key={`riser-num-${e.num}`} position={e.pos} icon={numberBadgeIcon(e.num, "#7c3aed", [-6, 32])} zIndexOffset={800}>
+                  <Popup><div className="text-sm font-mono" data-testid={`riser-badge-popup-${e.num}`}>{e.text}</div></Popup>
+                </Marker>
               ))}
 
-              {/* Path measurement number badges at their item */}
+              {/* Path measurement number badges at their item — click to see the measurement */}
               {!showStationNumbers && measurementEntries.filter((e) => e.kind === "path" && e.pos).map((e) => (
-                <Marker key={`path-num-${e.num}`} position={e.pos} icon={numberBadgeIcon(e.num, "#059669", [34, -8])} interactive={false} zIndexOffset={800} />
+                <Marker key={`path-num-${e.num}`} position={e.pos} icon={numberBadgeIcon(e.num, "#059669", [34, -8])} zIndexOffset={800}>
+                  <Popup><div className="text-sm font-mono" data-testid={`path-badge-popup-${e.num}`}>{e.text}</div></Popup>
+                </Marker>
               ))}
               
               {poleDisplayInfo.map((p, i) => {

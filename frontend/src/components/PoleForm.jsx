@@ -103,6 +103,16 @@ const emptyDownGuy = () => ({ _key: rowKey(), owner: "", direction: "", size: ""
 const emptyKnuckle = () => ({ _key: rowKey(), size: "", total_eyes: "", direction: "", condition: "", photos: [] });
 const emptyAttachment = () => ({ _key: rowKey(), owner: "", location: "", height: "", hoa_type: "", notes: "" });
 
+const HOA_TYPES = [
+  "Fiber new strand", "Fiber over lashed to copper", "Copper", "Fiber Drop", "Copper Drop", "No Telco On Pole",
+  "Power Drop", "Swante 4 ACSR", "Raven 1/0 ACSR", "Penguin 4/0 ACSR", "Pelican 477 ACSR", "Tulip 336 AAC",
+  "Arbutus 795 AAC", "1/0 URD", "4/0 URD", "1000 URD", "Conch 2Str TRIPLEX", "Neritina 1/0 TRIPLEX",
+  "Zuzara 4/0 TRIPLEX SERVICE", "Zuzara #2 QUAD SERVICE", "Zuzara 1/0 QUAD SERVICE", "Zuzara 4/0 QUAD SERVICE",
+  "Hurricane 500 QUAD SERVICE", "Shepard #6 DUPLEX", "Perwinkle #4 TRIPLEX", "Clafin #6 DUPLEX URD",
+  "Clafin 2/0 URD TRIPLEX", "Clafin 4/0 URD TRIPLEX", "Copper #6 SOLID", "Copper #4 SOLID",
+  "#4 Riser Wire", "#6 Riser Wire",
+];
+
 export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, onSubmit, submitting = false, backUrl = "/" }) => {
   const [searchParams] = useSearchParams();
   const isTerminalMode = searchParams.get("terminal") === "true";
@@ -901,7 +911,7 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
                 <div key={num} className="bg-zinc-50 p-3 border border-zinc-300">
                   <div className="flex items-center gap-4">
                     <span className="text-sm font-mono text-indigo-600 w-6">{num}</span>
-                    <div className="grid grid-cols-3 gap-3 flex-1">
+                    <div className="grid grid-cols-2 gap-3 flex-1">
                       <div className="space-y-1">
                         <Label className="text-xs font-mono text-zinc-500">Direction</Label>
                         <Select value={formData[`span${num}_direction`]} onValueChange={(v) => handleSelectChange(`span${num}_direction`, v)}>
@@ -913,16 +923,6 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
                         </Select>
                       </div>
                       <SpanDistance value={formData[`span${num}_distance`]} onChange={(v) => handleSelectChange(`span${num}_distance`, v)} testId={`span${num}-distance`} />
-                      <div className="space-y-1">
-                        <Label className="text-xs font-mono text-zinc-500">Attachment Owner</Label>
-                        <Select value={formData[`span${num}_owner`]} onValueChange={(v) => handleSelectChange(`span${num}_owner`, v)}>
-                          <SelectTrigger className="h-9 bg-white border-zinc-300 text-zinc-900 text-sm"><SelectValue placeholder="Owner" /></SelectTrigger>
-                          <SelectContent className="bg-zinc-50 border-zinc-300">
-                            <SelectItem value={BLANK} className="text-zinc-500">—</SelectItem>
-                            {options.span_owners.map((o) => (<SelectItem key={o} value={o}>{o}</SelectItem>))}
-                          </SelectContent>
-                        </Select>
-                      </div>
                     </div>
                   </div>
                 </div>
@@ -1079,15 +1079,10 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
                       <div className="space-y-1">
                         <Label className="text-xs font-mono text-zinc-500">Type</Label>
                         <Select value={att.hoa_type || ""} onValueChange={(v) => updateAttachment(index, "hoa_type", v)}>
-                          <SelectTrigger className="h-9 bg-white border-zinc-300 text-zinc-900 text-sm"><SelectValue placeholder="Type" /></SelectTrigger>
-                          <SelectContent className="bg-zinc-50 border-zinc-300">
+                          <SelectTrigger className="h-9 bg-white border-zinc-300 text-zinc-900 text-sm" data-testid={`attachment${index}-hoa-type`}><SelectValue placeholder="Type" /></SelectTrigger>
+                          <SelectContent className="bg-zinc-50 border-zinc-300 max-h-72">
                             <SelectItem value={BLANK} className="text-zinc-500">—</SelectItem>
-                            <SelectItem value="Fiber new strand">Fiber new strand</SelectItem>
-                            <SelectItem value="Fiber over lashed to copper">Fiber over lashed to copper</SelectItem>
-                            <SelectItem value="Copper">Copper</SelectItem>
-                            <SelectItem value="Fiber Drop">Fiber Drop</SelectItem>
-                            <SelectItem value="Copper Drop">Copper Drop</SelectItem>
-                            <SelectItem value="No Telco On Pole">No Telco On Pole</SelectItem>
+                            {HOA_TYPES.map((t) => (<SelectItem key={t} value={t}>{t}</SelectItem>))}
                           </SelectContent>
                         </Select>
                       </div>

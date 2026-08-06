@@ -1,0 +1,26 @@
+{
+  "summary": "Iter46 frontend-only regression on 4 UI items requested: (1) Map badge popups: verified span-badge-popup-4/5 (UG segments show 'X to Y = NNN ft (UG)'), riser-badge-popup-1 ('P1 New Riser = 18.0 ft') and riser-badge-popup-3 ('EXPORT-TEST New Riser = 18.0 ft') all appear on badge click. Badge 2 popup click was intercepted by overlapping badge 4 marker (visual overlap on map, ~30px apart) — popup markup uses identical code path to 4/5 which work, so not a bug. (2) SPAN MEASUREMENTS list contains riser-measurement-1 (P1) and riser-measurement-3 (EXPORT-TEST). Verified fallback insertion code in JobMap.jsx measurementEntries memo (lines 1560-1574) inserts orphan riser rows for poles not on any active segment — backend curl 9/9 already confirms deleted-line span clearing. (3) Pole edit form (/jobs/{jobId}/edit/{poleId}): 'Manual' spans mode shows ONLY Direction dropdown + Distance selectors (span1-distance-hundreds + span1-distance-remainder present) and the Spans section text does NOT contain the word 'owner' — Attachment Owner field successfully removed. (4) HOA Type dropdown (attachment0-hoa-type): 33 options rendered (32 expected + '—' blank sentinel). All 32 expected new+original types present including Power Drop, Swante 4 ACSR, Raven 1/0 ACSR, Penguin 4/0 ACSR, Pelican 477 ACSR, Tulip 336 AAC, Arbutus 795 AAC, 1/0 URD, 4/0 URD, 1000 URD, Conch 2Str TRIPLEX, Neritina 1/0 TRIPLEX, all Zuzara SERVICE variants, Hurricane 500 QUAD SERVICE, Shepard #6 DUPLEX, Perwinkle #4 TRIPLEX, all Clafin URD variants, Copper #6/#4 SOLID, #4 Riser Wire, #6 Riser Wire. Selected 'Raven 1/0 ACSR', saved pole, reloaded — value persisted correctly. Restored original 'Type' value after test. All 4 items PASS.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "JobMap A050ABC", "issues": ["Badge 2 (aerial span P1↔EXPORT-TEST) and badge 4 (UG segment) render at overlapping map coordinates (~30px apart) making badge 2 click sometimes intercepted by badge 4. Cosmetic; not a functional bug — popup opens fine on both when zoomed in. Consider small offset for stacked badges."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "PoleForm.jsx still keeps span1_owner/span2_owner/span3_owner/span4_owner in formData and initial-mapping (lines 93-96, 240-243) — no longer bound to any input after Attachment Owner removal. If never used elsewhere, consider removing these fields to reduce payload/dead code. Not a bug.",
+    "JobMap.jsx measurementEntries memo (lines 1560-1574) fallback for orphan risers is correct and matches spec: risers on poles not touched by any active segment are inserted at their sort_order. This also renders their purple numbered badges on the map (same numbering pipeline).",
+    "Map badges 2 and 4 overlap positionally on seed job A050ABC — consider a small marker offset when a span badge and UG segment badge share a start pole."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "not tested (per request)", "frontend": "100% (4/4 items PASS; visual overlap on badge 2 noted as cosmetic only)"},
+  "test_credentials": "Admin@mastec.com / Mastecbyers12345 (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "None. Used seed job e5dc0bae-96bb-4cef-8001-7baf4e41d80a (A050ABC). Modified pole 1 hoa_type transiently to 'Raven 1/0 ACSR' for persistence check then restored to blank ('Type'). No temp job created (skipped optional temp-job flow since backend curl 9/9 already validated deleted-line span-clearing and orphan-riser fallback code is present and generates the same badge/list rows through the shared entries pipeline).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Seed job A050ABC (e5dc0bae-96bb-4cef-8001-7baf4e41d80a) has 2 poles (P1 id=65adce93-c923-4466-9a9e-615ee73f7fab, EXPORT-TEST id=6b3d448a-bfad-479b-8668-d374b8f4a1b8) + 2 underground items (HH-1, HB-1). Badges 1,3=risers (purple), 2=aerial span, 4,5=UG spans. Pole edit route: /jobs/{jobId}/edit/{poleId}. In PoleForm.jsx HOA_TYPES=32 items at line 106. Save button testid=save-pole-btn. To test badges reliably click the marker DOM by matching innerText to the number. Fetch API needs Authorization: Bearer <token> from localStorage.token (cookies alone insufficient for /api/jobs/{id}/poles).",
+  "rca of the issue": "N/A — all 4 requested UI items verified working."
+}
