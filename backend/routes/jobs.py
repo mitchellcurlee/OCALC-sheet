@@ -869,73 +869,99 @@ async def _fetch_photo_entries(entries, concurrency=12):
     return await asyncio.gather(*[fetch_one(p, u) for p, u in entries])
 
 
-async def _stream_zip(entries, concurrency=20):
-    """Async generator: streams a ZIP of (zip_path, photo_url) entries, yielding bytes as each photo is fetched.
-    Writes ZIP records manually with sizes in the local headers (STORED, no data descriptors) so
-    Windows Explorer can open the file — Python's zipfile on unseekable streams emits data
-    descriptors which Explorer rejects for STORED entries."""
+async def _stream_zip(entries, concurrency=8, prefetch=12):
+    """Async generator: streams a ZIP of (zip_path, photo_url) entries in order with bounded memory.
+    - Only `prefetch` photos are in flight/memory at once (large jobs won't balloon RAM while a slow client downloads).
+    - Each photo fetch has a hard timeout so one hung storage call can't stall the stream until a proxy kills the connection.
+    - On any unexpected error the central directory is still emitted, so the ZIP stays valid with whatever was written.
+    Writes ZIP records manually with sizes in the local headers (STORED, no data descriptors) for Windows compatibility."""
     import base64
     import struct
     import zlib
+    import logging as _logging
+    from collections import deque
     from datetime import datetime as _dt
     from services.storage import get_object
 
+    _log = _logging.getLogger(__name__)
     sem = asyncio.Semaphore(concurrency)
+
+    async def _fetch(photo_url):
+        if photo_url.startswith("data:"):
+            _, b64_data = photo_url.split(",", 1)
+            return base64.b64decode(b64_data)
+        if photo_url.startswith("/api/files/"):
+            data, _ = await asyncio.to_thread(get_object, photo_url.replace("/api/files/", ""))
+            return data
+        if not photo_url.startswith("http"):
+            data, _ = await asyncio.to_thread(get_object, photo_url)
+            return data
+        return None
 
     async def fetch_one(zip_path, photo_url):
         async with sem:
-            try:
-                if photo_url.startswith("data:"):
-                    _, b64_data = photo_url.split(",", 1)
-                    return zip_path, base64.b64decode(b64_data)
-                if photo_url.startswith("/api/files/"):
-                    data, _ = await asyncio.to_thread(get_object, photo_url.replace("/api/files/", ""))
-                    return zip_path, data
-                if not photo_url.startswith("http"):
-                    data, _ = await asyncio.to_thread(get_object, photo_url)
-                    return zip_path, data
-            except Exception:
-                pass
+            for attempt in (1, 2):
+                try:
+                    return zip_path, await asyncio.wait_for(_fetch(photo_url), timeout=60)
+                except Exception as e:
+                    if attempt == 2:
+                        _log.warning(f"ZIP stream: skipping {zip_path}: {type(e).__name__} {e}")
             return zip_path, None
 
     now = _dt.now()
     dos_time = (now.hour << 11) | (now.minute << 5) | (now.second // 2)
     dos_date = ((now.year - 1980) << 9) | (now.month << 5) | now.day
 
-    tasks = [asyncio.create_task(fetch_one(p, u)) for p, u in entries]
+    entry_iter = iter(entries)
+    window = deque()
+
+    def refill():
+        while len(window) < prefetch:
+            try:
+                p, u = next(entry_iter)
+            except StopIteration:
+                return
+            window.append(asyncio.create_task(fetch_one(p, u)))
+
+    refill()
     seen = set()
     central = []
     offset = 0
     count = 0
-    for fut in asyncio.as_completed(tasks):
-        zip_path, data = await fut
-        if not data:
-            continue
-        if zip_path in seen:
-            base, _dot, ext = zip_path.rpartition(".")
-            k = 2
-            while f"{base}_{k}.{ext}" in seen:
-                k += 1
-            zip_path = f"{base}_{k}.{ext}"
-        seen.add(zip_path)
-        name = zip_path.encode("utf-8")
-        crc = zlib.crc32(data) & 0xFFFFFFFF
-        size = len(data)
-        # local file header: STORED, UTF-8 flag, sizes known upfront (no data descriptor)
-        local = struct.pack(
-            "<IHHHHHIIIHH", 0x04034B50, 20, 0x0800, 0,
-            dos_time, dos_date, crc, size, size, len(name), 0
-        ) + name
-        yield local + data
-        central.append(
-            struct.pack(
-                "<IHHHHHHIIIHHHHHII", 0x02014B50, 20, 20, 0x0800, 0,
-                dos_time, dos_date, crc, size, size,
-                len(name), 0, 0, 0, 0, 0, offset
+    try:
+        while window:
+            zip_path, data = await window.popleft()
+            refill()
+            if not data:
+                continue
+            if zip_path in seen:
+                base, _dot, ext = zip_path.rpartition(".")
+                k = 2
+                while f"{base}_{k}.{ext}" in seen:
+                    k += 1
+                zip_path = f"{base}_{k}.{ext}"
+            seen.add(zip_path)
+            name = zip_path.encode("utf-8")
+            crc = zlib.crc32(data) & 0xFFFFFFFF
+            size = len(data)
+            local = struct.pack(
+                "<IHHHHHIIIHH", 0x04034B50, 20, 0x0800, 0,
+                dos_time, dos_date, crc, size, size, len(name), 0
             ) + name
-        )
-        offset += len(local) + size
-        count += 1
+            yield local + data
+            central.append(
+                struct.pack(
+                    "<IHHHHHHIIIHHHHHII", 0x02014B50, 20, 20, 0x0800, 0,
+                    dos_time, dos_date, crc, size, size,
+                    len(name), 0, 0, 0, 0, 0, offset
+                ) + name
+            )
+            offset += len(local) + size
+            count += 1
+    except Exception as e:
+        _log.error(f"ZIP stream aborted after {count} entries: {e}")
+        for t in window:
+            t.cancel()
     cd = b"".join(central)
     eocd = struct.pack("<IHHHHIIH", 0x06054B50, 0, 0, count, count, len(cd), offset, 0)
     yield cd + eocd
