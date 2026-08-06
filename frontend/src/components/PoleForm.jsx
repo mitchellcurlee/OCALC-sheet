@@ -1024,7 +1024,7 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
                       location: "",
                       hoa_type: "",
                       photo: h.photo || "", // Include annotated photo if provided
-                      notes: h.description || ""
+                      notes: ""
                     }));
                     setAttachments(prev => [...prev.filter(a => a.height || a.owner || a.photo || a.notes), ...newAttachments]);
                     

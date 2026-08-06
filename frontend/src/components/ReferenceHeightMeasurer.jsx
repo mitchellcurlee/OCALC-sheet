@@ -452,11 +452,10 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
         const pixelsFromGround = markers.refBottom.y - att.y;
         const rawHeight = pixelsFromGround / pixelsPerFoot;
         const heightFt = toDecimalFeet(rawHeight); // Rounds to nearest inch
-        const displayHeight = formatFeetInches(rawHeight);
         return {
           height_ft: heightFt,
           type: `Attachment ${i + 1}`,
-          description: `Measured at ${displayHeight} using ${referenceHeight}ft reference`,
+          description: "",
           confidence: "high"
         };
       });
