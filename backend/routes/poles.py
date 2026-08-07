@@ -617,6 +617,12 @@ async def export_poles_excel(request: Request, base_url: Optional[str] = None):
         ws.cell(row=current_row, column=7, value="RISERS").fill = section_fill
         ws.cell(row=current_row, column=7).font = section_font
         ws.cell(row=current_row, column=8, value=pole.get("risers", ""))
+        ws.cell(row=current_row, column=9, value="EXISTING RISERS").fill = section_fill
+        ws.cell(row=current_row, column=9).font = section_font
+        ws.cell(row=current_row, column=10, value=pole.get("existing_risers", ""))
+        ws.cell(row=current_row, column=11, value="RISER HEIGHT").fill = section_fill
+        ws.cell(row=current_row, column=11).font = section_font
+        ws.cell(row=current_row, column=12, value=format_height(pole.get("riser_height")))
         current_row += 1
         
         ws.cell(row=current_row, column=1, value="SPANS").fill = header_fill
@@ -683,8 +689,12 @@ async def export_poles_excel(request: Request, base_url: Optional[str] = None):
         ws.cell(row=current_row, column=2).font = section_font
         ws.cell(row=current_row, column=3, value="Owner").fill = section_fill
         ws.cell(row=current_row, column=3).font = section_font
-        ws.cell(row=current_row, column=4, value="Notes").fill = section_fill
+        ws.cell(row=current_row, column=4, value="Location").fill = section_fill
         ws.cell(row=current_row, column=4).font = section_font
+        ws.cell(row=current_row, column=5, value="Type").fill = section_fill
+        ws.cell(row=current_row, column=5).font = section_font
+        ws.cell(row=current_row, column=6, value="Notes").fill = section_fill
+        ws.cell(row=current_row, column=6).font = section_font
         current_row += 1
         
         attachments = pole.get("attachments", [])
@@ -693,7 +703,9 @@ async def export_poles_excel(request: Request, base_url: Optional[str] = None):
             ws.cell(row=current_row, column=1, value=f"Att {i+1}")
             ws.cell(row=current_row, column=2, value=format_height(att.get("height")))
             ws.cell(row=current_row, column=3, value=att.get("owner", ""))
-            ws.cell(row=current_row, column=4, value=att.get("notes", ""))
+            ws.cell(row=current_row, column=4, value=att.get("location", ""))
+            ws.cell(row=current_row, column=5, value=att.get("hoa_type", ""))
+            ws.cell(row=current_row, column=6, value=att.get("notes", ""))
             current_row += 1
         
         ws.cell(row=current_row, column=1, value="BIRTHMARK").fill = section_fill
@@ -711,6 +723,12 @@ async def export_poles_excel(request: Request, base_url: Optional[str] = None):
         ws.cell(row=current_row, column=1).font = section_font
         ws.cell(row=current_row, column=2, value=pole.get("notes", ""))
         current_row += 1
+        
+        if pole.get("row_information"):
+            ws.cell(row=current_row, column=1, value="R.O.W. INFO").fill = section_fill
+            ws.cell(row=current_row, column=1).font = section_font
+            ws.cell(row=current_row, column=2, value=pole.get("row_information", ""))
+            current_row += 1
         
         photo_items = pole_photo_items(pole)
         ws.cell(row=current_row, column=1, value="PHOTOS").fill = section_fill

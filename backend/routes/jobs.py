@@ -463,18 +463,21 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
 
         attachments = pole.get("attachments", [])
         section("HOA")
-        table_header(["", "Height", "Owner", "Notes"])
+        table_header(["", "Height", "Owner", "Location", "Type", "Notes"])
         if attachments:
             for i, att in enumerate(attachments, 1):
                 ws.cell(row=current_row, column=1, value=f"HOA {i}")
                 ws.cell(row=current_row, column=2, value=format_height(att.get("height")))
                 ws.cell(row=current_row, column=3, value=att.get("owner", ""))
-                ws.cell(row=current_row, column=4, value=att.get("notes", ""))
+                ws.cell(row=current_row, column=4, value=att.get("location", ""))
+                ws.cell(row=current_row, column=5, value=att.get("hoa_type", ""))
+                ws.cell(row=current_row, column=6, value=att.get("notes", ""))
                 current_row += 1
         label_value_row([
             ("Pole Terminal", pole.get("pole_terminal", "")),
             ("Existing Risers", pole.get("existing_risers", "")),
             ("New Risers", pole.get("risers", "")),
+            ("Riser Height", format_height(pole.get("riser_height"))),
         ])
 
         down_guys = pole.get("down_guys", [])
@@ -507,6 +510,11 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
         if pole.get("notes"):
             section("NOTES")
             ws.cell(row=current_row, column=1, value=pole.get("notes", ""))
+            current_row += 1
+
+        if pole.get("row_information"):
+            section("R.O.W. INFORMATION")
+            ws.cell(row=current_row, column=1, value=pole.get("row_information", ""))
             current_row += 1
 
         photo_items = pole_photo_items(pole)
@@ -559,7 +567,7 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
         ws.cell(row=current_row, column=1, value="UNDERGROUND").fill = header_fill
         ws.cell(row=current_row, column=1).font = header_font
         current_row += 1
-        for h_i, h in enumerate(["Abbr", "Type", "Class", "Label", "Latitude", "Longitude", "Notes", "Map", "Photos"], 1):
+        for h_i, h in enumerate(["Abbr", "Type", "Subtype", "Class", "Label", "FID", "Latitude", "Longitude", "Path Measurements", "Tie-In", "Notes", "Map", "Photos"], 1):
             ws.cell(row=current_row, column=h_i, value=h).font = Font(bold=True, size=9)
         current_row += 1
         for u in underground:
@@ -569,17 +577,30 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
             else:
                 is_aer = ov == "aerial" if ov in ("aerial", "underground") else u.get("type", "") in EXPORT_AERIAL_TYPES
                 class_val, class_color = ("Aerial", "2563EB") if is_aer else ("Underground", "16A34A")
+            fid_val = u.get("fid", "") or ""
+            if fid_val and u.get("primary_fid"):
+                fid_val = f"{fid_val} (Primary)"
+            pms = u.get("path_measurements") or []
+            path_val = ""
+            if pms:
+                parts = [f"{m.get('direction', '')} {m.get('feet', '')}ft" + (f" to {m['to']}" if m.get("to") else "") for m in pms]
+                path_total = sum(float(m.get("feet") or 0) for m in pms)
+                path_val = f"{', '.join(parts)} = {path_total:g} ft"
             ws.cell(row=current_row, column=1, value=UG_ABBR.get(u.get("type", ""), ""))
             ws.cell(row=current_row, column=2, value=u.get("type", ""))
-            class_cell = ws.cell(row=current_row, column=3, value=class_val)
+            ws.cell(row=current_row, column=3, value=u.get("material_type", "") or "")
+            class_cell = ws.cell(row=current_row, column=4, value=class_val)
             class_cell.font = Font(color=class_color, bold=True, size=9)
-            ws.cell(row=current_row, column=4, value=u.get("label", ""))
-            ws.cell(row=current_row, column=5, value=u.get("latitude", ""))
-            ws.cell(row=current_row, column=6, value=u.get("longitude", ""))
-            ws.cell(row=current_row, column=7, value=u.get("notes", ""))
+            ws.cell(row=current_row, column=5, value=u.get("label", ""))
+            ws.cell(row=current_row, column=6, value=fid_val)
+            ws.cell(row=current_row, column=7, value=u.get("latitude", ""))
+            ws.cell(row=current_row, column=8, value=u.get("longitude", ""))
+            ws.cell(row=current_row, column=9, value=path_val)
+            ws.cell(row=current_row, column=10, value=u.get("tie_in_measurements", "") or "")
+            ws.cell(row=current_row, column=11, value=u.get("notes", ""))
             # Add Map link for each underground item
             map_url = f"{public_base}/jobs/{job_id}/map"
-            map_cell = ws.cell(row=current_row, column=8, value="View Map")
+            map_cell = ws.cell(row=current_row, column=12, value="View Map")
             map_cell.hyperlink = map_url
             map_cell.font = Font(color="2563EB", underline="single", bold=True)
             
@@ -587,11 +608,11 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
             ug_photo_items = underground_photo_items(u)
             if ug_photo_items:
                 ug_anchor_url = f"{public_base}/api/jobs/{job_id}/photos?token={job_photos_token}#ug-{u.get('id')}"
-                photo_cell = ws.cell(row=current_row, column=9, value=f"View Photos ({len(ug_photo_items)})")
+                photo_cell = ws.cell(row=current_row, column=13, value=f"View Photos ({len(ug_photo_items)})")
                 photo_cell.hyperlink = ug_anchor_url
                 photo_cell.font = Font(color="2563EB", underline="single", bold=True)
             else:
-                ws.cell(row=current_row, column=9, value="No photos")
+                ws.cell(row=current_row, column=13, value="No photos")
             
             current_row += 1
     

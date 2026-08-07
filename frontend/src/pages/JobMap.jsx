@@ -7,7 +7,7 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import domtoimage from "dom-to-image-more";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ChevronDown, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera, Hash, Link2, Move, Palette, Plus, Map as MapIcon, GripVertical, Upload } from "lucide-react";
+import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ChevronDown, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera, Hash, Link2, Move, Palette, Plus, Map as MapIcon, GripVertical, Upload, Trash2 } from "lucide-react";
 import SpanReorderList from "@/components/SpanReorderList";
 import { computeRoute, fmtFeet, feetToStation, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, ugWithGps, undergroundAbbr, computeUgConnectors, computeConnectionPairs, UNDERGROUND_TYPES, isAerialAttr, resolvePairAerial } from "@/lib/poleMapImage";
 import {
@@ -95,11 +95,25 @@ const PopupPhotoAdder = ({ endpoint, item, onSaved }) => {
 };
 
 // Inline quick-edit + marker color picker shown inside underground attribute popups
-const UgPopupEditor = ({ item, defaultColor, onSaved }) => {
+const UgPopupEditor = ({ item, defaultColor, onSaved, onDeleted }) => {
   const [editing, setEditing] = useState(false);
   const [label, setLabel] = useState(item.label || "");
   const [fid, setFid] = useState(item.fid || "");
   const [saving, setSaving] = useState(false);
+  const [confirmDel, setConfirmDel] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const doDelete = async () => {
+    setDeleting(true);
+    try {
+      await axios.delete(`/underground/${item.id}`);
+      toast.success("Moved to Deleted Items — restore it anytime from the trash folder");
+      onDeleted?.(item.id);
+    } catch (e) {
+      toast.error("Failed to delete item");
+      setDeleting(false);
+    }
+  };
 
   const save = async () => {
     setSaving(true);
@@ -183,17 +197,41 @@ const UgPopupEditor = ({ item, defaultColor, onSaved }) => {
           ))}
         </div>
       </div>
+      <div className={confirmDel ? "space-y-1.5" : "hidden"} data-testid={`ug-delete-confirm-${item.id}`}>
+        <div className="text-[11px] text-red-700 font-semibold">Delete this item? It moves to Deleted Items (restorable).</div>
+        <div className="flex gap-1.5">
+          <Button size="sm" className="flex-1 h-7 text-xs bg-red-600 hover:bg-red-700 text-white" disabled={deleting} onClick={doDelete} data-testid={`ug-delete-yes-${item.id}`}>{deleting ? "Deleting…" : "Yes, delete"}</Button>
+          <Button size="sm" variant="outline" className="h-7 text-xs bg-zinc-100 border-zinc-300 text-zinc-900" onClick={() => setConfirmDel(false)} data-testid={`ug-delete-cancel-${item.id}`}>Cancel</Button>
+        </div>
+      </div>
+      <Button size="sm" variant="outline" className={`w-full h-7 text-xs bg-red-50 border-red-300 text-red-700 hover:bg-red-100 ${confirmDel ? "hidden" : ""}`} onClick={() => setConfirmDel(true)} data-testid={`ug-delete-btn-${item.id}`}>
+        <Trash2 className="w-3.5 h-3.5 mr-1" />Delete Item
+      </Button>
     </div>
   );
 };
 
 // Inline quick-edit + marker color picker shown inside the pole popup
-const PolePopupEditor = ({ pole, onSaved }) => {
+const PolePopupEditor = ({ pole, onSaved, onDeleted }) => {
   const [editing, setEditing] = useState(false);
   const [num, setNum] = useState(pole.pole_number || "");
   const [cls, setCls] = useState(pole.pole_class || "");
   const [size, setSize] = useState(pole.pole_size || "");
   const [saving, setSaving] = useState(false);
+  const [confirmDel, setConfirmDel] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const doDelete = async () => {
+    setDeleting(true);
+    try {
+      await axios.delete(`/poles/${pole.id}`);
+      toast.success("Pole moved to Deleted Items — restore it anytime from the trash folder");
+      onDeleted?.(pole.id);
+    } catch (e) {
+      toast.error("Failed to delete pole");
+      setDeleting(false);
+    }
+  };
 
   const save = async () => {
     setSaving(true);
@@ -260,6 +298,16 @@ const PolePopupEditor = ({ pole, onSaved }) => {
           ))}
         </div>
       </div>
+      <div className={confirmDel ? "space-y-1.5" : "hidden"} data-testid={`pole-delete-confirm-${pole.id}`}>
+        <div className="text-[11px] text-red-700 font-semibold">Delete this pole? It moves to Deleted Items (restorable).</div>
+        <div className="flex gap-1.5">
+          <Button size="sm" className="flex-1 h-7 text-xs bg-red-600 hover:bg-red-700 text-white" disabled={deleting} onClick={doDelete} data-testid={`pole-delete-yes-${pole.id}`}>{deleting ? "Deleting…" : "Yes, delete"}</Button>
+          <Button size="sm" variant="outline" className="h-7 text-xs bg-zinc-100 border-zinc-300 text-zinc-900" onClick={() => setConfirmDel(false)} data-testid={`pole-delete-cancel-${pole.id}`}>Cancel</Button>
+        </div>
+      </div>
+      <Button size="sm" variant="outline" className={`w-full h-7 text-xs bg-red-50 border-red-300 text-red-700 hover:bg-red-100 ${confirmDel ? "hidden" : ""}`} onClick={() => setConfirmDel(true)} data-testid={`pole-delete-btn-${pole.id}`}>
+        <Trash2 className="w-3.5 h-3.5 mr-1" />Delete Pole
+      </Button>
     </div>
   );
 };
@@ -2542,6 +2590,10 @@ const JobMap = () => {
                             <PolePopupEditor
                               pole={p}
                               onSaved={(updated) => setPoles((prev) => prev.map((x) => (x.id === updated.id ? { ...x, ...updated } : x)))}
+                              onDeleted={(id) => {
+                                setPoles((prev) => prev.filter((x) => x.id !== id));
+                                axios.post(`/jobs/${jobId}/sync-map-distances`).catch(() => {});
+                              }}
                             />
                           )}
                           {positionEditMode && (
@@ -2595,6 +2647,10 @@ const JobMap = () => {
                               item={u}
                               defaultColor={u.aerial_override === "neutral" ? "#9333ea" : isAerialAttr(u) ? "#2563eb" : undergroundColorHex}
                               onSaved={(updated) => setUnderground((prev) => prev.map((x) => (x.id === updated.id ? { ...x, ...updated } : x)))}
+                              onDeleted={(id) => {
+                                setUnderground((prev) => prev.filter((x) => x.id !== id));
+                                axios.post(`/jobs/${jobId}/sync-map-distances`).catch(() => {});
+                              }}
                             />
                           </>
                         )}
