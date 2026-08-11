@@ -262,8 +262,8 @@ export const PhotoMarkupEditor = ({
       };
       
       const processImage = (img) => {
-        const maxWidth = 800;
-        const maxHeight = 600;
+        const maxWidth = 1400;
+        const maxHeight = 1000;
         let width = img.width;
         let height = img.height;
         
@@ -1360,7 +1360,7 @@ export const PhotoMarkupEditor = ({
 
       {/* Editor Dialog */}
       <Dialog open={editorOpen} onOpenChange={setEditorOpen}>
-        <DialogContent className="max-w-6xl max-h-[95vh] overflow-hidden p-0">
+        <DialogContent className="w-[98vw] max-w-[1800px] max-h-[95vh] overflow-hidden p-0">
           <DialogHeader className="p-4 border-b bg-zinc-50">
             <DialogTitle className="flex items-center gap-2">
               <Pencil className="w-5 h-5" />
@@ -1370,7 +1370,7 @@ export const PhotoMarkupEditor = ({
           
           <div className="flex h-[calc(95vh-120px)]">
             {/* Toolbar */}
-            <div className="w-64 border-r bg-zinc-50 p-3 space-y-3 overflow-y-auto">
+            <div className="w-64 shrink-0 border-r bg-zinc-50 p-3 space-y-3 overflow-y-auto">
               {/* Tool selection */}
               <div className="space-y-2">
                 <Label className="text-xs font-mono">TOOLS</Label>
