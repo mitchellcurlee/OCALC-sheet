@@ -1232,19 +1232,33 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
                     formData.ocalc_right_photo && { label: "OCALC Right", url: formData.ocalc_right_photo },
                   ].filter(Boolean)}
                   onHeightsDetected={(heights) => {
-                    // Add measured heights as new down guy rows
-                    const newGuys = heights.map(h => ({
-                      _key: rowKey(),
-                      owner: "",
-                      direction: "",
-                      size: "",
-                      type: "",
-                      condition: "",
-                      height: h.height_ft?.toString() || "",
-                      lead: "",
-                      photos: h.photo ? [h.photo] : []
-                    }));
-                    setDownGuys(prev => [...prev.filter(g => g.owner || g.direction || g.size || g.type || g.condition || g.height || g.lead || (g.photos || []).length), ...newGuys]);
+                    // Fill empty Height fields on existing rows first, then add rows for the rest
+                    setDownGuys(prev => {
+                      const rows = [...prev];
+                      const remaining = [...heights];
+                      for (let i = 0; i < rows.length && remaining.length > 0; i++) {
+                        if (!rows[i].height) {
+                          const h = remaining.shift();
+                          rows[i] = {
+                            ...rows[i],
+                            height: h.height_ft?.toString() || "",
+                            photos: h.photo ? [...(rows[i].photos || []), h.photo] : (rows[i].photos || []),
+                          };
+                        }
+                      }
+                      const extra = remaining.map(h => ({
+                        _key: rowKey(),
+                        owner: "",
+                        direction: "",
+                        size: "",
+                        type: "",
+                        condition: "",
+                        height: h.height_ft?.toString() || "",
+                        lead: "",
+                        photos: h.photo ? [h.photo] : []
+                      }));
+                      return [...rows, ...extra];
+                    });
                   }}
                   buttonVariant="outline"
                   sessionId={`pole_dg_${initialPole?.id || 'new'}_${jobId}`}

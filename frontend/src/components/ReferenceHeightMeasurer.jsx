@@ -80,13 +80,26 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
   const pinchRef = useRef(null);
   const [zoom, setZoom] = useState(1);
 
-  const applyZoom = (next) => {
+  const applyZoom = (next, clientX = null, clientY = null) => {
+    const el = scrollBoxRef.current;
     setZoom((prev) => {
       const z = Math.min(5, Math.max(1, typeof next === "function" ? next(prev) : next));
       if (prev === 1 && z > 1 && imageRef.current) {
         baseSizeRef.current = { w: imageRef.current.offsetWidth, h: imageRef.current.offsetHeight };
       }
       if (z === 1) baseSizeRef.current = null;
+      if (el && z !== prev) {
+        // Keep the point under the cursor (or view center) fixed while zooming
+        const r = el.getBoundingClientRect();
+        const ox = clientX == null ? r.width / 2 : clientX - r.left;
+        const oy = clientY == null ? r.height / 2 : clientY - r.top;
+        const px = (el.scrollLeft + ox) / prev;
+        const py = (el.scrollTop + oy) / prev;
+        requestAnimationFrame(() => {
+          el.scrollLeft = px * z - ox;
+          el.scrollTop = py * z - oy;
+        });
+      }
       return z;
     });
   };
@@ -102,13 +115,15 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
     const el = scrollBoxRef.current;
     if (!el) return;
     const dist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
-    const onWheel = (e) => { e.preventDefault(); applyZoom((p) => p * (e.deltaY < 0 ? 1.15 : 1 / 1.15)); };
+    const mid = (t) => [(t[0].clientX + t[1].clientX) / 2, (t[0].clientY + t[1].clientY) / 2];
+    const onWheel = (e) => { e.preventDefault(); applyZoom((p) => p * (e.deltaY < 0 ? 1.15 : 1 / 1.15), e.clientX, e.clientY); };
     const onTouchStart = (e) => { if (e.touches.length === 2) pinchRef.current = dist(e.touches); };
     const onTouchMove = (e) => {
       if (e.touches.length === 2 && pinchRef.current) {
         e.preventDefault();
         const d = dist(e.touches);
-        if (pinchRef.current > 0) applyZoom((p) => p * (d / pinchRef.current));
+        const [mx, my] = mid(e.touches);
+        if (pinchRef.current > 0) applyZoom((p) => p * (d / pinchRef.current), mx, my);
         pinchRef.current = d;
       }
     };
@@ -291,49 +306,80 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
       // Label
       const midY = (markers.refBottom.y + markers.refTop.y) / 2;
       ctx.fillStyle = "#3b82f6";
-      ctx.font = "bold 16px Arial";
-      ctx.fillText(`${referenceHeight}ft ref`, markers.refBottom.x + 15, midY);
+      ctx.font = "bold 11px Arial";
+      ctx.textAlign = "left";
+      ctx.fillText(`${referenceHeight}ft ref`, markers.refBottom.x + 10, midY);
     }
 
-    // Draw attachment markers
+    // Draw attachment markers (small numbered dots)
     markers.attachments.forEach((att, i) => {
-      // Calculate height
-      let heightFt = null;
-      let heightDisplay = null;
-      if (pixelsPerFoot && markers.refBottom) {
-        const pixelsFromGround = markers.refBottom.y - att.y;
-        heightFt = pixelsFromGround / pixelsPerFoot;
-        heightDisplay = formatFeetInches(heightFt);
-      }
-
-      // Marker (smaller)
       ctx.fillStyle = "#22c55e";
       ctx.beginPath();
-      ctx.arc(att.x, att.y, 6, 0, Math.PI * 2);
+      ctx.arc(att.x, att.y, 4.5, 0, Math.PI * 2);
       ctx.fill();
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 1;
+      ctx.stroke();
       ctx.fillStyle = "#ffffff";
-      ctx.font = "bold 8px Arial";
+      ctx.font = "bold 7px Arial";
       ctx.textAlign = "center";
-      ctx.fillText(i + 1, att.x, att.y + 3);
-
-      // Height label (bigger) - now shows feet'inches"
-      if (heightDisplay !== null) {
-        ctx.fillStyle = "#22c55e";
-        ctx.fillRect(att.x + 12, att.y - 14, 80, 28);
-        ctx.fillStyle = "#ffffff";
-        ctx.font = "bold 16px Arial";
-        ctx.textAlign = "left";
-        ctx.fillText(heightDisplay, att.x + 18, att.y + 6);
-      }
+      ctx.fillText(i + 1, att.x, att.y + 2.5);
     });
+
+    // Numbered heights listed off to the side (top-right of the picture)
+    if (markers.attachments.length > 0 && pixelsPerFoot && markers.refBottom) {
+      const lw = 88;
+      const lh = 16;
+      const lx = canvas.width - lw - 6;
+      let ly = 6;
+      markers.attachments.forEach((att, i) => {
+        const heightDisplay = formatFeetInches((markers.refBottom.y - att.y) / pixelsPerFoot);
+        ctx.fillStyle = "rgba(34, 197, 94, 0.92)";
+        ctx.fillRect(lx, ly, lw, lh);
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "bold 10px Arial";
+        ctx.textAlign = "left";
+        ctx.fillText(`${i + 1}: ${heightDisplay}`, lx + 5, ly + 11.5);
+        ly += lh + 3;
+      });
+    }
   }, [markers, pixelsPerFoot, referenceHeight, imagePreview]);
 
   useEffect(() => {
     drawCanvas();
   }, [drawCanvas]);
 
+  // Click-drag pans the (zoomed) picture; a plain click places a marker
+  const dragRef = useRef(null);
+  const suppressClickRef = useRef(false);
+  const onCanvasMouseDown = (e) => {
+    const el = scrollBoxRef.current;
+    if (!el || e.button !== 0) return;
+    dragRef.current = { x: e.clientX, y: e.clientY, sl: el.scrollLeft, st: el.scrollTop, moved: false };
+  };
+  const onCanvasMouseMove = (e) => {
+    const d = dragRef.current;
+    const el = scrollBoxRef.current;
+    if (!d || !el || e.buttons !== 1) return;
+    const dx = e.clientX - d.x;
+    const dy = e.clientY - d.y;
+    if (Math.abs(dx) > 4 || Math.abs(dy) > 4) d.moved = true;
+    if (d.moved) {
+      el.scrollLeft = d.sl - dx;
+      el.scrollTop = d.st - dy;
+    }
+  };
+  const onCanvasMouseUp = () => {
+    if (dragRef.current?.moved) suppressClickRef.current = true;
+    dragRef.current = null;
+  };
+
   // Handle canvas click
   const handleCanvasClick = (e) => {
+    if (suppressClickRef.current) {
+      suppressClickRef.current = false;
+      return;
+    }
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -423,44 +469,53 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
           ctx.fillText(`${referenceHeight}ft ref`, bx + 65 * s, midY + 5 * s);
         }
 
-        // Draw attachment markers with heights
+        // Draw attachment markers (small numbered dots with guide lines)
         markers.attachments.forEach((att, i) => {
           const ax = att.x * scaleX;
           const ay = att.y * scaleY;
-          const by = markers.refBottom.y * scaleY;
-
-          // Calculate height in feet and inches
-          const pixelsFromGround = by - ay;
-          const scaledPixelsPerFoot = pixelsPerFoot * scaleY;
-          const rawHeight = pixelsFromGround / scaledPixelsPerFoot;
-          const heightDisplay = formatFeetInches(rawHeight);
 
           // Draw horizontal line to marker
           ctx.strokeStyle = "#22c55e";
-          ctx.lineWidth = 3 * s;
+          ctx.lineWidth = 2 * s;
           ctx.beginPath();
           ctx.moveTo(0, ay);
-          ctx.lineTo(ax - 15 * s, ay);
+          ctx.lineTo(ax - 8 * s, ay);
           ctx.stroke();
 
-          // Marker circle
+          // Marker circle (small)
           ctx.fillStyle = "#22c55e";
           ctx.beginPath();
-          ctx.arc(ax, ay, 10 * s, 0, Math.PI * 2);
+          ctx.arc(ax, ay, 6 * s, 0, Math.PI * 2);
           ctx.fill();
+          ctx.strokeStyle = "#ffffff";
+          ctx.lineWidth = 1.5 * s;
+          ctx.stroke();
           ctx.fillStyle = "#ffffff";
-          ctx.font = `bold ${Math.round(12 * s)}px Arial`;
+          ctx.font = `bold ${Math.round(8 * s)}px Arial`;
           ctx.textAlign = "center";
-          ctx.fillText(i + 1, ax, ay + 4 * s);
-
-          // Height label (bigger) - shows feet'inches"
-          ctx.fillStyle = "#22c55e";
-          ctx.fillRect(ax + 15 * s, ay - 20 * s, 110 * s, 40 * s);
-          ctx.fillStyle = "#ffffff";
-          ctx.font = `bold ${Math.round(24 * s)}px Arial`;
-          ctx.textAlign = "center";
-          ctx.fillText(heightDisplay, ax + 70 * s, ay + 8 * s);
+          ctx.fillText(i + 1, ax, ay + 3 * s);
         });
+
+        // Numbered heights listed off to the side (top-right)
+        if (markers.attachments.length > 0) {
+          const by = markers.refBottom.y * scaleY;
+          const scaledPixelsPerFoot = pixelsPerFoot * scaleY;
+          const lw = 150 * s;
+          const lh = 32 * s;
+          const lx = img.width - lw - 10 * s;
+          let ly = 50 * s;
+          markers.attachments.forEach((att, i) => {
+            const ay = att.y * scaleY;
+            const heightDisplay = formatFeetInches((by - ay) / scaledPixelsPerFoot);
+            ctx.fillStyle = "rgba(34, 197, 94, 0.92)";
+            ctx.fillRect(lx, ly, lw, lh);
+            ctx.fillStyle = "#ffffff";
+            ctx.font = `bold ${Math.round(18 * s)}px Arial`;
+            ctx.textAlign = "left";
+            ctx.fillText(`${i + 1}: ${heightDisplay}`, lx + 8 * s, ly + 22 * s);
+            ly += lh + 6 * s;
+          });
+        }
 
         // Title bar
         ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
@@ -704,6 +759,10 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
                     <canvas
                       ref={canvasRef}
                       onClick={handleCanvasClick}
+                      onMouseDown={onCanvasMouseDown}
+                      onMouseMove={onCanvasMouseMove}
+                      onMouseUp={onCanvasMouseUp}
+                      onMouseLeave={onCanvasMouseUp}
                       className="absolute inset-0 w-full h-full cursor-crosshair"
                       style={{ touchAction: zoom > 1 ? "pan-x pan-y" : "manipulation" }}
                     />

@@ -913,13 +913,26 @@ export const PhotoMarkupEditor = ({
     }
   };
 
-  const applyZoom = (next) => {
+  const applyZoom = (next, clientX = null, clientY = null) => {
+    const el = containerRef.current;
     setZoom((prev) => {
       const z = Math.min(5, Math.max(1, typeof next === "function" ? next(prev) : next));
       if (prev === 1 && z > 1 && canvasRef.current) {
         baseFitRef.current = { w: canvasRef.current.getBoundingClientRect().width };
       }
       if (z === 1) baseFitRef.current = null;
+      if (el && z !== prev) {
+        // Keep the point under the cursor (or view center) fixed while zooming
+        const r = el.getBoundingClientRect();
+        const ox = clientX == null ? r.width / 2 : clientX - r.left;
+        const oy = clientY == null ? r.height / 2 : clientY - r.top;
+        const px = (el.scrollLeft + ox) / prev;
+        const py = (el.scrollTop + oy) / prev;
+        requestAnimationFrame(() => {
+          el.scrollLeft = px * z - ox;
+          el.scrollTop = py * z - oy;
+        });
+      }
       return z;
     });
   };
@@ -936,7 +949,7 @@ export const PhotoMarkupEditor = ({
     if (!el) return;
     const onWheel = (e) => {
       e.preventDefault();
-      applyZoom((prev) => prev * (e.deltaY < 0 ? 1.15 : 1 / 1.15));
+      applyZoom((prev) => prev * (e.deltaY < 0 ? 1.15 : 1 / 1.15), e.clientX, e.clientY);
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
@@ -947,7 +960,9 @@ export const PhotoMarkupEditor = ({
     if (e.touches && e.touches.length === 2 && pinchRef.current) {
       e.preventDefault();
       const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-      if (pinchRef.current.dist > 0) applyZoom(pinchRef.current.startZoom * (d / pinchRef.current.dist));
+      const mx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      const my = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      if (pinchRef.current.dist > 0) applyZoom(pinchRef.current.startZoom * (d / pinchRef.current.dist), mx, my);
       return;
     }
     const coords = getCanvasCoords(e);
