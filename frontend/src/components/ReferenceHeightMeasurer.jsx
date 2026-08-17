@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Camera, Upload, Ruler, Trash2, Check, RotateCcw, Plus, Save } from "lucide-react";
+import { Camera, Upload, Ruler, Trash2, Check, RotateCcw, Plus, Save, ZoomIn, ZoomOut } from "lucide-react";
 import axios from "axios";
 import { toast } from "sonner";
 
@@ -75,6 +75,55 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
   const cameraInputRef = useRef(null);
   const canvasRef = useRef(null);
   const imageRef = useRef(null);
+  const scrollBoxRef = useRef(null);
+  const baseSizeRef = useRef(null);
+  const pinchRef = useRef(null);
+  const [zoom, setZoom] = useState(1);
+
+  const applyZoom = (next) => {
+    setZoom((prev) => {
+      const z = Math.min(5, Math.max(1, typeof next === "function" ? next(prev) : next));
+      if (prev === 1 && z > 1 && imageRef.current) {
+        baseSizeRef.current = { w: imageRef.current.offsetWidth, h: imageRef.current.offsetHeight };
+      }
+      if (z === 1) baseSizeRef.current = null;
+      return z;
+    });
+  };
+
+  useEffect(() => {
+    setZoom(1);
+    baseSizeRef.current = null;
+    pinchRef.current = null;
+  }, [imagePreview]);
+
+  // Wheel + pinch zoom on the image area
+  useEffect(() => {
+    const el = scrollBoxRef.current;
+    if (!el) return;
+    const dist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+    const onWheel = (e) => { e.preventDefault(); applyZoom((p) => p * (e.deltaY < 0 ? 1.15 : 1 / 1.15)); };
+    const onTouchStart = (e) => { if (e.touches.length === 2) pinchRef.current = dist(e.touches); };
+    const onTouchMove = (e) => {
+      if (e.touches.length === 2 && pinchRef.current) {
+        e.preventDefault();
+        const d = dist(e.touches);
+        if (pinchRef.current > 0) applyZoom((p) => p * (d / pinchRef.current));
+        pinchRef.current = d;
+      }
+    };
+    const onTouchEnd = (e) => { if (e.touches.length < 2) pinchRef.current = null; };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    el.addEventListener("touchstart", onTouchStart, { passive: true });
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+    el.addEventListener("touchend", onTouchEnd, { passive: true });
+    return () => {
+      el.removeEventListener("wheel", onWheel);
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
+      el.removeEventListener("touchend", onTouchEnd);
+    };
+  }, [step, imagePreview]);
 
   // Auto-save to localStorage whenever state changes
   useEffect(() => {
@@ -198,10 +247,9 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
 
     const ctx = canvas.getContext("2d");
     
-    // Set canvas size to match image display size
-    const rect = image.getBoundingClientRect();
-    canvas.width = rect.width;
-    canvas.height = rect.height;
+    // Set canvas size to the image LAYOUT size (invariant under CSS zoom transform)
+    canvas.width = image.offsetWidth;
+    canvas.height = image.offsetHeight;
 
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -290,8 +338,10 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
     if (!canvas) return;
 
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    // Rect is scaled by the CSS zoom transform; convert back to layout coords
+    const scale = canvas.width ? rect.width / canvas.width : 1;
+    const x = (e.clientX - rect.left) / scale;
+    const y = (e.clientY - rect.top) / scale;
 
     if (step === 2) {
       // Marking reference points
@@ -630,21 +680,35 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
                 )}
               </div>
 
-              {/* Image with canvas overlay */}
-              <div className="relative border border-zinc-300 rounded-lg overflow-hidden bg-zinc-100">
-                <img
-                  ref={imageRef}
-                  src={imagePreview}
-                  alt="Pole"
-                  className="w-full max-h-[70vh] object-contain"
-                  onLoad={drawCanvas}
-                />
-                <canvas
-                  ref={canvasRef}
-                  onClick={handleCanvasClick}
-                  className="absolute inset-0 w-full h-full cursor-crosshair"
-                  style={{ touchAction: 'none' }}
-                />
+              {/* Zoom controls */}
+              <div className="flex items-center justify-end gap-1">
+                <Button type="button" variant="outline" size="sm" className="h-7 px-2" onClick={() => applyZoom((p) => p / 1.5)} data-testid="measurer-zoom-out"><ZoomOut className="w-4 h-4" /></Button>
+                <span className="text-xs font-mono text-zinc-600 w-11 text-center" data-testid="measurer-zoom-level">{Math.round(zoom * 100)}%</span>
+                <Button type="button" variant="outline" size="sm" className="h-7 px-2" onClick={() => applyZoom((p) => p * 1.5)} data-testid="measurer-zoom-in"><ZoomIn className="w-4 h-4" /></Button>
+                {zoom > 1 && (
+                  <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-zinc-600" onClick={() => applyZoom(1)} data-testid="measurer-zoom-reset"><RotateCcw className="w-4 h-4" /></Button>
+                )}
+              </div>
+
+              {/* Image with canvas overlay (zoom via CSS transform; marker coords stay in layout px) */}
+              <div ref={scrollBoxRef} className="border border-zinc-300 rounded-lg overflow-auto bg-zinc-100 max-h-[75vh]">
+                <div style={zoom > 1 && baseSizeRef.current ? { width: baseSizeRef.current.w * zoom, height: baseSizeRef.current.h * zoom } : undefined}>
+                  <div className="relative" style={zoom > 1 && baseSizeRef.current ? { transform: `scale(${zoom})`, transformOrigin: "top left", width: baseSizeRef.current.w } : undefined}>
+                    <img
+                      ref={imageRef}
+                      src={imagePreview}
+                      alt="Pole"
+                      className="w-full max-h-[70vh] object-contain"
+                      onLoad={drawCanvas}
+                    />
+                    <canvas
+                      ref={canvasRef}
+                      onClick={handleCanvasClick}
+                      className="absolute inset-0 w-full h-full cursor-crosshair"
+                      style={{ touchAction: zoom > 1 ? "pan-x pan-y" : "manipulation" }}
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* Controls */}
