@@ -100,6 +100,7 @@ def pole_photo_items(pole: dict):
     """Return [(label, url)] for every photo present on a pole."""
     items = []
     labeled = [
+        ("Pole", pole.get("pole_photo")),
         ("OCALC Left", pole.get("ocalc_left_photo")),
         ("OCALC Middle", pole.get("ocalc_middle_photo")),
         ("OCALC Right", pole.get("ocalc_right_photo")),
@@ -128,6 +129,14 @@ def pole_photo_items(pole: dict):
             photos = [kn.get("photo")]
         for j, photo in enumerate(photos, 1):
             label = f"Anchor {i}" if len(photos) == 1 else f"Anchor {i}-{j}"
+            labeled.append((label, photo))
+    # Down guy photos (array per down guy, incl. measurement overlays)
+    for i, dg in enumerate(pole.get("down_guys", []) or [], 1):
+        photos = dg.get("photos") or []
+        if not photos and dg.get("photo"):
+            photos = [dg.get("photo")]
+        for j, photo in enumerate(photos, 1):
+            label = f"Down_Guy {i}" if len(photos) == 1 else f"Down_Guy {i}-{j}"
             labeled.append((label, photo))
     # HOA photos (array per attachment)
     for i, att in enumerate(pole.get("attachments", []) or [], 1):
