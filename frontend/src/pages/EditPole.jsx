@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useNavigate, useParams, Link } from "react-router-dom";
+import { useNavigate, useParams, Link, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
 import { Loader2, ChevronLeft, ChevronRight } from "lucide-react";
@@ -13,7 +13,10 @@ const EditPole = () => {
   const [poles, setPoles] = useState([]);
   const [fetching, setFetching] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const backUrl = jobId ? `/jobs/${jobId}` : "/";
+  const [searchParams] = useSearchParams();
+  const fromMap = searchParams.get("from") === "map";
+  // Coming from the map: go back to the map centered on the edited item
+  const backUrl = fromMap && jobId ? `/jobs/${jobId}/map?focus=${id}` : jobId ? `/jobs/${jobId}` : "/";
 
   // Fetch all poles in the job for navigation
   const fetchPoles = useCallback(async () => {
@@ -102,7 +105,7 @@ const EditPole = () => {
       {showNavigation && (
         <div className="flex items-center justify-between bg-white border-b border-zinc-200 px-4 py-2" data-testid="pole-navigation">
           <Link 
-            to={prevPole ? `/jobs/${jobId}/edit/${prevPole.id}` : '#'}
+            to={prevPole ? `/jobs/${jobId}/edit/${prevPole.id}${fromMap ? "?from=map" : ""}` : '#'}
             className={!prevPole ? 'pointer-events-none opacity-40' : ''}
           >
             <Button 
@@ -123,7 +126,7 @@ const EditPole = () => {
           </span>
           
           <Link 
-            to={nextPole ? `/jobs/${jobId}/edit/${nextPole.id}` : '#'}
+            to={nextPole ? `/jobs/${jobId}/edit/${nextPole.id}${fromMap ? "?from=map" : ""}` : '#'}
             className={!nextPole ? 'pointer-events-none opacity-40' : ''}
           >
             <Button 

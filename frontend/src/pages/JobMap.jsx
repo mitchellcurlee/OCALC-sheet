@@ -471,8 +471,16 @@ const MapRefSetter = ({ mapRef }) => {
 };
 
 // Draggable marker component for position edit mode
-const DraggableMarker = ({ position, icon, children, draggable, onDragEnd, onDoubleClick, zIndexOffset = 0 }) => {
+const DraggableMarker = ({ position, icon, children, draggable, onDragEnd, onDoubleClick, zIndexOffset = 0, autoOpen = false }) => {
   const markerRef = useRef(null);
+
+  useEffect(() => {
+    if (!autoOpen) return;
+    const t = setTimeout(() => {
+      try { markerRef.current?.openPopup(); } catch (e) { /* map may not be ready */ }
+    }, 900);
+    return () => clearTimeout(t);
+  }, [autoOpen]);
   
   const eventHandlers = useMemo(() => ({
     dragend() {
@@ -553,6 +561,20 @@ const JobMap = () => {
   const [editingLabelId, setEditingLabelId] = useState(null); // Currently editing label ID
   const [editingLabelText, setEditingLabelText] = useState(""); // Text being edited
   const mapRef = useRef(null);
+  // Focus an item after returning from its edit page (?focus=<itemId>)
+  const focusItemId = searchParams.get("focus");
+  useEffect(() => {
+    if (!focusItemId) return;
+    const target = poles.find((x) => x.id === focusItemId) || underground.find((x) => x.id === focusItemId);
+    if (!target || target.latitude == null || target.longitude == null) return;
+    const pos = [parseFloat(target.latitude), parseFloat(target.longitude)];
+    if (!Number.isFinite(pos[0]) || !Number.isFinite(pos[1])) return;
+    const timers = [500, 1500].map((ms) => setTimeout(() => {
+      const m = mapRef.current;
+      if (m) m.setView(pos, Math.max(m.getZoom() || 0, 18));
+    }, ms));
+    return () => timers.forEach(clearTimeout);
+  }, [focusItemId, poles, underground]);
   const autoDownloadedRef = useRef(false);
 
   // Get the actual hex color for aerial and underground paths
@@ -2565,6 +2587,7 @@ const JobMap = () => {
                       draggable={positionEditMode}
                       onDragEnd={(lat, lng) => handlePoleDragEnd(p.id, lat, lng)}
                       zIndexOffset={positionEditMode ? 1500 : 0}
+                      autoOpen={focusItemId === p.id}
                     >
                       <Popup>
                         <div className="min-w-[180px] font-mono" data-testid={`pole-popup-${p.id}`}>
@@ -2581,7 +2604,7 @@ const JobMap = () => {
                               <Link to={`/jobs/${jobId}/view/${p.id}`} className="flex-1">
                                 <Button size="sm" className="w-full h-8 bg-red-600 hover:bg-red-700 text-white" data-testid={`popup-view-${p.id}`}>Open</Button>
                               </Link>
-                              <Link to={`/jobs/${jobId}/edit/${p.id}`} className="flex-1">
+                              <Link to={`/jobs/${jobId}/edit/${p.id}?from=map`} className="flex-1">
                                 <Button size="sm" variant="outline" className="w-full h-8 bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900" data-testid={`popup-edit-${p.id}`}>Edit</Button>
                               </Link>
                             </div>
@@ -2631,6 +2654,7 @@ const JobMap = () => {
                     draggable={positionEditMode}
                     onDragEnd={(lat, lng) => handleUndergroundDragEnd(u.id, lat, lng)}
                     zIndexOffset={positionEditMode ? 1500 : 0}
+                    autoOpen={focusItemId === u.id}
                   >
                     <Popup>
                       <div className="min-w-[170px] font-mono" data-testid={`ug-popup-${u.id}`}>
@@ -2640,7 +2664,7 @@ const JobMap = () => {
                         {u.notes && <div className="text-xs text-zinc-500 mt-1">{u.notes}</div>}
                         {!positionEditMode && (
                           <>
-                            <Link to={`/jobs/${jobId}/underground/edit/${u.id}`}>
+                            <Link to={`/jobs/${jobId}/underground/edit/${u.id}?from=map`}>
                               <Button size="sm" className="w-full h-8 mt-2 text-white" style={{ backgroundColor: isRed ? '#dc2626' : itemColor }} data-testid={`ug-edit-${u.id}`}>Edit</Button>
                             </Link>
                             <UgPopupEditor

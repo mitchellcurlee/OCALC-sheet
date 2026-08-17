@@ -45,7 +45,9 @@ const UndergroundForm = () => {
   const { jobId, id } = useParams();
   const [searchParams] = useSearchParams();
   const isEdit = !!id;
-  const backUrl = searchParams.get("from") === "map" ? `/jobs/${jobId}/map` : `/jobs/${jobId}`;
+  const backUrl = searchParams.get("from") === "map"
+    ? `/jobs/${jobId}/map${isEdit ? `?focus=${id}` : ""}`
+    : `/jobs/${jobId}`;
 
   const [types, setTypes] = useState([]);
   const [jobItems, setJobItems] = useState([]);

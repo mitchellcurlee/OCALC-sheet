@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { 
   Camera, Upload, X, Pencil, Type, Circle, Square, 
-  Minus, Undo, Redo, Trash2, Loader2, ZoomIn,
+  Minus, Undo, Redo, Trash2, Loader2, ZoomIn, ZoomOut, RotateCcw,
   Save, MousePointer, Move, ArrowRight, Triangle, List, Eraser,
   Waypoints, GitBranch
 } from "lucide-react";
@@ -118,6 +118,9 @@ export const PhotoMarkupEditor = ({
   const cameraInputRef = useRef(null);
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
+  const baseFitRef = useRef(null);
+  const pinchRef = useRef(null);
+  const [zoom, setZoom] = useState(1);
   
   // Editor state
   const [tool, setTool] = useState("select"); // select, draw, marker, text, shape, straightline, polyline, label, icon
@@ -794,6 +797,17 @@ export const PhotoMarkupEditor = ({
   };
 
   const handleMouseDown = (e) => {
+    if (e.touches && e.touches.length === 2) {
+      // Two-finger pinch — zoom instead of drawing
+      e.preventDefault();
+      pinchRef.current = {
+        dist: Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY),
+        startZoom: zoom,
+      };
+      setIsDrawing(false);
+      setIsDragging(false);
+      return;
+    }
     const coords = getCanvasCoords(e);
     
     if (tool === "select") {
@@ -899,7 +913,43 @@ export const PhotoMarkupEditor = ({
     }
   };
 
+  const applyZoom = (next) => {
+    setZoom((prev) => {
+      const z = Math.min(5, Math.max(1, typeof next === "function" ? next(prev) : next));
+      if (prev === 1 && z > 1 && canvasRef.current) {
+        baseFitRef.current = { w: canvasRef.current.getBoundingClientRect().width };
+      }
+      if (z === 1) baseFitRef.current = null;
+      return z;
+    });
+  };
+
+  useEffect(() => {
+    setZoom(1);
+    baseFitRef.current = null;
+    pinchRef.current = null;
+  }, [currentPhoto, editorOpen]);
+
+  useEffect(() => {
+    if (!editorOpen || !imageLoaded) return;
+    const el = containerRef.current;
+    if (!el) return;
+    const onWheel = (e) => {
+      e.preventDefault();
+      applyZoom((prev) => prev * (e.deltaY < 0 ? 1.15 : 1 / 1.15));
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editorOpen, imageLoaded]);
+
   const handleMouseMove = (e) => {
+    if (e.touches && e.touches.length === 2 && pinchRef.current) {
+      e.preventDefault();
+      const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+      if (pinchRef.current.dist > 0) applyZoom(pinchRef.current.startZoom * (d / pinchRef.current.dist));
+      return;
+    }
     const coords = getCanvasCoords(e);
     
     if (isDragging && selectedAnnotation !== null) {
@@ -949,6 +999,15 @@ export const PhotoMarkupEditor = ({
   };
 
   const handleMouseUp = (e) => {
+    if (pinchRef.current) {
+      // End of a pinch gesture — don't treat it as a draw/click
+      if (!e.touches || e.touches.length === 0) pinchRef.current = null;
+      setIsDrawing(false);
+      setCurrentLine(null);
+      setShapeStart(null);
+      setStraightLineStart(null);
+      return;
+    }
     const coords = getCanvasCoords(e);
     
     if (isDragging) {
@@ -2048,27 +2107,41 @@ export const PhotoMarkupEditor = ({
             </div>
 
             {/* Canvas area */}
-            <div ref={containerRef} className="flex-1 bg-zinc-900 flex items-center justify-center p-4 overflow-auto relative">
-              {!imageLoaded && currentPhoto && (
-                <div className="text-white text-center">
-                  <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2" />
-                  <p>Loading image...</p>
+            <div className="flex-1 relative overflow-hidden">
+              <div ref={containerRef} className="absolute inset-0 bg-zinc-900 flex p-4 overflow-auto">
+                {!imageLoaded && currentPhoto && (
+                  <div className="text-white text-center m-auto">
+                    <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2" />
+                    <p>Loading image...</p>
+                  </div>
+                )}
+                <canvas
+                  ref={canvasRef}
+                  onMouseDown={handleMouseDown}
+                  onMouseMove={handleMouseMove}
+                  onMouseUp={handleMouseUp}
+                  onMouseLeave={handleMouseUp}
+                  onDoubleClick={handleDoubleClick}
+                  onTouchStart={handleMouseDown}
+                  onTouchMove={handleMouseMove}
+                  onTouchEnd={handleMouseUp}
+                  data-testid="markup-canvas"
+                  className={`m-auto bg-white shadow-lg ${tool === "select" ? 'cursor-default' : tool === "eraser" ? 'cursor-pointer' : 'cursor-crosshair'} ${!imageLoaded ? 'hidden' : ''}`}
+                  style={zoom > 1 && baseFitRef.current
+                    ? { width: `${Math.round(baseFitRef.current.w * zoom)}px`, maxWidth: "none", maxHeight: "none", touchAction: "none" }
+                    : { maxWidth: "100%", maxHeight: "100%", touchAction: "none" }}
+                />
+              </div>
+
+              {/* Zoom controls */}
+              {imageLoaded && (
+                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-black/60 rounded-full px-2 py-1 z-10">
+                  <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-white hover:bg-white/20" onClick={() => applyZoom((p) => p / 1.5)} data-testid="markup-zoom-out"><ZoomOut className="w-4 h-4" /></Button>
+                  <span className="text-[11px] font-mono text-white w-10 text-center" data-testid="markup-zoom-level">{Math.round(zoom * 100)}%</span>
+                  <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-white hover:bg-white/20" onClick={() => applyZoom((p) => p * 1.5)} data-testid="markup-zoom-in"><ZoomIn className="w-4 h-4" /></Button>
+                  <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-white hover:bg-white/20" onClick={() => applyZoom(1)} data-testid="markup-zoom-reset"><RotateCcw className="w-4 h-4" /></Button>
                 </div>
               )}
-              <canvas
-                ref={canvasRef}
-                onMouseDown={handleMouseDown}
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUp}
-                onMouseLeave={handleMouseUp}
-                onDoubleClick={handleDoubleClick}
-                onTouchStart={handleMouseDown}
-                onTouchMove={handleMouseMove}
-                onTouchEnd={handleMouseUp}
-                data-testid="markup-canvas"
-                className={`bg-white shadow-lg ${tool === "select" ? 'cursor-default' : tool === "eraser" ? 'cursor-pointer' : 'cursor-crosshair'} ${!imageLoaded ? 'hidden' : ''}`}
-                style={{ maxWidth: "100%", maxHeight: "100%", touchAction: "none" }}
-              />
               
               {/* Legend overlay */}
               {showLegend && imageLoaded && (

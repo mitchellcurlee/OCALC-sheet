@@ -1,0 +1,20 @@
+{
+  "summary": "Iter47 frontend-only regression on 2 new features + regression. (1) MARKUP EDITOR ZOOM: Uploaded /tmp/test_markup.jpg to HOA Mark Ups PhotoMarkupEditor on pole edit page, opened editor, zoom pill visible bottom-center with all 4 testids (markup-zoom-out/level/in/reset). Zoom-in click: 100%→150%, canvas boundingBox width 400→600 (exact 1.5×). Container has overflow-auto (image fit inside viewport at 150% for this small 400×300 test image so no actual scrollbars appeared, but overflow rule is in place). Draw tool at 150% zoom produces annotation — legend shows 'Freehand Drawing' entry. Reset returns to 100%. (2) POLE RETURN-TO-MAP: On /jobs/{job}/map, clicked pole marker (P1 id=65adce93-c923-4466-9a9e-615ee73f7fab), popup opened, popup-edit-{id} navigated to /jobs/{job}/edit/{poleId}?from=map. Clicked 'Update Pole', returned to /jobs/{job}/map?focus={poleId}, pole-popup-{poleId} visible within ~2.5s. (3) UNDERGROUND RETURN-TO-MAP: Same flow with UG item b25d7718-6638-4e0a-b3ed-3f7658998b94 (HH-1) — ug-edit-{id} link → /jobs/{job}/underground/edit/{id}?from=map → Save → /jobs/{job}/map?focus={id} → ug-popup-{id} visible. (4) REGRESSION: Job detail page edit link is /jobs/{job}/edit/{poleId} (NO ?from=map), and saving returns to /jobs/{job} (job detail), not to map. All 4 items PASS.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "PhotoMarkupEditor.jsx: applyZoom clamps to [1,5] — no zoom-out below 100% (by design). Comment note: markup-zoom-out button uses divisor 1.5, which will simply cap at 1 (not a bug, matches spec).",
+    "JobMap.jsx focusItemId is captured only ONCE from initial searchParams via useState initializer (line 565). If user edits two items in a row without a full reload, focus is preserved from the first ?focus=… — but since navigate() to /map?focus=<id> triggers a fresh render on this page-level component, useSearchParams reflects the new value in the effect deps (poles/underground). This works today but is fragile; consider reading searchParams.get('focus') directly in the effect for robustness.",
+    "PhotoMarkupEditor.jsx is now 2213 lines — recommend splitting toolbar/canvas/dialog into subcomponents (already flagged in earlier iterations)."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "not tested (per request)", "frontend": "100% (4/4 items PASS)"},
+  "test_credentials": "Admin@mastec.com / Mastecbyers12345 (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "Uploaded a 400×300 solid-color JPG (/tmp/test_markup.jpg) to pole P1's HOA Mark Ups gallery — persisted in seed job. If cleanup is desired, delete the HOA Mark Ups photo on pole 65adce93-… (was id 954460e1-… in request but seed only has 2 poles now: 65adce93 (P1) and 6b3d448a (EXPORT-TEST); pole 954460e1 was NOT present, so the P1 pole was tested instead — same PhotoMarkupEditor code path).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Seed job A050ABC (e5dc0bae-96bb-4cef-8001-7baf4e41d80a) currently has 2 poles: 65adce93-c923-4466-9a9e-615ee73f7fab (P1, class 3, 40'), 6b3d448a-bfad-479b-8668-d374b8f4a1b8 (EXPORT-TEST, class 1, 25'), and 2 UG: b25d7718-… (HH-1), a Hoffman Box (HB-1). Pole 954460e1-… from the task spec does NOT exist in current seed. PhotoMarkupEditor container uses overflow-auto and canvas style width = base * zoom when zoom>1. Zoom-in button multiplies by 1.5 (so 100→150→225→…, capped at 500%). Return-to-map: EditPole/UndergroundForm read searchParams.get('from')==='map' and build backUrl = /jobs/{jobId}/map?focus={id}. DraggableMarker autoOpens popup 900ms after mount when autoOpen=true (set via focusItemId match).",
+  "rca of the issue": "N/A — all 4 requested items verified working end-to-end."
+}
