@@ -666,7 +666,7 @@ async def export_poles_excel(request: Request, base_url: Optional[str] = None):
         
         ws.cell(row=current_row, column=1, value="ANCHOR").fill = header_fill
         ws.cell(row=current_row, column=1).font = header_font
-        an_headers = ["", "Size", "Total Eyes", "Direction", "Condition"]
+        an_headers = ["", "Owner", "Size", "Total Eyes", "Direction", "Condition"]
         for ci, h in enumerate(an_headers, 1):
             if h:
                 ws.cell(row=current_row, column=ci, value=h).fill = section_fill
@@ -677,10 +677,11 @@ async def export_poles_excel(request: Request, base_url: Optional[str] = None):
         for i in range(max(1, len(knuckles))):
             kn = knuckles[i] if i < len(knuckles) else {}
             ws.cell(row=current_row, column=1, value=f"Anchor {i+1}")
-            ws.cell(row=current_row, column=2, value=kn.get("size", ""))
-            ws.cell(row=current_row, column=3, value=kn.get("total_eyes", ""))
-            ws.cell(row=current_row, column=4, value=kn.get("direction", ""))
-            ws.cell(row=current_row, column=5, value=kn.get("condition", ""))
+            ws.cell(row=current_row, column=2, value=kn.get("owner", ""))
+            ws.cell(row=current_row, column=3, value=kn.get("size", ""))
+            ws.cell(row=current_row, column=4, value=kn.get("total_eyes", ""))
+            ws.cell(row=current_row, column=5, value=kn.get("direction", ""))
+            ws.cell(row=current_row, column=6, value=kn.get("condition", ""))
             current_row += 1
         
         ws.cell(row=current_row, column=1, value="HOA").fill = header_fill

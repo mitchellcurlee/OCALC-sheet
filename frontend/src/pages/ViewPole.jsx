@@ -503,13 +503,14 @@ const ViewPole = () => {
                     <div className="space-y-3">
                       {pole.knuckles && pole.knuckles.map((knuckle, index) => {
                         const photos = knuckle.photos || (knuckle.photo ? [knuckle.photo] : []);
-                        if (!knuckle.size && !knuckle.total_eyes && !knuckle.direction && !knuckle.condition && photos.length === 0) return null;
+                        if (!knuckle.owner && !knuckle.size && !knuckle.total_eyes && !knuckle.direction && !knuckle.condition && photos.length === 0) return null;
                         return (
                           <div key={index} className="bg-zinc-50 p-3 border border-zinc-300">
                             <div className="flex items-start gap-4">
                               <span className="text-sm font-mono text-orange-600 w-8">{index + 1}</span>
                               <div className="flex-1">
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-2">
+                                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-2">
+                                  <DataRow label="Owner" value={knuckle.owner} />
                                   <DataRow label="Size" value={knuckle.size ? `${knuckle.size}"` : null} />
                                   <DataRow label="Total Eyes" value={knuckle.total_eyes} />
                                   <DataRow label="Direction" value={knuckle.direction} />

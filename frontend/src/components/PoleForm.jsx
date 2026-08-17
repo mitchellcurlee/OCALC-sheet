@@ -100,7 +100,7 @@ const emptyFormData = () => ({
   pole_line_start: false, pole_line_end: false, end_path: false, standalone: false,
 });
 const emptyDownGuy = () => ({ _key: rowKey(), owner: "", direction: "", size: "", type: "", condition: "", height: "", lead: "", photos: [] });
-const emptyKnuckle = () => ({ _key: rowKey(), size: "", total_eyes: "", direction: "", condition: "", photos: [] });
+const emptyKnuckle = () => ({ _key: rowKey(), owner: "", size: "", total_eyes: "", direction: "", condition: "", photos: [] });
 const emptyAttachment = () => ({ _key: rowKey(), owner: "", location: "", height: "", hoa_type: "", notes: "" });
 
 const HOA_TYPES = [
@@ -263,12 +263,13 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
     // Convert legacy single photo to photos array for knuckles (anchors)
     setKnuckles(p.knuckles?.length > 0 ? p.knuckles.map(k => ({ 
       _key: rowKey(), 
+      owner: k.owner || "",
       size: k.size || "",
       total_eyes: k.total_eyes || "",
       direction: k.direction || "",
       condition: k.condition || "",
       photos: k.photos || (k.photo ? [k.photo] : []) 
-    })) : [{ _key: rowKey(), size: "", total_eyes: "", direction: "", condition: "", photos: [] }]);
+    })) : [{ _key: rowKey(), owner: "", size: "", total_eyes: "", direction: "", condition: "", photos: [] }]);
     // Convert legacy single photo to photos array for attachments and ensure new fields have defaults
     setAttachments(p.attachments?.length > 0 ? p.attachments.map(a => ({ 
       _key: rowKey(), 
@@ -1301,7 +1302,14 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
                   <div key={knuckle._key} className="bg-zinc-50 p-3 border border-zinc-300">
                     <div className="flex items-center gap-2 sm:gap-4">
                       <span className="text-sm font-mono text-orange-600 w-6">{index + 1}</span>
-                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3 flex-1 items-end">
+                      <div className="grid grid-cols-2 sm:grid-cols-6 gap-2 sm:gap-3 flex-1 items-end">
+                        <div className="space-y-1">
+                          <Label className="text-xs font-mono text-zinc-500">Owner</Label>
+                          <Select value={knuckle.owner || ""} onValueChange={(v) => updateKnuckle(index, "owner", v)}>
+                            <SelectTrigger className="h-9 bg-white border-zinc-300 text-zinc-900 text-sm" data-testid={`anchor${index}-owner`}><SelectValue placeholder="Owner" /></SelectTrigger>
+                            <SelectContent className="bg-zinc-50 border-zinc-300"><SelectItem value={BLANK} className="text-zinc-500">—</SelectItem>{options.attachment_owners.map((o) => (<SelectItem key={o} value={o}>{o}</SelectItem>))}</SelectContent>
+                          </Select>
+                        </div>
                         <div className="space-y-1">
                           <Label className="text-xs font-mono text-zinc-500">Size</Label>
                           <Select value={knuckle.size} onValueChange={(v) => updateKnuckle(index, "size", v)}>

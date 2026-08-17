@@ -498,13 +498,14 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
         knuckles = pole.get("knuckles", [])
         if knuckles:
             section("ANCHOR")
-            table_header(["", "Size", "Total Eyes", "Direction", "Condition"])
+            table_header(["", "Owner", "Size", "Total Eyes", "Direction", "Condition"])
             for i, kn in enumerate(knuckles, 1):
                 ws.cell(row=current_row, column=1, value=f"Anchor {i}")
-                ws.cell(row=current_row, column=2, value=kn.get("size", ""))
-                ws.cell(row=current_row, column=3, value=kn.get("total_eyes", ""))
-                ws.cell(row=current_row, column=4, value=kn.get("direction", ""))
-                ws.cell(row=current_row, column=5, value=kn.get("condition", ""))
+                ws.cell(row=current_row, column=2, value=kn.get("owner", ""))
+                ws.cell(row=current_row, column=3, value=kn.get("size", ""))
+                ws.cell(row=current_row, column=4, value=kn.get("total_eyes", ""))
+                ws.cell(row=current_row, column=5, value=kn.get("direction", ""))
+                ws.cell(row=current_row, column=6, value=kn.get("condition", ""))
                 current_row += 1
 
         if pole.get("notes"):

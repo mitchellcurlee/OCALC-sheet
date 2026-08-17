@@ -17,6 +17,7 @@ class DownGuy(BaseModel):
 
 class Knuckle(BaseModel):
     count: Optional[str] = None
+    owner: Optional[str] = None
     size: Optional[str] = None
     total_eyes: Optional[str] = None
     direction: Optional[str] = None
