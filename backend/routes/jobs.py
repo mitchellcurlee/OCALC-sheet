@@ -621,12 +621,17 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
         max_length = 0
         column = col[0].column_letter
         for cell in col:
+            v = cell.value
+            if v is None:
+                continue
             try:
-                if len(str(cell.value)) > max_length:
-                    max_length = len(str(cell.value))
+                l = max(len(part) for part in str(v).split("\n"))
             except Exception:
-                pass
-        ws.column_dimensions[column].width = max(min(max_length + 2, 30), 12)
+                continue
+            if l > max_length:
+                max_length = l
+        # Cap width; very long free text overflows into empty neighbor cells
+        ws.column_dimensions[column].width = max(min(max_length + 2, 45), 12)
     
     buffer = io.BytesIO()
     wb.save(buffer)

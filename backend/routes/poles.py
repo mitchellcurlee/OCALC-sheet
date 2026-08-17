@@ -749,13 +749,16 @@ async def export_poles_excel(request: Request, base_url: Optional[str] = None):
         max_length = 0
         column = col[0].column_letter
         for cell in col:
+            v = cell.value
+            if v is None:
+                continue
             try:
-                if len(str(cell.value)) > max_length:
-                    max_length = len(str(cell.value))
+                l = max(len(part) for part in str(v).split("\n"))
             except Exception:
-                pass
-        adjusted_width = min(max_length + 2, 30)
-        ws.column_dimensions[column].width = max(adjusted_width, 12)
+                continue
+            if l > max_length:
+                max_length = l
+        ws.column_dimensions[column].width = max(min(max_length + 2, 45), 12)
     
     buffer = io.BytesIO()
     wb.save(buffer)
