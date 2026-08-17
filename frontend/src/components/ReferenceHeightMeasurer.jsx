@@ -55,7 +55,7 @@ const toDecimalFeet = (decimalFeet) => {
  * 
  * Auto-saves progress to localStorage to prevent data loss if app is closed.
  */
-export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "outline", sessionId = "default", suggestedPhotos = [] }) => {
+export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "outline", sessionId = "default", suggestedPhotos = [], testId = "height-measurer-btn", targetLabel = "HOA" }) => {
   const storageKey = `${STORAGE_KEY_PREFIX}${sessionId}`;
   const [open, setOpen] = useState(false);
   const [imagePreview, setImagePreview] = useState(null);
@@ -524,7 +524,7 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
 
       if (onHeightsDetected) {
         onHeightsDetected(heightsWithPhoto);
-        toast.success(`Applied ${heights.length} measurement(s) to HOA`);
+        toast.success(`Applied ${heights.length} measurement(s) to ${targetLabel}`);
       }
 
       // Clear saved data after successful completion
@@ -552,7 +552,7 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
   return (
     <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) resetState(); }}>
       <DialogTrigger asChild>
-        <Button variant={buttonVariant} className="gap-2" data-testid="height-measurer-btn">
+        <Button variant={buttonVariant} className="gap-2" data-testid={testId}>
           <Ruler className="w-4 h-4" />
           Measure Heights
         </Button>
@@ -780,7 +780,7 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
                   ) : (
                     <>
                       <Check className="w-4 h-4 mr-2" />
-                      Apply {markers.attachments.length} Measurement{markers.attachments.length !== 1 ? 's' : ''} to HOA
+                      Apply {markers.attachments.length} Measurement{markers.attachments.length !== 1 ? 's' : ''} to {targetLabel}
                     </>
                   )}
                 </Button>

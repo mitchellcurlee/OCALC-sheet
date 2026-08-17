@@ -1224,9 +1224,37 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
                 <div className="w-1 h-5 bg-yellow-500"></div>
                 Down Guys
               </h2>
-              <Button type="button" onClick={addDownGuy} size="sm" className="bg-yellow-600 hover:bg-yellow-700 text-white">
-                <Plus className="w-4 h-4 mr-1" /> Add Row
-              </Button>
+              <div className="flex items-center gap-2">
+                <ReferenceHeightMeasurer 
+                  suggestedPhotos={[
+                    formData.ocalc_left_photo && { label: "OCALC Left", url: formData.ocalc_left_photo },
+                    formData.ocalc_middle_photo && { label: "OCALC Middle", url: formData.ocalc_middle_photo },
+                    formData.ocalc_right_photo && { label: "OCALC Right", url: formData.ocalc_right_photo },
+                  ].filter(Boolean)}
+                  onHeightsDetected={(heights) => {
+                    // Add measured heights as new down guy rows
+                    const newGuys = heights.map(h => ({
+                      _key: rowKey(),
+                      owner: "",
+                      direction: "",
+                      size: "",
+                      type: "",
+                      condition: "",
+                      height: h.height_ft?.toString() || "",
+                      lead: "",
+                      photos: h.photo ? [h.photo] : []
+                    }));
+                    setDownGuys(prev => [...prev.filter(g => g.owner || g.direction || g.size || g.type || g.condition || g.height || g.lead || (g.photos || []).length), ...newGuys]);
+                  }}
+                  buttonVariant="outline"
+                  sessionId={`pole_dg_${initialPole?.id || 'new'}_${jobId}`}
+                  testId="downguy-height-measurer-btn"
+                  targetLabel="Down Guys"
+                />
+                <Button type="button" onClick={addDownGuy} size="sm" className="bg-yellow-600 hover:bg-yellow-700 text-white">
+                  <Plus className="w-4 h-4 mr-1" /> Add Row
+                </Button>
+              </div>
             </div>
             <div className="space-y-3">
               {downGuys.map((guy, index) => (
