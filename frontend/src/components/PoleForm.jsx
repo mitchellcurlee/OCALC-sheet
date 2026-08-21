@@ -97,6 +97,7 @@ const emptyFormData = () => ({
   latitude: "", longitude: "-", notes: "", row_information: "",
   hoa_markup_photos: [], // Photos for HOA markup/annotation
   staged_photos: [], // Unsorted photos from the top Photo Gallery
+  auto_label_unsorted: false, // Label unsorted photos with the pole name in exports
   pole_line_start: false, pole_line_end: false, end_path: false, standalone: false,
 });
 const emptyDownGuy = () => ({ _key: rowKey(), owner: "", direction: "", size: "", type: "", condition: "", height: "", lead: "", photos: [] });
@@ -244,6 +245,7 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
       latitude: p.latitude?.toString() || "", longitude: p.longitude?.toString() || "-", notes: p.notes || "", row_information: p.row_information || "",
       hoa_markup_photos: p.hoa_markup_photos || [],
       staged_photos: p.staged_photos || [],
+      auto_label_unsorted: !!p.auto_label_unsorted,
       pole_line_start: p.pole_line_start === true,
       pole_line_end: p.pole_line_end === true,
       end_path: p.end_path === true,
@@ -575,7 +577,7 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
         ...dg,
         height: dg.height ? parseFloat(dg.height) : null
       })),
-      knuckles: knuckles.filter(k => k.size || k.total_eyes || k.direction || k.condition || (k.photos && k.photos.length > 0)).map(({ _key, ...k }) => k),
+      knuckles: knuckles.filter(k => k.owner || k.size || k.total_eyes || k.direction || k.condition || (k.photos && k.photos.length > 0)).map(({ _key, ...k }) => k),
       attachments: attachments.filter(a => a.height || a.owner || a.hoa_type || a.location || (a.photos && a.photos.length > 0) || a.notes).map(({ _key, ...a }) => ({
         ...a,
         height: a.height ? parseFloat(a.height) : null
@@ -669,6 +671,9 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
           <PhotoStagingGallery
             photos={formData.staged_photos || []}
             onChange={(v) => setFormData((p) => ({ ...p, staged_photos: v }))}
+            autoLabel={formData.auto_label_unsorted}
+            onAutoLabelChange={(v) => setFormData((p) => ({ ...p, auto_label_unsorted: v }))}
+            itemLabel={`P${formData.pole_number || ""}`.trim() === "P" ? "this pole" : `P${formData.pole_number}`}
             categories={stagingCategories}
             onAssign={handleStagedAssign}
             testId="pole-staging"

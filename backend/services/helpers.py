@@ -159,8 +159,10 @@ def pole_photo_items(pole: dict):
         labeled.append((label, photo))
     # Unsorted staged photos from the form's top gallery
     staged = pole.get("staged_photos") or []
+    # Auto-label toggle: name them "P{n} Photo" instead of "Unsorted"
+    staged_base = f"P{pole.get('pole_number')} Photo" if pole.get("auto_label_unsorted") and pole.get("pole_number") else ("Photo" if pole.get("auto_label_unsorted") else "Unsorted")
     for i, photo in enumerate(staged, 1):
-        label = "Unsorted" if len(staged) == 1 else f"Unsorted_{i}"
+        label = staged_base if len(staged) == 1 else f"{staged_base}_{i}"
         labeled.append((label, photo))
     for label, val in labeled:
         if val:
@@ -186,8 +188,9 @@ def underground_photo_items(ug: dict):
         items.append((label, photo))
     # Unsorted staged photos from the form's top gallery
     staged = ug.get("staged_photos") or []
+    staged_suffix = "Photo" if ug.get("auto_label_unsorted") else "Unsorted"
     for i, photo in enumerate(staged, 1):
-        label = f"{base_name}_Unsorted" if len(staged) == 1 else f"{base_name}_Unsorted_{i}"
+        label = f"{base_name}_{staged_suffix}" if len(staged) == 1 else f"{base_name}_{staged_suffix}_{i}"
         items.append((label, photo))
     
     return items

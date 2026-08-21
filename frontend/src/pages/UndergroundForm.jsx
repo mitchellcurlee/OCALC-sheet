@@ -66,6 +66,7 @@ const UndergroundForm = () => {
     notes: "",
     photos: [],
     staged_photos: [],
+    auto_label_unsorted: false,
     tie_in_measurements: "", // For Handhole/Pole tie-in measurements
     fid: "",
     primary_fid: false,
@@ -111,6 +112,7 @@ const UndergroundForm = () => {
         notes: u.notes || "",
         photos: photos,
         staged_photos: u.staged_photos || [],
+        auto_label_unsorted: !!u.auto_label_unsorted,
         tie_in_measurements: u.tie_in_measurements || "",
         fid: u.fid || "",
         primary_fid: !!u.primary_fid,
@@ -286,6 +288,7 @@ const UndergroundForm = () => {
         notes: formData.notes,
         photos: formData.photos,
         staged_photos: formData.staged_photos || [],
+        auto_label_unsorted: !!formData.auto_label_unsorted,
         tie_in_measurements: formData.tie_in_measurements || null,
         fid: formData.fid || null,
         primary_fid: !!formData.primary_fid,
@@ -344,6 +347,9 @@ const UndergroundForm = () => {
           <PhotoStagingGallery
             photos={formData.staged_photos || []}
             onChange={(v) => setFormData((p) => ({ ...p, staged_photos: v }))}
+            autoLabel={formData.auto_label_unsorted}
+            onAutoLabelChange={(v) => setFormData((p) => ({ ...p, auto_label_unsorted: v }))}
+            itemLabel={[formData.type, formData.label].filter(Boolean).join(" ") || "this item"}
             categories={[{ key: "array:photos", label: "Photos & Markups" }]}
             onAssign={(url) => { setFormData((p) => ({ ...p, photos: [...(p.photos || []), url] })); toast.success("Photo assigned"); }}
             testId="ug-staging"

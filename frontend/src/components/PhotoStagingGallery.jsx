@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import axios from "axios";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Camera, Upload, X, Images, Loader2, FolderInput, Check } from "lucide-react";
 import { toast } from "sonner";
 import { OfflinePhoto, queuePhotoOffline } from "@/lib/offlinePhotos";
@@ -17,8 +18,11 @@ export const STAGED_PHOTO_MIME = "application/x-staged-photo";
  * @param {{key:string,label:string}[]} categories - assignable categories (tap-to-assign)
  * @param {function} onAssign - (url, categoryKey) called on tap-assign; parent adds to category
  * @param {string} testId
+ * @param {boolean} autoLabel - when true, unsorted photos are labeled with the item name in galleries/exports
+ * @param {function} onAutoLabelChange - toggle handler (renders the toggle when provided)
+ * @param {string} itemLabel - display name of the item (e.g. "P1")
  */
-export const PhotoStagingGallery = ({ photos = [], onChange, categories = [], onAssign, testId = "staging" }) => {
+export const PhotoStagingGallery = ({ photos = [], onChange, categories = [], onAssign, testId = "staging", autoLabel = false, onAutoLabelChange = null, itemLabel = "" }) => {
   const fileRef = useRef(null);
   const camRef = useRef(null);
   const [uploading, setUploading] = useState(false);
@@ -118,6 +122,14 @@ export const PhotoStagingGallery = ({ photos = [], onChange, categories = [], on
           </Button>
         </div>
       </div>
+      {onAutoLabelChange && (
+        <div className="flex items-center gap-2">
+          <Switch checked={!!autoLabel} onCheckedChange={onAutoLabelChange} data-testid={`${testId}-autolabel-toggle`} className="data-[state=checked]:bg-sky-600" />
+          <span className="text-[11px] text-sky-700">
+            Auto-label unsorted photos as <span className="font-semibold">{itemLabel || "this item"} photo</span>{!autoLabel && " (off — saved as \u201CUnsorted\u201D)"}
+          </span>
+        </div>
+      )}
       {photos.length === 0 ? (
         <p className="text-xs text-sky-600">Snap or upload photos here first, then drag each one onto its category below — or tap a photo to pick the category.</p>
       ) : (
