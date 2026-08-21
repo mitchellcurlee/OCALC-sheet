@@ -18,6 +18,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { PhotoMarkupEditor } from "@/components/PhotoMarkupEditor";
 import { PhotoStagingGallery } from "@/components/PhotoStagingGallery";
+import { getJobAddressCenter } from "@/lib/jobAddressCenter";
 import { undergroundAbbr } from "@/lib/poleMapImage";
 import { ArrowLeft, Save, Loader2, MapPin, Search, Pencil, Plus, Trash2 } from "lucide-react";
 
@@ -212,7 +213,14 @@ const UndergroundForm = () => {
     return Number.isFinite(a) && Number.isFinite(b) ? [a, b] : null;
   }, [formData.latitude, formData.longitude]);
   const markerHandlers = useMemo(() => ({ dragend: (e) => { const { lat, lng } = e.target.getLatLng(); setLatLng(lat, lng); } }), []);
-  const mapCenter = markerPosition || [29.7604, -95.3698];
+  const [addressCenter, setAddressCenter] = useState(null);
+  useEffect(() => {
+    if (!markerPosition && jobId) {
+      getJobAddressCenter(jobId).then((c) => { if (c) setAddressCenter(c); });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobId]);
+  const mapCenter = markerPosition || addressCenter || [29.7604, -95.3698];
 
   const showFid = FID_TYPES.includes(formData.type);
 
@@ -467,6 +475,7 @@ const UndergroundForm = () => {
                 <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}" maxNativeZoom={19} maxZoom={22} />
                 <MapClickHandler onSelect={setLatLng} />
                 <MapCenterUpdater lat={formData.latitude} lng={formData.longitude} />
+                {!markerPosition && addressCenter && <MapCenterUpdater lat={addressCenter[0]} lng={addressCenter[1]} />}
                 {markerPosition && <Marker position={markerPosition} draggable={true} eventHandlers={markerHandlers} />}
               </MapContainer>
             </div>

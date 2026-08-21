@@ -32,9 +32,14 @@ export const CollapsibleSection = ({ title, children, className = "", defaultOpe
   const [isOpen, setIsOpen] = useState(defaultOpen);
   
   return (
-    <div className={`bg-white border border-zinc-200 rounded-lg ${className}`}>
+    <div
+      className={`bg-white border border-zinc-200 rounded-lg ${className}`}
+      data-testid={`ase-section-${String(title).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`}
+      data-open={isOpen ? "true" : "false"}
+    >
       <button
         type="button"
+        aria-expanded={isOpen}
         onClick={() => setIsOpen(!isOpen)}
         className="w-full p-4 sm:p-5 flex items-center justify-between hover:bg-zinc-50 transition-colors rounded-lg"
       >

@@ -50,6 +50,15 @@ const ASEForm = () => {
     toast.success(format === "stations" ? "Path of approach set to station numbers" : "Path of approach set to footage");
   };
 
+  // Live: extract an email from the Building Owner Contact text into the SVCL email box
+  useEffect(() => {
+    const m = String(formData.building_owner_contact || "").match(/[\w.+-]+@[\w-]+\.[\w.-]+/);
+    if (m && !formData.building_contact_email) {
+      setFormData((prev) => (prev.building_contact_email ? prev : { ...prev, building_contact_email: m[0] }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.building_owner_contact]);
+
   const fetchJobAndASE = useCallback(async () => {
     try {
       const [jobRes, aseRes, polesRes, undergroundRes, connectionsRes, routesRes] = await Promise.all([
@@ -84,6 +93,18 @@ const ASEForm = () => {
         // Address from job
         if (!updated.address && jobData.location) {
           updated.address = jobData.location;
+        }
+        // Site ID + Employee Info from job
+        if (!updated.site_id && jobData.site_id) {
+          updated.site_id = jobData.site_id;
+        }
+        if (!updated.employee_info && jobData.employee_info) {
+          updated.employee_info = jobData.employee_info;
+        }
+        // Building contact email extracted from the building owner contact text
+        if (!updated.building_contact_email && updated.building_owner_contact) {
+          const m = String(updated.building_owner_contact).match(/[\w.+-]+@[\w-]+\.[\w.-]+/);
+          if (m) updated.building_contact_email = m[0];
         }
         
         // Pole coordinates

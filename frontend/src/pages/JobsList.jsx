@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { ASE_OPTIONS } from "@/components/ase/ASEFormConstants";
 import {
   Dialog,
   DialogContent,
@@ -125,7 +126,7 @@ const JobsList = () => {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [editingJob, setEditingJob] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
-  const [formData, setFormData] = useState({ name: "", description: "", location: "", job_type: "OCALC" });
+  const [formData, setFormData] = useState({ name: "", description: "", location: "", job_type: "OCALC", site_id: "", employee_info: "" });
   const [saving, setSaving] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -180,7 +181,7 @@ const JobsList = () => {
       await axios.post("/jobs", formData);
       toast.success("Job created successfully!");
       setShowCreateDialog(false);
-      setFormData({ name: "", description: "", location: "", job_type: "OCALC" });
+      setFormData({ name: "", description: "", location: "", job_type: "OCALC", site_id: "", employee_info: "" });
       fetchJobs();
     } catch (error) {
       toast.error("Failed to create job");
@@ -200,7 +201,7 @@ const JobsList = () => {
       toast.success("Job updated successfully!");
       setShowEditDialog(false);
       setEditingJob(null);
-      setFormData({ name: "", description: "", location: "", job_type: "OCALC" });
+      setFormData({ name: "", description: "", location: "", job_type: "OCALC", site_id: "", employee_info: "" });
       fetchJobs();
     } catch (error) {
       toast.error("Failed to update job");
@@ -223,7 +224,7 @@ const JobsList = () => {
   const openEditDialog = (job, e) => {
     e.stopPropagation();
     setEditingJob(job);
-    setFormData({ name: job.name, description: job.description || "", location: job.location || "", job_type: job.job_type || "OCALC" });
+    setFormData({ name: job.name, description: job.description || "", location: job.location || "", job_type: job.job_type || "OCALC", site_id: job.site_id || "", employee_info: job.employee_info || "" });
     setShowEditDialog(true);
   };
 
@@ -317,6 +318,7 @@ const JobsList = () => {
             variant="ghost"
             className="h-8 w-8 text-zinc-600 hover:text-zinc-900"
             onClick={(e) => openEditDialog(job, e)}
+            data-testid={`job-edit-btn-${job.id}`}
           >
             <Pencil className="w-4 h-4" />
           </Button>
@@ -608,6 +610,28 @@ const JobsList = () => {
               />
             </div>
             <div className="space-y-2">
+              <Label className="text-xs font-mono text-zinc-500 uppercase">Employee Info</Label>
+              <Select value={formData.employee_info || ""} onValueChange={(v) => setFormData({ ...formData, employee_info: v === "__none__" ? "" : v })}>
+                <SelectTrigger className="bg-white border-zinc-300 text-zinc-900" data-testid="job-employee-select">
+                  <SelectValue placeholder="Select employee" />
+                </SelectTrigger>
+                <SelectContent className="bg-zinc-50 border-zinc-300 max-h-64">
+                  <SelectItem value="__none__" className="text-zinc-500">—</SelectItem>
+                  {ASE_OPTIONS.employees.map((emp) => (<SelectItem key={emp} value={emp}>{emp}</SelectItem>))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-mono text-zinc-500 uppercase">Site ID</Label>
+              <Input
+                value={formData.site_id || ""}
+                onChange={(e) => setFormData({ ...formData, site_id: e.target.value })}
+                placeholder="e.g., A05CZ38"
+                className="bg-white border-zinc-300 text-zinc-900"
+                data-testid="job-site-id-input"
+              />
+            </div>
+            <div className="space-y-2">
               <Label className="text-xs font-mono text-zinc-500 uppercase">Job Type</Label>
               <Select value={formData.job_type} onValueChange={(v) => setFormData({ ...formData, job_type: v })}>
                 <SelectTrigger className="bg-white border-zinc-300 text-zinc-900" data-testid="job-type-select">
@@ -664,6 +688,27 @@ const JobsList = () => {
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 className="bg-white border-zinc-300 text-zinc-900"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-mono text-zinc-500 uppercase">Employee Info</Label>
+              <Select value={formData.employee_info || ""} onValueChange={(v) => setFormData({ ...formData, employee_info: v === "__none__" ? "" : v })}>
+                <SelectTrigger className="bg-white border-zinc-300 text-zinc-900" data-testid="job-edit-employee-select">
+                  <SelectValue placeholder="Select employee" />
+                </SelectTrigger>
+                <SelectContent className="bg-zinc-50 border-zinc-300 max-h-64">
+                  <SelectItem value="__none__" className="text-zinc-500">—</SelectItem>
+                  {ASE_OPTIONS.employees.map((emp) => (<SelectItem key={emp} value={emp}>{emp}</SelectItem>))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-mono text-zinc-500 uppercase">Site ID</Label>
+              <Input
+                value={formData.site_id || ""}
+                onChange={(e) => setFormData({ ...formData, site_id: e.target.value })}
+                className="bg-white border-zinc-300 text-zinc-900"
+                data-testid="job-edit-site-id-input"
               />
             </div>
             <div className="space-y-2">

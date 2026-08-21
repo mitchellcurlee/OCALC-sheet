@@ -78,18 +78,39 @@ const PopupPhotoAdder = ({ endpoint, item, onSaved }) => {
     setBusy(false);
   };
   return (
-    <div className="flex items-center gap-1.5">
-      <input ref={camRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFiles} data-testid="popup-camera-input" />
-      <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFiles} data-testid="popup-upload-input" />
-      <Button size="sm" variant="outline" disabled={busy} className="flex-1 h-7 text-xs bg-sky-50 border-sky-300 text-sky-800 hover:bg-sky-100" onClick={() => camRef.current?.click()} data-testid="popup-camera-btn">
-        <Camera className="w-3.5 h-3.5 mr-1" />{busy ? "Uploading…" : "Camera"}
-      </Button>
-      <Button size="sm" variant="outline" disabled={busy} className="flex-1 h-7 text-xs bg-sky-50 border-sky-300 text-sky-800 hover:bg-sky-100" onClick={() => fileRef.current?.click()} data-testid="popup-upload-btn">
-        <Upload className="w-3.5 h-3.5 mr-1" />Photos
-      </Button>
-      {(item.staged_photos?.length || 0) > 0 && (
-        <span className="text-[10px] font-mono text-zinc-500 whitespace-nowrap" data-testid="popup-staged-count">{item.staged_photos.length} unsorted</span>
-      )}
+    <div className="space-y-1.5">
+      <div className="flex items-center gap-1.5">
+        <input ref={camRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFiles} data-testid="popup-camera-input" />
+        <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFiles} data-testid="popup-upload-input" />
+        <Button size="sm" variant="outline" disabled={busy} className="flex-1 h-7 text-xs bg-sky-50 border-sky-300 text-sky-800 hover:bg-sky-100" onClick={() => camRef.current?.click()} data-testid="popup-camera-btn">
+          <Camera className="w-3.5 h-3.5 mr-1" />{busy ? "Uploading…" : "Camera"}
+        </Button>
+        <Button size="sm" variant="outline" disabled={busy} className="flex-1 h-7 text-xs bg-sky-50 border-sky-300 text-sky-800 hover:bg-sky-100" onClick={() => fileRef.current?.click()} data-testid="popup-upload-btn">
+          <Upload className="w-3.5 h-3.5 mr-1" />Photos
+        </Button>
+        {(item.staged_photos?.length || 0) > 0 && (
+          <span className="text-[10px] font-mono text-zinc-500 whitespace-nowrap" data-testid="popup-staged-count">{item.staged_photos.length} unsorted</span>
+        )}
+      </div>
+      <label className="flex items-center gap-1.5 cursor-pointer select-none">
+        <input
+          type="checkbox"
+          checked={!!item.auto_label_unsorted}
+          onChange={async (e) => {
+            const v = e.target.checked;
+            try {
+              const res = await axios.put(endpoint, { auto_label_unsorted: v });
+              onSaved(res.data);
+              toast.success(v ? "Unsorted photos will be auto-labeled with this item's name" : "Auto-label off — photos saved as Unsorted");
+            } catch (err) {
+              toast.error("Failed to update auto-label");
+            }
+          }}
+          className="accent-sky-600 w-3.5 h-3.5"
+          data-testid="popup-autolabel-toggle"
+        />
+        <span className="text-[10px] text-sky-800">Auto-label unsorted photos with item name</span>
+      </label>
     </div>
   );
 };

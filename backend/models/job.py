@@ -13,6 +13,8 @@ class JobCreate(BaseModel):
     description: Optional[str] = None
     location: Optional[str] = None
     job_type: Optional[str] = "OCALC"
+    site_id: Optional[str] = None
+    employee_info: Optional[str] = None
 
 
 class JobUpdate(BaseModel):
@@ -20,6 +22,8 @@ class JobUpdate(BaseModel):
     description: Optional[str] = None
     location: Optional[str] = None
     job_type: Optional[str] = None
+    site_id: Optional[str] = None
+    employee_info: Optional[str] = None
     completed: Optional[bool] = None
     ase_data: Optional[Dict[str, Any]] = None  # ASE Site Walk Survey data
 
@@ -31,6 +35,8 @@ class Job(BaseModel):
     description: Optional[str] = None
     location: Optional[str] = None
     job_type: Optional[str] = "OCALC"
+    site_id: Optional[str] = None
+    employee_info: Optional[str] = None
     user_id: str
     user_email: Optional[str] = None
     pole_count: int = 0

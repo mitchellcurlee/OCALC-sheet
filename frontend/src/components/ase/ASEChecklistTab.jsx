@@ -289,7 +289,7 @@ const ASEChecklistTab = ({ formData, handleChange, poles = [], underground = [],
       </Section>
 
       {/* NTE – EQUIPMENT ATTRIBUTES - Collapsible */}
-      <CollapsibleSection title="NTE - EQUIPMENT ATTRIBUTES" defaultOpen={false}>
+      <CollapsibleSection title="NTE - EQUIPMENT ATTRIBUTES" defaultOpen={true}>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FieldRow label="Existing NTE">
             <YesNoSelect value={formData.existing_nte} onChange={(v) => handleChange("existing_nte", v)} filled={isFilled(formData.existing_nte)} />

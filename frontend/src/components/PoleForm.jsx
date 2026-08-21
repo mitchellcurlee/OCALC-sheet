@@ -35,6 +35,7 @@ import { ReferenceHeightMeasurer } from "@/components/ReferenceHeightMeasurer";
 import { PhotoMarkupEditor } from "@/components/PhotoMarkupEditor";
 import { MultiPhotoUpload } from "@/components/MultiPhotoUpload";
 import { PhotoStagingGallery } from "@/components/PhotoStagingGallery";
+import { getJobAddressCenter } from "@/lib/jobAddressCenter";
 
 // Fix Leaflet marker icon issue
 delete L.Icon.Default.prototype._getIconUrl;
@@ -601,7 +602,14 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
     }
   };
 
-  const mapCenter = markerPosition || [29.7604, -95.3698]; // Houston, TX
+  const [addressCenter, setAddressCenter] = useState(null);
+  useEffect(() => {
+    if (!markerPosition && jobId) {
+      getJobAddressCenter(jobId).then((c) => { if (c) setAddressCenter(c); });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobId]);
+  const mapCenter = markerPosition || addressCenter || [29.7604, -95.3698]; // job address, else Houston, TX
   const submitLabel = mode === "edit" ? "Update Pole" : "Save Pole";
   const submitBtnClass = mode === "edit" ? "bg-orange-600 hover:bg-orange-700" : "bg-red-600 hover:bg-red-700";
 
@@ -994,6 +1002,7 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
                     <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}" attribution='' maxNativeZoom={19} maxZoom={22} />
                     <MapClickHandler onLocationSelect={handleMapClick} />
                     <MapCenterUpdater lat={formData.latitude} lng={formData.longitude} />
+                    {!markerPosition && addressCenter && <MapCenterUpdater lat={addressCenter[0]} lng={addressCenter[1]} />}
                     {markerPosition && (
                       <Marker
                         position={markerPosition}
