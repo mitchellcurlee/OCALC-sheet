@@ -1618,16 +1618,71 @@ async def export_ase_photos_zip(job_id: str, token: Optional[str] = Query(None),
 
 
 
-@router.post("/jobs/{job_id}/export/sow-docx")
-async def export_sow_docx(job_id: str, body: dict, current_user: dict = Depends(get_current_user)):
-    """Download the SOW Notes as a Word (.docx) file, exactly as shown in the app"""
-    job = await can_access_job(job_id, current_user)
-    if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
-    text = str((body or {}).get("text") or "")
-    if not text.strip():
-        ase = job.get("ase_data") or {}
-        text = str(ase.get("sow_notes_override") or "")
+def _build_sow_text(ase: dict) -> str:
+    """Full SOW Notes text exactly as shown in the app (user override or auto-generated)"""
+    ase = ase or {}
+    if (ase.get("sow_notes_override") or "").strip():
+        return str(ase["sow_notes_override"])
+    ef_items = [
+        ("BURIED PVC", "buried_pvc", "buried_pvc_provided", "buried_pvc_length", "FT"),
+        ("BURIED INNERDUCT", "buried_innerduct", "buried_innerduct_provided", "buried_innerduct_length", "FT"),
+        ("EMT", "need_emt", "need_emt_provided", "emt_length", "FT"),
+        ("PLENUM", "need_plenum", "need_plenum_provided", "plenum_length", "FT"),
+        ("CORE DRILL", "need_core_drill", "need_core_drill_provided", "core_drill_qty", "QTY"),
+        ("EYE-BOLT/WEATHERHEAD", "need_eyebolt", "need_eyebolt_provided", None, None),
+        ("PULLBOX", "need_pullbox", "need_pullbox_provided", "pullbox_qty", "QTY"),
+        ("HOFFMAN BOX", "need_hoffman_box", "need_hoffman_box_provided", "hoffman_box_qty", "QTY"),
+        ("BACKBOARD", "need_backboard", "need_backboard_provided", "backboard_qty", "QTY"),
+        ("OUTLET", "need_outlet", "need_outlet_provided", None, None),
+        ("GROUNDBAR", "need_groundbar", "need_groundbar_provided", "groundbar_qty", "QTY"),
+    ]
+    def _yes(v):
+        return str(v or "").strip().upper() in ("YES", "TRUE", "Y")
+    def _with_qty(label, qty_key, unit):
+        v = str(ase.get(qty_key) or "").strip() if qty_key else ""
+        if not v:
+            return label
+        return f"{label} ({v} FT)" if unit == "FT" else f"{label} (QTY {v})"
+    in_place = ase.get("site_requirements_provided") or ", ".join(l for l, _k, pk, _q, _u in ef_items if _yes(ase.get(pk)))
+    needed = ", ".join(_with_qty(l, qk, u) for l, k, _pk, qk, u in ef_items if _yes(ase.get(k)))
+    def _g(k, d=""):
+        return str(ase[k]) if ase.get(k) else d
+    lines = [
+        f"ASSIGNED ATT ENG: {_g('assigned_att_eng')}",
+        f"SITE WALKED BY: {_g('employee_info')}",
+        f"SITE WALKED WITH: {_g('site_walked_with')}",
+        f"ACCESS CONTACT: {_g('access_contact')}",
+        f"SPF NEEDED: {_g('spf_required')}",
+        "",
+        f"SPF CONTACT: {_g('spf_contact')}",
+        "",
+        f"FIBER AT SITE: {_g('existing_fiber_terminal')}",
+        f"LAT/LONG OF THE EXISITNG/NEW FBT: {_g('fiber_terminal_lat_long')}",
+        f"PROPOSED LOCATION: {_g('terminal_location_description') or _g('fiber_terminal_placement')}",
+        f"PATH OF APPROACH: {_g('path_of_approach')}",
+        f"NEAREST FIBER FID: {_g('nearest_fiber_fid')}",
+        f"LAT/LONG OF NEAREST FIBER: {_g('nearest_fiber_lat_long')}",
+        f"POLE LINE START: {_g('soc_pole_line_start', 'N/A')}",
+        f"POLE LINE END: {_g('soc_pole_line_end', 'N/A')}",
+        f"SOC START: {_g('soc_start_lat_long', '0')}",
+        f"SOC END: {_g('soc_end_lat_long', '0')}",
+        "EF REQUIREMENTS: ",
+        f"IN PLACE {in_place}",
+        f"NEEDED {needed}",
+        f"EXISTING NTE/EMTS @SITE: {_g('existing_nte')}",
+        f"PROPOSED EQUIPMENT LOCATION: {_g('nte_location_description')}  LAT/LONG: {_g('nte_lat_long')}",
+        "PROPOSED EQUIPMENT: CIENA 3903X OR EQUIVALENT RAD",
+        f"PIPELINES IN VICINITY: {_g('pipelines_vicinity')}",
+        f"RAILROADS IN VICINITY: {_g('railroads_vicinity')}",
+        f"PERMITS NEEDED: {_g('possible_permits')}",
+        "OTHER INFO: " + " ".join(x for x in [_g('other_notes'), _g('additional_sow_notes')] if x),
+    ]
+    return "\n".join(lines)
+
+
+def _sow_docx_response(job: dict, text: str = None):
+    if not (text or "").strip():
+        text = _build_sow_text(job.get("ase_data") or {})
     from docx import Document
     from docx.shared import Pt
     doc = Document()
@@ -1648,9 +1703,28 @@ async def export_sow_docx(job_id: str, body: dict, current_user: dict = Depends(
     )
 
 
+@router.get("/jobs/{job_id}/export/sow-docx")
+async def export_sow_docx_link(job_id: str, token: Optional[str] = Query(None)):
+    """Tokenized Word download used by the link inside the ASE Excel export"""
+    if not (token and verify_download_token("sow_docx", job_id, token)):
+        raise HTTPException(status_code=403, detail="Invalid or expired link")
+    job = await _db.jobs.find_one({"id": job_id}, {"_id": 0})
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return _sow_docx_response(job)
+
+
+@router.post("/jobs/{job_id}/export/sow-docx")
+async def export_sow_docx(job_id: str, body: dict, current_user: dict = Depends(get_current_user)):
+    """Download the SOW Notes as a Word (.docx) file, exactly as shown in the app"""
+    job = await can_access_job(job_id, current_user)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return _sow_docx_response(job, str((body or {}).get("text") or ""))
+
+
 @router.get("/jobs/{job_id}/export/ase")
-async def export_ase_excel(job_id: str, current_user: dict = Depends(get_current_user)):
-    """Export ASE Site Walk Survey data to Excel with 3 tabs matching app layout"""
+async def export_ase_excel(job_id: str, request: Request, current_user: dict = Depends(get_current_user)):
     job = await can_access_job(job_id, current_user)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -2051,84 +2125,28 @@ async def export_ase_excel(job_id: str, current_user: dict = Depends(get_current
     # ========== TAB: SOW NOTES (after SVCL Output) ==========
     ws_sow = wb.create_sheet(title="SOW Notes")
     setup_sheet(ws_sow, "f59e0b")
-    if (ase.get("sow_notes_override") or "").strip():
-        # User-edited SOW notes: export their version verbatim, one line per row
-        row = 1
-        row = add_section(ws_sow, row, "SOW NOTES (edited by user)", "f59e0b")
-        for line in str(ase["sow_notes_override"]).splitlines():
-            line_cell = ws_sow.cell(row=row, column=1, value=line)
-            line_cell.font = value_font
-            line_cell.alignment = wrap_align
-            ws_sow.merge_cells(start_row=row, start_column=1, end_row=row, end_column=4)
-            _fit_height(ws_sow, row, _calc_lines(line, 125))
-            row += 1
-    else:
-        _sow_ef_items = [
-            ("BURIED PVC", "buried_pvc", "buried_pvc_provided", "buried_pvc_length", "FT"),
-            ("BURIED INNERDUCT", "buried_innerduct", "buried_innerduct_provided", "buried_innerduct_length", "FT"),
-            ("EMT", "need_emt", "need_emt_provided", "emt_length", "FT"),
-            ("PLENUM", "need_plenum", "need_plenum_provided", "plenum_length", "FT"),
-            ("CORE DRILL", "need_core_drill", "need_core_drill_provided", "core_drill_qty", "QTY"),
-            ("EYE-BOLT/WEATHERHEAD", "need_eyebolt", "need_eyebolt_provided", None, None),
-            ("PULLBOX", "need_pullbox", "need_pullbox_provided", "pullbox_qty", "QTY"),
-            ("HOFFMAN BOX", "need_hoffman_box", "need_hoffman_box_provided", "hoffman_box_qty", "QTY"),
-            ("BACKBOARD", "need_backboard", "need_backboard_provided", "backboard_qty", "QTY"),
-            ("OUTLET", "need_outlet", "need_outlet_provided", None, None),
-            ("GROUNDBAR", "need_groundbar", "need_groundbar_provided", "groundbar_qty", "QTY"),
-        ]
-        def _yes(v):
-            return str(v or "").strip().upper() in ("YES", "TRUE", "Y")
-        def _with_qty(label, qty_key, unit):
-            v = str(ase.get(qty_key) or "").strip() if qty_key else ""
-            if not v:
-                return label
-            return f"{label} ({v} FT)" if unit == "FT" else f"{label} (QTY {v})"
-        _in_place = ase.get("site_requirements_provided") or ", ".join(l for l, _k, pk, _q, _u in _sow_ef_items if _yes(ase.get(pk)))
-        _needed = ", ".join(_with_qty(l, qk, u) for l, k, _pk, qk, u in _sow_ef_items if _yes(ase.get(k)))
-        def _g(k, d=""):
-            return str(ase[k]) if ase.get(k) else d
-        # Exact same lines as the app's SOW Notes tab (buildSowNotesText) —
-        # one line per row so copying into Word matches the app's format
-        sow_lines = [
-            f"ASSIGNED ATT ENG: {_g('assigned_att_eng')}",
-            f"SITE WALKED BY: {_g('employee_info')}",
-            f"SITE WALKED WITH: {_g('site_walked_with')}",
-            f"ACCESS CONTACT: {_g('access_contact')}",
-            f"SPF NEEDED: {_g('spf_required')}",
-            "",
-            f"SPF CONTACT: {_g('spf_contact')}",
-            "",
-            f"FIBER AT SITE: {_g('existing_fiber_terminal')}",
-            f"LAT/LONG OF THE EXISITNG/NEW FBT: {_g('fiber_terminal_lat_long')}",
-            f"PROPOSED LOCATION: {_g('terminal_location_description') or _g('fiber_terminal_placement')}",
-            f"PATH OF APPROACH: {_g('path_of_approach')}",
-            f"NEAREST FIBER FID: {_g('nearest_fiber_fid')}",
-            f"LAT/LONG OF NEAREST FIBER: {_g('nearest_fiber_lat_long')}",
-            f"POLE LINE START: {_g('soc_pole_line_start', 'N/A')}",
-            f"POLE LINE END: {_g('soc_pole_line_end', 'N/A')}",
-            f"SOC START: {_g('soc_start_lat_long', '0')}",
-            f"SOC END: {_g('soc_end_lat_long', '0')}",
-            "EF REQUIREMENTS: ",
-            f"IN PLACE {_in_place}",
-            f"NEEDED {_needed}",
-            f"EXISTING NTE/EMTS @SITE: {_g('existing_nte')}",
-            f"PROPOSED EQUIPMENT LOCATION: {_g('nte_location_description')}  LAT/LONG: {_g('nte_lat_long')}",
-            "PROPOSED EQUIPMENT: CIENA 3903X OR EQUIVALENT RAD",
-            f"PIPELINES IN VICINITY: {_g('pipelines_vicinity')}",
-            f"RAILROADS IN VICINITY: {_g('railroads_vicinity')}",
-            f"PERMITS NEEDED: {_g('possible_permits')}",
-            "OTHER INFO: " + " ".join(x for x in [_g('other_notes'), _g('additional_sow_notes')] if x),
-        ]
-        row = 1
-        row = add_section(ws_sow, row, "SOW NOTES", "f59e0b")
-        for raw in sow_lines:
-            for line in (str(raw).splitlines() or [""]):
-                line_cell = ws_sow.cell(row=row, column=1, value=line)
-                line_cell.font = value_font
-                line_cell.alignment = wrap_align
-                ws_sow.merge_cells(start_row=row, start_column=1, end_row=row, end_column=4)
-                _fit_height(ws_sow, row, _calc_lines(line, 125))
-                row += 1
+    # Word download link at the top of the sheet
+    forwarded_proto = request.headers.get("x-forwarded-proto", "https")
+    forwarded_host = request.headers.get("x-forwarded-host") or request.headers.get("host")
+    sow_public_base = f"{forwarded_proto}://{forwarded_host}" if forwarded_host else str(request.base_url).rstrip("/")
+    if "poledatasheet.info" in sow_public_base or "emergentagent.com" in sow_public_base:
+        sow_public_base = sow_public_base.replace("http://", "https://")
+    sow_docx_url = f"{sow_public_base}/api/jobs/{job_id}/export/sow-docx?token={generate_download_token('sow_docx', job_id)}"
+    link_cell = ws_sow.cell(row=1, column=1, value="⬇ Download SOW Notes as Word (.docx)")
+    link_cell.hyperlink = sow_docx_url
+    link_cell.font = Font(color="2563EB", underline="single", bold=True, size=11)
+    ws_sow.merge_cells(start_row=1, start_column=1, end_row=1, end_column=4)
+    row = 2
+    is_edited_sow = bool((ase.get("sow_notes_override") or "").strip())
+    row = add_section(ws_sow, row, "SOW NOTES (edited by user)" if is_edited_sow else "SOW NOTES", "f59e0b")
+    # Exact same lines as the app's SOW Notes tab — one line per row so copying into Word matches the app
+    for line in (_build_sow_text(ase).splitlines() or [""]):
+        line_cell = ws_sow.cell(row=row, column=1, value=line)
+        line_cell.font = value_font
+        line_cell.alignment = wrap_align
+        ws_sow.merge_cells(start_row=row, start_column=1, end_row=row, end_column=4)
+        _fit_height(ws_sow, row, _calc_lines(line, 125))
+        row += 1
     
     # ========== TAB 4: PHOTOS ==========
     # Collect all photos
