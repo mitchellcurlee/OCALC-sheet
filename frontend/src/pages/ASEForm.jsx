@@ -9,7 +9,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
-import { ArrowLeft, Save, FileSpreadsheet, Loader2, ClipboardList, Users, FileOutput, Map } from "lucide-react";
+import { ArrowLeft, Save, FileSpreadsheet, Loader2, ClipboardList, Users, FileOutput, Map, FileDown } from "lucide-react";
 
 // Import ASE sub-components
 import { INITIAL_FORM_DATA } from "@/components/ase";
@@ -17,7 +17,7 @@ import { buildSpanMeasurementTexts } from "@/lib/poleMapImage";
 import ASEChecklistTab from "@/components/ase/ASEChecklistTab";
 import ASECoordinatorTab from "@/components/ase/ASECoordinatorTab";
 import ASESVCLOutputTab from "@/components/ase/ASESVCLOutputTab";
-import ASESOWNotesTab from "@/components/ase/ASESOWNotesTab";
+import ASESOWNotesTab, { buildSowNotesText } from "@/components/ase/ASESOWNotesTab";
 
 const ASEForm = () => {
   const { jobId } = useParams();
@@ -30,6 +30,7 @@ const ASEForm = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [exportingWord, setExportingWord] = useState(false);
   
   const [formData, setFormData] = useState(INITIAL_FORM_DATA);
 
@@ -399,6 +400,27 @@ const ASEForm = () => {
     }
   };
 
+  const handleWordExport = async () => {
+    setExportingWord(true);
+    try {
+      const text = formData.sow_notes_override || buildSowNotesText(formData);
+      const response = await axios.post(`/jobs/${jobId}/export/sow-docx`, { text }, { responseType: "blob" });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `SOW_Notes_${job?.job_number || jobId}.docx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success("SOW Notes Word file downloaded");
+    } catch (error) {
+      toast.error("Word download failed");
+    } finally {
+      setExportingWord(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-zinc-100 flex items-center justify-center">
@@ -431,6 +453,10 @@ const ASEForm = () => {
             <Button onClick={handleSave} disabled={saving} variant="outline" size="sm" data-testid="save-ase-btn">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               <span className="hidden sm:inline ml-1">Save</span>
+            </Button>
+            <Button onClick={handleWordExport} disabled={exportingWord} variant="outline" size="sm" className="text-blue-700 border-blue-300 hover:bg-blue-50" data-testid="export-sow-word-btn">
+              {exportingWord ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
+              <span className="hidden sm:inline ml-1">Word</span>
             </Button>
             <Button onClick={handleExport} disabled={exporting} size="sm" data-testid="export-ase-btn">
               {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileSpreadsheet className="w-4 h-4" />}
