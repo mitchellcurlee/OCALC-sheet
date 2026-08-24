@@ -42,11 +42,13 @@ import {
   Check,
   X,
   FileText,
+  FileDown,
   Image as ImageIcon,
   Download,
   FileUp,
   WifiOff,
 } from "lucide-react";
+import { buildSowNotesText } from "@/components/ase/ASESOWNotesTab";
 import { cacheJobForOffline, markJobSavedOffline } from "@/lib/offlineTiles";
 import {
   DropdownMenu,
@@ -389,6 +391,25 @@ const JobDetail = () => {
     }
   };
 
+  const handleWordExport = async () => {
+    try {
+      const ase = job?.ase_data || {};
+      const text = ase.sow_notes_override || buildSowNotesText(ase);
+      const response = await axios.post(`/jobs/${jobId}/export/sow-docx`, { text }, { responseType: "blob" });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `SOW_Notes_${job?.name || jobId}.docx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success("SOW Notes Word file downloaded");
+    } catch (error) {
+      toast.error("Word download failed");
+    }
+  };
+
   const handleExport = async () => {
     try {
       const response = await axios.get(`/jobs/${jobId}/export/excel`, {
@@ -618,6 +639,10 @@ const JobDetail = () => {
                   <DropdownMenuItem onClick={() => navigate(`/jobs/${jobId}/ase`)} data-testid="ase-form-btn" className="cursor-pointer">
                     <FileText className="w-4 h-4 mr-2 text-blue-600" />
                     ASE Form
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleWordExport} data-testid="sow-word-export-btn" className="cursor-pointer">
+                    <FileDown className="w-4 h-4 mr-2 text-blue-600" />
+                    SOW Notes (Word)
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
