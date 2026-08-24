@@ -1618,6 +1618,36 @@ async def export_ase_photos_zip(job_id: str, token: Optional[str] = Query(None),
 
 
 
+@router.post("/jobs/{job_id}/export/sow-docx")
+async def export_sow_docx(job_id: str, body: dict, current_user: dict = Depends(get_current_user)):
+    """Download the SOW Notes as a Word (.docx) file, exactly as shown in the app"""
+    job = await can_access_job(job_id, current_user)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    text = str((body or {}).get("text") or "")
+    if not text.strip():
+        ase = job.get("ase_data") or {}
+        text = str(ase.get("sow_notes_override") or "")
+    from docx import Document
+    from docx.shared import Pt
+    doc = Document()
+    normal = doc.styles["Normal"]
+    normal.font.name = "Calibri"
+    normal.font.size = Pt(11)
+    for line in (text.splitlines() or [""]):
+        p = doc.add_paragraph(line)
+        p.paragraph_format.space_after = Pt(0)
+    buf = io.BytesIO()
+    doc.save(buf)
+    buf.seek(0)
+    safe = "".join(c if c.isalnum() or c in "-_ " else "_" for c in (job.get("name") or "job"))[:40].strip() or "job"
+    return StreamingResponse(
+        buf,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f'attachment; filename="SOW_Notes_{safe}.docx"'},
+    )
+
+
 @router.get("/jobs/{job_id}/export/ase")
 async def export_ase_excel(job_id: str, current_user: dict = Depends(get_current_user)):
     """Export ASE Site Walk Survey data to Excel with 3 tabs matching app layout"""

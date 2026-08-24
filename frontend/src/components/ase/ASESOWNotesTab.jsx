@@ -1,7 +1,9 @@
 import { useMemo } from "react";
+import { useParams } from "react-router-dom";
+import axios from "axios";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Copy, RotateCcw } from "lucide-react";
+import { Copy, RotateCcw, FileDown } from "lucide-react";
 import { toast } from "sonner";
 
 const EF_ITEMS = [
@@ -64,9 +66,26 @@ export const buildSowNotesText = (f) => {
 };
 
 export default function ASESOWNotesTab({ formData, handleChange }) {
+  const { jobId } = useParams();
   const autoText = useMemo(() => buildSowNotesText(formData), [formData]);
   const isEdited = Boolean(formData.sow_notes_override);
   const text = isEdited ? formData.sow_notes_override : autoText;
+  const downloadWord = async () => {
+    try {
+      const res = await axios.post(`/jobs/${jobId}/export/sow-docx`, { text }, { responseType: "blob" });
+      const url = URL.createObjectURL(res.data);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "SOW_Notes.docx";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast.success("SOW Notes Word file downloaded");
+    } catch (e) {
+      toast.error("Word download failed");
+    }
+  };
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(text);
@@ -93,6 +112,9 @@ export default function ASESOWNotesTab({ formData, handleChange }) {
           )}
           <Button onClick={copy} variant="outline" size="sm" data-testid="copy-sow-notes-btn">
             <Copy className="w-4 h-4 mr-2" /> Copy
+          </Button>
+          <Button onClick={downloadWord} variant="outline" size="sm" className="text-blue-700 border-blue-300" data-testid="download-sow-word-btn">
+            <FileDown className="w-4 h-4 mr-2" /> Download as Word (.docx)
           </Button>
         </div>
       </div>
