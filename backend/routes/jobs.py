@@ -2055,35 +2055,50 @@ async def export_ase_excel(job_id: str, current_user: dict = Depends(get_current
             return f"{label} ({v} FT)" if unit == "FT" else f"{label} (QTY {v})"
         _in_place = ase.get("site_requirements_provided") or ", ".join(l for l, _k, pk, _q, _u in _sow_ef_items if _yes(ase.get(pk)))
         _needed = ", ".join(_with_qty(l, qk, u) for l, k, _pk, qk, u in _sow_ef_items if _yes(ase.get(k)))
+        def _g(k, d=""):
+            return str(ase[k]) if ase.get(k) else d
+        # Exact same lines as the app's SOW Notes tab (buildSowNotesText) —
+        # one line per row so copying into Word matches the app's format
+        sow_lines = [
+            f"ASSIGNED ATT ENG: {_g('assigned_att_eng')}",
+            f"SITE WALKED BY: {_g('employee_info')}",
+            f"SITE WALKED WITH: {_g('site_walked_with')}",
+            f"ACCESS CONTACT: {_g('access_contact')}",
+            f"SPF NEEDED: {_g('spf_required')}",
+            "",
+            f"SPF CONTACT: {_g('spf_contact')}",
+            "",
+            f"FIBER AT SITE: {_g('existing_fiber_terminal')}",
+            f"LAT/LONG OF THE EXISITNG/NEW FBT: {_g('fiber_terminal_lat_long')}",
+            f"PROPOSED LOCATION: {_g('terminal_location_description') or _g('fiber_terminal_placement')}",
+            f"PATH OF APPROACH: {_g('path_of_approach')}",
+            f"NEAREST FIBER FID: {_g('nearest_fiber_fid')}",
+            f"LAT/LONG OF NEAREST FIBER: {_g('nearest_fiber_lat_long')}",
+            f"POLE LINE START: {_g('soc_pole_line_start', 'N/A')}",
+            f"POLE LINE END: {_g('soc_pole_line_end', 'N/A')}",
+            f"SOC START: {_g('soc_start_lat_long', '0')}",
+            f"SOC END: {_g('soc_end_lat_long', '0')}",
+            "EF REQUIREMENTS: ",
+            f"IN PLACE {_in_place}",
+            f"NEEDED {_needed}",
+            f"EXISTING NTE/EMTS @SITE: {_g('existing_nte')}",
+            f"PROPOSED EQUIPMENT LOCATION: {_g('nte_location_description')}  LAT/LONG: {_g('nte_lat_long')}",
+            "PROPOSED EQUIPMENT: CIENA 3903X OR EQUIVALENT RAD",
+            f"PIPELINES IN VICINITY: {_g('pipelines_vicinity')}",
+            f"RAILROADS IN VICINITY: {_g('railroads_vicinity')}",
+            f"PERMITS NEEDED: {_g('possible_permits')}",
+            "OTHER INFO: " + " ".join(x for x in [_g('other_notes'), _g('additional_sow_notes')] if x),
+        ]
         row = 1
         row = add_section(ws_sow, row, "SOW NOTES", "f59e0b")
-        row = add_row(ws_sow, row, "ASSIGNED ATT ENG:", ase.get("assigned_att_eng", ""))
-        row = add_row(ws_sow, row, "SITE WALKED BY:", ase.get("employee_info", ""))
-        row = add_row(ws_sow, row, "SITE WALKED WITH:", ase.get("site_walked_with", ""))
-        row = add_row(ws_sow, row, "ACCESS CONTACT:", ase.get("access_contact", ""))
-        row = add_row(ws_sow, row, "SPF NEEDED:", ase.get("spf_required", ""))
-        row = add_row(ws_sow, row, "SPF CONTACT:", ase.get("spf_contact", ""))
-        row = add_row(ws_sow, row, "FIBER AT SITE:", ase.get("existing_fiber_terminal", ""))
-        row = add_row(ws_sow, row, "LAT/LONG OF THE EXISITNG/NEW FBT:", ase.get("fiber_terminal_lat_long", ""))
-        row = add_row(ws_sow, row, "PROPOSED LOCATION:", ase.get("terminal_location_description", "") or ase.get("fiber_terminal_placement", ""))
-        row = add_wide_row(ws_sow, row, "PATH OF APPROACH:", ase.get("path_of_approach", ""))
-        row = add_row(ws_sow, row, "NEAREST FIBER FID:", ase.get("nearest_fiber_fid", ""))
-        row = add_row(ws_sow, row, "LAT/LONG OF NEAREST FIBER:", ase.get("nearest_fiber_lat_long", ""))
-        row = add_row(ws_sow, row, "POLE LINE START:", ase.get("soc_pole_line_start", "") or "N/A")
-        row = add_row(ws_sow, row, "POLE LINE END:", ase.get("soc_pole_line_end", "") or "N/A")
-        row = add_row(ws_sow, row, "SOC START:", ase.get("soc_start_lat_long", "") or "0")
-        row = add_row(ws_sow, row, "SOC END:", ase.get("soc_end_lat_long", "") or "0")
-        row = add_section(ws_sow, row, "EF REQUIREMENTS", "f59e0b")
-        row = add_row(ws_sow, row, "IN PLACE:", _in_place)
-        row = add_row(ws_sow, row, "NEEDED:", _needed)
-        row = add_row(ws_sow, row, "EXISTING NTE/EMTS @SITE:", ase.get("existing_nte", ""))
-        row = add_row(ws_sow, row, "PROPOSED EQUIPMENT LOCATION:", ase.get("nte_location_description", ""))
-        row = add_row(ws_sow, row, "LAT/LONG:", ase.get("nte_lat_long", ""))
-        row = add_row(ws_sow, row, "PROPOSED EQUIPMENT:", "CIENA 3903X OR EQUIVALENT RAD")
-        row = add_row(ws_sow, row, "PIPELINES IN VICINITY:", ase.get("pipelines_vicinity", ""))
-        row = add_row(ws_sow, row, "RAILROADS IN VICINITY:", ase.get("railroads_vicinity", ""))
-        row = add_row(ws_sow, row, "PERMITS NEEDED:", ase.get("possible_permits", ""))
-        row = add_row(ws_sow, row, "OTHER INFO:", " ".join(x for x in [ase.get("other_notes", ""), ase.get("additional_sow_notes", "")] if x))
+        for raw in sow_lines:
+            for line in (str(raw).splitlines() or [""]):
+                line_cell = ws_sow.cell(row=row, column=1, value=line)
+                line_cell.font = value_font
+                line_cell.alignment = wrap_align
+                ws_sow.merge_cells(start_row=row, start_column=1, end_row=row, end_column=4)
+                _fit_height(ws_sow, row, _calc_lines(line, 125))
+                row += 1
     
     # ========== TAB 4: PHOTOS ==========
     # Collect all photos
