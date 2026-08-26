@@ -186,3 +186,8 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 - Down guy photos in height measurer (June 2026, browser-verified: Down Guy 1 thumb appears first in suggested list): Down Guy ReferenceHeightMeasurer suggestedPhotos now prepends downGuys[].photos (label "Down Guy {i}" / "(j)") before OCALC photos (PoleForm.jsx). NOT yet deployed.
 - Coordinator FID auto-fill (June 2026, browser-verified: FID-TEST-999 appeared filled in Coordinator "Nearest Fiber FID if Missing"): ASEForm — load-time populate + live effect copy nearest_fiber_fid (checklist) into nearest_fiber_fid_missing when empty; manual values never overwritten. NOT yet deployed.
 - Export completeness audit #3 (June 2026, verified: generated xlsx row2 = JOB TYPE/SITE ID/EMPLOYEE/DESCRIPTION, content shifted to row4): job export header row 2 added for job_type/site_id/employee_info/description (current_row 3->4); model audit confirms all other user-entered pole/UG/ASE data exports (spans via f-string loop, photos via helpers, ASE tabs include site_id/employee_info/nearest_fiber_fid_missing/building_contact_email); remaining unexported = internal flags only. NOT yet deployed (pending: coordinator FID auto-fill + this).
+
+## 2026-06 (fork): Birthmark/MGNV photo delete fix
+- Bug: X delete button on Birthmark Photos / MGNV Photos (full-size MultiPhotoUpload layout) did nothing — remove-confirmation AlertDialog was only rendered in the compact layout.
+- Fix: render removeConfirmDialog in the full layout too (MultiPhotoUpload.jsx line ~441).
+- Verified end-to-end in preview browser: confirm dialog appears for both boxes, deletion works, persists after pole save (API-verified). Deployment request sent.

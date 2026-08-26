@@ -437,6 +437,9 @@ export const MultiPhotoUpload = ({ label, value = [], onChange, testId, compact 
         )}
       </div>
 
+      {/* Remove confirmation */}
+      {removeConfirmDialog}
+
       {/* Lightbox Dialog */}
       <Dialog open={!!lightboxPhoto} onOpenChange={() => setLightboxPhoto(null)}>
         <DialogContent className="bg-zinc-50 border-zinc-200 max-w-4xl max-h-[90vh] p-2">
