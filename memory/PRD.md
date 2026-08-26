@@ -191,3 +191,6 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 - Bug: X delete button on Birthmark Photos / MGNV Photos (full-size MultiPhotoUpload layout) did nothing — remove-confirmation AlertDialog was only rendered in the compact layout.
 - Fix: render removeConfirmDialog in the full layout too (MultiPhotoUpload.jsx line ~441).
 - Verified end-to-end in preview browser: confirm dialog appears for both boxes, deletion works, persists after pole save (API-verified). Deployment request sent.
+
+## 2026-06: Weatherhead HOA type
+- Added "Weatherhead" to HOA box Type dropdown (PoleForm.jsx HOA_TYPES, after "No Telco On Pole") and backend ATTACHMENT_TYPES (models/options.py). Verified in preview dropdown; deployment requested.

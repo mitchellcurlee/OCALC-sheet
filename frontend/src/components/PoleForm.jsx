@@ -106,7 +106,7 @@ const emptyKnuckle = () => ({ _key: rowKey(), owner: "", size: "", total_eyes: "
 const emptyAttachment = () => ({ _key: rowKey(), owner: "", location: "", height: "", hoa_type: "", notes: "" });
 
 const HOA_TYPES = [
-  "Fiber new strand", "Fiber over lashed to copper", "Fiber", "Fiber over lashed to fiber", "Copper", "Fiber Drop", "Copper Drop", "No Telco On Pole",
+  "Fiber new strand", "Fiber over lashed to copper", "Fiber", "Fiber over lashed to fiber", "Copper", "Fiber Drop", "Copper Drop", "No Telco On Pole", "Weatherhead",
   "Power Drop", "Swante 4 ACSR", "Raven 1/0 ACSR", "Penguin 4/0 ACSR", "Pelican 477 ACSR", "Tulip 336 AAC",
   "Arbutus 795 AAC", "1/0 URD", "4/0 URD", "1000 URD", "Conch 2Str TRIPLEX", "Neritina 1/0 TRIPLEX",
   "Zuzara 4/0 TRIPLEX SERVICE", "Zuzara #2 QUAD SERVICE", "Zuzara 1/0 QUAD SERVICE", "Zuzara 4/0 QUAD SERVICE",
