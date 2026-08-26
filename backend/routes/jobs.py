@@ -380,6 +380,21 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
     img_cell = ws.cell(row=1, column=12, value="Download map image")
     img_cell.hyperlink = f"{public_base}/jobs/{job_id}/map?download=1"
     img_cell.font = Font(color="2563EB", underline="single", bold=True)
+
+    # Second header row: remaining job-level data
+    ws.cell(row=2, column=1, value="JOB TYPE").fill = header_fill
+    ws.cell(row=2, column=1).font = header_font
+    ws.cell(row=2, column=2, value=job.get("job_type", ""))
+    ws.cell(row=2, column=3, value="SITE ID").fill = header_fill
+    ws.cell(row=2, column=3).font = header_font
+    ws.cell(row=2, column=4, value=job.get("site_id", "") or "")
+    ws.cell(row=2, column=5, value="EMPLOYEE").fill = header_fill
+    ws.cell(row=2, column=5).font = header_font
+    ws.cell(row=2, column=6, value=job.get("employee_info", "") or "")
+    if job.get("description"):
+        ws.cell(row=2, column=7, value="DESCRIPTION").fill = header_fill
+        ws.cell(row=2, column=7).font = header_font
+        ws.cell(row=2, column=8, value=job.get("description", ""))
     
     # Add All Photos link (gallery page, not download)
     job_photos_token = generate_download_token("job_photos", job_id)
@@ -389,7 +404,7 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
     all_photos_cell.hyperlink = f"{public_base}/api/jobs/{job_id}/photos?token={job_photos_token}"
     all_photos_cell.font = Font(color="7C3AED", underline="single", bold=True)
     
-    current_row = 3
+    current_row = 4
     bold9 = Font(bold=True, size=9)
 
     def section(title):
