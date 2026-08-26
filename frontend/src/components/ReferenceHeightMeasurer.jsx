@@ -55,7 +55,7 @@ const toDecimalFeet = (decimalFeet) => {
  * 
  * Auto-saves progress to localStorage to prevent data loss if app is closed.
  */
-export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "outline", sessionId = "default", suggestedPhotos = [], testId = "height-measurer-btn", targetLabel = "HOA" }) => {
+export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "outline", sessionId = "default", suggestedPhotos = [], testId = "height-measurer-btn", targetLabel = "HOA", downGuyMode = false, initialGuyCount = 1 }) => {
   const storageKey = `${STORAGE_KEY_PREFIX}${sessionId}`;
   const [open, setOpen] = useState(false);
   const [imagePreview, setImagePreview] = useState(null);
@@ -70,6 +70,16 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
   const [pixelsPerFoot, setPixelsPerFoot] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [hasRestoredData, setHasRestoredData] = useState(false);
+  // Down Guy mode: which field (height/lead) and which down guy the next marker belongs to
+  const [measureField, setMeasureField] = useState("height");
+  const [activeGuy, setActiveGuy] = useState(0);
+  const [guyCount, setGuyCount] = useState(initialGuyCount || 1);
+
+  useEffect(() => {
+    if (open && downGuyMode) {
+      setGuyCount((c) => Math.max(c, initialGuyCount || 1));
+    }
+  }, [open, downGuyMode, initialGuyCount]);
   
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
@@ -313,7 +323,7 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
 
     // Draw attachment markers (small numbered dots)
     markers.attachments.forEach((att, i) => {
-      ctx.fillStyle = "#22c55e";
+      ctx.fillStyle = att.field === "lead" ? "#f97316" : "#22c55e";
       ctx.beginPath();
       ctx.arc(att.x, att.y, 4.5, 0, Math.PI * 2);
       ctx.fill();
@@ -328,22 +338,28 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
 
     // Numbered heights listed off to the side (top-right of the picture)
     if (markers.attachments.length > 0 && pixelsPerFoot && markers.refBottom) {
-      const lw = 88;
+      const lw = downGuyMode ? 128 : 88;
       const lh = 16;
       const lx = canvas.width - lw - 6;
       let ly = 6;
       markers.attachments.forEach((att, i) => {
-        const heightDisplay = formatFeetInches((markers.refBottom.y - att.y) / pixelsPerFoot);
-        ctx.fillStyle = "rgba(34, 197, 94, 0.92)";
+        const val = att.field === "lead"
+          ? Math.abs(att.x - markers.refBottom.x) / pixelsPerFoot
+          : (markers.refBottom.y - att.y) / pixelsPerFoot;
+        const valDisplay = formatFeetInches(val);
+        const lbl = downGuyMode
+          ? `${i + 1}: DG${(att.guy ?? 0) + 1} ${att.field === "lead" ? "Lead" : "Ht"} ${valDisplay}`
+          : `${i + 1}: ${valDisplay}`;
+        ctx.fillStyle = att.field === "lead" ? "rgba(249, 115, 22, 0.92)" : "rgba(34, 197, 94, 0.92)";
         ctx.fillRect(lx, ly, lw, lh);
         ctx.fillStyle = "#ffffff";
         ctx.font = "bold 10px Arial";
         ctx.textAlign = "left";
-        ctx.fillText(`${i + 1}: ${heightDisplay}`, lx + 5, ly + 11.5);
+        ctx.fillText(lbl, lx + 5, ly + 11.5);
         ly += lh + 3;
       });
     }
-  }, [markers, pixelsPerFoot, referenceHeight, imagePreview]);
+  }, [markers, pixelsPerFoot, referenceHeight, imagePreview, downGuyMode]);
 
   useEffect(() => {
     drawCanvas();
@@ -400,9 +416,10 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
       }
     } else if (step === 3) {
       // Marking attachments
+      const meta = downGuyMode ? { field: measureField, guy: activeGuy } : {};
       setMarkers(prev => ({
         ...prev,
-        attachments: [...prev.attachments, { x, y }]
+        attachments: [...prev.attachments, { x, y, ...meta }]
       }));
     }
   };
@@ -473,17 +490,28 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
         markers.attachments.forEach((att, i) => {
           const ax = att.x * scaleX;
           const ay = att.y * scaleY;
+          const color = att.field === "lead" ? "#f97316" : "#22c55e";
 
-          // Draw horizontal line to marker
-          ctx.strokeStyle = "#22c55e";
-          ctx.lineWidth = 2 * s;
-          ctx.beginPath();
-          ctx.moveTo(0, ay);
-          ctx.lineTo(ax - 8 * s, ay);
-          ctx.stroke();
+          if (att.field === "lead" && markers.refBottom) {
+            // Lead: line from pole base to the marked anchor point
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2 * s;
+            ctx.beginPath();
+            ctx.moveTo(markers.refBottom.x * scaleX, markers.refBottom.y * scaleY);
+            ctx.lineTo(ax, ay);
+            ctx.stroke();
+          } else {
+            // Height: horizontal line to marker
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2 * s;
+            ctx.beginPath();
+            ctx.moveTo(0, ay);
+            ctx.lineTo(ax - 8 * s, ay);
+            ctx.stroke();
+          }
 
           // Marker circle (small)
-          ctx.fillStyle = "#22c55e";
+          ctx.fillStyle = color;
           ctx.beginPath();
           ctx.arc(ax, ay, 6 * s, 0, Math.PI * 2);
           ctx.fill();
@@ -498,21 +526,24 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
 
         // Numbered heights listed off to the side (top-right)
         if (markers.attachments.length > 0) {
-          const by = markers.refBottom.y * scaleY;
-          const scaledPixelsPerFoot = pixelsPerFoot * scaleY;
-          const lw = 150 * s;
+          const lw = (downGuyMode ? 220 : 150) * s;
           const lh = 32 * s;
           const lx = img.width - lw - 10 * s;
           let ly = 50 * s;
           markers.attachments.forEach((att, i) => {
-            const ay = att.y * scaleY;
-            const heightDisplay = formatFeetInches((by - ay) / scaledPixelsPerFoot);
-            ctx.fillStyle = "rgba(34, 197, 94, 0.92)";
+            const val = att.field === "lead"
+              ? Math.abs(att.x - markers.refBottom.x) / pixelsPerFoot
+              : (markers.refBottom.y - att.y) / pixelsPerFoot;
+            const valDisplay = formatFeetInches(val);
+            const lbl = downGuyMode
+              ? `${i + 1}: DG${(att.guy ?? 0) + 1} ${att.field === "lead" ? "Lead" : "Ht"} ${valDisplay}`
+              : `${i + 1}: ${valDisplay}`;
+            ctx.fillStyle = att.field === "lead" ? "rgba(249, 115, 22, 0.92)" : "rgba(34, 197, 94, 0.92)";
             ctx.fillRect(lx, ly, lw, lh);
             ctx.fillStyle = "#ffffff";
             ctx.font = `bold ${Math.round(18 * s)}px Arial`;
             ctx.textAlign = "left";
-            ctx.fillText(`${i + 1}: ${heightDisplay}`, lx + 8 * s, ly + 22 * s);
+            ctx.fillText(lbl, lx + 8 * s, ly + 22 * s);
             ly += lh + 6 * s;
           });
         }
@@ -554,11 +585,14 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
     try {
       // Calculate heights with proper feet/inches conversion
       const heights = markers.attachments.map((att, i) => {
-        const pixelsFromGround = markers.refBottom.y - att.y;
-        const rawHeight = pixelsFromGround / pixelsPerFoot;
-        const heightFt = toDecimalFeet(rawHeight); // Rounds to nearest inch
+        const rawVal = att.field === "lead"
+          ? Math.abs(att.x - markers.refBottom.x) / pixelsPerFoot
+          : (markers.refBottom.y - att.y) / pixelsPerFoot;
+        const heightFt = toDecimalFeet(rawVal); // Rounds to nearest inch
         return {
           height_ft: heightFt,
+          field: att.field || "height",
+          guyIndex: att.guy ?? 0,
           type: `Attachment ${i + 1}`,
           description: "",
           confidence: "high"
@@ -600,6 +634,8 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
     setStep(1);
     setMarkers({ refBottom: null, refTop: null, attachments: [] });
     setPixelsPerFoot(null);
+    setMeasureField("height");
+    setActiveGuy(0);
     clearSavedData();
     setHasRestoredData(false);
   };
@@ -730,10 +766,59 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
                 {step === 2 && markers.refBottom && !markers.refTop && (
                   <>📍 Step 2: Now tap the TOP of your reference object</>
                 )}
-                {step === 3 && (
+                {step === 3 && !downGuyMode && (
                   <>✓ Reference set! Tap each attachment to measure ({markers.attachments.length} marked)</>
                 )}
+                {step === 3 && downGuyMode && (
+                  <>✓ Reference set! Tap to mark <b>{measureField === "lead" ? "Lead" : "Height"}</b> for <b>Down Guy {activeGuy + 1}</b> ({markers.attachments.length} marked)</>
+                )}
               </div>
+
+              {/* Down Guy mode: Height/Lead tabs + down guy selector */}
+              {step === 3 && downGuyMode && (
+                <div className="space-y-2" data-testid="measurer-dg-controls">
+                  <div className="flex rounded-lg overflow-hidden border border-zinc-300 w-fit">
+                    <button
+                      type="button"
+                      onClick={() => setMeasureField("height")}
+                      className={`px-4 py-1.5 text-sm font-medium transition-colors ${measureField === "height" ? "bg-green-600 text-white" : "bg-white text-zinc-600 hover:bg-zinc-100"}`}
+                      data-testid="measurer-tab-height"
+                    >
+                      Height
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMeasureField("lead")}
+                      className={`px-4 py-1.5 text-sm font-medium transition-colors ${measureField === "lead" ? "bg-orange-500 text-white" : "bg-white text-zinc-600 hover:bg-zinc-100"}`}
+                      data-testid="measurer-tab-lead"
+                    >
+                      Lead
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-xs text-zinc-500 mr-1">Down Guy:</span>
+                    {Array.from({ length: guyCount }, (_, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => setActiveGuy(i)}
+                        className={`px-3 py-1 text-sm rounded-full border transition-colors ${activeGuy === i ? "bg-yellow-500 border-yellow-600 text-white font-semibold" : "bg-white border-zinc-300 text-zinc-600 hover:bg-zinc-100"}`}
+                        data-testid={`measurer-dg-${i}`}
+                      >
+                        DG {i + 1}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => { setGuyCount((c) => c + 1); setActiveGuy(guyCount); }}
+                      className="px-2.5 py-1 text-sm rounded-full border border-dashed border-zinc-400 text-zinc-600 hover:bg-zinc-100 flex items-center gap-1"
+                      data-testid="measurer-add-dg"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> Add Down Guy
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Zoom controls */}
               <div className="flex items-center justify-end gap-1">
@@ -813,13 +898,18 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
                     Measured Heights
                   </div>
                   {markers.attachments.map((att, i) => {
-                    const pixelsFromGround = markers.refBottom.y - att.y;
-                    const rawHeight = pixelsFromGround / pixelsPerFoot;
-                    const heightDisplay = formatFeetInches(rawHeight);
+                    const rawVal = att.field === "lead"
+                      ? Math.abs(att.x - markers.refBottom.x) / pixelsPerFoot
+                      : (markers.refBottom.y - att.y) / pixelsPerFoot;
+                    const valDisplay = formatFeetInches(rawVal);
                     return (
                       <div key={i} className="p-2 flex justify-between items-center text-sm">
-                        <span className="text-zinc-600">Attachment {i + 1}</span>
-                        <span className="font-bold text-green-700">{heightDisplay}</span>
+                        <span className="text-zinc-600">
+                          {downGuyMode
+                            ? <>Down Guy {(att.guy ?? 0) + 1} — {att.field === "lead" ? "Lead" : "Height"}</>
+                            : <>Attachment {i + 1}</>}
+                        </span>
+                        <span className={`font-bold ${att.field === "lead" ? "text-orange-600" : "text-green-700"}`}>{valDisplay}</span>
                       </div>
                     );
                   })}

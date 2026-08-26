@@ -1249,35 +1249,25 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
                     formData.ocalc_middle_photo && { label: "OCALC Middle", url: formData.ocalc_middle_photo },
                     formData.ocalc_right_photo && { label: "OCALC Right", url: formData.ocalc_right_photo },
                   ].filter(Boolean)}
-                  onHeightsDetected={(heights) => {
-                    // Fill empty Height fields on existing rows first, then add rows for the rest
+                  onHeightsDetected={(measurements) => {
+                    // Each measurement targets a specific down guy + field (height or lead)
                     setDownGuys(prev => {
                       const rows = [...prev];
-                      const remaining = [...heights];
-                      for (let i = 0; i < rows.length && remaining.length > 0; i++) {
-                        if (!rows[i].height) {
-                          const h = remaining.shift();
-                          rows[i] = {
-                            ...rows[i],
-                            height: h.height_ft?.toString() || "",
-                            photos: h.photo ? [...(rows[i].photos || []), h.photo] : (rows[i].photos || []),
-                          };
-                        }
-                      }
-                      const extra = remaining.map(h => ({
-                        _key: rowKey(),
-                        owner: "",
-                        direction: "",
-                        size: "",
-                        type: "",
-                        condition: "",
-                        height: h.height_ft?.toString() || "",
-                        lead: "",
-                        photos: h.photo ? [h.photo] : []
-                      }));
-                      return [...rows, ...extra];
+                      measurements.forEach((m) => {
+                        const gi = m.guyIndex ?? 0;
+                        while (rows.length <= gi) rows.push(emptyDownGuy());
+                        const field = m.field === "lead" ? "lead" : "height";
+                        rows[gi] = {
+                          ...rows[gi],
+                          [field]: m.height_ft?.toString() || rows[gi][field],
+                          photos: m.photo ? [...(rows[gi].photos || []), m.photo] : (rows[gi].photos || []),
+                        };
+                      });
+                      return rows;
                     });
                   }}
+                  downGuyMode
+                  initialGuyCount={downGuys.length}
                   buttonVariant="outline"
                   sessionId={`pole_dg_${initialPole?.id || 'new'}_${jobId}`}
                   testId="downguy-height-measurer-btn"
