@@ -60,6 +60,14 @@ const ASEForm = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData.building_owner_contact]);
 
+  // Live: Nearest Fiber FID from the checklist fills Coordinator "Nearest Fiber FID if Missing" when empty
+  useEffect(() => {
+    if (formData.nearest_fiber_fid && !formData.nearest_fiber_fid_missing) {
+      setFormData((prev) => (prev.nearest_fiber_fid_missing ? prev : { ...prev, nearest_fiber_fid_missing: prev.nearest_fiber_fid }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.nearest_fiber_fid]);
+
   const fetchJobAndASE = useCallback(async () => {
     try {
       const [jobRes, aseRes, polesRes, undergroundRes, connectionsRes, routesRes] = await Promise.all([
@@ -106,6 +114,10 @@ const ASEForm = () => {
         if (!updated.building_contact_email && updated.building_owner_contact) {
           const m = String(updated.building_owner_contact).match(/[\w.+-]+@[\w-]+\.[\w.-]+/);
           if (m) updated.building_contact_email = m[0];
+        }
+        // Coordinator "Nearest Fiber FID if Missing" from the checklist Nearest Fiber FID
+        if (!updated.nearest_fiber_fid_missing && updated.nearest_fiber_fid) {
+          updated.nearest_fiber_fid_missing = updated.nearest_fiber_fid;
         }
         
         // Pole coordinates
