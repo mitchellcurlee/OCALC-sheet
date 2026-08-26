@@ -1241,6 +1241,10 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
               <div className="flex items-center gap-2">
                 <ReferenceHeightMeasurer 
                   suggestedPhotos={[
+                    ...downGuys.flatMap((g, gi) => (g.photos || []).map((u, pi) => ({
+                      label: `Down Guy ${gi + 1}${(g.photos || []).length > 1 ? ` (${pi + 1})` : ""}`,
+                      url: u,
+                    }))),
                     formData.ocalc_left_photo && { label: "OCALC Left", url: formData.ocalc_left_photo },
                     formData.ocalc_middle_photo && { label: "OCALC Middle", url: formData.ocalc_middle_photo },
                     formData.ocalc_right_photo && { label: "OCALC Right", url: formData.ocalc_right_photo },
