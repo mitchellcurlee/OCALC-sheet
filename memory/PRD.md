@@ -214,3 +214,6 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 
 ## 2026-06: Manhole tie-in box
 - Underground form tie-in measurements box now also shows for Manhole (identical to Handhole, MH-specific label/placeholder). ASE starting tie-in autofill already handled manholes. Verified in browser; deployment requested.
+
+## 2026-06: FDF FID box + Primary FID toggle
+- Added "FDF" to FID_TYPES in UndergroundForm.jsx so FDF attributes get the FID input + Primary FID toggle identical to Handhole. ASE "Nearest fiber FID" auto-populate is type-agnostic (any primary_fid item) and verified E2E with an FDF item (FID-99887). Test data cleaned. Deployment requested.

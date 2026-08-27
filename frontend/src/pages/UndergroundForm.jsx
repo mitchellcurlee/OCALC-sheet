@@ -23,7 +23,7 @@ import { undergroundAbbr } from "@/lib/poleMapImage";
 import { ArrowLeft, Save, Loader2, MapPin, Search, Pencil, Plus, Trash2 } from "lucide-react";
 
 // Types that get a FID box + Primary FID toggle
-const FID_TYPES = ["Handhole", "FBT", "NTE", "FBT/NTE", "Aerial Splice", "Loop", "PFP", "Manhole", "Brooks Enclosure", "Flowerpot"];
+const FID_TYPES = ["Handhole", "FBT", "NTE", "FBT/NTE", "Aerial Splice", "Loop", "PFP", "Manhole", "Brooks Enclosure", "Flowerpot", "FDF"];
 const PATH_DIRECTIONS = ["In", "Over", "Up", "Down"];
 
 const MapClickHandler = ({ onSelect }) => {
