@@ -2720,21 +2720,6 @@ const JobMap = () => {
                 onAnnotationUpdate={handleAnnotationUpdate}
                 onAnnotationDelete={handleAnnotationDelete}
               />
-              {/* END badges for End Path items */}
-              {[...route, ...ug].filter((it) => it.end_path === true).map((it) => (
-                <Marker
-                  key={`end-badge-${it.id}`}
-                  position={it.pos}
-                  interactive={false}
-                  zIndexOffset={950}
-                  icon={L.divIcon({
-                    className: "end-path-badge",
-                    html: `<div style="background:#dc2626;color:#fff;font:700 9px ui-monospace,monospace;padding:2px 6px;border-radius:3px;border:1.5px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,0.45);letter-spacing:0.5px;display:inline-block;white-space:nowrap;">END</div>`,
-                    iconSize: [34, 16],
-                    iconAnchor: [-10, 26]
-                  })}
-                />
-              ))}
               {/* Connection edit mode - tap-to-reconnect */}
               {connectionEditMode && (
                 <>

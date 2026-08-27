@@ -217,3 +217,6 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 
 ## 2026-06: FDF FID box + Primary FID toggle
 - Added "FDF" to FID_TYPES in UndergroundForm.jsx so FDF attributes get the FID input + Primary FID toggle identical to Handhole. ASE "Nearest fiber FID" auto-populate is type-agnostic (any primary_fid item) and verified E2E with an FDF item (FID-99887). Test data cleaned. Deployment requested.
+
+## 2026-06: END tag removed from interactive map
+- Removed the red "END" badge markers for End Path items from the interactive Job Map (JobMap.jsx). End Path toggle still breaks the path lines as before; exported map image badge untouched. Verified in browser with end_path=true. Deployment requested.
