@@ -482,23 +482,25 @@ const UndergroundForm = () => {
           </div>
 
           <div className="industrial-card p-4 sm:p-5 space-y-4">
-            {/* Handhole/Pole Tie-in Measurements - only show for Handhole type */}
-            {(formData.type === "Handhole" || formData.type?.toLowerCase().includes("handhole")) && (
+            {/* Handhole|Manhole / Pole Tie-in Measurements */}
+            {(formData.type === "Handhole" || formData.type?.toLowerCase().includes("handhole") || formData.type === "Manhole" || formData.type?.toLowerCase().includes("manhole")) && (
               <div className="space-y-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
                 <Label className="text-xs font-mono tracking-widest text-amber-700 uppercase flex items-center gap-2">
                   <span className="w-2 h-2 bg-amber-500 rounded-full"></span>
-                  Handhole / Pole Tie-in Measurements
+                  {formData.type?.toLowerCase().includes("manhole") ? "Manhole" : "Handhole"} / Pole Tie-in Measurements
                 </Label>
                 <Textarea 
                   value={formData.tie_in_measurements} 
                   onChange={(e) => setFormData((p) => ({ ...p, tie_in_measurements: e.target.value }))} 
-                  placeholder="Enter tie-in measurements from handhole to poles (e.g., HH to Pole 1: 125ft N, HH to Pole 2: 89ft E)" 
+                  placeholder={formData.type?.toLowerCase().includes("manhole")
+                    ? "Enter tie-in measurements from manhole to poles (e.g., MH to Pole 1: 125ft N, MH to Pole 2: 89ft E)"
+                    : "Enter tie-in measurements from handhole to poles (e.g., HH to Pole 1: 125ft N, HH to Pole 2: 89ft E)"} 
                   className="bg-white border-amber-300 text-zinc-900" 
                   rows={3}
                   data-testid="ug-tiein-input" 
                 />
                 <p className="text-xs text-amber-600">
-                  Enter measurements from this handhole to connecting poles. This will auto-populate the "Starting FH/MH/Pole tie-in measurements" field in the ASE Site Walk Survey.
+                  Enter measurements from this {formData.type?.toLowerCase().includes("manhole") ? "manhole" : "handhole"} to connecting poles. This will auto-populate the "Starting FH/MH/Pole tie-in measurements" field in the ASE Site Walk Survey.
                 </p>
               </div>
             )}

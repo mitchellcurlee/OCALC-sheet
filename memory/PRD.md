@@ -211,3 +211,6 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 ## 2026-06: Fillable Permission Stamp form
 - "Permission Stamp (Word)" export item now opens an in-app fill dialog (Address prefilled from job location; Owner Name/CBR/Email, Access Contact/CBR/Email, Advanced Notice/Time Frame/Special Considerations). Save persists to job.permission_stamp (Job/JobUpdate models extended); Download Word saves then exports the filled .docx in the exact template layout.
 - Verified in browser: fill → save → reload persists; downloaded docx has values inline with template lines. NOT yet deployed.
+
+## 2026-06: Manhole tie-in box
+- Underground form tie-in measurements box now also shows for Manhole (identical to Handhole, MH-specific label/placeholder). ASE starting tie-in autofill already handled manholes. Verified in browser; deployment requested.
