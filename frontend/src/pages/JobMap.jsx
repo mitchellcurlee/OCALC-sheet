@@ -1230,6 +1230,7 @@ const JobMap = () => {
         type: "pole",
         sort_order: p.sort_order ?? Infinity,
         pos: p.pos,
+        start_path: p.start_path === true,
         end_path: p.end_path === true,
         standalone: p.standalone === true
       });
@@ -1242,6 +1243,7 @@ const JobMap = () => {
         type: "underground",
         sort_order: u.sort_order ?? Infinity,
         pos: u.pos,
+        start_path: u.start_path === true,
         end_path: u.end_path === true,
         standalone: u.standalone === true
       });
@@ -1259,6 +1261,7 @@ const JobMap = () => {
       const fromItem = allItems[i];
       const toItem = allItems[i + 1];
       if (fromItem.end_path) continue;
+      if (toItem.start_path) continue;
       if (fromItem.standalone || toItem.standalone) continue;
       
       // Determine connection type based on item types
@@ -1438,6 +1441,7 @@ const JobMap = () => {
         type: "pole",
         label: p.pole_number ? `Pole ${p.pole_number}` : `Pole`,
         sort_order: p.sort_order ?? Infinity,
+        start_path: p.start_path === true,
         end_path: p.end_path === true
       });
     });
@@ -1448,6 +1452,7 @@ const JobMap = () => {
         type: "underground",
         label: u.label && u.label !== u.type ? `${u.type} · ${u.label}` : (u.type || u.label),
         sort_order: u.sort_order ?? Infinity,
+        start_path: u.start_path === true,
         end_path: u.end_path === true
       });
     });
@@ -2757,9 +2762,10 @@ const JobMap = () => {
                     
                     if (!fromItem || !toItem) return null;
                     if (conn.connection_type === 'removed') return null;
-                    // Hide auto connections broken by an End Path toggle
+                    // Hide auto connections broken by a Start/End Path toggle
                     const earlierItem = fromItem.sort_order <= toItem.sort_order ? fromItem : toItem;
-                    if (conn.connection_type !== 'custom' && earlierItem.end_path) return null;
+                    const laterItem = fromItem.sort_order <= toItem.sort_order ? toItem : fromItem;
+                    if (conn.connection_type !== 'custom' && (earlierItem.end_path || laterItem.start_path)) return null;
                     
                     const lineColor = conn.connection_type === 'aerial' ? '#3b82f6' : 
                                       conn.connection_type === 'underground' ? '#22c55e' : '#8b5cf6';

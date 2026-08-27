@@ -65,6 +65,7 @@ class PoleBase(BaseModel):
     riser_height: Optional[float] = None
     pole_line_start: Optional[bool] = False
     pole_line_end: Optional[bool] = False
+    start_path: Optional[bool] = False
     end_path: Optional[bool] = False
     standalone: Optional[bool] = False
     hoa_markup_photos: Optional[List[str]] = []  # Photos with HOA annotations/markup
@@ -126,6 +127,7 @@ class PoleUpdate(BaseModel):
     riser_height: Optional[float] = None
     pole_line_start: Optional[bool] = None
     pole_line_end: Optional[bool] = None
+    start_path: Optional[bool] = None
     end_path: Optional[bool] = None
     standalone: Optional[bool] = None
     hoa_markup_photos: Optional[List[str]] = None

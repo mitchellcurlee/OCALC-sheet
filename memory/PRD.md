@@ -220,3 +220,8 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 
 ## 2026-06: END tag removed from interactive map
 - Removed the red "END" badge markers for End Path items from the interactive Job Map (JobMap.jsx). End Path toggle still breaks the path lines as before; exported map image badge untouched. Verified in browser with end_path=true. Deployment requested.
+
+## 2026-06: Start Path toggle
+- New Start Path toggle beside End Path on Pole and Underground forms (start_path field on both models). Semantics: Start Path = nothing connects BEFORE the item; End Path = nothing connects AFTER it.
+- Wired through all pair-building logic: backend _compute_map_pairs (routes/poles.py — spans/stationing sync), frontend computeConnectionPairs (poleMapImage.js — map lines + export image), JobMap defaultConnections generation, connection-edit hide filter.
+- Verified E2E: start_path ON removed the aerial line into the pole and job totals dropped (818 ft, 0 aerial); OFF restored line + 1,176 ft. UG start_path persistence verified via API. NOT yet deployed.

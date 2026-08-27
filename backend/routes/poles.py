@@ -88,6 +88,7 @@ async def _compute_map_pairs(job_id: str):
             "id": p["id"], "type": "pole",
             "lat": float(p["latitude"]), "lon": float(p["longitude"]),
             "sort": p["sort_order"] if p.get("sort_order") is not None else math.inf,
+            "start_path": p.get("start_path") is True,
             "end_path": p.get("end_path") is True,
             "standalone": p.get("standalone") is True,
         })
@@ -102,6 +103,7 @@ async def _compute_map_pairs(job_id: str):
             "id": u["id"], "type": "underground",
             "lat": lat, "lon": lon,
             "sort": u["sort_order"] if u.get("sort_order") is not None else math.inf,
+            "start_path": u.get("start_path") is True,
             "end_path": u.get("end_path") is True,
             "standalone": u.get("standalone") is True,
         })
@@ -121,7 +123,8 @@ async def _compute_map_pairs(job_id: str):
                 if f["standalone"] or t["standalone"]:
                     continue
                 earlier = f if f["sort"] <= t["sort"] else t
-                if earlier["end_path"]:
+                later = t if f["sort"] <= t["sort"] else f
+                if earlier["end_path"] or later["start_path"]:
                     continue
             pairs.append({"from": f, "to": t, "conn_type": c.get("connection_type")})
         referenced = set()
@@ -140,11 +143,11 @@ async def _compute_map_pairs(job_id: str):
             ]
         for i in range(len(path_items) - 1):
             a, b = path_items[i], path_items[i + 1]
-            if (a["id"] not in referenced or b["id"] not in referenced) and not a["end_path"]:
+            if (a["id"] not in referenced or b["id"] not in referenced) and not a["end_path"] and not b["start_path"]:
                 pairs.append({"from": a, "to": b, "conn_type": None})
     else:
         for i in range(len(path_items) - 1):
-            if path_items[i]["end_path"]:
+            if path_items[i]["end_path"] or path_items[i + 1]["start_path"]:
                 continue
             pairs.append({"from": path_items[i], "to": path_items[i + 1], "conn_type": None})
     return pairs

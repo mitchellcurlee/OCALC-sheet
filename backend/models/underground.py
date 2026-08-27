@@ -21,6 +21,7 @@ class UndergroundBase(BaseModel):
     path_measurements: Optional[List[dict]] = []  # [{direction: In/Over/Up/Down, feet: float}]
     soc_start: Optional[bool] = False
     soc_end: Optional[bool] = False
+    start_path: Optional[bool] = False
     end_path: Optional[bool] = False
     standalone: Optional[bool] = False
     marker_color: Optional[str] = None
@@ -48,6 +49,7 @@ class UndergroundUpdate(BaseModel):
     path_measurements: Optional[List[dict]] = None
     soc_start: Optional[bool] = None
     soc_end: Optional[bool] = None
+    start_path: Optional[bool] = None
     end_path: Optional[bool] = None
     standalone: Optional[bool] = None
     marker_color: Optional[str] = None

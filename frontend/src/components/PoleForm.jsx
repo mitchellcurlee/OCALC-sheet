@@ -99,7 +99,7 @@ const emptyFormData = () => ({
   hoa_markup_photos: [], // Photos for HOA markup/annotation
   staged_photos: [], // Unsorted photos from the top Photo Gallery
   auto_label_unsorted: false, // Label unsorted photos with the pole name in exports
-  pole_line_start: false, pole_line_end: false, end_path: false, standalone: false,
+  pole_line_start: false, pole_line_end: false, start_path: false, end_path: false, standalone: false,
 });
 const emptyDownGuy = () => ({ _key: rowKey(), owner: "", direction: "", size: "", type: "", condition: "", height: "", lead: "", photos: [] });
 const emptyKnuckle = () => ({ _key: rowKey(), owner: "", size: "", total_eyes: "", direction: "", condition: "", photos: [] });
@@ -249,6 +249,7 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
       auto_label_unsorted: !!p.auto_label_unsorted,
       pole_line_start: p.pole_line_start === true,
       pole_line_end: p.pole_line_end === true,
+      start_path: p.start_path === true,
       end_path: p.end_path === true,
       standalone: p.standalone === true,
     });
@@ -700,13 +701,17 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
             <p className="text-xs text-amber-600 basis-full">Auto-populates the POLE LINE START / END Lat/Long boxes on the ASE checklist with this pole's coordinates.</p>
           </div>
 
-          {/* End Path toggle — breaks the map route after this pole */}
+          {/* Start/End Path toggles — break the map route before/after this pole */}
           <div className="flex flex-wrap items-center gap-6 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <div className="flex items-center gap-3">
+              <Switch checked={formData.start_path} onCheckedChange={(v) => setFormData((p) => ({ ...p, start_path: v }))} data-testid="pole-start-path-toggle" />
+              <Label className="text-xs font-mono tracking-widest text-red-700 uppercase">Start Path</Label>
+            </div>
             <div className="flex items-center gap-3">
               <Switch checked={formData.end_path} onCheckedChange={(v) => setFormData((p) => ({ ...p, end_path: v }))} data-testid="pole-end-path-toggle" />
               <Label className="text-xs font-mono tracking-widest text-red-700 uppercase">End Path</Label>
             </div>
-            <p className="text-xs text-red-600 basis-full">Marks this pole as the last attribute on its path. The map will not draw a line from this pole to the next attribute — the next attribute starts a new path.</p>
+            <p className="text-xs text-red-600 basis-full">Start Path: nothing connects before this pole — it starts a new path. End Path: nothing connects after this pole — the next attribute starts a new path.</p>
           </div>
 
           {/* Standalone toggle — show on map without connecting to the path */}

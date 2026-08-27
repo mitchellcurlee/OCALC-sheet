@@ -223,8 +223,8 @@ export const resolvePairAerial = (fromItem, toItem) => {
 // Build map line pairs the same way the live Job Map does (custom connections + End Path breaks + standalone items)
 export const computeConnectionPairs = (route, ug, connections = []) => {
   const allItems = [];
-  route.forEach((p) => allItems.push({ id: p.id, type: "pole", pos: p.pos, sort_order: p.sort_order ?? Infinity, label: p.pole_number || "Pole", end_path: p.end_path === true, standalone: p.standalone === true, markerColor: p.marker_color || null }));
-  ug.forEach((u) => allItems.push({ id: u.id, type: "underground", ugType: u.type, aerialOverride: ["aerial", "underground", "neutral"].includes(u.aerial_override) ? u.aerial_override : null, pos: u.pos, sort_order: u.sort_order ?? Infinity, label: u.label || u.type, end_path: u.end_path === true, standalone: u.standalone === true, hasPath: (u.path_measurements || []).length > 0, markerColor: u.marker_color || null }));
+  route.forEach((p) => allItems.push({ id: p.id, type: "pole", pos: p.pos, sort_order: p.sort_order ?? Infinity, label: p.pole_number || "Pole", start_path: p.start_path === true, end_path: p.end_path === true, standalone: p.standalone === true, markerColor: p.marker_color || null }));
+  ug.forEach((u) => allItems.push({ id: u.id, type: "underground", ugType: u.type, aerialOverride: ["aerial", "underground", "neutral"].includes(u.aerial_override) ? u.aerial_override : null, pos: u.pos, sort_order: u.sort_order ?? Infinity, label: u.label || u.type, start_path: u.start_path === true, end_path: u.end_path === true, standalone: u.standalone === true, hasPath: (u.path_measurements || []).length > 0, markerColor: u.marker_color || null }));
   allItems.sort((a, b) => a.sort_order - b.sort_order);
   const byId = {};
   allItems.forEach((it) => { byId[it.id] = it; });
@@ -242,7 +242,8 @@ export const computeConnectionPairs = (route, ug, connections = []) => {
         if (p.connType === "custom") return true;
         if (p.from.standalone || p.to.standalone) return false;
         const earlier = p.from.sort_order <= p.to.sort_order ? p.from : p.to;
-        return !earlier.end_path;
+        const later = p.from.sort_order <= p.to.sort_order ? p.to : p.from;
+        return !earlier.end_path && !later.start_path;
       });
     const referenced = new Set();
     connections.forEach((c) => { referenced.add(c.from_item_id); referenced.add(c.to_item_id); });
@@ -259,7 +260,7 @@ export const computeConnectionPairs = (route, ug, connections = []) => {
     }
     for (let i = 0; i < pathItems.length - 1; i++) {
       const a = pathItems[i], b = pathItems[i + 1];
-      if ((!referenced.has(a.id) || !referenced.has(b.id)) && !a.end_path) pairs.push({ from: a, to: b });
+      if ((!referenced.has(a.id) || !referenced.has(b.id)) && !a.end_path && !b.start_path) pairs.push({ from: a, to: b });
     }
     // Keep the whole list in route order (fallback pairs included)
     pairs.sort((a, b) =>
@@ -268,7 +269,7 @@ export const computeConnectionPairs = (route, ug, connections = []) => {
     );
   } else {
     for (let i = 0; i < pathItems.length - 1; i++) {
-      if (pathItems[i].end_path) continue;
+      if (pathItems[i].end_path || pathItems[i + 1].start_path) continue;
       pairs.push({ from: pathItems[i], to: pathItems[i + 1] });
     }
   }
