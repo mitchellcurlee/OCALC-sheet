@@ -225,3 +225,6 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 - New Start Path toggle beside End Path on Pole and Underground forms (start_path field on both models). Semantics: Start Path = nothing connects BEFORE the item; End Path = nothing connects AFTER it.
 - Wired through all pair-building logic: backend _compute_map_pairs (routes/poles.py — spans/stationing sync), frontend computeConnectionPairs (poleMapImage.js — map lines + export image), JobMap defaultConnections generation, connection-edit hide filter.
 - Verified E2E: start_path ON removed the aerial line into the pole and job totals dropped (818 ft, 0 aerial); OFF restored line + 1,176 ft. UG start_path persistence verified via API. NOT yet deployed.
+
+## 2026-06: Movable/hideable map legend
+- Interactive map LEGEND is now draggable (grip handle, pointer events, clamped to map bounds) and hideable via X; a small "LEGEND" button restores it. Position + visibility persist in localStorage (mapLegendPos/mapLegendVisible). Verified E2E in browser (drag, hide, show, reload persistence). NOT yet deployed.

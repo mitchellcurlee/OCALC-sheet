@@ -550,6 +550,40 @@ const JobMap = () => {
     try { localStorage.setItem(`staToggle:${jobId}`, showStationNumbers ? '1' : '0'); } catch (e) { /* ignore */ }
   }, [showStationNumbers, jobId]);
   const [editMode, setEditMode] = useState(false);
+  // Map legend: hide/show + draggable position (persisted)
+  const [legendVisible, setLegendVisible] = useState(() => {
+    try { return localStorage.getItem('mapLegendVisible') !== '0'; } catch (e) { return true; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem('mapLegendVisible', legendVisible ? '1' : '0'); } catch (e) { /* ignore */ }
+  }, [legendVisible]);
+  const [legendPos, setLegendPos] = useState(() => {
+    try { const v = JSON.parse(localStorage.getItem('mapLegendPos') || 'null'); return v && Number.isFinite(v.x) && Number.isFinite(v.y) ? v : null; } catch (e) { return null; }
+  });
+  const legendDragRef = useRef(null);
+  const handleLegendPointerDown = useCallback((e) => {
+    const box = e.currentTarget.closest('[data-testid="map-legend"]');
+    const wrap = box?.offsetParent;
+    if (!box || !wrap) return;
+    e.preventDefault();
+    const boxRect = box.getBoundingClientRect();
+    const wrapRect = wrap.getBoundingClientRect();
+    const startX = e.clientX, startY = e.clientY;
+    const origX = boxRect.left - wrapRect.left, origY = boxRect.top - wrapRect.top;
+    const move = (ev) => {
+      const x = Math.min(Math.max(origX + ev.clientX - startX, 0), wrapRect.width - boxRect.width);
+      const y = Math.min(Math.max(origY + ev.clientY - startY, 0), wrapRect.height - boxRect.height);
+      legendDragRef.current = { x, y };
+      setLegendPos({ x, y });
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      try { if (legendDragRef.current) localStorage.setItem('mapLegendPos', JSON.stringify(legendDragRef.current)); } catch (err) { /* ignore */ }
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  }, []);
   const [placingType, setPlacingType] = useState(null); // "__pole__" | "__pole_terminal__" | underground type name
   const basemap = "esri";
   const [mapLayer, setMapLayer] = useState(() => {
@@ -2836,8 +2870,29 @@ const JobMap = () => {
                 </>
               )}
             </MapContainer>
-            <div className="absolute bottom-3 right-3 z-[500] bg-white/90 border border-zinc-200 rounded px-3 py-2 text-xs font-mono shadow pointer-events-none max-w-[220px]" data-testid="map-legend">
-              <div className="font-bold text-zinc-700 mb-1">LEGEND</div>
+            {legendVisible ? (
+            <div
+              className="absolute z-[500] bg-white/90 border border-zinc-200 rounded px-3 py-2 text-xs font-mono shadow max-w-[220px]"
+              style={legendPos ? { left: legendPos.x, top: legendPos.y } : { bottom: 12, right: 12 }}
+              data-testid="map-legend"
+            >
+              <div
+                className="flex items-center justify-between gap-2 mb-1 cursor-move select-none touch-none"
+                onPointerDown={handleLegendPointerDown}
+                data-testid="legend-drag-handle"
+              >
+                <span className="font-bold text-zinc-700 flex items-center gap-1"><GripVertical className="w-3 h-3 text-zinc-400" />LEGEND</span>
+                <button
+                  type="button"
+                  className="text-zinc-400 hover:text-zinc-700 -mr-1"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={() => setLegendVisible(false)}
+                  data-testid="legend-hide-btn"
+                  title="Hide legend"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
               {route.length > 0 && (
                 <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-red-600 border border-white inline-block flex-shrink-0"></span>Pole (Red)</div>
               )}
@@ -2866,6 +2921,17 @@ const JobMap = () => {
                 <div key={t} className="text-zinc-500 mt-0.5 ml-1"><span style={{ color: AERIAL_ATTR_TYPES.has(t) ? "#2563eb" : undergroundColorHex }} className="font-semibold">{undergroundAbbr(t)}</span> {t}{AERIAL_ATTR_TYPES.has(t) ? " (Aerial)" : ""}</div>
               ))}
             </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setLegendVisible(true)}
+                className="absolute bottom-3 right-3 z-[500] bg-white/90 border border-zinc-200 rounded px-2.5 py-1.5 text-xs font-mono font-bold text-zinc-600 shadow hover:bg-white"
+                data-testid="legend-show-btn"
+                title="Show legend"
+              >
+                LEGEND
+              </button>
+            )}
           </div>
         )}
 
