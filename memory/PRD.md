@@ -203,3 +203,7 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 ## 2026-06: FDF underground attribute + markup marker
 - Added "FDF" to backend UNDERGROUND_TYPES (options.py), frontend UNDERGROUND_ABBR/UNDERGROUND_TYPES (poleMapImage.js), and UG_MARKERS in PhotoMarkupEditor.jsx + markup/MarkupConstants.js (blue, abbr FDF).
 - Verified: UG form Type dropdown shows FDF; markup editor UG MARKERS palette shows FDF button. NOT yet deployed.
+
+## 2026-06: Permission Stamp Word export
+- New "Permission Stamp (Word)" item in Job Detail Export dropdown → GET /api/jobs/{id}/export/permission-stamp-docx generates a .docx replicating the user's uploaded Permission Stamp template exactly (all sections/lines verbatim, Calibri 11); Address line auto-fills from job location.
+- Verified: docx paragraphs match template line-for-line, in-browser download works (Permission_Stamp_A050ABC.docx). NOT yet deployed.

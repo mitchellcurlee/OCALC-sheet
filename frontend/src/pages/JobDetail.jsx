@@ -410,6 +410,23 @@ const JobDetail = () => {
     }
   };
 
+  const handlePermissionStampExport = async () => {
+    try {
+      const response = await axios.get(`/jobs/${jobId}/export/permission-stamp-docx`, { responseType: "blob" });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `Permission_Stamp_${job?.name || jobId}.docx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success("Permission Stamp Word file downloaded");
+    } catch (error) {
+      toast.error("Word download failed");
+    }
+  };
+
   const handleExport = async () => {
     try {
       const response = await axios.get(`/jobs/${jobId}/export/excel`, {
@@ -643,6 +660,10 @@ const JobDetail = () => {
                   <DropdownMenuItem onClick={handleWordExport} data-testid="sow-word-export-btn" className="cursor-pointer">
                     <FileDown className="w-4 h-4 mr-2 text-blue-600" />
                     SOW Notes (Word)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handlePermissionStampExport} data-testid="permission-stamp-export-btn" className="cursor-pointer">
+                    <FileDown className="w-4 h-4 mr-2 text-green-600" />
+                    Permission Stamp (Word)
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>

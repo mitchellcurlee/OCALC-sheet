@@ -1718,6 +1718,53 @@ def _sow_docx_response(job: dict, text: str = None):
     )
 
 
+@router.get("/jobs/{job_id}/export/permission-stamp-docx")
+async def export_permission_stamp_docx(job_id: str, current_user: dict = Depends(get_current_user)):
+    """Download the Permission Stamp form as a Word (.docx) file (exact template layout)"""
+    job = await can_access_job(job_id, current_user)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    from docx import Document
+    from docx.shared import Pt
+    doc = Document()
+    normal = doc.styles["Normal"]
+    normal.font.name = "Calibri"
+    normal.font.size = Pt(11)
+    address = (job.get("location") or "").strip()
+    lines = [
+        "Permission Stamp",
+        "",
+        f"Address: {address}" if address else "Address:",
+        "",
+        "Property Owner Information – Authorized Permission To Place",
+        "Owner Name:",
+        "CBR:",
+        "Email:",
+        "",
+        "Access Contact Information – Provide Construction Access",
+        "Access Contact:",
+        "CBR:",
+        "Email:",
+        "",
+        "Notes To Construction As Required By The Customer",
+        "Advanced Notice Required?",
+        "Advanced Notice Time Frame?",
+        "Special Considerations?",
+    ]
+    for line in lines:
+        p = doc.add_paragraph(line)
+        p.paragraph_format.space_after = Pt(0)
+    buf = io.BytesIO()
+    doc.save(buf)
+    buf.seek(0)
+    safe = "".join(c if c.isalnum() or c in "-_ " else "_" for c in (job.get("name") or "job"))[:40].strip() or "job"
+    return StreamingResponse(
+        buf,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f'attachment; filename="Permission_Stamp_{safe}.docx"'},
+    )
+
+
 @router.get("/jobs/{job_id}/export/sow-docx")
 async def export_sow_docx_link(job_id: str, token: Optional[str] = Query(None)):
     """Tokenized Word download used by the link inside the ASE Excel export"""
