@@ -26,6 +26,7 @@ class JobUpdate(BaseModel):
     employee_info: Optional[str] = None
     completed: Optional[bool] = None
     ase_data: Optional[Dict[str, Any]] = None  # ASE Site Walk Survey data
+    permission_stamp: Optional[Dict[str, Any]] = None  # Permission Stamp form data
 
 
 class Job(BaseModel):
@@ -47,5 +48,6 @@ class Job(BaseModel):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     ase_data: Optional[Dict[str, Any]] = None  # ASE Site Walk Survey data
+    permission_stamp: Optional[Dict[str, Any]] = None  # Permission Stamp form data
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())

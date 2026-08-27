@@ -1730,26 +1730,32 @@ async def export_permission_stamp_docx(job_id: str, current_user: dict = Depends
     normal = doc.styles["Normal"]
     normal.font.name = "Calibri"
     normal.font.size = Pt(11)
-    address = (job.get("location") or "").strip()
+    ps = job.get("permission_stamp") or {}
+    address = (ps.get("address") or job.get("location") or "").strip()
+
+    def fill(label, key):
+        v = str(ps.get(key) or "").strip()
+        return f"{label} {v}".rstrip()
+
     lines = [
         "Permission Stamp",
         "",
         f"Address: {address}" if address else "Address:",
         "",
         "Property Owner Information – Authorized Permission To Place",
-        "Owner Name:",
-        "CBR:",
-        "Email:",
+        fill("Owner Name:", "owner_name"),
+        fill("CBR:", "owner_cbr"),
+        fill("Email:", "owner_email"),
         "",
         "Access Contact Information – Provide Construction Access",
-        "Access Contact:",
-        "CBR:",
-        "Email:",
+        fill("Access Contact:", "access_contact"),
+        fill("CBR:", "access_cbr"),
+        fill("Email:", "access_email"),
         "",
         "Notes To Construction As Required By The Customer",
-        "Advanced Notice Required?",
-        "Advanced Notice Time Frame?",
-        "Special Considerations?",
+        fill("Advanced Notice Required?", "advanced_notice_required"),
+        fill("Advanced Notice Time Frame?", "advanced_notice_time_frame"),
+        fill("Special Considerations?", "special_considerations"),
     ]
     for line in lines:
         p = doc.add_paragraph(line)

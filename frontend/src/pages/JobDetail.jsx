@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import { UNDERGROUND_TYPES, undergroundAbbr } from "@/lib/poleMapImage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
@@ -410,8 +412,47 @@ const JobDetail = () => {
     }
   };
 
-  const handlePermissionStampExport = async () => {
+  const [psOpen, setPsOpen] = useState(false);
+  const [psData, setPsData] = useState({});
+  const [psBusy, setPsBusy] = useState(false);
+
+  const openPermissionStamp = () => {
+    const ps = job?.permission_stamp || {};
+    setPsData({
+      address: ps.address || job?.location || "",
+      owner_name: ps.owner_name || "",
+      owner_cbr: ps.owner_cbr || "",
+      owner_email: ps.owner_email || "",
+      access_contact: ps.access_contact || "",
+      access_cbr: ps.access_cbr || "",
+      access_email: ps.access_email || "",
+      advanced_notice_required: ps.advanced_notice_required || "",
+      advanced_notice_time_frame: ps.advanced_notice_time_frame || "",
+      special_considerations: ps.special_considerations || "",
+    });
+    setPsOpen(true);
+  };
+
+  const savePermissionStamp = async () => {
+    setPsBusy(true);
     try {
+      await axios.put(`/jobs/${jobId}`, { permission_stamp: psData });
+      setJob((prev) => ({ ...prev, permission_stamp: psData }));
+      toast.success("Permission Stamp saved");
+      return true;
+    } catch (error) {
+      toast.error("Failed to save Permission Stamp");
+      return false;
+    } finally {
+      setPsBusy(false);
+    }
+  };
+
+  const handlePermissionStampExport = async () => {
+    setPsBusy(true);
+    try {
+      await axios.put(`/jobs/${jobId}`, { permission_stamp: psData });
+      setJob((prev) => ({ ...prev, permission_stamp: psData }));
       const response = await axios.get(`/jobs/${jobId}/export/permission-stamp-docx`, { responseType: "blob" });
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement("a");
@@ -424,6 +465,8 @@ const JobDetail = () => {
       toast.success("Permission Stamp Word file downloaded");
     } catch (error) {
       toast.error("Word download failed");
+    } finally {
+      setPsBusy(false);
     }
   };
 
@@ -661,7 +704,7 @@ const JobDetail = () => {
                     <FileDown className="w-4 h-4 mr-2 text-blue-600" />
                     SOW Notes (Word)
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handlePermissionStampExport} data-testid="permission-stamp-export-btn" className="cursor-pointer">
+                  <DropdownMenuItem onClick={openPermissionStamp} data-testid="permission-stamp-export-btn" className="cursor-pointer">
                     <FileDown className="w-4 h-4 mr-2 text-green-600" />
                     Permission Stamp (Word)
                   </DropdownMenuItem>
@@ -706,6 +749,82 @@ const JobDetail = () => {
           </div>
         </div>
       </header>
+
+      {/* Permission Stamp dialog */}
+      <Dialog open={psOpen} onOpenChange={setPsOpen}>
+        <DialogContent className="bg-white sm:max-w-lg max-h-[90vh] overflow-y-auto" data-testid="permission-stamp-dialog">
+          <DialogHeader>
+            <DialogTitle className="font-heading">PERMISSION STAMP</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <Label className="text-xs font-mono text-zinc-500 uppercase">Address</Label>
+              <Input value={psData.address || ""} onChange={(e) => setPsData((p) => ({ ...p, address: e.target.value }))} className="bg-zinc-50" data-testid="ps-address" />
+            </div>
+            <div className="space-y-2 border border-zinc-200 rounded-lg p-3">
+              <p className="text-sm font-medium text-zinc-700">Property Owner Information – Authorized Permission To Place</p>
+              <div className="space-y-1">
+                <Label className="text-xs font-mono text-zinc-500 uppercase">Owner Name</Label>
+                <Input value={psData.owner_name || ""} onChange={(e) => setPsData((p) => ({ ...p, owner_name: e.target.value }))} className="bg-zinc-50" data-testid="ps-owner-name" />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-xs font-mono text-zinc-500 uppercase">CBR</Label>
+                  <Input value={psData.owner_cbr || ""} onChange={(e) => setPsData((p) => ({ ...p, owner_cbr: e.target.value }))} className="bg-zinc-50" data-testid="ps-owner-cbr" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs font-mono text-zinc-500 uppercase">Email</Label>
+                  <Input value={psData.owner_email || ""} onChange={(e) => setPsData((p) => ({ ...p, owner_email: e.target.value }))} className="bg-zinc-50" data-testid="ps-owner-email" />
+                </div>
+              </div>
+            </div>
+            <div className="space-y-2 border border-zinc-200 rounded-lg p-3">
+              <p className="text-sm font-medium text-zinc-700">Access Contact Information – Provide Construction Access</p>
+              <div className="space-y-1">
+                <Label className="text-xs font-mono text-zinc-500 uppercase">Access Contact</Label>
+                <Input value={psData.access_contact || ""} onChange={(e) => setPsData((p) => ({ ...p, access_contact: e.target.value }))} className="bg-zinc-50" data-testid="ps-access-contact" />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-xs font-mono text-zinc-500 uppercase">CBR</Label>
+                  <Input value={psData.access_cbr || ""} onChange={(e) => setPsData((p) => ({ ...p, access_cbr: e.target.value }))} className="bg-zinc-50" data-testid="ps-access-cbr" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs font-mono text-zinc-500 uppercase">Email</Label>
+                  <Input value={psData.access_email || ""} onChange={(e) => setPsData((p) => ({ ...p, access_email: e.target.value }))} className="bg-zinc-50" data-testid="ps-access-email" />
+                </div>
+              </div>
+            </div>
+            <div className="space-y-2 border border-zinc-200 rounded-lg p-3">
+              <p className="text-sm font-medium text-zinc-700">Notes To Construction As Required By The Customer</p>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-xs font-mono text-zinc-500 uppercase">Advanced Notice Required?</Label>
+                  <Input value={psData.advanced_notice_required || ""} onChange={(e) => setPsData((p) => ({ ...p, advanced_notice_required: e.target.value }))} className="bg-zinc-50" data-testid="ps-advanced-notice" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs font-mono text-zinc-500 uppercase">Notice Time Frame?</Label>
+                  <Input value={psData.advanced_notice_time_frame || ""} onChange={(e) => setPsData((p) => ({ ...p, advanced_notice_time_frame: e.target.value }))} className="bg-zinc-50" data-testid="ps-notice-timeframe" />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs font-mono text-zinc-500 uppercase">Special Considerations?</Label>
+                <Textarea value={psData.special_considerations || ""} onChange={(e) => setPsData((p) => ({ ...p, special_considerations: e.target.value }))} className="bg-zinc-50 min-h-16" data-testid="ps-special-considerations" />
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={savePermissionStamp} disabled={psBusy} data-testid="ps-save-btn">
+              {psBusy ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
+              Save
+            </Button>
+            <Button onClick={handlePermissionStampExport} disabled={psBusy} className="bg-green-600 hover:bg-green-700 text-white" data-testid="ps-download-btn">
+              {psBusy ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <FileDown className="w-4 h-4 mr-2" />}
+              Download Word
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Excel import dialog */}
       <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>

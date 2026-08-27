@@ -207,3 +207,7 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 ## 2026-06: Permission Stamp Word export
 - New "Permission Stamp (Word)" item in Job Detail Export dropdown → GET /api/jobs/{id}/export/permission-stamp-docx generates a .docx replicating the user's uploaded Permission Stamp template exactly (all sections/lines verbatim, Calibri 11); Address line auto-fills from job location.
 - Verified: docx paragraphs match template line-for-line, in-browser download works (Permission_Stamp_A050ABC.docx). NOT yet deployed.
+
+## 2026-06: Fillable Permission Stamp form
+- "Permission Stamp (Word)" export item now opens an in-app fill dialog (Address prefilled from job location; Owner Name/CBR/Email, Access Contact/CBR/Email, Advanced Notice/Time Frame/Special Considerations). Save persists to job.permission_stamp (Job/JobUpdate models extended); Download Word saves then exports the filled .docx in the exact template layout.
+- Verified in browser: fill → save → reload persists; downloaded docx has values inline with template lines. NOT yet deployed.
