@@ -48,6 +48,7 @@ const UG_MARKERS = [
   { type: "EB", label: "Eyebolt", color: "#2563eb" },
   { type: "PB", label: "Pullbox", color: "#2563eb" },
   { type: "WH", label: "Weather Head", color: "#2563eb" },
+  { type: "FDF", label: "FDF", color: "#2563eb" },
 ];
 
 const LINE_COLORS = [

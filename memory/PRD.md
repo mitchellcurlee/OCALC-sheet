@@ -199,3 +199,7 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 - ReferenceHeightMeasurer gained downGuyMode (used only by the Down Guys box): Height/Lead tabs decide which field a marked point measures (Height = vertical from ref bottom, Lead = horizontal from ref bottom); DG chips (DG 1, DG 2, ...) + "Add Down Guy" decide which down guy row gets the value (rows auto-created on Apply).
 - Markers/legend/summary/annotated photo color-coded (green=height, orange=lead) with DG labels. PoleForm onHeightsDetected now writes per-guy per-field.
 - Browser-verified: tabs, chips, add-DG, apply → DG1 height 12'0", DG2 (new row) lead 7'8", photo attached. HOA measurer unchanged. NOT yet deployed.
+
+## 2026-06: FDF underground attribute + markup marker
+- Added "FDF" to backend UNDERGROUND_TYPES (options.py), frontend UNDERGROUND_ABBR/UNDERGROUND_TYPES (poleMapImage.js), and UG_MARKERS in PhotoMarkupEditor.jsx + markup/MarkupConstants.js (blue, abbr FDF).
+- Verified: UG form Type dropdown shows FDF; markup editor UG MARKERS palette shows FDF button. NOT yet deployed.

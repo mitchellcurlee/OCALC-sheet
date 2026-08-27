@@ -83,6 +83,7 @@ export const UNDERGROUND_ABBR = {
   Eyebolt: "EB",
   Pullbox: "PB",
   "Weather Head": "WH",
+  FDF: "FDF",
   "Aerial NTE": "NTE",
   "Aerial PI": "PI",
   "Aerial FBT": "FBT",

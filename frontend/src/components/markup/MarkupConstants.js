@@ -21,6 +21,7 @@ export const UG_MARKERS = [
   { type: "ROW", label: "Right of Way", color: "#64748b" },
   { type: "DW-S", label: "DW Start", color: "#0891b2" },
   { type: "DW-E", label: "DW End", color: "#0891b2" },
+  { type: "FDF", label: "FDF", color: "#2563eb" },
 ];
 
 export const LINE_COLORS = [
