@@ -228,3 +228,9 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 
 ## 2026-06: Movable/hideable map legend
 - Interactive map LEGEND is now draggable (grip handle, pointer events, clamped to map bounds) and hideable via X; a small "LEGEND" button restores it. Position + visibility persist in localStorage (mapLegendPos/mapLegendVisible). Verified E2E in browser (drag, hide, show, reload persistence). NOT yet deployed.
+
+## 2026-06: Export destination prompt + Cloud Exports
+- Every export (job Excel, ASE Excel, SOW Word, Permission Stamp Word, photos ZIP, map PNG, 800ft pages ZIP) shows a Device-vs-App-Cloud prompt (ExportDestinationDialog.jsx). Cloud saves go to Emergent object storage at cloud_exports/{job_id}/{type} (overwrite, latest only) with records in the cloud_exports Mongo collection; new backend router routes/cloud_exports.py (list/upload/photos-zip server build/download/delete, type whitelist). jobs.py photo entries refactored into build_job_photo_entries (shared with device ZIP).
+- Cloud Exports section on Job Detail (CloudExportsSection.jsx) lists saved files with Download/Delete; refreshes via 'cloud-exports-updated' window event.
+- Fixes from testing (iteration_49, backend 10/10): maps/static ArcGIS retry x3, PS dialog closes after export, ASE filenames use job name, export_type whitelist, 404 when storage object missing.
+- Tested by testing agent (both destinations, all 7 types) + post-fix curl checks. Deployment requested.

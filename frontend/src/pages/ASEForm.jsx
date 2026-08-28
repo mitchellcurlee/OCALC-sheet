@@ -13,6 +13,8 @@ import { ArrowLeft, Save, FileSpreadsheet, Loader2, ClipboardList, Users, FileOu
 
 // Import ASE sub-components
 import { INITIAL_FORM_DATA } from "@/components/ase";
+import { ExportDestinationDialog } from "@/components/ExportDestinationDialog";
+import { CLOUD_EXPORT_LABELS, uploadExportToCloud, saveBlobToDevice } from "@/lib/cloudExports";
 import { buildSpanMeasurementTexts } from "@/lib/poleMapImage";
 import ASEChecklistTab from "@/components/ase/ASEChecklistTab";
 import ASECoordinatorTab from "@/components/ase/ASECoordinatorTab";
@@ -433,6 +435,41 @@ const ASEForm = () => {
     }
   };
 
+  const [pendingExport, setPendingExport] = useState(null);
+  const [exportBusy, setExportBusy] = useState(false);
+
+  const getAseExportBlob = async (type) => {
+    await axios.put(`/jobs/${jobId}/ase-data`, { ase_data: formData });
+    const jobName = job?.name || job?.job_number || jobId;
+    if (type === "ase_excel") {
+      const r = await axios.get(`/jobs/${jobId}/export/ase`, { responseType: "blob" });
+      return { blob: new Blob([r.data]), filename: `ASE_${jobName}.xlsx` };
+    }
+    const text = formData.sow_notes_override || buildSowNotesText(formData);
+    const r = await axios.post(`/jobs/${jobId}/export/sow-docx`, { text }, { responseType: "blob" });
+    return { blob: new Blob([r.data]), filename: `SOW_Notes_${jobName}.docx` };
+  };
+
+  const runPendingExport = async (dest) => {
+    const type = pendingExport;
+    setExportBusy(true);
+    try {
+      const res = await getAseExportBlob(type);
+      if (dest === "device") {
+        saveBlobToDevice(res.blob, res.filename);
+        toast.success("Downloaded to device");
+      } else {
+        await uploadExportToCloud(jobId, type, res.filename, res.blob);
+        toast.success("Saved to app cloud — see Cloud Exports on the job page");
+      }
+      setPendingExport(null);
+    } catch (e) {
+      toast.error(dest === "cloud" ? "Cloud save failed" : "Export failed");
+    } finally {
+      setExportBusy(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-zinc-100 flex items-center justify-center">
@@ -466,12 +503,12 @@ const ASEForm = () => {
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               <span className="hidden sm:inline ml-1">Save</span>
             </Button>
-            <Button onClick={handleWordExport} disabled={exportingWord} variant="outline" size="sm" className="text-blue-700 border-blue-300 hover:bg-blue-50" data-testid="export-sow-word-btn">
-              {exportingWord ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
+            <Button onClick={() => setPendingExport("sow_docx")} disabled={exportBusy || exportingWord} variant="outline" size="sm" className="text-blue-700 border-blue-300 hover:bg-blue-50" data-testid="export-sow-word-btn">
+              {exportBusy || exportingWord ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
               <span className="hidden sm:inline ml-1">Word</span>
             </Button>
-            <Button onClick={handleExport} disabled={exporting} size="sm" data-testid="export-ase-btn">
-              {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileSpreadsheet className="w-4 h-4" />}
+            <Button onClick={() => setPendingExport("ase_excel")} disabled={exporting || exportBusy} size="sm" data-testid="export-ase-btn">
+              {exporting || exportBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileSpreadsheet className="w-4 h-4" />}
               <span className="hidden sm:inline ml-1">Export</span>
             </Button>
           </div>
@@ -555,12 +592,20 @@ const ASEForm = () => {
             {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
             Save
           </Button>
-          <Button onClick={handleExport} disabled={exporting} className="h-11 px-6 bg-blue-600 hover:bg-blue-700 text-white">
+          <Button onClick={() => setPendingExport("ase_excel")} disabled={exporting || exportBusy} className="h-11 px-6 bg-blue-600 hover:bg-blue-700 text-white">
             {exporting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <FileSpreadsheet className="w-4 h-4 mr-2" />}
             ASE Export
           </Button>
         </div>
       </main>
+      <ExportDestinationDialog
+        open={!!pendingExport}
+        onOpenChange={(v) => { if (!v) setPendingExport(null); }}
+        label={CLOUD_EXPORT_LABELS[pendingExport] || ""}
+        busy={exportBusy}
+        onDevice={() => runPendingExport("device")}
+        onCloud={() => runPendingExport("cloud")}
+      />
     </div>
   );
 };

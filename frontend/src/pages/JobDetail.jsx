@@ -51,6 +51,9 @@ import {
   WifiOff,
 } from "lucide-react";
 import { buildSowNotesText } from "@/components/ase/ASESOWNotesTab";
+import { ExportDestinationDialog } from "@/components/ExportDestinationDialog";
+import { CloudExportsSection } from "@/components/CloudExportsSection";
+import { CLOUD_EXPORT_LABELS, uploadExportToCloud, saveBlobToDevice, notifyCloudExportsUpdated } from "@/lib/cloudExports";
 import { cacheJobForOffline, markJobSavedOffline } from "@/lib/offlineTiles";
 import {
   DropdownMenu,
@@ -393,25 +396,6 @@ const JobDetail = () => {
     }
   };
 
-  const handleWordExport = async () => {
-    try {
-      const ase = job?.ase_data || {};
-      const text = ase.sow_notes_override || buildSowNotesText(ase);
-      const response = await axios.post(`/jobs/${jobId}/export/sow-docx`, { text }, { responseType: "blob" });
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute("download", `SOW_Notes_${job?.name || jobId}.docx`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-      toast.success("SOW Notes Word file downloaded");
-    } catch (error) {
-      toast.error("Word download failed");
-    }
-  };
-
   const [psOpen, setPsOpen] = useState(false);
   const [psData, setPsData] = useState({});
   const [psBusy, setPsBusy] = useState(false);
@@ -448,45 +432,59 @@ const JobDetail = () => {
     }
   };
 
-  const handlePermissionStampExport = async () => {
-    setPsBusy(true);
-    try {
+  const [pendingExport, setPendingExport] = useState(null);
+  const [exportBusy, setExportBusy] = useState(false);
+
+  const getExportBlob = async (type) => {
+    if (type === "job_excel") {
+      const response = await axios.get(`/jobs/${jobId}/export/excel`, { params: { base_url: window.location.origin }, responseType: "blob" });
+      const filename = (response.headers["content-disposition"]?.split("filename=")[1] || `${job?.name || "job"}_export.xlsx`).replace(/"/g, "");
+      return { blob: new Blob([response.data]), filename };
+    }
+    if (type === "sow_docx") {
+      const ase = job?.ase_data || {};
+      const text = ase.sow_notes_override || buildSowNotesText(ase);
+      const response = await axios.post(`/jobs/${jobId}/export/sow-docx`, { text }, { responseType: "blob" });
+      return { blob: new Blob([response.data]), filename: `SOW_Notes_${job?.name || jobId}.docx` };
+    }
+    if (type === "permission_stamp") {
       await axios.put(`/jobs/${jobId}`, { permission_stamp: psData });
       setJob((prev) => ({ ...prev, permission_stamp: psData }));
       const response = await axios.get(`/jobs/${jobId}/export/permission-stamp-docx`, { responseType: "blob" });
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute("download", `Permission_Stamp_${job?.name || jobId}.docx`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-      toast.success("Permission Stamp Word file downloaded");
-    } catch (error) {
-      toast.error("Word download failed");
-    } finally {
-      setPsBusy(false);
+      return { blob: new Blob([response.data]), filename: `Permission_Stamp_${job?.name || jobId}.docx` };
     }
+    return null;
   };
 
-  const handleExport = async () => {
+  const runPendingExport = async (dest) => {
+    const type = pendingExport;
+    setExportBusy(true);
     try {
-      const response = await axios.get(`/jobs/${jobId}/export/excel`, {
-        params: { base_url: window.location.origin },
-        responseType: "blob"
-      });
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement("a");
-      link.href = url;
-      const filename = response.headers["content-disposition"]?.split("filename=")[1] || `${job?.name || "job"}_export.xlsx`;
-      link.setAttribute("download", filename.replace(/"/g, ""));
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      toast.success("Excel file downloaded!");
-    } catch (error) {
-      toast.error("Failed to export data");
+      if (type === "photos_zip") {
+        if (dest === "device") {
+          handleDownloadPhotos();
+        } else {
+          toast.info("Building photos ZIP and saving to cloud — this can take a while for large jobs...");
+          await axios.post(`/jobs/${jobId}/cloud-exports/photos-zip`, {}, { timeout: 0 });
+          notifyCloudExportsUpdated();
+          toast.success("Photos ZIP saved to app cloud — see Cloud Exports below");
+        }
+      } else {
+        const res = await getExportBlob(type);
+        if (dest === "device") {
+          saveBlobToDevice(res.blob, res.filename);
+          toast.success("Downloaded to device");
+        } else {
+          await uploadExportToCloud(jobId, type, res.filename, res.blob);
+          toast.success("Saved to app cloud — see Cloud Exports below");
+        }
+      }
+      if (type === "permission_stamp") setPsOpen(false);
+      setPendingExport(null);
+    } catch (e) {
+      toast.error(dest === "cloud" ? "Cloud save failed" : "Export failed");
+    } finally {
+      setExportBusy(false);
     }
   };
 
@@ -692,7 +690,7 @@ const JobDetail = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="bg-white border-zinc-200 w-48">
-                  <DropdownMenuItem onClick={handleExport} data-testid="export-btn" className="cursor-pointer">
+                  <DropdownMenuItem onClick={() => setPendingExport("job_excel")} data-testid="export-btn" className="cursor-pointer">
                     <FileSpreadsheet className="w-4 h-4 mr-2 text-zinc-600" />
                     OCALC/JOB Export
                   </DropdownMenuItem>
@@ -700,7 +698,7 @@ const JobDetail = () => {
                     <FileText className="w-4 h-4 mr-2 text-blue-600" />
                     ASE Form
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleWordExport} data-testid="sow-word-export-btn" className="cursor-pointer">
+                  <DropdownMenuItem onClick={() => setPendingExport("sow_docx")} data-testid="sow-word-export-btn" className="cursor-pointer">
                     <FileDown className="w-4 h-4 mr-2 text-blue-600" />
                     SOW Notes (Word)
                   </DropdownMenuItem>
@@ -725,7 +723,7 @@ const JobDetail = () => {
 
               {/* 4. Photos Button */}
               <Button
-                onClick={handleDownloadPhotos}
+                onClick={() => setPendingExport("photos_zip")}
                 variant="outline"
                 className="flex-1 sm:flex-initial h-11 sm:h-10 bg-green-50 border-green-300 hover:bg-green-100 text-green-800 text-sm"
                 data-testid="download-photos-btn"
@@ -818,7 +816,7 @@ const JobDetail = () => {
               {psBusy ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
               Save
             </Button>
-            <Button onClick={handlePermissionStampExport} disabled={psBusy} className="bg-green-600 hover:bg-green-700 text-white" data-testid="ps-download-btn">
+            <Button onClick={() => setPendingExport("permission_stamp")} disabled={psBusy} className="bg-green-600 hover:bg-green-700 text-white" data-testid="ps-download-btn">
               {psBusy ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <FileDown className="w-4 h-4 mr-2" />}
               Download Word
             </Button>
@@ -895,6 +893,15 @@ const JobDetail = () => {
       </Dialog>
 
       <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6">
+        <CloudExportsSection jobId={jobId} />
+        <ExportDestinationDialog
+          open={!!pendingExport}
+          onOpenChange={(v) => { if (!v) setPendingExport(null); }}
+          label={CLOUD_EXPORT_LABELS[pendingExport] || ""}
+          busy={exportBusy}
+          onDevice={() => runPendingExport("device")}
+          onCloud={() => runPendingExport("cloud")}
+        />
         {/* Photo Markup Section - Collapsible */}
         <div className="mb-6">
           <button

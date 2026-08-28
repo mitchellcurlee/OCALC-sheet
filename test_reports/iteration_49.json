@@ -1,0 +1,42 @@
+{
+  "summary": "Full e2e test of the new Cloud Exports feature (export destination prompt + App Cloud storage). Backend: 10/10 pytest cases pass (auth guard, list, upload/overwrite/download/delete, empty-file 400, 404 paths, server-side photos-zip cloud save, device photos-zip regression, job Excel regression). Frontend: destination dialog appears for ALL 7 export types; device downloads verified (job Excel 7.8KB, SOW docx 37KB, Permission Stamp docx, ASE xlsx 151KB, map PNG 2.8MB, 800ft pages ZIP 3.0MB, photos gallery new tab); cloud saves verified for job_excel, sow_docx, permission_stamp, photos_zip (1.2MB valid ZIP), ase_excel, map_image, map_pages_zip; Cloud Exports section row Download and Delete both work; overwrite keeps a single row per type. All test cloud records deleted at the end (list now empty); no pole photo edits persisted (pole photos back to 0).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/maps/static", "issue": "Intermittent 502 'Map image fetch failed' — upstream ArcGIS returns ConnectionResetError (seen once in ~5 calls, backend log 21:15:24). No retry/backoff, so the 800ft Pages ZIP export (both device and cloud) fails outright when it hits. Recommend 1-2 retries + friendlier error propagation."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "JobDetail Permission Stamp dialog", "issue": "After choosing a destination from ps-download-btn (device download OR cloud save), the Permission Stamp dialog stays open and its Radix overlay keeps intercepting pointer events, so nothing else on the page (Cloud Exports rows, Photos button) is clickable until the user closes it manually. Playwright clicks were blocked by DialogOverlay.", "selector": "[data-testid=\"ps-download-btn\"] / DialogOverlay", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [
+      {"flow": "Map page → 800ft Pages (ZIP)", "issue": "First device attempt failed (no download after 180s) because /api/maps/static returned 502; retry succeeded. Failure surfaces only as a console AxiosError — no clear on-screen error toast was observed during the failing attempt, so the user sees an indefinite hang.", "affected_selectors": ["[data-testid=\"download-segmented\"]", "[data-testid=\"export-device-btn\"]"]},
+      {"flow": "Long-running cloud saves (photos ZIP, map pages ZIP)", "issue": "No progress/busy indicator on the destination dialog; the map-pages cloud save took >40s with no visible feedback other than a brief toast. Consider a spinner/disabled state on export-cloud-btn while running."}
+    ],
+    "design_issues": [
+      {"screen": "ASE Form exports", "issues": ["Filenames use raw job UUID instead of job name (SOW_Notes_e5dc0bae-...docx, ASE_e5dc0bae-...xlsx) while Job Detail uses job name (SOW_Notes_A050ABC.docx). Inconsistent naming shows up in the Cloud Exports list."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_cloud_exports_iter49.py", "/app/test_reports/pytest/iter49_cloud_exports.xml"],
+  "action_items": [
+    "Close the Permission Stamp dialog (setPsOpen(false)) after a destination export completes so the overlay stops blocking the page",
+    "Add retry (1-2 attempts) around the ArcGIS fetch in /api/maps/static and surface a visible error toast when the 800ft/map export fails",
+    "Use job name (not UUID) in ASE page export filenames for consistency with Job Detail",
+    "Optional: show a busy/spinner state on export-cloud-btn during long cloud saves"
+  ],
+  "critical_code_review_comments": [
+    "cloud_exports.py: object storage path is keyed only by job_id/export_type with no cleanup on DELETE — the stored object remains in Emergent object storage after the record is deleted (orphaned bytes). Consider deleting/overwriting the object too.",
+    "cloud_exports.py upload endpoint reads the whole file into memory (await file.read()) — large photo ZIPs / map PNGs (2.8MB seen, could be much larger) will bloat memory; stream to a temp file like the photos-zip path does.",
+    "download_cloud_export ignores get_object failures — if the DB record exists but the object is gone, the client gets a 500 instead of 404/410.",
+    "export_type is accepted as a free-form Form string (no whitelist), so arbitrary types can be written into the storage path; validate against the known set of 7 types."
+  ],
+  "updated_files": ["/app/backend/tests/test_cloud_exports_iter49.py"],
+  "success_rate": {"backend": "100%", "frontend": "93%"},
+  "seed_data_creation": "Temporary cloud export records on job e5dc0bae-96bb-4cef-8001-7baf4e41d80a — ALL deleted at end of run (list verified empty). Pole photos untouched (job already had photos via other items).",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "mitchell.curlee@byers.com / Dawson@2016 (from /app/memory/test_credentials.md)",
+  "context_for_next_testing_agent": "Backend regression suite for cloud exports: /app/backend/tests/test_cloud_exports_iter49.py (10 tests, all green, self-cleaning). Login returns access_token (not token). Job Excel endpoint is /api/jobs/{id}/export/excel. Note: PS dialog overlay blocks clicks after export — press Escape in Playwright before continuing. /api/maps/static is flaky (upstream 502) so 800ft ZIP tests may need a retry.",
+  "rca_of_the_issue": "800ft pages ZIP failure RCA: JobMap builds pages client-side by fetching /api/maps/static per page; routes/files.py:84 does a single requests.get to server.arcgisonline.com with no retry, and ArcGIS intermittently resets the connection -> 502 -> the whole export promise rejects. Permission Stamp overlay RCA: runPendingExport clears pendingExport but never sets psOpen=false, so the Permission Stamp Dialog (and its fixed inset-0 overlay) remains mounted after the export finishes."
+}

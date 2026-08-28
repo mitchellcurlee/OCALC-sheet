@@ -80,10 +80,15 @@ async def maps_static(bbox: str, size: str = "1400,1050", source: str = "esri"):
     else:
         base = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export"
     url = f"{base}?bbox={bbox}&bboxSR=3857&imageSR=3857&size={size}&format=png&transparent=false&f=image"
-    try:
-        resp = await asyncio.to_thread(lambda: requests.get(url, timeout=30))
-        resp.raise_for_status()
-    except Exception as e:
-        logger.error(f"Static map fetch failed: {e}")
-        raise HTTPException(status_code=502, detail="Map image fetch failed")
-    return Response(content=resp.content, media_type="image/png", headers={"Cache-Control": "public, max-age=3600"})
+    last_err = None
+    for attempt in range(3):
+        try:
+            resp = await asyncio.to_thread(lambda: requests.get(url, timeout=30))
+            resp.raise_for_status()
+            return Response(content=resp.content, media_type="image/png", headers={"Cache-Control": "public, max-age=3600"})
+        except Exception as e:
+            last_err = e
+            if attempt < 2:
+                await asyncio.sleep(0.8 * (attempt + 1))
+    logger.error(f"Static map fetch failed after retries: {last_err}")
+    raise HTTPException(status_code=502, detail="Map image fetch failed")

@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ChevronDown, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera, Hash, Link2, Move, Palette, Plus, Map as MapIcon, GripVertical, Upload, Trash2 } from "lucide-react";
 import SpanReorderList from "@/components/SpanReorderList";
 import { computeRoute, fmtFeet, feetToStation, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, ugWithGps, undergroundAbbr, computeUgConnectors, computeConnectionPairs, UNDERGROUND_TYPES, isAerialAttr, resolvePairAerial } from "@/lib/poleMapImage";
+import { ExportDestinationDialog } from "@/components/ExportDestinationDialog";
+import { CLOUD_EXPORT_LABELS, uploadExportToCloud } from "@/lib/cloudExports";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -1855,6 +1857,33 @@ const JobMap = () => {
     }
   }, [poles, job, underground, connections, customRoutes, basemap]);
 
+  // Export destination prompt (device vs app cloud) for map exports
+  const [pendingMapExport, setPendingMapExport] = useState(null);
+  const [mapExportBusy, setMapExportBusy] = useState(false);
+  const runMapExport = async (dest) => {
+    const type = pendingMapExport;
+    setMapExportBusy(true);
+    try {
+      if (dest === "device") {
+        if (type === "map_image") await downloadImage(); else await downloadSegmented();
+      } else {
+        const opts = { poles, job, showStops: false, underground, connections, routes: customRoutes, basemap, returnBlob: true };
+        const blob = type === "map_image"
+          ? await downloadPoleMapImage(opts)
+          : await downloadSegmentedMapPages({ ...opts, targetFeet: 800 });
+        if (!blob || typeof blob === "boolean") throw new Error("no blob");
+        const filename = `${(job?.name || "job").replace(/[^a-z0-9-_]+/gi, "_")}${type === "map_image" ? "_pole_map.png" : "_map_pages.zip"}`;
+        await uploadExportToCloud(jobId, type, filename, blob);
+        toast.success("Saved to app cloud — see Cloud Exports on the job page");
+      }
+      setPendingMapExport(null);
+    } catch (e) {
+      toast.error(dest === "cloud" ? "Cloud save failed" : "Export failed");
+    } finally {
+      setMapExportBusy(false);
+    }
+  };
+
   // Screenshot the visible map frame using dom-to-image-more - captures entire app frame
   const captureMapScreenshot = useCallback(async () => {
     setScreenshotting(true);
@@ -1972,7 +2001,7 @@ const JobMap = () => {
               Screenshot
             </Button>
             <Button 
-              onClick={downloadImage}
+              onClick={() => setPendingMapExport("map_image")}
               disabled={downloading || allPoints.length === 0} 
               className="bg-red-600 hover:bg-red-700 text-white" 
               data-testid="download-map-btn"
@@ -2146,7 +2175,7 @@ const JobMap = () => {
                     </DropdownMenuItem>
                     
                     <DropdownMenuItem
-                      onClick={downloadSegmented}
+                      onClick={() => setPendingMapExport("map_pages_zip")}
                       className="cursor-pointer border-t border-zinc-200"
                       data-testid="download-segmented"
                     >
@@ -2994,6 +3023,15 @@ const JobMap = () => {
           </div>
         )}
       </main>
+
+      <ExportDestinationDialog
+        open={!!pendingMapExport}
+        onOpenChange={(v) => { if (!v) setPendingMapExport(null); }}
+        label={CLOUD_EXPORT_LABELS[pendingMapExport] || ""}
+        busy={mapExportBusy}
+        onDevice={() => runMapExport("device")}
+        onCloud={() => runMapExport("cloud")}
+      />
 
       <AlertDialog open={!!confirmDeleteConn} onOpenChange={(o) => { if (!o) setConfirmDeleteConn(null); }}>
         <AlertDialogContent className="bg-zinc-50 border-zinc-200">

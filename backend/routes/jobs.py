@@ -1011,6 +1011,37 @@ async def _stream_zip(entries, concurrency=8, prefetch=12):
     yield cd + eocd
 
 
+def build_job_photo_entries(job, poles, underground_items):
+    """Collect (zip_path, photo_url) entries + zip filename for a job's photo ZIP."""
+    def safe_name(s, default="unknown"):
+        return "".join(c for c in str(s) if c.isalnum() or c in (' ', '-', '_')).strip().replace(' ', '_') or default
+
+    job_name = safe_name(job.get("name", "Job"))
+    entries = []
+    for idx, pole in enumerate(poles, 1):
+        pole_number = pole.get("pole_number") or f"Pole_{idx}"
+        station_number = pole.get("station_number") or ""
+        if station_number:
+            folder_name = f"Pole_{safe_name(pole_number)}_{safe_name(station_number)}"
+        else:
+            folder_name = f"Pole_{safe_name(pole_number)}"
+        for label, photo_url in pole_photo_items(pole):
+            safe_label = safe_name(label, "Photo")
+            entries.append((f"{job_name}/Poles/{folder_name}/Pole_{safe_name(pole_number)}_{safe_label}.jpeg", photo_url))
+    for idx, ug in enumerate(underground_items, 1):
+        ug_type = ug.get("type") or "Underground"
+        ug_label = ug.get("label") or ""
+        if ug_label:
+            folder_name = f"{safe_name(ug_type)}_{safe_name(ug_label)}"
+        else:
+            folder_name = f"{safe_name(ug_type)}_{idx}"
+        for label, photo_url in underground_photo_items(ug):
+            safe_label = safe_name(label, "Photo")
+            fname = safe_label if safe_label.startswith(folder_name) else f"{folder_name}_{safe_label}"
+            entries.append((f"{job_name}/Underground/{folder_name}/{fname}.jpeg", photo_url))
+    return entries, f"{job_name}_Photos.zip"
+
+
 @router.get("/users/transferable")
 async def get_transferable_users(current_user: dict = Depends(get_current_user)):
     """Company users a job can be transferred to."""
@@ -1147,51 +1178,10 @@ async def export_job_photos_zip(job_id: str, token: Optional[str] = Query(None),
     underground_items.sort(key=lambda x: (x.get("sort_order") or 9999, x.get("created_at") or ""))
     
     # Helper to sanitize folder/file names
-    def safe_name(s, default="unknown"):
-        return "".join(c for c in str(s) if c.isalnum() or c in (' ', '-', '_')).strip().replace(' ', '_') or default
-    
-    # Job name for top-level folder
-    job_name = safe_name(job.get("name", "Job"))
-    
-    buffer = io.BytesIO()
-    photo_count = 0
-    
-    # Collect all (zip_path, photo_url) entries first, then fetch in parallel
-    entries = []
-    
-    # Pole photo entries
-    for idx, pole in enumerate(poles, 1):
-        pole_number = pole.get("pole_number") or f"Pole_{idx}"
-        station_number = pole.get("station_number") or ""
-        
-        if station_number:
-            folder_name = f"Pole_{safe_name(pole_number)}_{safe_name(station_number)}"
-        else:
-            folder_name = f"Pole_{safe_name(pole_number)}"
-        
-        for label, photo_url in pole_photo_items(pole):
-            safe_label = safe_name(label, "Photo")
-            entries.append((f"{job_name}/Poles/{folder_name}/Pole_{safe_name(pole_number)}_{safe_label}.jpeg", photo_url))
-    
-    # Underground photo entries
-    for idx, ug in enumerate(underground_items, 1):
-        ug_type = ug.get("type") or "Underground"
-        ug_label = ug.get("label") or ""
-        
-        if ug_label:
-            folder_name = f"{safe_name(ug_type)}_{safe_name(ug_label)}"
-        else:
-            folder_name = f"{safe_name(ug_type)}_{idx}"
-        
-        for label, photo_url in underground_photo_items(ug):
-            safe_label = safe_name(label, "Photo")
-            fname = safe_label if safe_label.startswith(folder_name) else f"{folder_name}_{safe_label}"
-            entries.append((f"{job_name}/Underground/{folder_name}/{fname}.jpeg", photo_url))
-    
+    entries, zip_filename = build_job_photo_entries(job, poles, underground_items)
+
     if not entries:
         raise HTTPException(status_code=404, detail="No photos found for this job. Add photos to poles or underground items first.")
-    
-    zip_filename = f"{job_name}_Photos.zip"
     
     return StreamingResponse(
         _stream_zip(entries),

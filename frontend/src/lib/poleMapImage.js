@@ -418,7 +418,7 @@ export const buildSpanMeasurementTexts = ({ poles, underground = [], connections
 
 // Fetch a single satellite image (via backend proxy) and draw the annotated
 // pole-route exhibit, then trigger a PNG download. Returns true on success.
-export const downloadPoleMapImage = async ({ poles, job, showStops = false, underground = [], connections = [], routes = {}, basemap = "esri" }) => {
+export const downloadPoleMapImage = async ({ poles, job, showStops = false, underground = [], connections = [], routes = {}, basemap = "esri", returnBlob = false }) => {
   const { route, totalRiserFeet } = computeRoute(poles);
   const ug = ugWithGps(underground);
   // Mirror the live Job Map lines: custom connections + End Path breaks
@@ -962,6 +962,9 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
     fctx.textAlign = "right";
     fctx.fillText(fmtFeet(grandFt), mapW + panelW - 14 * s, final.height - 17 * s);
 
+    if (returnBlob) {
+      return await new Promise((res) => final.toBlob(res, "image/png"));
+    }
     const url = final.toDataURL("image/png");
     const a = document.createElement("a");
     a.href = url;
@@ -1448,7 +1451,7 @@ const generateMeasurementListImage = ({ pairSegs, route, totalRiserFeet, job, un
 // Download segmented map pages as a ZIP file with separate measurement list
 export const downloadSegmentedMapPages = async ({ 
   poles, job, showStops = false, underground = [], connections = [], routes = {},
-  targetFeet = 800, basemap = "esri" 
+  targetFeet = 800, basemap = "esri", returnBlob = false 
 }) => {
   const { route, totalRiserFeet } = computeRoute(poles);
   const ug = ugWithGps(underground);
@@ -1530,6 +1533,7 @@ export const downloadSegmentedMapPages = async ({
     
     // Generate and download ZIP
     const zipBlob = await zip.generateAsync({ type: "blob" });
+    if (returnBlob) return zipBlob;
     const url = URL.createObjectURL(zipBlob);
     const a = document.createElement("a");
     a.href = url;
