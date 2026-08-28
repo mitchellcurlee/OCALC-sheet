@@ -97,6 +97,7 @@ const emptyFormData = () => ({
   span4_direction: "", span4_distance: "", span4_owner: "",
   latitude: "", longitude: "-", notes: "", row_information: "",
   hoa_markup_photos: [], // Photos for HOA markup/annotation
+  tree_trimming_needed: false,
   staged_photos: [], // Unsorted photos from the top Photo Gallery
   auto_label_unsorted: false, // Label unsorted photos with the pole name in exports
   pole_line_start: false, pole_line_end: false, start_path: false, end_path: false, standalone: false,
@@ -245,6 +246,7 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
       span4_direction: p.span4_direction || "", span4_distance: p.span4_distance?.toString() || "", span4_owner: p.span4_owner || "",
       latitude: p.latitude?.toString() || "", longitude: p.longitude?.toString() || "-", notes: p.notes || "", row_information: p.row_information || "",
       hoa_markup_photos: p.hoa_markup_photos || [],
+      tree_trimming_needed: p.tree_trimming_needed === true,
       staged_photos: p.staged_photos || [],
       auto_label_unsorted: !!p.auto_label_unsorted,
       pole_line_start: p.pole_line_start === true,
@@ -1029,6 +1031,12 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
                 HOA
               </h2>
               <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 mr-1" title="Tree Trimming Needed">
+                  <Switch checked={formData.tree_trimming_needed} onCheckedChange={(v) => setFormData((p) => ({ ...p, tree_trimming_needed: v }))} data-testid="tree-trimming-toggle" />
+                  <Label className="text-[10px] sm:text-xs font-mono tracking-wide text-green-700 uppercase leading-tight">
+                    Tree Trimming: {formData.tree_trimming_needed ? "Yes" : "No"}
+                  </Label>
+                </div>
                 <ReferenceHeightMeasurer 
                   suggestedPhotos={[
                     formData.ocalc_left_photo && { label: "OCALC Left", url: formData.ocalc_left_photo },

@@ -69,6 +69,7 @@ class PoleBase(BaseModel):
     end_path: Optional[bool] = False
     standalone: Optional[bool] = False
     hoa_markup_photos: Optional[List[str]] = []  # Photos with HOA annotations/markup
+    tree_trimming_needed: Optional[bool] = False
     pole_markup_photos: Optional[List[str]] = []  # General pole photos with markup capability
     staged_photos: Optional[List[str]] = []  # Unsorted photos from the form's top gallery
     auto_label_unsorted: Optional[bool] = False  # Label unsorted photos with the item name in exports
@@ -131,6 +132,7 @@ class PoleUpdate(BaseModel):
     end_path: Optional[bool] = None
     standalone: Optional[bool] = None
     hoa_markup_photos: Optional[List[str]] = None
+    tree_trimming_needed: Optional[bool] = None
     pole_markup_photos: Optional[List[str]] = None
     use_manual_spans: Optional[bool] = None
     span1_direction: Optional[str] = None

@@ -534,10 +534,13 @@ const ViewPole = () => {
           )}
 
           {/* HOA */}
-          {(hasAttachmentData || pole.pole_terminal || pole.risers) && (
+          {(hasAttachmentData || pole.pole_terminal || pole.risers || pole.tree_trimming_needed) && (
             <div className="industrial-card p-5">
               <h2 className="font-heading text-lg font-bold text-zinc-900 mb-4 flex items-center gap-2">
                 <div className="w-1 h-5 bg-green-500"></div>HOA
+                {pole.tree_trimming_needed === true && (
+                  <span className="text-xs font-mono px-2 py-0.5 rounded bg-green-100 text-green-700 border border-green-300" data-testid="view-tree-trimming">TREE TRIMMING NEEDED</span>
+                )}
               </h2>
               <div className="space-y-3">
                 {pole.attachments && pole.attachments.map((att, index) => {

@@ -491,6 +491,7 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
                 ws.cell(row=current_row, column=6, value=att.get("notes", ""))
                 current_row += 1
         label_value_row([
+            ("Tree Trimming Needed", "Yes" if pole.get("tree_trimming_needed") is True else "No"),
             ("Pole Terminal", pole.get("pole_terminal", "")),
             ("Existing Risers", pole.get("existing_risers", "")),
             ("New Risers", pole.get("risers", "")),

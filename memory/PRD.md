@@ -234,3 +234,6 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 - Cloud Exports section on Job Detail (CloudExportsSection.jsx) lists saved files with Download/Delete; refreshes via 'cloud-exports-updated' window event.
 - Fixes from testing (iteration_49, backend 10/10): maps/static ArcGIS retry x3, PS dialog closes after export, ASE filenames use job name, export_type whitelist, 404 when storage object missing.
 - Tested by testing agent (both destinations, all 7 types) + post-fix curl checks. Deployment requested.
+
+## 2026-06: Tree Trimming Needed toggle (HOA box)
+- New toggle left of the Measure Heights button in the HOA box (ON=Yes/OFF=No), field tree_trimming_needed on pole model. Shows in Excel export ("Tree Trimming Needed" Yes/No row above Pole Terminal in the HOA section) and as a badge on ViewPole HOA card. Verified: toggle UI, persistence via API, Excel export values. NOT yet deployed.
