@@ -1031,12 +1031,6 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
                 HOA
               </h2>
               <div className="flex items-center gap-2">
-                <div className="flex items-center gap-2 mr-1" title="Tree Trimming Needed">
-                  <Switch checked={formData.tree_trimming_needed} onCheckedChange={(v) => setFormData((p) => ({ ...p, tree_trimming_needed: v }))} data-testid="tree-trimming-toggle" />
-                  <Label className="text-[10px] sm:text-xs font-mono tracking-wide text-green-700 uppercase leading-tight">
-                    Tree Trimming: {formData.tree_trimming_needed ? "Yes" : "No"}
-                  </Label>
-                </div>
                 <ReferenceHeightMeasurer 
                   suggestedPhotos={[
                     formData.ocalc_left_photo && { label: "OCALC Left", url: formData.ocalc_left_photo },
@@ -1133,16 +1127,24 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2 sm:col-span-2">
                     <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Pole Terminal</Label>
-                    <Select value={formData.pole_terminal} onValueChange={(v) => handleSelectChange("pole_terminal", v)}>
-                      <SelectTrigger className="h-10 bg-white border-zinc-300 text-zinc-900" data-testid="pole-terminal-select">
-                        <SelectValue placeholder="Yes / No" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-zinc-50 border-zinc-300">
-                        <SelectItem value={BLANK} className="text-zinc-500">—</SelectItem>
-                        <SelectItem value="Yes">Yes</SelectItem>
-                        <SelectItem value="No">No</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2 flex-shrink-0" title="Tree Trimming Needed">
+                        <Switch checked={formData.tree_trimming_needed} onCheckedChange={(v) => setFormData((p) => ({ ...p, tree_trimming_needed: v }))} data-testid="tree-trimming-toggle" />
+                        <Label className="text-[10px] sm:text-xs font-mono tracking-wide text-green-700 uppercase leading-tight whitespace-nowrap">
+                          Tree Trimming: {formData.tree_trimming_needed ? "Yes" : "No"}
+                        </Label>
+                      </div>
+                      <Select value={formData.pole_terminal} onValueChange={(v) => handleSelectChange("pole_terminal", v)}>
+                        <SelectTrigger className="h-10 bg-white border-zinc-300 text-zinc-900" data-testid="pole-terminal-select">
+                          <SelectValue placeholder="Yes / No" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-zinc-50 border-zinc-300">
+                          <SelectItem value={BLANK} className="text-zinc-500">—</SelectItem>
+                          <SelectItem value="Yes">Yes</SelectItem>
+                          <SelectItem value="No">No</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Existing Risers</Label>

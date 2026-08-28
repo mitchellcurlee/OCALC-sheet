@@ -236,4 +236,4 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 - Tested by testing agent (both destinations, all 7 types) + post-fix curl checks. Deployment requested.
 
 ## 2026-06: Tree Trimming Needed toggle (HOA box)
-- New toggle left of the Measure Heights button in the HOA box (ON=Yes/OFF=No), field tree_trimming_needed on pole model. Shows in Excel export ("Tree Trimming Needed" Yes/No row above Pole Terminal in the HOA section) and as a badge on ViewPole HOA card. Verified: toggle UI, persistence via API, Excel export values. NOT yet deployed.
+- Tree Trimming toggle sits left of the Pole Terminal dropdown in the HOA box (moved from HOA header per user) (ON=Yes/OFF=No), field tree_trimming_needed on pole model. Shows in Excel export ("Tree Trimming Needed" Yes/No row above Pole Terminal in the HOA section) and as a badge on ViewPole HOA card. Verified: toggle UI, persistence via API, Excel export values. NOT yet deployed.
