@@ -1130,6 +1130,25 @@ const generateSegmentPage = async ({
     ctx.fill();
   });
 
+  // Collision avoidance so labels/badges never overlap (clean PDF pages)
+  const placedRects = [];
+  const rectsOverlap = (a, b) => !(a.x + a.w < b.x || b.x + b.w < a.x || a.y + a.h < b.y || b.y + b.h < a.y);
+  const claimRect = (x, y, w, h) => {
+    let ny = y;
+    let tries = 0;
+    while (placedRects.some((r) => rectsOverlap({ x, y: ny, w, h }, r)) && tries < 24) {
+      tries++;
+      ny = y + (tries % 2 === 1 ? 1 : -1) * Math.ceil(tries / 2) * 12 * s;
+    }
+    placedRects.push({ x, y: ny, w, h });
+    return ny;
+  };
+  // Reserve space around every marker so labels never cover them
+  pageItems.forEach((it) => {
+    const [ix, iy2] = pt(it.pos);
+    placedRects.push({ x: ix - 16 * s, y: iy2 - 13 * s, w: 32 * s, h: 26 * s });
+  });
+
   // Draw distance labels on pairs (blue aerial / green UG)
   pagePairs.forEach((seg, i) => {
     if (seg.manual) return;
@@ -1139,17 +1158,10 @@ const generateSegmentPage = async ({
     const side = i % 2 === 0 ? 1 : -1;
     const off = 28 * s * side;
     const lx = mx + Math.cos(perp) * off;
-    const ly = my + Math.sin(perp) * off;
+    let ly = my + Math.sin(perp) * off;
     const main = seg.aerial ? "#2563eb" : "#16a34a";
     const dark = seg.aerial ? "#1e40af" : "#166534";
-    // leader line
-    ctx.strokeStyle = seg.aerial ? "rgba(37,99,235,0.6)" : "rgba(22,163,74,0.6)";
-    ctx.lineWidth = 1.5 * s;
-    ctx.beginPath();
-    ctx.moveTo(mx, my);
-    ctx.lineTo(lx, ly);
-    ctx.stroke();
-    // pill background
+    // pill background (position adjusted to avoid overlaps)
     const text = fmtFeet(seg.ft);
     ctx.font = `bold ${12 * s}px ui-monospace, monospace`;
     const tw = ctx.measureText(text).width;
@@ -1157,7 +1169,16 @@ const generateSegmentPage = async ({
     const ph = 22 * s;
     const pw = tw + padX2 * 2;
     const px = lx - pw / 2;
-    const py = ly - ph / 2;
+    let py = ly - ph / 2;
+    py = claimRect(px, py, pw, ph);
+    ly = py + ph / 2;
+    // leader line
+    ctx.strokeStyle = seg.aerial ? "rgba(37,99,235,0.6)" : "rgba(22,163,74,0.6)";
+    ctx.lineWidth = 1.5 * s;
+    ctx.beginPath();
+    ctx.moveTo(mx, my);
+    ctx.lineTo(lx, ly);
+    ctx.stroke();
     ctx.fillStyle = "#ffffff";
     ctx.strokeStyle = main;
     ctx.lineWidth = 2 * s;
@@ -1216,12 +1237,20 @@ const generateSegmentPage = async ({
     let labelX, labelY;
     
     if (p.isCluster) {
-      // Clustered: draw arrow
       const arrowDist = 45 * s;
       const rad = (p.labelAngle * Math.PI) / 180;
       labelX = x + Math.cos(rad) * arrowDist;
       labelY = y + Math.sin(rad) * arrowDist;
-      
+    } else {
+      const offset = 16 * s;
+      labelX = i % 2 === 0 ? x + offset + labelW / 2 : x - offset - labelW / 2;
+      labelY = y;
+    }
+    // Nudge label to a free spot so it never covers another icon
+    labelY = claimRect(labelX - labelW / 2, labelY - labelH / 2, labelW, labelH) + labelH / 2;
+    
+    if (p.isCluster) {
+      // Clustered: draw arrow from pole to label
       ctx.strokeStyle = poleColor;
       ctx.lineWidth = 1.5 * s;
       ctx.beginPath();
@@ -1238,10 +1267,6 @@ const generateSegmentPage = async ({
       ctx.lineTo(x - Math.cos(headAngle) * dotR - headLen * Math.cos(headAngle + 0.4), y - Math.sin(headAngle) * dotR - headLen * Math.sin(headAngle + 0.4));
       ctx.closePath();
       ctx.fill();
-    } else {
-      const offset = 16 * s;
-      labelX = i % 2 === 0 ? x + offset + labelW / 2 : x - offset - labelW / 2;
-      labelY = y;
     }
     
     ctx.fillStyle = poleColor;
@@ -1356,7 +1381,7 @@ const generateSegmentPage = async ({
       const lh2 = shown.length * 12 * s + 10 * s;
       const side = ni % 2 === 0 ? 1 : -1;
       const bx = x + side * 40 * s - (side < 0 ? lw2 : 0);
-      const by = y + 24 * s;
+      const by = claimRect(x + side * 40 * s - (side < 0 ? lw2 : 0), y + 24 * s, lw2, lh2);
       ctx.strokeStyle = "#ca8a04";
       ctx.lineWidth = 1.5 * s;
       ctx.beginPath();
@@ -1671,15 +1696,21 @@ export const downloadMapPdfPages = async ({
 
     const xsAll = covPts.map((p) => mercX(p[1]));
     const ysAll = covPts.map((p) => mercY(p[0]));
-    const gx0 = Math.min(...xsAll), gy1 = Math.max(...ysAll);
     const centerLat = covPts.reduce((a, p) => a + p[0], 0) / covPts.length;
     const tileM = (tileFeet / FEET_PER_METER) / Math.cos((centerLat * Math.PI) / 180);
+    // Center the page grid on the content so paths sit mid-page
+    const bx0 = Math.min(...xsAll), bx1 = Math.max(...xsAll);
+    const by0 = Math.min(...ysAll), by1 = Math.max(...ysAll);
+    const nCols = Math.max(1, Math.ceil((bx1 - bx0) / tileM) || 1);
+    const nRows = Math.max(1, Math.ceil((by1 - by0) / tileM) || 1);
+    const gx0 = (bx0 + bx1) / 2 - (nCols * tileM) / 2;
+    const gy1 = (by0 + by1) / 2 + (nRows * tileM) / 2;
 
     // Which grid tiles are occupied
     const tileKeys = new Set();
     covPts.forEach((p, i) => {
-      const col = Math.floor((xsAll[i] - gx0) / tileM);
-      const row = Math.floor((gy1 - ysAll[i]) / tileM);
+      const col = Math.min(nCols - 1, Math.max(0, Math.floor((xsAll[i] - gx0) / tileM)));
+      const row = Math.min(nRows - 1, Math.max(0, Math.floor((gy1 - ysAll[i]) / tileM)));
       tileKeys.add(`${row},${col}`);
     });
     const tiles = [...tileKeys].map((k) => {

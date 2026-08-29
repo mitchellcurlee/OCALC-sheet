@@ -259,3 +259,7 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 
 ## 2026-06: PDF cover page
 - PDF map export now starts with a cover page: FIELDING MAP header (site id), job info block (Site ID, Wire Center, Job Type, Employee, Location, Description, totals, footage split over 2 lines), legend (pole/aerial/underground/field note/TO PAGE/UG type abbreviations present) and a page index listing cover, each grid page (row/col + item count) and the span measurements page. Map pages renumbered from 2; verified by extracting cover image from generated PDF. Deployment requested with full batch.
+
+## 2026-06: PDF centering + collision avoidance
+- PDF grid origin now centered on content (nCols/nRows computed from content bbox, origin = center - half grid; col/row clamped) so the path sits mid-page.
+- generateSegmentPage gained claimRect collision avoidance: marker areas reserved; span footage pills, pole label badges (incl. cluster arrows redrawn to final spot) and note callouts nudge vertically until free — no overlapping icons. Verified via extracted PDF page (centered path, stacked non-overlapping 358/344/438 ft badges, clean callouts). NOT yet deployed.
