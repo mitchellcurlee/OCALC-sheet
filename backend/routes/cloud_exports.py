@@ -55,7 +55,7 @@ async def list_cloud_exports(job_id: str, current_user: dict = Depends(get_curre
     return docs
 
 
-ALLOWED_EXPORT_TYPES = {"job_excel", "ase_excel", "sow_docx", "permission_stamp", "photos_zip", "map_image", "map_pages_zip"}
+ALLOWED_EXPORT_TYPES = {"job_excel", "ase_excel", "sow_docx", "permission_stamp", "photos_zip", "map_image", "map_pages_zip", "map_pdf"}
 
 
 @router.post("/jobs/{job_id}/cloud-exports/upload")

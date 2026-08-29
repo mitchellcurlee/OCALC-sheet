@@ -1000,28 +1000,33 @@ const splitPairsIntoPages = (pairSegs, targetFeet = 800) => {
 // Generate a single page image for a set of route pairs
 const generateSegmentPage = async ({ 
   pageNum, totalPages, pagePairs, pageItems, pageFootage,
-  startLabel, endLabel, job, basemap = "esri"
+  startLabel, endLabel, job, basemap = "esri",
+  boundsOverride = null, edgeLabels = null, mapSize = null, showNotes = false
 }) => {
   const R = 6378137;
   const mercX = (lng) => ((lng * Math.PI) / 180) * R;
   const mercY = (lat) => Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360)) * R;
 
-  const mapW = 1400;
-  const mapH = 1050;
+  const mapW = mapSize?.w || 1400;
+  const mapH = mapSize?.h || 1050;
   const headerH = 60;
   const s = 2;
 
   // Calculate bounds for this page's items (with padding)
   const allPts = pageItems.map((it) => it.pos);
   
-  if (allPts.length === 0) return null;
+  if (allPts.length === 0 && !boundsOverride) return null;
 
+  let xmin, xmax, ymin, ymax;
+  if (boundsOverride) {
+    ({ xmin, xmax, ymin, ymax } = boundsOverride);
+  } else {
   const xs = allPts.map((p) => mercX(p[1]));
   const ys = allPts.map((p) => mercY(p[0]));
-  let xmin = Math.min(...xs);
-  let xmax = Math.max(...xs);
-  let ymin = Math.min(...ys);
-  let ymax = Math.max(...ys);
+  xmin = Math.min(...xs);
+  xmax = Math.max(...xs);
+  ymin = Math.min(...ys);
+  ymax = Math.max(...ys);
   const padX = Math.max((xmax - xmin) * 0.25, 180);
   const padY = Math.max((ymax - ymin) * 0.25, 180);
   xmin -= padX; xmax += padX; ymin -= padY; ymax += padY;
@@ -1036,6 +1041,7 @@ const generateSegmentPage = async ({
     const cx = (xmin + xmax) / 2;
     xmin = cx - nw / 2;
     xmax = cx + nw / 2;
+  }
   }
 
   // Fetch satellite image for this segment's bounds
@@ -1333,6 +1339,67 @@ const generateSegmentPage = async ({
   ctx.textAlign = "right";
   ctx.fillText(`${pageNum}/${totalPages}`, mapW - 20 * s, footerY + footerH / 2);
 
+  // Note callouts (yellow boxes) for items with notes
+  if (showNotes) {
+    pageItems.filter((it) => (it.note || "").trim()).forEach((it, ni) => {
+      const [x, y] = pt(it.pos);
+      ctx.font = `${9 * s}px ui-sans-serif, system-ui, sans-serif`;
+      const words = String(it.note).trim().split(/\s+/);
+      const lines = [];
+      let cur = "";
+      words.forEach((w) => {
+        if ((cur + " " + w).trim().length > 30) { lines.push(cur.trim()); cur = w; } else { cur += " " + w; }
+      });
+      if (cur.trim()) lines.push(cur.trim());
+      const shown = lines.slice(0, 4);
+      const lw2 = Math.max(...shown.map((l) => ctx.measureText(l).width)) + 12 * s;
+      const lh2 = shown.length * 12 * s + 10 * s;
+      const side = ni % 2 === 0 ? 1 : -1;
+      const bx = x + side * 40 * s - (side < 0 ? lw2 : 0);
+      const by = y + 24 * s;
+      ctx.strokeStyle = "#ca8a04";
+      ctx.lineWidth = 1.5 * s;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(side > 0 ? bx : bx + lw2, by + lh2 / 2);
+      ctx.stroke();
+      ctx.fillStyle = "rgba(254,249,195,0.95)";
+      ctx.strokeStyle = "#ca8a04";
+      ctx.beginPath();
+      ctx.roundRect(bx, by, lw2, lh2, 3 * s);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "#713f12";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "top";
+      shown.forEach((l, li) => ctx.fillText(l, bx + 6 * s, by + 5 * s + li * 12 * s));
+    });
+  }
+
+  // Joining-page indicators at the edges (like "TO PRINT X" on fielding maps)
+  if (edgeLabels) {
+    ctx.font = `bold ${11 * s}px ui-monospace, monospace`;
+    const band = (text, cx, cy) => {
+      const tw2 = ctx.measureText(text).width;
+      const bw = tw2 + 18 * s, bh = 22 * s;
+      ctx.fillStyle = "#ea580c";
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 2 * s;
+      ctx.beginPath();
+      ctx.roundRect(cx - bw / 2, cy - bh / 2, bw, bh, 4 * s);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "#ffffff";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(text, cx, cy);
+    };
+    if (edgeLabels.top) band(`▲ ${edgeLabels.top}`, mapW / 2, headerH + 16 * s);
+    if (edgeLabels.bottom) band(`▼ ${edgeLabels.bottom}`, mapW / 2, headerH + mapH - footerH - 16 * s);
+    if (edgeLabels.left) band(`◀ ${edgeLabels.left}`, 70 * s, headerH + mapH / 2);
+    if (edgeLabels.right) band(`${edgeLabels.right} ▶`, mapW - 70 * s, headerH + mapH / 2);
+  }
+
   return canvas.toDataURL("image/png");
 };
 
@@ -1548,6 +1615,242 @@ export const downloadSegmentedMapPages = async ({
   } catch (e) {
     console.error(e);
     toast.error("Could not generate segmented map. Please try again.");
+    return false;
+  }
+};
+
+// PDF export: grid pages with 1000ft limits in every direction + joining-page edge labels
+export const downloadMapPdfPages = async ({
+  poles, job, underground = [], connections = [], routes = {},
+  tileFeet = 1000, basemap = "esri", returnBlob = false
+}) => {
+  const { route, totalRiserFeet } = computeRoute(poles);
+  const ug = ugWithGps(underground);
+  const pairSegs = computeConnectionPairs(route, ug, connections).map((pr) => {
+    const path = segPath(pr, routes);
+    return {
+      from: pr.from, to: pr.to, path,
+      ft: pathFeet(path), deg: bearingDeg(pr.from.pos, pr.to.pos),
+      mid: pathMid(path), aerial: pairIsAerial(pr), manual: pairIsManual(pr),
+    };
+  });
+  if (route.length === 0 && ug.length === 0) {
+    toast.error("No items with GPS coordinates to map");
+    return false;
+  }
+  try {
+    toast.info("Generating 1000ft PDF pages...");
+    const R = 6378137;
+    const mercX = (lng) => ((lng * Math.PI) / 180) * R;
+    const mercY = (lat) => Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360)) * R;
+
+    // Display items carry notes so callouts stay visible on the PDF
+    const noteById = {};
+    (poles || []).forEach((p) => { if (p.notes) noteById[p.id] = p.notes; });
+    (underground || []).forEach((u) => { if (u.notes) noteById[u.id] = u.notes; });
+    const dispItems = [];
+    const seenIds = new Set();
+    const pushItem = (it) => { if (!seenIds.has(it.id)) { seenIds.add(it.id); dispItems.push({ ...it, note: noteById[it.id] || "" }); } };
+    pairSegs.forEach((sg) => { pushItem(sg.from); pushItem(sg.to); });
+    route.forEach((p) => pushItem({ id: p.id, type: "pole", pos: p.pos, label: p.pole_number || "Pole", markerColor: p.marker_color || null }));
+    ug.forEach((u) => pushItem({ id: u.id, type: "underground", pos: u.pos, ugType: u.type, label: u.label || u.type, markerColor: u.marker_color || null }));
+
+    // Collect coverage points: item positions + sampled path points
+    const covPts = dispItems.map((it) => it.pos.slice());
+    pairSegs.forEach((sg) => {
+      const path = sg.path || [sg.from.pos, sg.to.pos];
+      for (let i = 0; i < path.length - 1; i++) {
+        for (let t = 0; t <= 10; t++) {
+          covPts.push([
+            path[i][0] + (path[i + 1][0] - path[i][0]) * (t / 10),
+            path[i][1] + (path[i + 1][1] - path[i][1]) * (t / 10),
+          ]);
+        }
+      }
+    });
+
+    const xsAll = covPts.map((p) => mercX(p[1]));
+    const ysAll = covPts.map((p) => mercY(p[0]));
+    const gx0 = Math.min(...xsAll), gy1 = Math.max(...ysAll);
+    const centerLat = covPts.reduce((a, p) => a + p[0], 0) / covPts.length;
+    const tileM = (tileFeet / FEET_PER_METER) / Math.cos((centerLat * Math.PI) / 180);
+
+    // Which grid tiles are occupied
+    const tileKeys = new Set();
+    covPts.forEach((p, i) => {
+      const col = Math.floor((xsAll[i] - gx0) / tileM);
+      const row = Math.floor((gy1 - ysAll[i]) / tileM);
+      tileKeys.add(`${row},${col}`);
+    });
+    const tiles = [...tileKeys].map((k) => {
+      const [row, col] = k.split(",").map(Number);
+      return { row, col };
+    }).sort((a, b) => a.row - b.row || a.col - b.col);
+    const pageOf = {};
+    tiles.forEach((t, i) => { pageOf[`${t.row},${t.col}`] = i + 2; }); // page 1 = cover
+    const totalPages = tiles.length + 2; // cover + tiles + measurement list
+
+    const { jsPDF } = await import("jspdf");
+    const pdf = new jsPDF({ orientation: "landscape", unit: "pt", format: [842, 700] });
+    let first = true;
+
+    // ---- Cover page: job info, legend, page index ----
+    {
+      const W = 1684, H = 1400, s2 = 2;
+      const cv = document.createElement("canvas");
+      cv.width = W; cv.height = H;
+      const c = cv.getContext("2d");
+      const mono = "ui-monospace, SFMono-Regular, monospace";
+      c.fillStyle = "#ffffff"; c.fillRect(0, 0, W, H);
+      // Header band
+      c.fillStyle = "#1e3a8a"; c.fillRect(0, 0, W, 78 * s2);
+      c.fillStyle = "#ffffff"; c.font = `bold ${30 * s2}px ${mono}`; c.textAlign = "left"; c.textBaseline = "middle";
+      c.fillText(`FIELDING MAP — ${job?.site_id || job?.name || "Job"}`, 30 * s2, 30 * s2);
+      c.font = `${13 * s2}px ${mono}`;
+      c.fillText(`${tileFeet}ft × ${tileFeet}ft grid pages · Generated ${new Date().toLocaleDateString()}`, 30 * s2, 58 * s2);
+      // Totals
+      const aerialFt = pairSegs.filter((sg) => sg.aerial).reduce((a, sg) => a + sg.ft, 0);
+      const ugFt = pairSegs.filter((sg) => !sg.aerial).reduce((a, sg) => a + sg.ft, 0);
+      // Job info block
+      const info = [
+        ["SITE ID", job?.site_id || "—"],
+        ["WIRE CENTER", job?.name || "—"],
+        ["JOB TYPE", job?.job_type || "—"],
+        ["EMPLOYEE", job?.employee_info || "—"],
+        ["LOCATION", job?.location || "—"],
+        ["DESCRIPTION", job?.description || "—"],
+        ["TOTALS", `${route.length} poles · ${ug.length} underground`],
+        ["FOOTAGE", `${fmtFeet(aerialFt)} aerial + ${fmtFeet(ugFt)} underground`],
+        ["", `+ ${fmtFeet(totalRiserFeet || 0)} risers = ${fmtFeet(aerialFt + ugFt + (totalRiserFeet || 0))} total`],
+      ];
+      let iy = 105 * s2;
+      c.textAlign = "left";
+      info.forEach(([k, v]) => {
+        c.fillStyle = "#71717a"; c.font = `bold ${11 * s2}px ${mono}`;
+        c.fillText(k, 30 * s2, iy);
+        c.fillStyle = "#18181b"; c.font = `${13 * s2}px ${mono}`;
+        c.fillText(String(v).slice(0, 60), 150 * s2, iy);
+        iy += 24 * s2;
+      });
+      // Legend block (right)
+      const lx = 500 * s2;
+      let ly = 105 * s2;
+      c.fillStyle = "#18181b"; c.font = `bold ${13 * s2}px ${mono}`;
+      c.fillText("LEGEND", lx, ly); ly += 26 * s2;
+      const legendRow = (draw, label) => {
+        draw(lx, ly);
+        c.fillStyle = "#3f3f46"; c.font = `${12 * s2}px ${mono}`; c.textAlign = "left";
+        c.fillText(label, lx + 50 * s2, ly);
+        ly += 24 * s2;
+      };
+      legendRow((x, y) => { c.fillStyle = "#dc2626"; c.beginPath(); c.arc(x + 20 * s2, y, 7 * s2, 0, Math.PI * 2); c.fill(); }, "Pole");
+      legendRow((x, y) => { c.strokeStyle = "#2563eb"; c.lineWidth = 4 * s2; c.setLineDash([]); c.beginPath(); c.moveTo(x, y); c.lineTo(x + 40 * s2, y); c.stroke(); }, "Aerial path");
+      legendRow((x, y) => { c.strokeStyle = "#16a34a"; c.lineWidth = 4 * s2; c.setLineDash([8 * s2, 5 * s2]); c.beginPath(); c.moveTo(x, y); c.lineTo(x + 40 * s2, y); c.stroke(); c.setLineDash([]); }, "Underground path");
+      legendRow((x, y) => { c.fillStyle = "rgba(254,249,195,0.95)"; c.strokeStyle = "#ca8a04"; c.lineWidth = 1.5 * s2; c.beginPath(); c.roundRect(x, y - 8 * s2, 40 * s2, 16 * s2, 3 * s2); c.fill(); c.stroke(); }, "Field note");
+      legendRow((x, y) => { c.fillStyle = "#ea580c"; c.beginPath(); c.roundRect(x, y - 9 * s2, 44 * s2, 18 * s2, 4 * s2); c.fill(); c.fillStyle = "#fff"; c.font = `bold ${8 * s2}px ${mono}`; c.textAlign = "center"; c.fillText("TO PAGE", x + 22 * s2, y + 1 * s2); c.textAlign = "left"; }, "Joins adjacent page");
+      const presentUg = [...new Set(ug.map((u) => u.type))];
+      presentUg.slice(0, 10).forEach((t2) => {
+        legendRow((x, y) => {
+          c.fillStyle = "#16a34a"; c.beginPath(); c.roundRect(x + 8 * s2, y - 9 * s2, 26 * s2, 18 * s2, 3 * s2); c.fill();
+          c.fillStyle = "#fff"; c.font = `bold ${9 * s2}px ${mono}`; c.textAlign = "center";
+          c.fillText(undergroundAbbr(t2), x + 21 * s2, y + 1 * s2); c.textAlign = "left";
+        }, t2);
+      });
+      // Page index (bottom area)
+      let py = Math.max(iy, ly) + 30 * s2;
+      c.fillStyle = "#18181b"; c.font = `bold ${13 * s2}px ${mono}`;
+      c.fillText("PAGE INDEX", 30 * s2, py); py += 24 * s2;
+      c.font = `${12 * s2}px ${mono}`;
+      const idx = [["1", "Cover — job info, legend, page index"]];
+      tiles.forEach((t, i2) => {
+        const cnt = dispItems.filter((it) => {
+          const mx = mercX(it.pos[1]), my = mercY(it.pos[0]);
+          return mx >= gx0 + t.col * tileM && mx <= gx0 + (t.col + 1) * tileM && my <= gy1 - t.row * tileM && my >= gy1 - (t.row + 1) * tileM;
+        }).length;
+        idx.push([`${i2 + 2}`, `Map grid — row ${t.row + 1}, col ${t.col + 1} (${cnt} items)`]);
+      });
+      idx.push([`${totalPages}`, "Span measurements list"]);
+      idx.forEach(([n, d2]) => {
+        if (py > H - 30 * s2) return;
+        c.fillStyle = "#71717a"; c.fillText(`PAGE ${n}`, 30 * s2, py);
+        c.fillStyle = "#3f3f46"; c.fillText(d2, 130 * s2, py);
+        py += 20 * s2;
+      });
+      // Border
+      c.strokeStyle = "#d4d4d8"; c.lineWidth = 2; c.strokeRect(1, 1, W - 2, H - 2);
+      pdf.addImage(cv.toDataURL("image/png"), "PNG", 20, 20, 802, 660);
+      pdf.setFontSize(9);
+      pdf.text(`${job?.name || job?.site_id || "Job"} — 1000ft Map Pages — Page 1 of ${totalPages}`, 421, 690, { align: "center" });
+      first = false;
+    }
+
+    for (let i = 0; i < tiles.length; i++) {
+      const t = tiles[i];
+      toast.info(`Generating PDF page ${i + 1} of ${tiles.length}...`);
+      const xmin = gx0 + t.col * tileM;
+      const xmax = xmin + tileM;
+      const ymax = gy1 - t.row * tileM;
+      const ymin = ymax - tileM;
+      const inTile = (pos) => {
+        const mx = mercX(pos[1]), my = mercY(pos[0]);
+        return mx >= xmin && mx <= xmax && my >= ymin && my <= ymax;
+      };
+      const pageItems = dispItems.filter((it) => inTile(it.pos));
+      const pagePairs = pairSegs.filter((sg) => {
+        const path = sg.path || [sg.from.pos, sg.to.pos];
+        return path.some((pp) => inTile(pp)) || inTile(sg.from.pos) || inTile(sg.to.pos);
+      });
+      const footage = pagePairs.reduce((a, sg) => a + (sg.ft || 0), 0);
+      const edgeLabels = {
+        top: pageOf[`${t.row - 1},${t.col}`] ? `TO PAGE ${pageOf[`${t.row - 1},${t.col}`]}` : null,
+        bottom: pageOf[`${t.row + 1},${t.col}`] ? `TO PAGE ${pageOf[`${t.row + 1},${t.col}`]}` : null,
+        left: pageOf[`${t.row},${t.col - 1}`] ? `TO PAGE ${pageOf[`${t.row},${t.col - 1}`]}` : null,
+        right: pageOf[`${t.row},${t.col + 1}`] ? `TO PAGE ${pageOf[`${t.row},${t.col + 1}`]}` : null,
+      };
+      const dataUrl = await generateSegmentPage({
+        pageNum: i + 2,
+        totalPages,
+        basemap,
+        pagePairs,
+        pageItems,
+        pageFootage: footage,
+        startLabel: `${tileFeet}ft × ${tileFeet}ft grid`,
+        endLabel: `${pageItems.length} items`,
+        job,
+        boundsOverride: { xmin, xmax, ymin, ymax },
+        mapSize: { w: 1000, h: 1000 },
+        edgeLabels,
+        showNotes: true,
+      });
+      if (!dataUrl) continue;
+      if (!first) pdf.addPage([842, 700], "landscape");
+      first = false;
+      // Fit square image centered on landscape page
+      const iw = 640, ih = 640 * (1060 / 1000);
+      pdf.addImage(dataUrl, "PNG", (842 - iw) / 2, (700 - ih) / 2, iw, ih);
+      pdf.setFontSize(9);
+      pdf.text(`${job?.name || job?.site_id || "Job"} — 1000ft Map Pages — Page ${i + 2} of ${totalPages}`, 421, 690, { align: "center" });
+    }
+
+    // Final page: full span measurement list (all spans visible)
+    const measUrl = generateMeasurementListImage({ pairSegs, route, totalRiserFeet, job, underground });
+    if (measUrl) {
+      if (!first) pdf.addPage([842, 700], "landscape");
+      const mi = new Image();
+      await new Promise((res) => { mi.onload = res; mi.src = measUrl; });
+      const scale = Math.min(802 / mi.width, 660 / mi.height);
+      pdf.addImage(measUrl, "PNG", (842 - mi.width * scale) / 2, 20, mi.width * scale, mi.height * scale);
+      pdf.setFontSize(9);
+      pdf.text(`Span Measurements — Page ${totalPages} of ${totalPages}`, 421, 690, { align: "center" });
+    }
+
+    if (returnBlob) return pdf.output("blob");
+    pdf.save(`${(job?.name || job?.site_id || "job").replace(/[^a-z0-9-_]+/gi, "_")}_map_1000ft.pdf`);
+    toast.success(`Downloaded PDF with ${totalPages} pages`);
+    return true;
+  } catch (e) {
+    console.error(e);
+    toast.error("Could not generate map PDF. Please try again.");
     return false;
   }
 };

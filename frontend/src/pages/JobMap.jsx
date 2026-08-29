@@ -9,7 +9,7 @@ import domtoimage from "dom-to-image-more";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ChevronDown, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera, Hash, Link2, Move, Palette, Plus, Map as MapIcon, GripVertical, Upload, Trash2 } from "lucide-react";
 import SpanReorderList from "@/components/SpanReorderList";
-import { computeRoute, fmtFeet, feetToStation, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, ugWithGps, undergroundAbbr, computeUgConnectors, computeConnectionPairs, UNDERGROUND_TYPES, isAerialAttr, resolvePairAerial } from "@/lib/poleMapImage";
+import { computeRoute, fmtFeet, feetToStation, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, downloadMapPdfPages, ugWithGps, undergroundAbbr, computeUgConnectors, computeConnectionPairs, UNDERGROUND_TYPES, isAerialAttr, resolvePairAerial } from "@/lib/poleMapImage";
 import { ExportDestinationDialog } from "@/components/ExportDestinationDialog";
 import { CLOUD_EXPORT_LABELS, uploadExportToCloud } from "@/lib/cloudExports";
 import {
@@ -1865,14 +1865,18 @@ const JobMap = () => {
     setMapExportBusy(true);
     try {
       if (dest === "device") {
-        if (type === "map_image") await downloadImage(); else await downloadSegmented();
+        if (type === "map_image") await downloadImage();
+        else if (type === "map_pdf") await downloadMapPdfPages({ poles, job, underground, connections, routes: customRoutes, basemap, tileFeet: 1000 });
+        else await downloadSegmented();
       } else {
         const opts = { poles, job, showStops: false, underground, connections, routes: customRoutes, basemap, returnBlob: true };
         const blob = type === "map_image"
           ? await downloadPoleMapImage(opts)
-          : await downloadSegmentedMapPages({ ...opts, targetFeet: 800 });
+          : type === "map_pdf"
+            ? await downloadMapPdfPages({ poles, job, underground, connections, routes: customRoutes, basemap, tileFeet: 1000, returnBlob: true })
+            : await downloadSegmentedMapPages({ ...opts, targetFeet: 800 });
         if (!blob || typeof blob === "boolean") throw new Error("no blob");
-        const filename = `${(job?.name || "job").replace(/[^a-z0-9-_]+/gi, "_")}${type === "map_image" ? "_pole_map.png" : "_map_pages.zip"}`;
+        const filename = `${(job?.name || "job").replace(/[^a-z0-9-_]+/gi, "_")}${type === "map_image" ? "_pole_map.png" : type === "map_pdf" ? "_map_1000ft.pdf" : "_map_pages.zip"}`;
         await uploadExportToCloud(jobId, type, filename, blob);
         toast.success("Saved to app cloud — see Cloud Exports on the job page");
       }
@@ -2181,6 +2185,14 @@ const JobMap = () => {
                     >
                       <Download className="w-4 h-4 mr-2" />
                       Download 800ft Pages (ZIP)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => setPendingMapExport("map_pdf")}
+                      className="cursor-pointer border-t border-zinc-200"
+                      data-testid="download-pdf"
+                    >
+                      <Download className="w-4 h-4 mr-2 text-red-600" />
+                      Download 1000ft Pages (PDF)
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

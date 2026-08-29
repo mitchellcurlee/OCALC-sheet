@@ -252,3 +252,10 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 ## 2026-06: Create Job — Wire Center rename + required Site ID
 - Create/Edit Job dialogs: "Job Name" renamed to "Wire Center" (now optional), Site ID moved above it and made mandatory (frontend validation "Site ID is required"; backend JobCreate.name optional default ""). Jobs with no wire center display their Site ID as the title (JobsList card/pin, JobDetail header).
 - Verified autofill with new toggle workflow: ASE autofill writes YES/NO strings which toggles display (need_hoffman_box auto-set ON from job's Hoffman Box after clearing saved NO). Verified dialog field order, required validation, site-id title fallback; test job deleted. NOT yet deployed.
+
+## 2026-06: PDF map export (1000ft grid pages)
+- New "Download 1000ft Pages (PDF)" in Job Map Edit Map dropdown (jsPDF, dynamic import). Tiles the map into 1000ft × 1000ft grid pages (only occupied tiles), each rendered 1000x1000px via generateSegmentPage with new boundsOverride/mapSize/edgeLabels/showNotes params: orange "TO PAGE n" joining indicators on edges with occupied neighbors, span footage badges, HOA/UG markers, yellow note callouts (pole/UG notes), north arrow + scale; final page = full span measurement list. Works with device download and Save to App Cloud (export_type map_pdf whitelisted).
+- Note: /api/maps/static max reliable size is 1000x1000 at this zoom (1200 returned ArcGIS "bytes" error). Verified single-tile (2-page) and multi-tile (3-page with TO PAGE 2 edge label) PDFs; test pole position reverted. NOT yet deployed.
+
+## 2026-06: PDF cover page
+- PDF map export now starts with a cover page: FIELDING MAP header (site id), job info block (Site ID, Wire Center, Job Type, Employee, Location, Description, totals, footage split over 2 lines), legend (pole/aerial/underground/field note/TO PAGE/UG type abbreviations present) and a page index listing cover, each grid page (row/col + item count) and the span measurements page. Map pages renumbered from 2; verified by extracting cover image from generated PDF. Deployment requested with full batch.

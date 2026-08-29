@@ -8,6 +8,7 @@ export const CLOUD_EXPORT_LABELS = {
   photos_zip: "Photos (ZIP)",
   map_image: "Map Image (PNG)",
   map_pages_zip: "800ft Map Pages (ZIP)",
+  map_pdf: "1000ft Map Pages (PDF)",
 };
 
 export const notifyCloudExportsUpdated = () => window.dispatchEvent(new CustomEvent("cloud-exports-updated"));
