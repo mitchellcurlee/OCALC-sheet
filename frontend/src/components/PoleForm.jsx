@@ -835,9 +835,11 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
               <div className="w-1 h-5 bg-purple-500"></div>
               Birthmark & MGNV
             </h2>
-            <div className="space-y-4">
-              <div className="flex flex-col sm:flex-row items-start gap-6">
-                <div className="space-y-2 w-full sm:w-48">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Birthmark column */}
+              <div className="space-y-3">
+                <h3 className="text-sm font-mono text-purple-700">BIRTHMARK</h3>
+                <div className="space-y-2">
                   <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Has Birthmark</Label>
                   <div className="flex items-center gap-2 h-10">
                     <Switch checked={formData.has_birthmark} onCheckedChange={(v) => setFormData((prev) => ({ ...prev, has_birthmark: v, birthmark_photos: v ? prev.birthmark_photos : [] }))} data-testid="has-birthmark-select" />
@@ -845,19 +847,18 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
                   </div>
                 </div>
                 {formData.has_birthmark && (
-                  <div className="flex-1 w-full sm:w-auto">
-                    <MultiPhotoUpload 
-                      label="Birthmark Photos" 
-                      value={formData.birthmark_photos || []} 
-                      onChange={(v) => setFormData((prev) => ({ ...prev, birthmark_photos: v }))} 
-                      testId="birthmark"
-                    />
-                  </div>
+                  <MultiPhotoUpload 
+                    label="Birthmark Photos" 
+                    value={formData.birthmark_photos || []} 
+                    onChange={(v) => setFormData((prev) => ({ ...prev, birthmark_photos: v }))} 
+                    testId="birthmark"
+                  />
                 )}
               </div>
-              <div className="pt-4 border-t border-zinc-300">
-                <h3 className="text-sm font-mono text-cyan-700 mb-3">MGNV</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {/* MGNV column (to the right of Birthmark) */}
+              <div className="space-y-3 border-t border-zinc-300 pt-4 lg:border-t-0 lg:pt-0 lg:border-l lg:pl-6">
+                <h3 className="text-sm font-mono text-cyan-700">MGNV</h3>
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">MGNV Present</Label>
                     <div className="flex items-center gap-2 h-10">
@@ -872,15 +873,13 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
                       <SelectContent className="bg-zinc-50 border-zinc-300"><SelectItem value={BLANK} className="text-zinc-500">—</SelectItem><SelectItem value="Good" className="text-green-700">Good</SelectItem><SelectItem value="Broken" className="text-red-600">Broken</SelectItem></SelectContent>
                     </Select>
                   </div>
-                  <div className="col-span-1 sm:col-span-3">
-                    <MultiPhotoUpload 
-                      label="MGNV Photos" 
-                      value={formData.mgnv_photos || []} 
-                      onChange={(v) => setFormData((prev) => ({ ...prev, mgnv_photos: v }))} 
-                      testId="mgnv"
-                    />
-                  </div>
                 </div>
+                <MultiPhotoUpload 
+                  label="MGNV Photos" 
+                  value={formData.mgnv_photos || []} 
+                  onChange={(v) => setFormData((prev) => ({ ...prev, mgnv_photos: v }))} 
+                  testId="mgnv"
+                />
               </div>
             </div>
           </div>
@@ -1125,19 +1124,18 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
               {/* Pole Terminal and Risers */}
               <div className="mt-4 pt-4 border-t border-zinc-300">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2 sm:col-span-2">
+                  <div className="space-y-2">
+                    <Label className="text-xs font-mono tracking-widest text-green-700 uppercase">Tree Trimming Needed</Label>
+                    <div className="flex items-center gap-2 h-10">
+                      <Switch checked={formData.tree_trimming_needed} onCheckedChange={(v) => setFormData((p) => ({ ...p, tree_trimming_needed: v }))} data-testid="tree-trimming-toggle" />
+                      <span className={`text-xs font-mono font-semibold ${formData.tree_trimming_needed ? "text-green-700" : "text-zinc-500"}`}>{formData.tree_trimming_needed ? "Yes" : "No"}</span>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
                     <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Pole Terminal</Label>
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-2 flex-shrink-0" title="Tree Trimming Needed">
-                        <Switch checked={formData.tree_trimming_needed} onCheckedChange={(v) => setFormData((p) => ({ ...p, tree_trimming_needed: v }))} data-testid="tree-trimming-toggle" />
-                        <Label className="text-[10px] sm:text-xs font-mono tracking-wide text-green-700 uppercase leading-tight whitespace-nowrap">
-                          Tree Trimming: {formData.tree_trimming_needed ? "Yes" : "No"}
-                        </Label>
-                      </div>
-                      <div className="flex items-center gap-2 h-10" data-testid="pole-terminal-select">
-                        <Switch checked={formData.pole_terminal === "Yes"} onCheckedChange={(v) => handleSelectChange("pole_terminal", v ? "Yes" : "No")} data-testid="pole-terminal-toggle" />
-                        <span className={`text-xs font-mono font-semibold ${formData.pole_terminal === "Yes" ? "text-green-700" : "text-zinc-500"}`}>{formData.pole_terminal === "Yes" ? "Yes" : "No"}</span>
-                      </div>
+                    <div className="flex items-center gap-2 h-10" data-testid="pole-terminal-select">
+                      <Switch checked={formData.pole_terminal === "Yes"} onCheckedChange={(v) => handleSelectChange("pole_terminal", v ? "Yes" : "No")} data-testid="pole-terminal-toggle" />
+                      <span className={`text-xs font-mono font-semibold ${formData.pole_terminal === "Yes" ? "text-green-700" : "text-zinc-500"}`}>{formData.pole_terminal === "Yes" ? "Yes" : "No"}</span>
                     </div>
                   </div>
                   <div className="space-y-2">

@@ -241,3 +241,7 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 ## 2026-06: Yes/No dropdowns → toggles
 - All Yes/No dropdowns are now toggles (ON=Yes, OFF=No): PoleForm Has Birthmark, MGNV Present, Pole Terminal; ASE forms via shared YesNoSelect in ASEFormHelpers.jsx (now Switch-based, covers ~35 checklist/SVCL fields). YesNoNASelect (3-state) kept as dropdown.
 - Data still stored as "Yes"/"No" (pole) and "YES"/"NO" (ASE) strings, so Excel exports and all auto-populate flows are unchanged; verified Pole Terminal=Yes flows to Excel. NOT yet deployed.
+
+## 2026-06: Toggle layout fixes
+- Tree Trimming and Pole Terminal toggles split into separate labeled columns (grid, wide gap) — clicks verified fully independent (previous cramped inline layout caused mis-taps).
+- Birthmark and MGNV now side-by-side columns in the Birthmark & MGNV card; both keep toggles, MGNV Condition dropdown, and CAM/Gallery/upload photo controls. Verified via browser screenshot + toggle independence test. NOT yet deployed.
