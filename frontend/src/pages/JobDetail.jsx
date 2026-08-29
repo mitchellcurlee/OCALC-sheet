@@ -594,7 +594,7 @@ const JobDetail = () => {
               </div>
               <div>
                 <h1 className="font-heading text-lg sm:text-2xl font-black tracking-tight uppercase text-zinc-900">
-                  {job?.name}
+                  {job?.name || job?.site_id}
                 </h1>
                 {job?.location && (
                   <p className="text-xs text-zinc-500 font-mono flex items-center gap-1">

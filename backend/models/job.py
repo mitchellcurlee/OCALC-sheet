@@ -9,7 +9,7 @@ JOB_TYPES = ["OCALC", "DMG", "ABF", "BAU", "ASE", "PBB", "SEAL", "SV", "CELL SIT
 
 
 class JobCreate(BaseModel):
-    name: str
+    name: Optional[str] = ""  # Wire Center (optional)
     description: Optional[str] = None
     location: Optional[str] = None
     job_type: Optional[str] = "OCALC"
@@ -32,7 +32,7 @@ class JobUpdate(BaseModel):
 class Job(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    name: str
+    name: str = ""  # Wire Center (optional)
     description: Optional[str] = None
     location: Optional[str] = None
     job_type: Optional[str] = "OCALC"

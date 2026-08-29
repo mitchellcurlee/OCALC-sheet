@@ -95,7 +95,7 @@ const JobsLocationMap = ({ jobs, onOpenJob }) => {
             <Marker key={job.id} position={[job.latitude, job.longitude]} icon={jobPinIcon(job.name, !!job.completed)}>
               <Popup>
                 <div className="min-w-[160px] font-mono">
-                  <div className="text-sm font-bold text-zinc-900">{job.name}</div>
+                  <div className="text-sm font-bold text-zinc-900">{job.name || job.site_id}</div>
                   {job.location && <div className="text-xs text-zinc-500">{job.location}</div>}
                   <div className="text-xs text-zinc-600 mt-1">{job.pole_count} attribute{job.pole_count === 1 ? "" : "s"}</div>
                   <Button size="sm" className="w-full h-7 mt-2 bg-red-600 hover:bg-red-700 text-white" onClick={() => onOpenJob(job.id)} data-testid={`map-open-job-${job.id}`}>
@@ -172,8 +172,8 @@ const JobsList = () => {
   }, [fetchJobs]);
 
   const handleCreate = async () => {
-    if (!formData.name.trim()) {
-      toast.error("Job name is required");
+    if (!(formData.site_id || "").trim()) {
+      toast.error("Site ID is required");
       return;
     }
     setSaving(true);
@@ -191,8 +191,8 @@ const JobsList = () => {
   };
 
   const handleEdit = async () => {
-    if (!formData.name.trim()) {
-      toast.error("Job name is required");
+    if (!(formData.site_id || "").trim()) {
+      toast.error("Site ID is required");
       return;
     }
     setSaving(true);
@@ -340,7 +340,7 @@ const JobsList = () => {
           </div>
           <div>
             <h3 className={`font-heading text-lg font-bold text-zinc-900 transition-colors ${job.completed ? "group-hover:text-green-600" : "group-hover:text-red-600"}`}>
-              {job.name}
+              {job.name || job.site_id}
             </h3>
             {job.location && (
               <div className="flex items-center gap-1 text-xs text-zinc-500">
@@ -597,11 +597,21 @@ const JobsList = () => {
         <DialogContent className="bg-zinc-50 border-zinc-200">
           <DialogHeader>
             <DialogTitle className="text-zinc-900">Create New Job</DialogTitle>
-            <DialogDescription className="text-zinc-500 text-xs">Set the job name, type and location details.</DialogDescription>
+            <DialogDescription className="text-zinc-500 text-xs">Set the site ID, wire center, type and location details.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label className="text-xs font-mono text-zinc-500 uppercase">Job Name *</Label>
+              <Label className="text-xs font-mono text-zinc-500 uppercase">Site ID *</Label>
+              <Input
+                value={formData.site_id || ""}
+                onChange={(e) => setFormData({ ...formData, site_id: e.target.value })}
+                placeholder="e.g., A05CZ38"
+                className="bg-white border-zinc-300 text-zinc-900"
+                data-testid="job-site-id-input"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-mono text-zinc-500 uppercase">Wire Center</Label>
               <Input
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -620,16 +630,6 @@ const JobsList = () => {
                   {ASE_OPTIONS.employees.map((emp) => (<SelectItem key={emp} value={emp}>{emp}</SelectItem>))}
                 </SelectContent>
               </Select>
-            </div>
-            <div className="space-y-2">
-              <Label className="text-xs font-mono text-zinc-500 uppercase">Site ID</Label>
-              <Input
-                value={formData.site_id || ""}
-                onChange={(e) => setFormData({ ...formData, site_id: e.target.value })}
-                placeholder="e.g., A05CZ38"
-                className="bg-white border-zinc-300 text-zinc-900"
-                data-testid="job-site-id-input"
-              />
             </div>
             <div className="space-y-2">
               <Label className="text-xs font-mono text-zinc-500 uppercase">Job Type</Label>
@@ -679,11 +679,20 @@ const JobsList = () => {
         <DialogContent className="bg-zinc-50 border-zinc-200">
           <DialogHeader>
             <DialogTitle className="text-zinc-900">Edit Job</DialogTitle>
-            <DialogDescription className="text-zinc-500 text-xs">Update the job name, type and location details.</DialogDescription>
+            <DialogDescription className="text-zinc-500 text-xs">Update the site ID, wire center, type and location details.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label className="text-xs font-mono text-zinc-500 uppercase">Job Name *</Label>
+              <Label className="text-xs font-mono text-zinc-500 uppercase">Site ID *</Label>
+              <Input
+                value={formData.site_id || ""}
+                onChange={(e) => setFormData({ ...formData, site_id: e.target.value })}
+                className="bg-white border-zinc-300 text-zinc-900"
+                data-testid="job-edit-site-id-input"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-mono text-zinc-500 uppercase">Wire Center</Label>
               <Input
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -701,15 +710,6 @@ const JobsList = () => {
                   {ASE_OPTIONS.employees.map((emp) => (<SelectItem key={emp} value={emp}>{emp}</SelectItem>))}
                 </SelectContent>
               </Select>
-            </div>
-            <div className="space-y-2">
-              <Label className="text-xs font-mono text-zinc-500 uppercase">Site ID</Label>
-              <Input
-                value={formData.site_id || ""}
-                onChange={(e) => setFormData({ ...formData, site_id: e.target.value })}
-                className="bg-white border-zinc-300 text-zinc-900"
-                data-testid="job-edit-site-id-input"
-              />
             </div>
             <div className="space-y-2">
               <Label className="text-xs font-mono text-zinc-500 uppercase">Job Type</Label>

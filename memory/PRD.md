@@ -248,3 +248,7 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 
 ## 2026-06: Pole Picture upload block removed
 - Removed the "Pole Picture" gallery/CAM/upload block from the OCALC Photos card on the pole form (only Left/Middle/Right remain). pole_photo field kept in data/exports; photos can still be assigned to "Pole Picture" via the top Photo Gallery staging dropdown. Verified via screenshot. NOT yet deployed.
+
+## 2026-06: Create Job — Wire Center rename + required Site ID
+- Create/Edit Job dialogs: "Job Name" renamed to "Wire Center" (now optional), Site ID moved above it and made mandatory (frontend validation "Site ID is required"; backend JobCreate.name optional default ""). Jobs with no wire center display their Site ID as the title (JobsList card/pin, JobDetail header).
+- Verified autofill with new toggle workflow: ASE autofill writes YES/NO strings which toggles display (need_hoffman_box auto-set ON from job's Hoffman Box after clearing saved NO). Verified dialog field order, required validation, site-id title fallback; test job deleted. NOT yet deployed.
