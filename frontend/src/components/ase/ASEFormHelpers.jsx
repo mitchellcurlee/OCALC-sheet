@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -94,9 +95,15 @@ export const DropdownSelect = ({ value, onChange, options, placeholder = "Select
 );
 
 // Yes/No Select
-export const YesNoSelect = ({ value, onChange, filled, ...rest }) => (
-  <DropdownSelect value={value} onChange={onChange} options={ASE_OPTIONS.yesNo} placeholder="Select..." filled={filled} {...rest} />
-);
+export const YesNoSelect = ({ value, onChange, filled, ...rest }) => {
+  const isYes = String(value).toUpperCase() === "YES";
+  return (
+    <div className={`flex items-center gap-2 h-9 px-2 rounded border ${filled ? "border-green-300 bg-green-50" : "border-zinc-200 bg-white"}`}>
+      <Switch checked={isYes} onCheckedChange={(v) => onChange(v ? "YES" : "NO")} {...rest} />
+      <span className={`text-xs font-mono font-semibold ${isYes ? "text-green-700" : "text-zinc-500"}`}>{isYes ? "YES" : "NO"}</span>
+    </div>
+  );
+};
 
 // Yes/No/NA Select
 export const YesNoNASelect = ({ value, onChange, filled }) => (

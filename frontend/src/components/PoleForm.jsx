@@ -839,10 +839,10 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
               <div className="flex flex-col sm:flex-row items-start gap-6">
                 <div className="space-y-2 w-full sm:w-48">
                   <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Has Birthmark</Label>
-                  <Select value={formData.has_birthmark ? "Yes" : "No"} onValueChange={(v) => setFormData((prev) => ({ ...prev, has_birthmark: v === "Yes", birthmark_photos: v === "Yes" ? prev.birthmark_photos : [] }))}>
-                    <SelectTrigger className="h-10 bg-white border-zinc-300 text-zinc-900" data-testid="has-birthmark-select"><SelectValue placeholder="Yes / No" /></SelectTrigger>
-                    <SelectContent className="bg-zinc-50 border-zinc-300"><SelectItem value="Yes">Yes</SelectItem><SelectItem value="No">No</SelectItem></SelectContent>
-                  </Select>
+                  <div className="flex items-center gap-2 h-10">
+                    <Switch checked={formData.has_birthmark} onCheckedChange={(v) => setFormData((prev) => ({ ...prev, has_birthmark: v, birthmark_photos: v ? prev.birthmark_photos : [] }))} data-testid="has-birthmark-select" />
+                    <span className={`text-xs font-mono font-semibold ${formData.has_birthmark ? "text-green-700" : "text-zinc-500"}`}>{formData.has_birthmark ? "Yes" : "No"}</span>
+                  </div>
                 </div>
                 {formData.has_birthmark && (
                   <div className="flex-1 w-full sm:w-auto">
@@ -860,10 +860,10 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">MGNV Present</Label>
-                    <Select value={formData.mgnv} onValueChange={(v) => handleSelectChange("mgnv", v)}>
-                      <SelectTrigger className="h-10 bg-white border-zinc-300 text-zinc-900" data-testid="mgnv-select"><SelectValue placeholder="Yes / No" /></SelectTrigger>
-                      <SelectContent className="bg-zinc-50 border-zinc-300"><SelectItem value={BLANK} className="text-zinc-500">—</SelectItem><SelectItem value="Yes">Yes</SelectItem><SelectItem value="No">No</SelectItem></SelectContent>
-                    </Select>
+                    <div className="flex items-center gap-2 h-10">
+                      <Switch checked={formData.mgnv === "Yes"} onCheckedChange={(v) => handleSelectChange("mgnv", v ? "Yes" : "No")} data-testid="mgnv-select" />
+                      <span className={`text-xs font-mono font-semibold ${formData.mgnv === "Yes" ? "text-green-700" : "text-zinc-500"}`}>{formData.mgnv === "Yes" ? "Yes" : "No"}</span>
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Condition</Label>
@@ -1134,16 +1134,10 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
                           Tree Trimming: {formData.tree_trimming_needed ? "Yes" : "No"}
                         </Label>
                       </div>
-                      <Select value={formData.pole_terminal} onValueChange={(v) => handleSelectChange("pole_terminal", v)}>
-                        <SelectTrigger className="h-10 bg-white border-zinc-300 text-zinc-900" data-testid="pole-terminal-select">
-                          <SelectValue placeholder="Yes / No" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-zinc-50 border-zinc-300">
-                          <SelectItem value={BLANK} className="text-zinc-500">—</SelectItem>
-                          <SelectItem value="Yes">Yes</SelectItem>
-                          <SelectItem value="No">No</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <div className="flex items-center gap-2 h-10" data-testid="pole-terminal-select">
+                        <Switch checked={formData.pole_terminal === "Yes"} onCheckedChange={(v) => handleSelectChange("pole_terminal", v ? "Yes" : "No")} data-testid="pole-terminal-toggle" />
+                        <span className={`text-xs font-mono font-semibold ${formData.pole_terminal === "Yes" ? "text-green-700" : "text-zinc-500"}`}>{formData.pole_terminal === "Yes" ? "Yes" : "No"}</span>
+                      </div>
                     </div>
                   </div>
                   <div className="space-y-2">

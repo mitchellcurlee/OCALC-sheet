@@ -237,3 +237,7 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 
 ## 2026-06: Tree Trimming Needed toggle (HOA box)
 - Tree Trimming toggle sits left of the Pole Terminal dropdown in the HOA box (moved from HOA header per user) (ON=Yes/OFF=No), field tree_trimming_needed on pole model. Shows in Excel export ("Tree Trimming Needed" Yes/No row above Pole Terminal in the HOA section) and as a badge on ViewPole HOA card. Verified: toggle UI, persistence via API, Excel export values. NOT yet deployed.
+
+## 2026-06: Yes/No dropdowns → toggles
+- All Yes/No dropdowns are now toggles (ON=Yes, OFF=No): PoleForm Has Birthmark, MGNV Present, Pole Terminal; ASE forms via shared YesNoSelect in ASEFormHelpers.jsx (now Switch-based, covers ~35 checklist/SVCL fields). YesNoNASelect (3-state) kept as dropdown.
+- Data still stored as "Yes"/"No" (pole) and "YES"/"NO" (ASE) strings, so Excel exports and all auto-populate flows are unchanged; verified Pole Terminal=Yes flows to Excel. NOT yet deployed.
