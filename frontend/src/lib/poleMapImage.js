@@ -1001,7 +1001,7 @@ const splitPairsIntoPages = (pairSegs, targetFeet = 800) => {
 const generateSegmentPage = async ({ 
   pageNum, totalPages, pagePairs, pageItems, pageFootage,
   startLabel, endLabel, job, basemap = "esri",
-  boundsOverride = null, edgeLabels = null, mapSize = null, showNotes = false
+  boundsOverride = null, edgeLabels = null, mapSize = null, showNotes = false, labelScale = 1
 }) => {
   const R = 6378137;
   const mercX = (lng) => ((lng * Math.PI) / 180) * R;
@@ -1163,10 +1163,11 @@ const generateSegmentPage = async ({
     const dark = seg.aerial ? "#1e40af" : "#166534";
     // pill background (position adjusted to avoid overlaps)
     const text = fmtFeet(seg.ft);
-    ctx.font = `bold ${12 * s}px ui-monospace, monospace`;
+    const ls = s * labelScale;
+    ctx.font = `bold ${12 * ls}px ui-monospace, monospace`;
     const tw = ctx.measureText(text).width;
-    const padX2 = 6 * s;
-    const ph = 22 * s;
+    const padX2 = 6 * ls;
+    const ph = 22 * ls;
     const pw = tw + padX2 * 2;
     const px = lx - pw / 2;
     let py = ly - ph / 2;
@@ -1228,10 +1229,10 @@ const generateSegmentPage = async ({
     ctx.stroke();
     
     // Draw label
-    ctx.font = `bold ${10 * s}px ui-monospace, monospace`;
+    ctx.font = `bold ${10 * s * labelScale}px ui-monospace, monospace`;
     const tw = ctx.measureText(label).width;
-    const labelPadX = 6 * s;
-    const labelH = 18 * s;
+    const labelPadX = 6 * s * labelScale;
+    const labelH = 18 * s * labelScale;
     const labelW = tw + labelPadX * 2;
     
     let labelX, labelY;
@@ -1287,9 +1288,9 @@ const generateSegmentPage = async ({
   pageUg.forEach((u) => {
     const [x, y] = pt(u.pos);
     const abbr = undergroundAbbr(u.ugType);
-    ctx.font = `bold ${10 * s}px ui-monospace, monospace`;
+    ctx.font = `bold ${10 * s * labelScale}px ui-monospace, monospace`;
     const tw = ctx.measureText(abbr).width;
-    const sz = Math.max(24 * s, tw + 10 * s);
+    const sz = Math.max(24 * s * labelScale, tw + 10 * s * labelScale);
     ctx.fillStyle = u.markerColor || "#16a34a";
     ctx.strokeStyle = "#ffffff";
     ctx.lineWidth = 2.5 * s;
@@ -1368,7 +1369,8 @@ const generateSegmentPage = async ({
   if (showNotes) {
     pageItems.filter((it) => (it.note || "").trim()).forEach((it, ni) => {
       const [x, y] = pt(it.pos);
-      ctx.font = `${9 * s}px ui-sans-serif, system-ui, sans-serif`;
+      const ls = s * labelScale;
+      ctx.font = `${9 * ls}px ui-sans-serif, system-ui, sans-serif`;
       const words = String(it.note).trim().split(/\s+/);
       const lines = [];
       let cur = "";
@@ -1377,11 +1379,11 @@ const generateSegmentPage = async ({
       });
       if (cur.trim()) lines.push(cur.trim());
       const shown = lines.slice(0, 4);
-      const lw2 = Math.max(...shown.map((l) => ctx.measureText(l).width)) + 12 * s;
-      const lh2 = shown.length * 12 * s + 10 * s;
+      const lw2 = Math.max(...shown.map((l) => ctx.measureText(l).width)) + 12 * ls;
+      const lh2 = shown.length * 12 * ls + 10 * ls;
       const side = ni % 2 === 0 ? 1 : -1;
       const bx = x + side * 40 * s - (side < 0 ? lw2 : 0);
-      const by = claimRect(x + side * 40 * s - (side < 0 ? lw2 : 0), y + 24 * s, lw2, lh2);
+      const by = claimRect(x + side * 40 * s - (side < 0 ? lw2 : 0), y + 24 * ls, lw2, lh2);
       ctx.strokeStyle = "#ca8a04";
       ctx.lineWidth = 1.5 * s;
       ctx.beginPath();
@@ -1397,16 +1399,16 @@ const generateSegmentPage = async ({
       ctx.fillStyle = "#713f12";
       ctx.textAlign = "left";
       ctx.textBaseline = "top";
-      shown.forEach((l, li) => ctx.fillText(l, bx + 6 * s, by + 5 * s + li * 12 * s));
+      shown.forEach((l, li) => ctx.fillText(l, bx + 6 * ls, by + 5 * ls + li * 12 * ls));
     });
   }
 
   // Joining-page indicators at the edges (like "TO PRINT X" on fielding maps)
   if (edgeLabels) {
-    ctx.font = `bold ${11 * s}px ui-monospace, monospace`;
+    ctx.font = `bold ${11 * s * labelScale}px ui-monospace, monospace`;
     const band = (text, cx, cy) => {
       const tw2 = ctx.measureText(text).width;
-      const bw = tw2 + 18 * s, bh = 22 * s;
+      const bw = tw2 + 18 * s * labelScale, bh = 22 * s * labelScale;
       ctx.fillStyle = "#ea580c";
       ctx.strokeStyle = "#ffffff";
       ctx.lineWidth = 2 * s;
@@ -1850,6 +1852,7 @@ export const downloadMapPdfPages = async ({
         job,
         boundsOverride: { xmin, xmax, ymin, ymax },
         mapSize: { w: 1000, h: 1000 },
+        labelScale: 0.65,
         edgeLabels,
         showNotes: true,
       });

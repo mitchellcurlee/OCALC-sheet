@@ -263,3 +263,6 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 ## 2026-06: PDF centering + collision avoidance
 - PDF grid origin now centered on content (nCols/nRows computed from content bbox, origin = center - half grid; col/row clamped) so the path sits mid-page.
 - generateSegmentPage gained claimRect collision avoidance: marker areas reserved; span footage pills, pole label badges (incl. cluster arrows redrawn to final spot) and note callouts nudge vertically until free — no overlapping icons. Verified via extracted PDF page (centered path, stacked non-overlapping 358/344/438 ft badges, clean callouts). NOT yet deployed.
+
+## 2026-06: Smaller PDF text boxes
+- generateSegmentPage gained labelScale param (PDF uses 0.65): footage pills, pole/UG label badges, note callouts and TO PAGE edge bands are ~35% smaller in the 1000ft PDF export; ZIP/PNG exports unchanged (labelScale=1). Verified via extracted PDF page. NOT yet deployed.
