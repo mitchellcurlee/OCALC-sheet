@@ -1198,18 +1198,6 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
               OCALC Photos
             </h2>
             
-            {/* Pole Picture - Main photo at top */}
-            <div className="mb-4 pb-4 border-b border-zinc-200">
-              <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase mb-2 block">Pole Picture</Label>
-              <MultiPhotoUpload 
-                label="Pole Picture" 
-                value={formData.pole_photo ? [formData.pole_photo] : []} 
-                onChange={(v) => setFormData(prev => ({ ...prev, pole_photo: v[0] || "" }))} 
-                testId="pole-photo"
-                maxPhotos={1}
-              />
-            </div>
-            
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Left</Label>

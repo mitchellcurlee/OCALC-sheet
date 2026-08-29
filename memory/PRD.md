@@ -245,3 +245,6 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 ## 2026-06: Toggle layout fixes
 - Tree Trimming and Pole Terminal toggles split into separate labeled columns (grid, wide gap) — clicks verified fully independent (previous cramped inline layout caused mis-taps).
 - Birthmark and MGNV now side-by-side columns in the Birthmark & MGNV card; both keep toggles, MGNV Condition dropdown, and CAM/Gallery/upload photo controls. Verified via browser screenshot + toggle independence test. NOT yet deployed.
+
+## 2026-06: Pole Picture upload block removed
+- Removed the "Pole Picture" gallery/CAM/upload block from the OCALC Photos card on the pole form (only Left/Middle/Right remain). pole_photo field kept in data/exports; photos can still be assigned to "Pole Picture" via the top Photo Gallery staging dropdown. Verified via screenshot. NOT yet deployed.
