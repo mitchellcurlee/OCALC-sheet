@@ -291,6 +291,20 @@ const segPath = (pr, routes) => {
   return [pr.from.pos, ...wps.map((w) => [w.lat, w.lng]), pr.to.pos];
 };
 const pathFeet = (path) => path.reduce((s2, p, i) => (i === 0 ? 0 : s2 + distanceFeet(path[i - 1], p)), 0);
+
+// Chainage feet between connected items for station numbering.
+// Manual/path-measured pairs contribute 0 here — their measured footage
+// advances the chainage via the item's path-measurement feet instead,
+// so stations always equal the linear footage from the start of the path.
+export const computeStationSegFeet = (route, ug, connections, routes = {}) => {
+  const map = {};
+  computeConnectionPairs(route, ug, connections).forEach((pr) => {
+    const ft = pairIsManual(pr) ? 0 : pathFeet(segPath(pr, routes));
+    map[`${pr.from.id}->${pr.to.id}`] = ft;
+    map[`${pr.to.id}->${pr.from.id}`] = ft;
+  });
+  return map;
+};
 const pathMid = (path) => {
   const m = Math.floor(path.length / 2);
   return path.length % 2 === 0
@@ -340,9 +354,13 @@ export const buildSpanMeasurementTexts = ({ poles, underground = [], connections
       ...ug.map((u) => ({ id: u.id, pos: u.pos, so: u.sort_order ?? Infinity, extraFeet: (u.path_measurements || []).reduce((s, m) => s + (parseFloat(m.feet) || 0), 0) })),
       ...route.map((p) => ({ id: p.id, pos: p.pos, so: p.sort_order ?? Infinity, extraFeet: (parseInt(p.risers) || 0) * (parseFloat(p.riser_height) || 0) })),
     ].sort((a, b) => a.so - b.so);
+    const segFt = computeStationSegFeet(route, ug, connections, routes);
     let run = 0, prev = null;
     all.forEach((it) => {
-      if (prev) run += distanceFeet(prev.pos, it.pos);
+      if (prev) {
+        const k = `${prev.id}->${it.id}`;
+        run += segFt[k] !== undefined ? segFt[k] : distanceFeet(prev.pos, it.pos);
+      }
       stations[it.id] = feetToStation(run);
       if (it.extraFeet > 0) {
         run += it.extraFeet;

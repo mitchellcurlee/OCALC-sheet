@@ -9,7 +9,7 @@ import domtoimage from "dom-to-image-more";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ChevronDown, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera, Hash, Link2, Move, Palette, Plus, Map as MapIcon, GripVertical, Upload, Trash2 } from "lucide-react";
 import SpanReorderList from "@/components/SpanReorderList";
-import { computeRoute, fmtFeet, feetToStation, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, downloadMapPdfPages, ugWithGps, undergroundAbbr, computeUgConnectors, computeConnectionPairs, UNDERGROUND_TYPES, isAerialAttr, resolvePairAerial } from "@/lib/poleMapImage";
+import { computeRoute, fmtFeet, feetToStation, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, downloadMapPdfPages, ugWithGps, undergroundAbbr, computeUgConnectors, computeConnectionPairs, computeStationSegFeet, UNDERGROUND_TYPES, isAerialAttr, resolvePairAerial } from "@/lib/poleMapImage";
 import { ExportDestinationDialog } from "@/components/ExportDestinationDialog";
 import { CLOUD_EXPORT_LABELS, uploadExportToCloud } from "@/lib/cloudExports";
 import {
@@ -878,14 +878,17 @@ const JobMap = () => {
     // Sort by sort_order
     allItems.sort((a, b) => a.sortOrder - b.sortOrder);
     
-    // Calculate cumulative station numbers
+    // Calculate cumulative station numbers (chainage uses actual span footage,
+    // so stations match linear feet from the start of the path)
+    const segFt = computeStationSegFeet(route, ug, connections, customRoutes);
     const stations = {};
     let runningDistance = 0;
     let prevItem = null;
     
     allItems.forEach(item => {
       if (prevItem) {
-        const dist = distanceFeet(prevItem.pos, item.pos);
+        const k = `${prevItem.id}->${item.id}`;
+        const dist = segFt[k] !== undefined ? segFt[k] : distanceFeet(prevItem.pos, item.pos);
         runningDistance += dist;
       }
       stations[item.id] = toStation(runningDistance);
@@ -897,7 +900,7 @@ const JobMap = () => {
     });
     
     return stations;
-  }, [route, ug]);
+  }, [route, ug, connections, customRoutes]);
 
   // Detect clustered poles and compute label offsets
   // A pole is "clustered" if another pole is within 100ft
