@@ -281,3 +281,6 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 ## 2026-06: HH/MH Owner dropdown + new UG types
 - Owner dropdown beside Material/Type in UndergroundForm: Handhole list (ATT, MCI, Crown Castle, Frontier, Ezee Fiber, Comcast, CMC Communications, Phonoscope, Zayo Group, Fiberlight, Power, City Owned, Out of Franchise, Unknown); Manhole list (ATT, Storm, Sewer, Power, City Owned, Out of Franchise, Unknown). owner field added to underground model; exported as new "Owner" column (col 14) in the job Excel UNDERGROUND section.
 - New underground types: Gas Valve (GV), Gas Meter (GM), FST, Water Meter/Valve (WMV) — backend UNDERGROUND_TYPES + frontend UNDERGROUND_ABBR (flows to map add menu, form dropdown, exports). All verified via API + Excel inspection + browser screenshots; test data cleaned. NOT yet deployed.
+
+## 2026-06: Manhole "Existing" material option
+- Added "Existing" to Manhole's Material/Type dropdown (UndergroundForm.jsx materialTypeOptions, Manhole: ["Existing"] + appended "Proposed"). Verified via browser screenshot: MH shows Existing/Proposed. Deployment to production queued (includes prior Owner dropdown + new UG types batch).
