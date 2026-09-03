@@ -46,8 +46,9 @@ export const fmtFeet = (ft) => {
 
 // Convert feet to station format (0+00)
 export const feetToStation = (feet) => {
-  const stations = Math.floor(feet / 100);
-  const remainder = Math.round(feet % 100);
+  const total = Math.round(feet);
+  const stations = Math.floor(total / 100);
+  const remainder = total % 100;
   return `${stations}+${remainder.toString().padStart(2, '0')}`;
 };
 
