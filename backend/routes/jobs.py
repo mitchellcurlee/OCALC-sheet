@@ -579,8 +579,9 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
             "DW Start": "DW-S", "DW End": "DW-E", "UG Path Start": "UGP-S", "UG Path End": "UGP-E",
             "Aerial Splice": "AS", "Loop": "LOOP", "Power": "PWR", "X-Messenger": "XM",
             "Culvert": "CULV", "Drainage Start": "DR-S", "Drainage End": "DR-E",
-            "Eyebolt": "EB", "Pullbox": "PB", "Weather Head": "WH",
-            "Aerial NTE": "NTE", "Aerial PI": "PI", "Aerial FBT": "FBT",
+            "Eyebolt": "EB", "Pullbox": "PB", "Weather Head": "WH", "FDF": "FDF",
+            "Gas Valve": "GV", "Gas Meter": "GM", "FST": "FST", "Water Meter/Valve": "WMV",
+            "Gas Line": "GAS", "Aerial NTE": "NTE", "Aerial PI": "PI", "Aerial FBT": "FBT",
         }
         EXPORT_AERIAL_TYPES = {"Loop", "Aerial Splice", "X-Messenger", "Eyebolt", "Pullbox", "Weather Head", "Aerial NTE", "Aerial PI", "Aerial FBT"}
         ws.cell(row=current_row, column=1, value="UNDERGROUND").fill = header_fill

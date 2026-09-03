@@ -287,3 +287,6 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 
 ## 2026-06: UG Path Start/End "Direct Bury" material option
 - Added "Direct Bury" to Material/Type dropdown for UG Path Start and UG Path End (UndergroundForm.jsx materialTypeOptions). Verified via browser: both show Direct Bury + Proposed. Deployment queued.
+
+## 2026-06: Excel export coverage for new UG items
+- Backend UG_ABBR (jobs.py Excel export) was missing FDF, Gas Valve, Gas Meter, FST, Water Meter/Valve, Gas Line — added (FDF/GV/GM/FST/WMV/GAS) so Abbr column is populated. Subtype (Existing/Direct Bury) and Owner columns already flowed through. Verified E2E: created all 7 test items, exported Excel, all abbr/type/subtype/owner values correct, cleaned up. Deployment queued.
