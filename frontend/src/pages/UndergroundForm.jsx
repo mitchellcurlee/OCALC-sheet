@@ -87,6 +87,8 @@ const UndergroundForm = () => {
       "Hoffman Box": ["Community", "Private"],
       "Pedestal": ["Copper", "Fiber"],
       "Manhole": ["Existing"],
+      "UG Path Start": ["Direct Bury"],
+      "UG Path End": ["Direct Bury"],
     };
     const base = typeMap[formData.type] || [];
     return [...base, "Proposed"];

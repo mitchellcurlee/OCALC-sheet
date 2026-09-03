@@ -284,3 +284,6 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 
 ## 2026-06: Manhole "Existing" material option
 - Added "Existing" to Manhole's Material/Type dropdown (UndergroundForm.jsx materialTypeOptions, Manhole: ["Existing"] + appended "Proposed"). Verified via browser screenshot: MH shows Existing/Proposed. Deployment to production queued (includes prior Owner dropdown + new UG types batch).
+
+## 2026-06: UG Path Start/End "Direct Bury" material option
+- Added "Direct Bury" to Material/Type dropdown for UG Path Start and UG Path End (UndergroundForm.jsx materialTypeOptions). Verified via browser: both show Direct Bury + Proposed. Deployment queued.
