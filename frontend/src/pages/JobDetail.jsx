@@ -1065,12 +1065,39 @@ const JobDetail = () => {
               {combinedItems.length === 0 ? "Add your first pole or underground item to this job" : "Try a different search term"}
             </p>
             {combinedItems.length === 0 && (
-              <Link to={`/jobs/${jobId}/add`}>
-                <Button className="bg-red-600 hover:bg-red-700 text-white">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add First Pole
-                </Button>
-              </Link>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button className="bg-red-600 hover:bg-red-700 text-white" data-testid="empty-add-btn">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add
+                    <ChevronDown className="w-4 h-4 ml-1" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="center" className="bg-white border-zinc-200 w-56 max-h-96 overflow-auto">
+                  <DropdownMenuItem onClick={() => navigate(`/jobs/${jobId}/add`)} data-testid="empty-add-pole-btn" className="cursor-pointer font-semibold text-red-700 border-b border-zinc-200">
+                    <Zap className="w-4 h-4 mr-2" />
+                    Add Pole
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate(`/jobs/${jobId}/add?terminal=true`)} className="cursor-pointer font-semibold text-blue-700 border-b border-zinc-200">
+                    <Zap className="w-4 h-4 mr-2 text-blue-600" />
+                    Pole Terminal
+                  </DropdownMenuItem>
+                  <div className="px-2 py-1.5 text-xs font-mono text-sky-700 bg-sky-50">Aerial</div>
+                  {["Aerial Splice", "Loop", "Power", "X-Messenger", "Eyebolt", "Pullbox", "Weather Head"].map((t) => (
+                    <DropdownMenuItem key={t} onClick={() => navigate(`/jobs/${jobId}/underground/add?type=${encodeURIComponent(t)}`)} className="cursor-pointer">
+                      <span className="font-mono text-xs text-sky-700 w-12 inline-block">{undergroundAbbr(t)}</span>
+                      {t}
+                    </DropdownMenuItem>
+                  ))}
+                  <div className="px-2 py-1.5 text-xs font-mono text-amber-700 bg-amber-50">Underground</div>
+                  {UNDERGROUND_TYPES.filter((t) => !["Aerial Splice", "Loop", "Power", "X-Messenger", "Eyebolt", "Pullbox", "Weather Head", "Aerial NTE", "Aerial PI", "Aerial FBT"].includes(t)).map((t) => (
+                    <DropdownMenuItem key={t} onClick={() => navigate(`/jobs/${jobId}/underground/add?type=${encodeURIComponent(t)}`)} className="cursor-pointer">
+                      <span className="font-mono text-xs text-amber-700 w-12 inline-block">{undergroundAbbr(t)}</span>
+                      {t}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
           </div>
         ) : (

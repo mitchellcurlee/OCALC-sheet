@@ -273,3 +273,7 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 
 ## 2026-06: Job tile title = Site ID
 - Jobs list tiles now use site_id as the title (falls back to wire center name for older jobs without one); when both exist the wire center shows as a small mono subtitle. Verified via screenshot. NOT yet deployed.
+
+## 2026-06: Proposed material + center Add menu
+- "Proposed" added to the Material/Type dropdown, and that dropdown now shows for ALL underground attribute types (type-specific lists kept, Proposed appended) — UndergroundForm.jsx materialTypeOptions.
+- Empty-job center "Add First Pole" button replaced with the full Add dropdown (Pole, Pole Terminal, all Aerial + Underground types) — JobDetail.jsx, testid empty-add-btn. Both verified via screenshots; test job deleted. NOT yet deployed.

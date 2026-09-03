@@ -79,14 +79,15 @@ const UndergroundForm = () => {
     standalone: false,
   });
 
-  // Material type options based on underground type
+  // Material type options based on underground type ("Proposed" available on all attributes)
   const materialTypeOptions = useMemo(() => {
     const typeMap = {
       "Handhole": ["Concrete", "Concrete/ Bi-fold Metal", "Concrete/ MH lid", "Fiber Glass", "Plastic"],
       "Hoffman Box": ["Community", "Private"],
       "Pedestal": ["Copper", "Fiber"],
     };
-    return typeMap[formData.type] || [];
+    const base = typeMap[formData.type] || [];
+    return [...base, "Proposed"];
   }, [formData.type]);
 
   const fetchOptions = useCallback(async () => {
