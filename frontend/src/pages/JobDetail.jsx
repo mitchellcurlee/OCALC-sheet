@@ -1206,6 +1206,8 @@ const JobDetail = () => {
                           ) : (
                             <span className="text-amber-600">No GPS</span>
                           )}
+                          {item.owner && <span className="text-amber-700 font-semibold" data-testid={`ug-card-owner-${item.id}`}>Owner: {item.owner}</span>}
+                          {item.material_type && <span className="text-zinc-600" data-testid={`ug-card-material-${item.id}`}>{item.material_type}</span>}
                           {item.notes && <span className="truncate max-w-[200px]">{item.notes}</span>}
                         </div>
                       </div>

@@ -84,6 +84,7 @@ export const EditableRoute = ({
   isAfterMPOE = false,
   onClick,
   dashed = false,
+  dashArray = null,
   measurementLabelPos = null,
   onMeasurementDragEnd = null,
   customLabelText = null,
@@ -197,7 +198,7 @@ export const EditableRoute = ({
           color: editMode ? "#1d4ed8" : color,
           weight: editMode ? weight + 1 : weight,
           opacity: 0.9,
-          dashArray: editMode ? "8, 4" : (dashed ? "6, 4" : null),
+          dashArray: editMode ? "8, 4" : (dashArray || (dashed ? "6, 4" : null)),
           bubblingMouseEvents: false,
         }}
         eventHandlers={{

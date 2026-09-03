@@ -293,3 +293,7 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 
 ## 2026-06: Full marker palette in markup editor
 - Both UG_MARKERS lists (markup/MarkupConstants.js used by MarkupToolbar/Canvas, and PhotoMarkupEditor.jsx) now include ALL aerial + underground types: added UGP-S, UGP-E, GAS (Gas Line), AS (Aerial Splice), LOOP, PWR, X-Mes., CULV, DR-S, DR-E, EB, PB, WH, GV, GM, FST, WMV where missing. Aerial NTE/PI/FBT stamp as NTE/PI/FBT (same abbr). Verified via browser: editor palette shows all 37 markers. Deployment queued.
+
+## 2026-06: Owner in view + Direct Bury dashed lines
+- Owner (and material/subtype) now shown on the UG card in JobDetail and in the map marker popup (testids ug-card-owner-{id}, ug-popup-owner-{id}, ug-popup-material-{id}).
+- Direct Bury: map segments touching a UG item with material_type "Direct Bury" render with a distinct dotted dashArray "2, 8" (normal UG dashes stay "6, 4"). materialType added to computeConnectionPairs item mapping (poleMapImage.js) — NOTE: pairs items come from computeConnectionPairs, not JobMap allItems. EditableRoute gained optional dashArray prop. Legend shows "Direct Bury (dotted)" when present. Verified via browser (dash arrays 2,8 present, legend entry, owner in card+popup); test items deleted. NOT yet deployed.

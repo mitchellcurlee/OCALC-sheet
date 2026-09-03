@@ -1522,6 +1522,7 @@ const JobMap = () => {
         id: u.id,
         type: "underground",
         ugType: u.type,
+        materialType: u.material_type || "",
         pos: u.pos,
         sort_order: u.sort_order ?? Infinity,
         label: u.label || u.type,
@@ -1571,6 +1572,7 @@ const JobMap = () => {
         isAerial,
         hasUnderground,
         isRed: isMPOE || isAfterMPOE,
+        isDirectBury: fromItem.materialType === "Direct Bury" || toItem.materialType === "Direct Bury",
         segmentType: isAerial ? "aerial" : "underground",
         manualMeasured: fromItem.type === "underground" && fromItem.hasPath === true
       });
@@ -2636,6 +2638,7 @@ const JobMap = () => {
                       color={segmentColor}
                       weight={isSelected ? 4 : 2.5}
                       dashed={true}
+                      dashArray={seg.isDirectBury ? "2, 8" : null}
                       showDistance={false}
                       onClick={() => handleSegmentClick(segmentKey)}
                     />
@@ -2764,6 +2767,8 @@ const JobMap = () => {
                       <div className="min-w-[170px] font-mono" data-testid={`ug-popup-${u.id}`}>
                         <div className="text-sm font-bold" style={{ color: isRed ? '#dc2626' : itemColor }}>{undergroundAbbr(u.type)} · {u.type}</div>
                         {stationLabel && <div className="text-xs text-indigo-600 font-bold">Station: {stationLabel}</div>}
+                        {u.owner && <div className="text-xs text-amber-700 font-bold" data-testid={`ug-popup-owner-${u.id}`}>Owner: {u.owner}</div>}
+                        {u.material_type && <div className="text-xs text-zinc-600" data-testid={`ug-popup-material-${u.id}`}>{u.material_type}</div>}
                         {u.label && <div className="text-xs text-zinc-600 mt-1">{u.label}</div>}
                         {u.notes && <div className="text-xs text-zinc-500 mt-1">{u.notes}</div>}
                         {!positionEditMode && (
@@ -2954,6 +2959,9 @@ const JobMap = () => {
               )}
               {orderedSegments.some((s) => !s.isAerial) && (
                 <div className="flex items-center gap-2 mt-0.5"><span className="w-3 h-3 border border-white inline-block flex-shrink-0" style={{ backgroundColor: undergroundColorHex }}></span>Underground ({PATH_COLORS[undergroundColor]?.name})</div>
+              )}
+              {orderedSegments.some((s) => s.isDirectBury) && (
+                <div className="flex items-center gap-2 mt-0.5" data-testid="legend-direct-bury"><span className="w-4 inline-block flex-shrink-0 border-t-2 border-dotted" style={{ borderColor: undergroundColorHex }}></span>Direct Bury (dotted)</div>
               )}
               {annotations.filter(a => a.type === "note").length > 0 && (
                 <div className="flex items-center gap-2 mt-0.5"><span className="w-3 h-3 bg-amber-500 border border-white rounded inline-block flex-shrink-0"></span>Note (Amber)</div>
