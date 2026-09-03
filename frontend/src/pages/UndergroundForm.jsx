@@ -61,6 +61,7 @@ const UndergroundForm = () => {
   const [formData, setFormData] = useState({
     type: searchParams.get("type") || "",
     material_type: "", // Subtype for Handhole, Hoffman Box, Pedestal
+    owner: "",
     latitude: searchParams.get("lat") || "",
     longitude: searchParams.get("lng") || "-",
     label: "",
@@ -90,6 +91,14 @@ const UndergroundForm = () => {
     return [...base, "Proposed"];
   }, [formData.type]);
 
+  // Owner options — Handhole vs Manhole
+  const ownerOptions = useMemo(() => {
+    const t = (formData.type || "").toLowerCase();
+    if (t.includes("manhole")) return ["ATT", "Storm", "Sewer", "Power", "City Owned", "Out of Franchise", "Unknown"];
+    if (t.includes("handhole")) return ["ATT", "MCI", "Crown Castle", "Frontier", "Ezee Fiber", "Comcast", "CMC Communications", "Phonoscope", "Zayo Group", "Fiberlight", "Power", "City Owned", "Out of Franchise", "Unknown"];
+    return [];
+  }, [formData.type]);
+
   const fetchOptions = useCallback(async () => {
     try {
       const res = await axios.get("/poles/options");
@@ -109,6 +118,7 @@ const UndergroundForm = () => {
       setFormData({
         type: u.type || "",
         material_type: u.material_type || "",
+        owner: u.owner || "",
         latitude: u.latitude?.toString() || "",
         longitude: u.longitude?.toString() || "-",
         label: u.label || "",
@@ -295,6 +305,7 @@ const UndergroundForm = () => {
         job_id: jobId,
         type: formData.type,
         material_type: formData.material_type || null,
+        owner: formData.owner || null,
         label: formData.label,
         notes: formData.notes,
         photos: formData.photos,
@@ -434,7 +445,8 @@ const UndergroundForm = () => {
                 <Input value={formData.label} onChange={(e) => setFormData((p) => ({ ...p, label: e.target.value }))} placeholder="e.g. HH-12" className="h-11 sm:h-10 bg-white border-zinc-300 text-zinc-900" data-testid="ug-label-input" />
               </div>
             </div>
-            {/* Material Type dropdown - shows for Handhole, Hoffman Box, Pedestal */}
+            {/* Material Type + Owner dropdowns */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {materialTypeOptions.length > 0 && (
               <div className="space-y-2">
                 <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Material / Type</Label>
@@ -449,6 +461,21 @@ const UndergroundForm = () => {
                 </Select>
               </div>
             )}
+            {ownerOptions.length > 0 && (
+              <div className="space-y-2">
+                <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Owner</Label>
+                <Select value={formData.owner || "none"} onValueChange={(v) => setFormData((p) => ({ ...p, owner: v === "none" ? "" : v }))}>
+                  <SelectTrigger className="h-11 sm:h-10 bg-white border-zinc-300 text-zinc-900" data-testid="ug-owner-select">
+                    <SelectValue placeholder="Select owner" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-zinc-50 border-zinc-300 max-h-64">
+                    <SelectItem value="none" className="text-zinc-500">—</SelectItem>
+                    {ownerOptions.map((t) => (<SelectItem key={t} value={t}>{t}</SelectItem>))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            </div>
           </div>
 
           <div className="industrial-card p-4 sm:p-5">

@@ -586,7 +586,7 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
         ws.cell(row=current_row, column=1, value="UNDERGROUND").fill = header_fill
         ws.cell(row=current_row, column=1).font = header_font
         current_row += 1
-        for h_i, h in enumerate(["Abbr", "Type", "Subtype", "Class", "Label", "FID", "Latitude", "Longitude", "Path Measurements", "Tie-In", "Notes", "Map", "Photos"], 1):
+        for h_i, h in enumerate(["Abbr", "Type", "Subtype", "Class", "Label", "FID", "Latitude", "Longitude", "Path Measurements", "Tie-In", "Notes", "Map", "Photos", "Owner"], 1):
             ws.cell(row=current_row, column=h_i, value=h).font = Font(bold=True, size=9)
         current_row += 1
         for u in underground:
@@ -608,6 +608,7 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
             ws.cell(row=current_row, column=1, value=UG_ABBR.get(u.get("type", ""), ""))
             ws.cell(row=current_row, column=2, value=u.get("type", ""))
             ws.cell(row=current_row, column=3, value=u.get("material_type", "") or "")
+            ws.cell(row=current_row, column=14, value=u.get("owner", "") or "")
             class_cell = ws.cell(row=current_row, column=4, value=class_val)
             class_cell.font = Font(color=class_color, bold=True, size=9)
             ws.cell(row=current_row, column=5, value=u.get("label", ""))
