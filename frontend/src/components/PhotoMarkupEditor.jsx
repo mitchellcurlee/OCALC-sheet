@@ -40,6 +40,11 @@ const UG_MARKERS = [
   { type: "ROW", label: "Right of Way", color: "#64748b" },
   { type: "DW-S", label: "DW Start", color: "#0891b2" },
   { type: "DW-E", label: "DW End", color: "#0891b2" },
+  { type: "UGP-S", label: "UG Path Start", color: "#0891b2" },
+  { type: "UGP-E", label: "UG Path End", color: "#0891b2" },
+  { type: "GAS", label: "Gas Line", color: "#eab308" },
+  { type: "AS", label: "Aerial Splice", color: "#2563eb" },
+  { type: "LOOP", label: "Loop", color: "#2563eb" },
   { type: "PWR", label: "Power", color: "#dc2626" },
   { type: "X-Mes.", label: "X-Messenger", color: "#2563eb" },
   { type: "CULV", label: "Culvert", color: "#0891b2" },
@@ -49,6 +54,10 @@ const UG_MARKERS = [
   { type: "PB", label: "Pullbox", color: "#2563eb" },
   { type: "WH", label: "Weather Head", color: "#2563eb" },
   { type: "FDF", label: "FDF", color: "#2563eb" },
+  { type: "GV", label: "Gas Valve", color: "#eab308" },
+  { type: "GM", label: "Gas Meter", color: "#eab308" },
+  { type: "FST", label: "FST", color: "#2563eb" },
+  { type: "WMV", label: "Water Meter/Valve", color: "#0891b2" },
 ];
 
 const LINE_COLORS = [

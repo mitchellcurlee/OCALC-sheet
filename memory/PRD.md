@@ -290,3 +290,6 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 
 ## 2026-06: Excel export coverage for new UG items
 - Backend UG_ABBR (jobs.py Excel export) was missing FDF, Gas Valve, Gas Meter, FST, Water Meter/Valve, Gas Line — added (FDF/GV/GM/FST/WMV/GAS) so Abbr column is populated. Subtype (Existing/Direct Bury) and Owner columns already flowed through. Verified E2E: created all 7 test items, exported Excel, all abbr/type/subtype/owner values correct, cleaned up. Deployment queued.
+
+## 2026-06: Full marker palette in markup editor
+- Both UG_MARKERS lists (markup/MarkupConstants.js used by MarkupToolbar/Canvas, and PhotoMarkupEditor.jsx) now include ALL aerial + underground types: added UGP-S, UGP-E, GAS (Gas Line), AS (Aerial Splice), LOOP, PWR, X-Mes., CULV, DR-S, DR-E, EB, PB, WH, GV, GM, FST, WMV where missing. Aerial NTE/PI/FBT stamp as NTE/PI/FBT (same abbr). Verified via browser: editor palette shows all 37 markers. Deployment queued.
