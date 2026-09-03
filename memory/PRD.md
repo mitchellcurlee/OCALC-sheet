@@ -270,3 +270,6 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 ## 2026-06: Station numbers = linear footage fix
 - Stations previously accumulated straight-line GPS distance between consecutive items, so they disagreed with measured span footage. New exported computeStationSegFeet(route, ug, connections, routes) builds per-pair chainage feet from the actual span paths (custom routes included); manual/path-measured pairs contribute 0 because their measured feet already advance chainage via the item's path measurements.
 - Applied in both station computations: JobMap stations useMemo (deps now include connections/customRoutes) and buildSpanMeasurementTexts (spans/ASE path of approach). Verified with STA-TEST job replicating user example: HH 0+00 → 975ft path → HH proposed2 shows 9+75 (previously ~11+75). Test job deleted. NOT yet deployed.
+
+## 2026-06: Job tile title = Site ID
+- Jobs list tiles now use site_id as the title (falls back to wire center name for older jobs without one); when both exist the wire center shows as a small mono subtitle. Verified via screenshot. NOT yet deployed.

@@ -340,8 +340,11 @@ const JobsList = () => {
           </div>
           <div>
             <h3 className={`font-heading text-lg font-bold text-zinc-900 transition-colors ${job.completed ? "group-hover:text-green-600" : "group-hover:text-red-600"}`}>
-              {job.name || job.site_id}
+              {job.site_id || job.name}
             </h3>
+            {job.name && job.site_id && (
+              <div className="text-xs text-zinc-500 font-mono">{job.name}</div>
+            )}
             {job.location && (
               <div className="flex items-center gap-1 text-xs text-zinc-500">
                 <MapPin className="w-3 h-3" />
