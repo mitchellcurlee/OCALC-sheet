@@ -335,3 +335,7 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 
 ## 2026-06: Riser slot drift fix (WYSIWYG placement)
 - User report: riser row moved one slot down in the measurements list vs where placed in the reorder panel (even after Save & Sync with no change). Root cause: riser splice compared rso against span FROM sort_order; a span P_a->P_b occupies the (a..b) gap so a riser placed right after pole P must land BEFORE the span leaving P. Fix: span entries/rows now carry toSo (to.sort_order); all riser splices compare (e.toSo ?? e.so) > rso — in JobMap measurementEntries (riserLater + fallback block) and poleMapImage (buildSpanMeasurementTexts rows, map-image displayRows). Verified E2E: panel P1,P2,RSR,P3,P4 -> list "P1 to P2, P2 New Riser, P2 to P3, P3 to P4", identical after Save & Sync. Test job deleted. Deployment queued.
+
+## 2026-06: Segment end-color override (red<->blue)
+- getSegmentColor (JobMap.jsx) now checks per-segment override BEFORE forced after-MPOE red — so red end segments can be flipped to blue (or any palette color) and blue segments can be set red, aerial or underground alike, via Edit Map > Edit Individual Segment Colors > tap line or pick from list.
+- aerialColor / undergroundColor / segmentColors now PERSIST per job in localStorage (aerialColor_{jobId}, undergroundColor_{jobId}, segmentColors_{jobId}) — previously they reset on reload. Verified: red UG segment with blue override renders #2563eb after full reload. Test job deleted. Deployment queued.

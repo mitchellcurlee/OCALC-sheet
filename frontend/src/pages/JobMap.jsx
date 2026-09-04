@@ -610,9 +610,15 @@ const JobMap = () => {
   const [screenshotting, setScreenshotting] = useState(false);
   const [labelOffsets, setLabelOffsets] = useState({}); // Custom offsets for station labels { [itemId]: [latOffset, lngOffset] }
   const [measurementOffsets, setMeasurementOffsets] = useState({}); // Custom offsets for measurement labels { [segmentKey]: [latOffset, lngOffset] }
-  const [aerialColor, setAerialColor] = useState(DEFAULT_AERIAL_COLOR); // Default color for aerial routes
-  const [undergroundColor, setUndergroundColor] = useState(DEFAULT_UNDERGROUND_COLOR); // Default color for underground routes
-  const [segmentColors, setSegmentColors] = useState({}); // Per-segment color overrides { [segmentKey]: colorKey }
+  const [aerialColor, setAerialColor] = useState(() => {
+    try { return localStorage.getItem(`aerialColor_${jobId}`) || DEFAULT_AERIAL_COLOR; } catch (e) { return DEFAULT_AERIAL_COLOR; }
+  }); // Default color for aerial routes
+  const [undergroundColor, setUndergroundColor] = useState(() => {
+    try { return localStorage.getItem(`undergroundColor_${jobId}`) || DEFAULT_UNDERGROUND_COLOR; } catch (e) { return DEFAULT_UNDERGROUND_COLOR; }
+  }); // Default color for underground routes
+  const [segmentColors, setSegmentColors] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(`segmentColors_${jobId}`) || "{}"); } catch (e) { return {}; }
+  }); // Per-segment color overrides { [segmentKey]: colorKey }
   const [selectedSegment, setSelectedSegment] = useState(null); // Currently selected segment for color editing
   const [customLabelTexts, setCustomLabelTexts] = useState({}); // Custom text overrides { [labelId]: text }
   const [editingLabelId, setEditingLabelId] = useState(null); // Currently editing label ID
@@ -638,14 +644,24 @@ const JobMap = () => {
   const aerialColorHex = PATH_COLORS[aerialColor]?.hex || PATH_COLORS.blue.hex;
   const undergroundColorHex = PATH_COLORS[undergroundColor]?.hex || PATH_COLORS.green.hex;
   
-  // Get color for a specific segment (uses segment override or default)
+  // Get color for a specific segment (override wins — lets users flip red end
+  // segments to blue and vice versa; then after-MPOE red; then defaults)
   const getSegmentColor = useCallback((segmentKey, isAerial, isRed) => {
-    if (isRed) return "#dc2626"; // Red for after MPOE
     if (segmentColors[segmentKey]) {
       return PATH_COLORS[segmentColors[segmentKey]]?.hex || (isAerial ? aerialColorHex : undergroundColorHex);
     }
+    if (isRed) return "#dc2626"; // Red for after MPOE
     return isAerial ? aerialColorHex : undergroundColorHex;
   }, [segmentColors, aerialColorHex, undergroundColorHex]);
+
+  // Persist color choices per job
+  useEffect(() => {
+    try {
+      localStorage.setItem(`aerialColor_${jobId}`, aerialColor);
+      localStorage.setItem(`undergroundColor_${jobId}`, undergroundColor);
+      localStorage.setItem(`segmentColors_${jobId}`, JSON.stringify(segmentColors));
+    } catch (e) { /* ignore */ }
+  }, [jobId, aerialColor, undergroundColor, segmentColors]);
   
   // Handle segment click for color selection
   const handleSegmentClick = useCallback((segmentKey) => {
