@@ -300,3 +300,7 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 
 ## 2026-06: Station rounding carry fix (7+100 -> 8+00)
 - Root cause: station format rounded the remainder separately (floor(feet/100) + round(feet%100)), so feet like 799.6 gave "7+100". Fixed by rounding the total feet first, then splitting — in poleMapImage.js feetToStation, MarkupTab.jsx toStation, JobMap.jsx toStation. (SpanDistance.jsx already parseInt-based, unaffected.) Verified E2E with test job: HH 0+00 -> 800ft path -> HH shows 8+00 on map badges and station list. Test job deleted. Deployment queued.
+
+## 2026-06: Existing on all material dropdowns + employee removal
+- "Existing" appended (with "Proposed") to Material/Type options for ALL underground attribute types (UndergroundForm.jsx; Manhole's base list simplified since Existing is now global). Verified via browser on Handhole/Manhole/Gas Valve/UG Path Start.
+- Removed Cochise Nava from ASE employee dropdown (ase/ASEFormConstants.js employees list). Deployment queued.

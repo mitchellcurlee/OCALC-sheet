@@ -72,7 +72,6 @@ export const ASE_OPTIONS = {
   
   // Employees (from SOURCE sheet Column A)
   employees: [
-    "COCHISE NAVA Cochise.Nava@BYERS.com (832) 540-0027",
     "MITCHELL CURLEE Mitchell.Curlee@BYERS.COM (936) 689-7042",
     "Jared Monroe Jared.Monroe@BYERS.COM (832) 316-6907",
     "John Sydow John.Sydow@BYERS.COM (832) 422-0577",

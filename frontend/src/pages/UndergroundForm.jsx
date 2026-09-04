@@ -80,18 +80,17 @@ const UndergroundForm = () => {
     standalone: false,
   });
 
-  // Material type options based on underground type ("Proposed" available on all attributes)
+  // Material type options based on underground type ("Existing" and "Proposed" available on all attributes)
   const materialTypeOptions = useMemo(() => {
     const typeMap = {
       "Handhole": ["Concrete", "Concrete/ Bi-fold Metal", "Concrete/ MH lid", "Fiber Glass", "Plastic"],
       "Hoffman Box": ["Community", "Private"],
       "Pedestal": ["Copper", "Fiber"],
-      "Manhole": ["Existing"],
       "UG Path Start": ["Direct Bury"],
       "UG Path End": ["Direct Bury"],
     };
     const base = typeMap[formData.type] || [];
-    return [...base, "Proposed"];
+    return [...base, "Existing", "Proposed"];
   }, [formData.type]);
 
   // Owner options — Handhole vs Manhole
