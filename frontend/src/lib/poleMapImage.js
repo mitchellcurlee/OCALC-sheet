@@ -381,6 +381,7 @@ export const buildSpanMeasurementTexts = ({ poles, underground = [], connections
 
   const rows = [];
   const riserDone = new Set();
+  const riserLaterRows = [];
   const pathDone = new Set();
   const pathTextOf = (u) => {
     const t = (u.path_measurements || []).reduce((s, m) => s + (parseFloat(m.feet) || 0), 0);
@@ -393,12 +394,14 @@ export const buildSpanMeasurementTexts = ({ poles, underground = [], connections
     const c = parseInt(p?.risers) || 0, h = parseFloat(p?.riser_height) || 0;
     if (c > 0 && h > 0) {
       riserDone.add(it.id);
-      rows.push({
+      const row = {
         so: p?.riser_sort_order ?? it.sort_order ?? Infinity,
         text: stationsOnly
           ? `${itemName(it)} New Riser${c > 1 ? ` x${c}` : ""} ${riserStations[it.id] || stations[it.id] || ""}`.trim()
           : `${itemName(it)} New Riser${c > 1 ? ` x${c}` : ""} = ${fmtFeet(c * h)}`,
-      });
+      };
+      if (p?.riser_sort_order != null) riserLaterRows.push(row);
+      else rows.push(row);
     }
   };
   const pushPath = (it) => {
@@ -436,7 +439,11 @@ export const buildSpanMeasurementTexts = ({ poles, underground = [], connections
       if (idx === -1) rows.push(row);
       else rows.splice(idx, 0, row);
     });
-  rows.sort((a, b) => (a.so ?? Infinity) - (b.so ?? Infinity));
+  riserLaterRows.sort((a, b) => a.so - b.so).forEach((row) => {
+    const idx = rows.findIndex((r) => (r.so ?? Infinity) > row.so);
+    if (idx === -1) rows.push(row);
+    else rows.splice(idx, 0, row);
+  });
   return rows.map((r) => r.text);
 };
 
@@ -902,6 +909,7 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
       : `${undergroundAbbr(it.ugType)}${it.label && it.label !== it.ugType ? ` ${it.label}` : ""}`;
     const displayRows = [];
     const riserDone = new Set();
+    const riserLaterDisplay = [];
     pairSegs.forEach((sg) => {
       if (!sg.manual) displayRows.push({ type: "segment", so: sg.from.sort_order ?? Infinity, text: `${itemName(sg.from)} -> ${itemName(sg.to)}${sg.aerial ? "" : " (UG)"}`, ft: sg.ft });
       const poleB = sg.to.type === "pole" ? route.find((p) => p.id === sg.to.id) : null;
@@ -910,17 +918,23 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
         const riserHeight = parseFloat(poleB.riser_height) || 0;
         if (riserCount > 0 && riserHeight > 0) {
           riserDone.add(poleB.id);
-          displayRows.push({ 
+          const row = { 
             type: "riser", 
             so: poleB.riser_sort_order ?? sg.to.sort_order ?? Infinity,
             text: `  ↳ ${poleB.pole_number} Riser${riserCount > 1 ? ` x${riserCount}` : ""}`, 
             ft: riserCount * riserHeight 
-          });
+          };
+          if (poleB.riser_sort_order != null) riserLaterDisplay.push(row);
+          else displayRows.push(row);
         }
       }
     });
     insertPathRows(displayRows, underground);
-    displayRows.sort((a, b) => (a.so ?? Infinity) - (b.so ?? Infinity));
+    riserLaterDisplay.sort((a, b) => a.so - b.so).forEach((row) => {
+      const idx = displayRows.findIndex((r) => (r.so ?? Infinity) > row.so);
+      if (idx === -1) displayRows.push(row);
+      else displayRows.splice(idx, 0, row);
+    });
     
     // Calculate required height to show all measurements
     const requiredPanelHeight = headerH + (displayRows.length * rowH) + bottomSection + 20 * s;

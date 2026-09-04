@@ -1677,12 +1677,15 @@ const JobMap = () => {
       const h = parseFloat(p.riser_height) || 0;
       return c > 0 && h > 0 ? { c, h } : null;
     };
+    const riserLater = [];
     const pushRiser = (item, pos) => {
       const r = riserInfo(item);
       if (r && !added.has(item.id)) {
         added.add(item.id);
         const p = route.find((x) => x.id === item.id);
-        entries.push({ kind: "riser", so: p?.riser_sort_order ?? item.sort_order ?? Infinity, pos, itemId: item.id, text: `${poleName(item.label)} New Riser${r.c > 1 ? ` ×${r.c}` : ""} = ${fmtFeet(r.c * r.h)}` });
+        const entry = { kind: "riser", so: p?.riser_sort_order ?? item.sort_order ?? Infinity, pos, itemId: item.id, text: `${poleName(item.label)} New Riser${r.c > 1 ? ` ×${r.c}` : ""} = ${fmtFeet(r.c * r.h)}` };
+        if (p?.riser_sort_order != null) riserLater.push(entry);
+        else entries.push(entry);
       }
     };
     const pathText = (u) => {
@@ -1734,7 +1737,13 @@ const JobMap = () => {
         if (idx === -1) entries.push(entry);
         else entries.splice(idx, 0, entry);
       });
-    entries.sort((a, b) => (a.so ?? Infinity) - (b.so ?? Infinity));
+    // Risers with an explicit user-set position: splice by riser_sort_order without
+    // disturbing the natural (segment visit) order of span entries
+    riserLater.sort((a, b) => a.so - b.so).forEach((entry) => {
+      const idx = entries.findIndex((e) => (e.so ?? Infinity) > entry.so);
+      if (idx === -1) entries.push(entry);
+      else entries.splice(idx, 0, entry);
+    });
     entries.forEach((e, idx) => {
       e.num = idx + 1;
       if (e.kind === "span") nums[e.segIndex] = e.num;
