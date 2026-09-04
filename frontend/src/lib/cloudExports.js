@@ -13,6 +13,13 @@ export const CLOUD_EXPORT_LABELS = {
 
 export const notifyCloudExportsUpdated = () => window.dispatchEvent(new CustomEvent("cloud-exports-updated"));
 
+export const formExportFilename = (job, form, ext) => {
+  const address = (job?.location || job?.ase_data?.address || "").trim();
+  const parts = [(job?.job_type || "OCALC").trim(), address, form].filter(Boolean);
+  const safe = parts.join("_").replace(/[^\w \-.,]/g, "_").trim();
+  return `${safe || "export"}.${ext}`;
+};
+
 export const uploadExportToCloud = async (jobId, exportType, filename, blob) => {
   const fd = new FormData();
   fd.append("export_type", exportType);

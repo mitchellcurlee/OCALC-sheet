@@ -53,7 +53,7 @@ import {
 import { buildSowNotesText } from "@/components/ase/ASESOWNotesTab";
 import { ExportDestinationDialog } from "@/components/ExportDestinationDialog";
 import { CloudExportsSection } from "@/components/CloudExportsSection";
-import { CLOUD_EXPORT_LABELS, uploadExportToCloud, saveBlobToDevice, notifyCloudExportsUpdated } from "@/lib/cloudExports";
+import { CLOUD_EXPORT_LABELS, uploadExportToCloud, saveBlobToDevice, notifyCloudExportsUpdated, formExportFilename } from "@/lib/cloudExports";
 import { cacheJobForOffline, markJobSavedOffline } from "@/lib/offlineTiles";
 import {
   DropdownMenu,
@@ -438,20 +438,20 @@ const JobDetail = () => {
   const getExportBlob = async (type) => {
     if (type === "job_excel") {
       const response = await axios.get(`/jobs/${jobId}/export/excel`, { params: { base_url: window.location.origin }, responseType: "blob" });
-      const filename = (response.headers["content-disposition"]?.split("filename=")[1] || `${job?.name || "job"}_export.xlsx`).replace(/"/g, "");
+      const filename = (response.headers["content-disposition"]?.split("filename=")[1] || formExportFilename(job, "Job Data", "xlsx")).replace(/"/g, "");
       return { blob: new Blob([response.data]), filename };
     }
     if (type === "sow_docx") {
       const ase = job?.ase_data || {};
       const text = ase.sow_notes_override || buildSowNotesText(ase);
       const response = await axios.post(`/jobs/${jobId}/export/sow-docx`, { text }, { responseType: "blob" });
-      return { blob: new Blob([response.data]), filename: `SOW_Notes_${job?.name || jobId}.docx` };
+      return { blob: new Blob([response.data]), filename: formExportFilename(job, "SOW Notes", "docx") };
     }
     if (type === "permission_stamp") {
       await axios.put(`/jobs/${jobId}`, { permission_stamp: psData });
       setJob((prev) => ({ ...prev, permission_stamp: psData }));
       const response = await axios.get(`/jobs/${jobId}/export/permission-stamp-docx`, { responseType: "blob" });
-      return { blob: new Blob([response.data]), filename: `Permission_Stamp_${job?.name || jobId}.docx` };
+      return { blob: new Blob([response.data]), filename: formExportFilename(job, "Permission Stamp", "docx") };
     }
     return null;
   };

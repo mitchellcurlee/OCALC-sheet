@@ -304,3 +304,8 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 ## 2026-06: Existing on all material dropdowns + employee removal
 - "Existing" appended (with "Proposed") to Material/Type options for ALL underground attribute types (UndergroundForm.jsx; Manhole's base list simplified since Existing is now global). Verified via browser on Handhole/Manhole/Gas Valve/UG Path Start.
 - Removed Cochise Nava from ASE employee dropdown (ase/ASEFormConstants.js employees list). Deployment queued.
+
+## 2026-06: Form export filenames = job type + address + form name
+- New backend helper form_export_filename(job, form, ext) in routes/jobs.py (job_type defaults "OCALC" for older docs missing the field; address = job.location or ase_data.address). Applied to: Job Excel ("Job Data"), ASE Excel ("ASE Checklist"), SOW docx ("SOW Notes"), Permission Stamp docx. All Content-Disposition headers quoted.
+- Frontend formExportFilename in lib/cloudExports.js used by JobDetail.jsx + ASEForm.jsx download/cloud-save flows (replaces old ASE_/SOW_Notes_/Permission_Stamp_ names). Verified via curl on all 4 endpoints: e.g. "OCALC_24810 Majestic Cone Lane, Magnolia, tx 77355_ASE Checklist.xlsx". NOT yet deployed.
+- Gotcha hit: an earlier edit merged a docstring line in jobs.py causing SyntaxError/backend down — fixed immediately.

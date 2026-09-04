@@ -14,7 +14,7 @@ import { ArrowLeft, Save, FileSpreadsheet, Loader2, ClipboardList, Users, FileOu
 // Import ASE sub-components
 import { INITIAL_FORM_DATA } from "@/components/ase";
 import { ExportDestinationDialog } from "@/components/ExportDestinationDialog";
-import { CLOUD_EXPORT_LABELS, uploadExportToCloud, saveBlobToDevice } from "@/lib/cloudExports";
+import { CLOUD_EXPORT_LABELS, uploadExportToCloud, saveBlobToDevice, formExportFilename } from "@/lib/cloudExports";
 import { buildSpanMeasurementTexts } from "@/lib/poleMapImage";
 import ASEChecklistTab from "@/components/ase/ASEChecklistTab";
 import ASECoordinatorTab from "@/components/ase/ASECoordinatorTab";
@@ -401,7 +401,7 @@ const ASEForm = () => {
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `ASE_${job?.job_number || jobId}.xlsx`);
+      link.setAttribute('download', formExportFilename(job, "ASE Checklist", "xlsx"));
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -422,7 +422,7 @@ const ASEForm = () => {
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `SOW_Notes_${job?.job_number || jobId}.docx`);
+      link.setAttribute('download', formExportFilename(job, "SOW Notes", "docx"));
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -443,11 +443,11 @@ const ASEForm = () => {
     const jobName = job?.name || job?.job_number || jobId;
     if (type === "ase_excel") {
       const r = await axios.get(`/jobs/${jobId}/export/ase`, { responseType: "blob" });
-      return { blob: new Blob([r.data]), filename: `ASE_${jobName}.xlsx` };
+      return { blob: new Blob([r.data]), filename: formExportFilename(job, "ASE Checklist", "xlsx") };
     }
     const text = formData.sow_notes_override || buildSowNotesText(formData);
     const r = await axios.post(`/jobs/${jobId}/export/sow-docx`, { text }, { responseType: "blob" });
-    return { blob: new Blob([r.data]), filename: `SOW_Notes_${jobName}.docx` };
+    return { blob: new Blob([r.data]), filename: formExportFilename(job, "SOW Notes", "docx") };
   };
 
   const runPendingExport = async (dest) => {

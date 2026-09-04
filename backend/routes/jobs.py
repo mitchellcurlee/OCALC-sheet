@@ -83,6 +83,15 @@ def verify_download_token(resource_type: str, resource_id: str, token: str) -> b
         return False
 
 
+def form_export_filename(job: dict, form: str, ext: str) -> str:
+    """Export filename: job type + address + form name"""
+    address = (job.get("location") or (job.get("ase_data") or {}).get("address") or "").strip()
+    parts = [p for p in [(job.get("job_type") or "OCALC").strip(), address, form] if p]
+    raw = "_".join(parts)
+    safe = "".join(c if c.isalnum() or c in " -_.," else "_" for c in raw).strip()
+    return f"{safe or 'export'}.{ext}"
+
+
 async def can_access_job(job_id: str, current_user: dict) -> dict:
     """Check if user can access a job and return it if so"""
     if is_admin_user(current_user):
@@ -658,12 +667,12 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
     buffer.seek(0)
     
     safe_name = "".join(c for c in job.get("name", "job") if c.isalnum() or c in (' ', '-', '_')).strip()
-    filename = f"{safe_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    filename = form_export_filename(job, "Job Data", "xlsx")
     
     return StreamingResponse(
         buffer,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": f"attachment; filename={filename}"}
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
     )
 
 
@@ -1707,7 +1716,7 @@ def _sow_docx_response(job: dict, text: str = None):
     return StreamingResponse(
         buf,
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        headers={"Content-Disposition": f'attachment; filename="SOW_Notes_{safe}.docx"'},
+        headers={"Content-Disposition": f'attachment; filename="{form_export_filename(job, "SOW Notes", "docx")}"'},
     )
 
 
@@ -1760,7 +1769,7 @@ async def export_permission_stamp_docx(job_id: str, current_user: dict = Depends
     return StreamingResponse(
         buf,
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        headers={"Content-Disposition": f'attachment; filename="Permission_Stamp_{safe}.docx"'},
+        headers={"Content-Disposition": f'attachment; filename="{form_export_filename(job, "Permission Stamp", "docx")}"'},
     )
 
 
@@ -2272,9 +2281,9 @@ async def export_ase_excel(job_id: str, request: Request, current_user: dict = D
     wb.save(buffer)
     buffer.seek(0)
     
-    filename = f"{job.get('name', 'Job')}_ASE_Export.xlsx".replace(" ", "_")
+    filename = form_export_filename(job, "ASE Checklist", "xlsx")
     return StreamingResponse(
         buffer,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": f"attachment; filename={filename}"}
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
     )
