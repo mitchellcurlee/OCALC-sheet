@@ -55,7 +55,7 @@ const toDecimalFeet = (decimalFeet) => {
  * 
  * Auto-saves progress to localStorage to prevent data loss if app is closed.
  */
-export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "outline", sessionId = "default", suggestedPhotos = [], testId = "height-measurer-btn", targetLabel = "HOA", downGuyMode = false, initialGuyCount = 1 }) => {
+export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "outline", sessionId = "default", suggestedPhotos = [], testId = "height-measurer-btn", targetLabel = "HOA", downGuyMode = false, initialGuyCount = 1, preloadUrl = null, onPreloadHandled = null }) => {
   const storageKey = `${STORAGE_KEY_PREFIX}${sessionId}`;
   const [open, setOpen] = useState(false);
   const [imagePreview, setImagePreview] = useState(null);
@@ -255,6 +255,16 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
   };
 
   // Calculate pixels per foot when reference points are set
+  useEffect(() => {
+    if (preloadUrl) {
+      setHasRestoredData(true);
+      setOpen(true);
+      loadSuggestedPhoto(preloadUrl);
+      onPreloadHandled && onPreloadHandled();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preloadUrl]);
+
   useEffect(() => {
     if (markers.refBottom && markers.refTop) {
       const pixelDistance = Math.abs(markers.refTop.y - markers.refBottom.y);

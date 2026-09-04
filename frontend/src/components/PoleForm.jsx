@@ -366,6 +366,8 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
     setFormData((prev) => ({ ...prev, [name]: value === BLANK ? "" : value }));
   };
 
+  const [measurerPreload, setMeasurerPreload] = useState(null);
+
   const stagingCategories = [
     { key: "single:pole_photo", label: "Pole Picture" },
     { key: "single:ocalc_left_photo", label: "OCALC Left" },
@@ -374,6 +376,7 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
     { key: "array:birthmark_photos", label: "Birthmark Photos" },
     { key: "array:mgnv_photos", label: "MGNV Photos" },
     { key: "array:hoa_markup_photos", label: "HOA Markup Photos" },
+    { key: "tool:height", label: "Height Measurement Tool" },
     ...downGuys.map((_dg, i) => ({ key: `dg:${i}`, label: `Down Guy ${i + 1} Photos` })),
     ...knuckles.map((_k, i) => ({ key: `kn:${i}`, label: `Anchor ${i + 1} Photos` })),
     ...attachments.map((_a, i) => ({ key: `att:${i}`, label: `HOA ${i + 1} Photos` })),
@@ -381,6 +384,11 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
 
   const handleStagedAssign = (url, key) => {
     const [kind, name] = key.split(":");
+    if (kind === "tool") {
+      setMeasurerPreload(url);
+      toast.success("Photo opened in the height measurement tool");
+      return;
+    }
     if (kind === "single") {
       setFormData((p) => ({ ...p, [name]: url }));
     } else if (kind === "array") {
@@ -1031,10 +1039,13 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
               </h2>
               <div className="flex items-center gap-2">
                 <ReferenceHeightMeasurer 
+                  preloadUrl={measurerPreload}
+                  onPreloadHandled={() => setMeasurerPreload(null)}
                   suggestedPhotos={[
                     formData.ocalc_left_photo && { label: "OCALC Left", url: formData.ocalc_left_photo },
                     formData.ocalc_middle_photo && { label: "OCALC Middle", url: formData.ocalc_middle_photo },
                     formData.ocalc_right_photo && { label: "OCALC Right", url: formData.ocalc_right_photo },
+                    ...(formData.staged_photos || []).map((u, i) => ({ label: `Gallery ${i + 1}`, url: u })),
                   ].filter(Boolean)}
                   onHeightsDetected={(heights) => {
                     // Add measured heights as new attachment rows
@@ -1243,6 +1254,7 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
                     formData.ocalc_left_photo && { label: "OCALC Left", url: formData.ocalc_left_photo },
                     formData.ocalc_middle_photo && { label: "OCALC Middle", url: formData.ocalc_middle_photo },
                     formData.ocalc_right_photo && { label: "OCALC Right", url: formData.ocalc_right_photo },
+                    ...(formData.staged_photos || []).map((u, i) => ({ label: `Gallery ${i + 1}`, url: u })),
                   ].filter(Boolean)}
                   onHeightsDetected={(measurements) => {
                     // Each measurement targets a specific down guy + field (height or lead)

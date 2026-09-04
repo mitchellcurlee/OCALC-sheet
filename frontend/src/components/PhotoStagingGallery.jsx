@@ -28,6 +28,8 @@ export const PhotoStagingGallery = ({ photos = [], onChange, categories = [], on
   const [uploading, setUploading] = useState(false);
   const [assignPhoto, setAssignPhoto] = useState(null);
   const [selectedCats, setSelectedCats] = useState([]);
+  const [multiSelect, setMultiSelect] = useState([]);
+  const [takeAnother, setTakeAnother] = useState(false);
 
   const photosRef = useRef(photos);
   const onChangeRef = useRef(onChange);
@@ -92,17 +94,31 @@ export const PhotoStagingGallery = ({ photos = [], onChange, categories = [], on
     e.target.value = "";
   };
 
+  const handleCameraInput = async (e) => {
+    const files = Array.from(e.target.files || []);
+    await processFiles(files);
+    e.target.value = "";
+    if (files.length > 0) setTakeAnother(true);
+  };
+
+  const toggleMultiSelect = (url) => {
+    setMultiSelect((prev) => (prev.includes(url) ? prev.filter((u) => u !== url) : [...prev, url]));
+  };
+
   const toggleCat = (key) => {
     setSelectedCats((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
   };
 
   const handleAssignConfirm = () => {
-    if (assignPhoto && selectedCats.length) {
-      selectedCats.forEach((key) => onAssign(assignPhoto, key));
-      onChangeRef.current(photosRef.current.filter((p) => p !== assignPhoto));
+    const targets = assignPhoto === "__MULTI__" ? multiSelect : (assignPhoto ? [assignPhoto] : []);
+    if (targets.length && selectedCats.length) {
+      selectedCats.forEach((key) => targets.forEach((url) => onAssign(url, key)));
+      const consumed = selectedCats.some((k) => !k.startsWith("tool:"));
+      if (consumed) onChangeRef.current(photosRef.current.filter((p) => !targets.includes(p)));
     }
     setAssignPhoto(null);
     setSelectedCats([]);
+    setMultiSelect([]);
   };
 
   return (
@@ -112,7 +128,7 @@ export const PhotoStagingGallery = ({ photos = [], onChange, categories = [], on
           <Images className="w-4 h-4" />Photo Gallery{photos.length > 0 && ` (${photos.length} unsorted)`}
         </Label>
         <div className="flex gap-2 ml-auto">
-          <input ref={camRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleInput} data-testid={`${testId}-camera-input`} />
+          <input ref={camRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleCameraInput} data-testid={`${testId}-camera-input`} />
           <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={handleInput} data-testid={`${testId}-file-input`} />
           <Button type="button" size="sm" variant="outline" disabled={uploading} onClick={() => camRef.current?.click()} className="h-8 text-xs bg-white border-sky-300 text-sky-800 hover:bg-sky-100" data-testid={`${testId}-camera-btn`}>
             {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5 mr-1" />}Camera
@@ -135,7 +151,9 @@ export const PhotoStagingGallery = ({ photos = [], onChange, categories = [], on
       ) : (
         <>
           <div className="flex flex-wrap gap-2">
-            {photos.map((url, i) => (
+            {photos.map((url, i) => {
+              const picked = multiSelect.includes(url);
+              return (
               <div key={`${url}-${i}`} className="relative group">
                 <div
                   draggable
@@ -144,39 +162,65 @@ export const PhotoStagingGallery = ({ photos = [], onChange, categories = [], on
                     e.dataTransfer.setData("text/plain", url);
                     e.dataTransfer.effectAllowed = "move";
                   }}
-                  onClick={() => { setSelectedCats([]); setAssignPhoto(url); }}
+                  onClick={() => {
+                    if (multiSelect.length > 0) { toggleMultiSelect(url); return; }
+                    setSelectedCats([]); setAssignPhoto(url);
+                  }}
                   className="cursor-pointer active:cursor-grabbing"
                   title="Drag onto a category below, or tap to pick one"
                   data-testid={`${testId}-photo-${i}`}
                 >
-                  <OfflinePhoto src={url} alt={`Unsorted ${i + 1}`} className="w-20 h-16 object-cover border-2 border-sky-300 rounded hover:border-sky-500 transition-colors" />
+                  <OfflinePhoto src={url} alt={`Unsorted ${i + 1}`} className={`w-20 h-16 object-cover border-2 rounded transition-colors ${picked ? "border-sky-600 ring-2 ring-sky-400" : "border-sky-300 hover:border-sky-500"}`} />
                 </div>
                 <button
                   type="button"
+                  onClick={(e) => { e.stopPropagation(); toggleMultiSelect(url); }}
+                  className={`absolute -top-1.5 -left-1.5 rounded-full w-5 h-5 flex items-center justify-center border shadow-sm ${picked ? "bg-sky-600 border-sky-600 text-white" : "bg-white border-zinc-300 text-transparent hover:text-zinc-300"}`}
+                  title={picked ? "Deselect" : "Select for multi-assign"}
+                  data-testid={`${testId}-select-${i}`}
+                >
+                  <Check className="w-3 h-3" />
+                </button>
+                <button
+                  type="button"
                   onClick={(e) => { e.stopPropagation(); onChangeRef.current(photosRef.current.filter((p) => p !== url)); }}
-                  className="absolute -top-1.5 -right-1.5 bg-red-600 text-white rounded-full w-4 h-4 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute -top-1.5 -right-1.5 bg-red-600 text-white rounded-full w-4 h-4 flex items-center justify-center opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                   data-testid={`${testId}-remove-${i}`}
                 >
                   <X className="w-2.5 h-2.5" />
                 </button>
               </div>
-            ))}
+            );})}
           </div>
-          <p className="text-[11px] text-sky-600">Drag a photo onto any category below — or tap it to choose one. Unsorted photos are saved with this item.</p>
+          {multiSelect.length > 0 && (
+            <div className="flex items-center gap-2 pt-1">
+              <Button type="button" size="sm" className="h-8 text-xs bg-sky-600 hover:bg-sky-700 text-white" onClick={() => { setSelectedCats([]); setAssignPhoto("__MULTI__"); }} data-testid={`${testId}-assign-selected-btn`}>
+                <FolderInput className="w-3.5 h-3.5 mr-1" />Assign {multiSelect.length} selected
+              </Button>
+              <Button type="button" size="sm" variant="outline" className="h-8 text-xs bg-white border-zinc-300 text-zinc-700" onClick={() => setMultiSelect([])} data-testid={`${testId}-clear-selection-btn`}>Clear selection</Button>
+            </div>
+          )}
+          <p className="text-[11px] text-sky-600">Drag a photo onto any category below — tap it to choose one, or use the circle to select several and assign them together. Unsorted photos are saved with this item.</p>
         </>
       )}
 
       <Dialog open={!!assignPhoto} onOpenChange={(o) => { if (!o) { setAssignPhoto(null); setSelectedCats([]); } }}>
-        <DialogContent className="max-w-xl bg-white" data-testid={`${testId}-assign-dialog`}>
+        <DialogContent className="max-w-xl bg-white" aria-describedby={undefined} data-testid={`${testId}-assign-dialog`}>
           <DialogHeader>
-            <DialogTitle className="text-sm font-mono uppercase flex items-center gap-2"><FolderInput className="w-4 h-4" />Assign photo to…</DialogTitle>
+            <DialogTitle className="text-sm font-mono uppercase flex items-center gap-2"><FolderInput className="w-4 h-4" />Assign {assignPhoto === "__MULTI__" ? `${multiSelect.length} photos` : "photo"} to…</DialogTitle>
           </DialogHeader>
-          {assignPhoto && (
+          {assignPhoto === "__MULTI__" ? (
+            <div className="flex flex-wrap justify-center gap-2 bg-zinc-950/5 rounded-lg p-2 max-h-[35vh] overflow-y-auto">
+              {multiSelect.map((u, i) => (
+                <OfflinePhoto key={`${u}-${i}`} src={u} alt={`Selected ${i + 1}`} className="w-20 h-16 object-cover rounded border border-zinc-300" />
+              ))}
+            </div>
+          ) : assignPhoto && (
             <div className="flex justify-center bg-zinc-950/5 rounded-lg p-2">
               <OfflinePhoto src={assignPhoto} alt="Assign" className="max-h-[45vh] w-auto max-w-full object-contain rounded" />
             </div>
           )}
-          <p className="text-xs text-zinc-500">Pick one or more categories — the photo will be added to each.</p>
+          <p className="text-xs text-zinc-500">Pick one or more categories — {assignPhoto === "__MULTI__" ? "each photo" : "the photo"} will be added to each.</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-52 overflow-y-auto">
             {categories.map((cat) => {
               const active = selectedCats.includes(cat.key);
@@ -202,6 +246,21 @@ export const PhotoStagingGallery = ({ photos = [], onChange, categories = [], on
             <Button type="button" variant="outline" size="sm" className="h-9 text-xs bg-zinc-50 border-zinc-300 text-zinc-700" onClick={() => { setAssignPhoto(null); setSelectedCats([]); }} data-testid={`${testId}-assign-cancel`}>Cancel</Button>
             <Button type="button" size="sm" disabled={!selectedCats.length} className="h-9 text-xs bg-sky-600 hover:bg-sky-700 text-white" onClick={handleAssignConfirm} data-testid={`${testId}-assign-confirm`}>
               Assign{selectedCats.length > 0 && ` to ${selectedCats.length} ${selectedCats.length === 1 ? "category" : "categories"}`}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={takeAnother} onOpenChange={setTakeAnother}>
+        <DialogContent className="max-w-sm bg-white" aria-describedby={undefined} data-testid={`${testId}-take-another-dialog`}>
+          <DialogHeader>
+            <DialogTitle className="text-sm font-mono uppercase flex items-center gap-2"><Camera className="w-4 h-4" />Photo added</DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-zinc-600">Take another photo?</p>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" size="sm" className="h-9 text-xs bg-zinc-50 border-zinc-300 text-zinc-700" onClick={() => setTakeAnother(false)} data-testid={`${testId}-take-another-done`}>Done</Button>
+            <Button type="button" size="sm" className="h-9 text-xs bg-sky-600 hover:bg-sky-700 text-white" onClick={() => { setTakeAnother(false); setTimeout(() => camRef.current?.click(), 50); }} data-testid={`${testId}-take-another-btn`}>
+              <Camera className="w-3.5 h-3.5 mr-1" />Take Another
             </Button>
           </div>
         </DialogContent>

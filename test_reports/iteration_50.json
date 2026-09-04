@@ -1,0 +1,30 @@
+{
+  "summary": "Frontend-only E2E testing of the 3 new photo features on the Pole form (staging gallery) plus regressions. Logged in as Admin@mastec.com, used seed job e5dc0bae-96bb-4cef-8001-7baf4e41d80a. All 9 scenarios PASSED: (1) uploaded 3 photos via pole-staging-file-input; (2) tapping pole-staging-photo-0 opens pole-staging-assign-dialog which contains 'Height Measurement Tool' (pole-staging-assign-tool-height); selecting it + Assign opens the Reference Height Measurer preloaded with the photo at the marking step ('Step 1: Tap the BOTTOM of your 6ft reference object') and the photo REMAINS in staging (3 -> 3); (3) multi-select via pole-staging-select-0/1 highlights photos, 'Assign 2 selected' button appears, dialog shows both thumbnails, assigning to 'Birthmark Photos' added both to the Birthmark box (2 photos) and removed both from staging (3 -> 1); (4) 'Clear selection' removes the assign-selected bar; (5) single assign to MGNV Photos still works and consumes the photo (staging 1 -> 0, mgnv 1); (6) camera input (pole-staging-camera-input) triggers pole-staging-take-another-dialog and 'Done' closes it; (7) plain file input does NOT trigger the take-another dialog; (8) MultiPhotoUpload birthmark camera input (birthmark-camera-input) triggers birthmark-take-another-dialog with working Done; (9) regressions: pole saved successfully after assignments (redirects to job detail, pole QA999 listed, no console errors) and the Underground form (ug-staging) uploads/assigns normally with NO height-tool option (0 tool buttons, 3 categories, assign consumed photo). Verified real image rendering (naturalWidth 300) with valid PNGs.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "PhotoStagingGallery thumbnail delete", "issue": "Per-photo remove X is opacity-0 until group-hover, so on touch devices (primary use case: field tablets/phones) it is effectively invisible/unreachable; the multi-select circle is always visible but delete is not", "selector": "[data-testid='pole-staging-remove-0']", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Assign dialog / Take-another dialog", "issues": ["React warning repeated on every open: 'Missing Description or aria-describedby={undefined} for DialogContent' — add DialogDescription for a11y (non-blocking)"]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Optional: add DialogDescription (or aria-describedby) to PhotoStagingGallery assign/take-another DialogContent to clear repeated React a11y warnings",
+    "Optional: make the staging thumbnail remove (X) button always visible on touch/small screens"
+  ],
+  "critical_code_review_comments": [
+    "PhotoStagingGallery.handleAssignConfirm: correct — 'consumed' is false only when ALL selected categories are tool:*, so mixing 'tool:height' with a real category still consumes the photo (verified logic; likely intended)",
+    "PoleForm.jsx is 1462 lines — well past the 700-line guideline; consider splitting (sections: staging, HOA, spans, GPS) into sub-components"
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "not tested (frontend-only request)", "frontend": "100% (9/9 scenarios)"},
+  "seed_data_creation": "Created pole QA999 in seed job e5dc0bae-96bb-4cef-8001-7baf4e41d80a for the save regression; DELETED afterwards via API (200). Underground form was never saved. Uploaded test PNGs remain in the upload store (orphaned files only).",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "Admin@mastec.com / Mastecbyers12345 (worked)",
+  "context_for_next_testing_agent": "Note the real testIds: Birthmark MultiPhotoUpload uses testId 'birthmark' (so birthmark-camera-input / birthmark-take-another-dialog), MGNV uses 'mgnv' — NOT 'birthmark-photos'. Category buttons use key with ':' replaced by '-' (tool:height -> pole-staging-assign-tool-height). Pole form route is /jobs/{jobId}/add (not /poles/new). Use VALID PNG bytes (e.g. generate with PIL to /tmp) for set_input_files — hand-crafted base64 PNGs upload fine but render broken, which can be mistaken for a bug.",
+  "rca_of_the_issue": "No defects found in the new features; all assign/multi-assign/tool-preload/take-another flows behaved as specified."
+}

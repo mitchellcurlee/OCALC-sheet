@@ -40,6 +40,7 @@ export const MultiPhotoUpload = ({ label, value = [], onChange, testId, compact 
   const [lightboxPhoto, setLightboxPhoto] = useState(null);
   const [pendingRemove, setPendingRemove] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [takeAnother, setTakeAnother] = useState(false);
   
   // Use refs to always have access to latest props (avoids stale closure issues)
   const valueRef = useRef(value);
@@ -130,6 +131,14 @@ export const MultiPhotoUpload = ({ label, value = [], onChange, testId, compact 
     e.target.value = "";
   };
 
+  // Camera capture: after each shot, offer to take another
+  const handleCameraChange = async (e) => {
+    const files = Array.from(e.target.files || []);
+    await processFiles(files);
+    e.target.value = "";
+    if (files.length > 0) setTakeAnother(true);
+  };
+
   // Drag and drop handlers
   const handleDragEnter = useCallback((e) => {
     e.preventDefault();
@@ -204,6 +213,25 @@ export const MultiPhotoUpload = ({ label, value = [], onChange, testId, compact 
     </AlertDialog>
   );
 
+  const takeAnotherDialog = (
+    <AlertDialog open={takeAnother} onOpenChange={setTakeAnother}>
+      <AlertDialogContent className="bg-zinc-50 border-zinc-200" data-testid={`${testId}-take-another-dialog`}>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="text-zinc-900">Photo added</AlertDialogTitle>
+          <AlertDialogDescription className="text-zinc-600">
+            Take another photo for {label || "this item"}?
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel className="bg-zinc-100 border-zinc-300 text-zinc-900" data-testid={`${testId}-take-another-done`}>Done</AlertDialogCancel>
+          <AlertDialogAction onClick={() => { setTakeAnother(false); setTimeout(() => cameraInputRef.current?.click(), 50); }} className="bg-red-600 hover:bg-red-700 text-white" data-testid={`${testId}-take-another-btn`}>
+            Take Another
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+
   // Compact layout for inline use (e.g., in dynamic rows)
   if (compact) {
     return (
@@ -230,7 +258,7 @@ export const MultiPhotoUpload = ({ label, value = [], onChange, testId, compact 
             ref={cameraInputRef}
             accept="image/*"
             capture="environment"
-            onChange={handleFileChange}
+            onChange={handleCameraChange}
             className="hidden"
             data-testid={`${testId}-camera-input`}
           />
@@ -299,6 +327,7 @@ export const MultiPhotoUpload = ({ label, value = [], onChange, testId, compact 
         </div>
         {/* Lightbox */}
         {removeConfirmDialog}
+        {takeAnotherDialog}
         <Dialog open={!!lightboxPhoto} onOpenChange={() => setLightboxPhoto(null)}>
           <DialogContent className="bg-zinc-50 border-zinc-200 max-w-4xl max-h-[90vh] p-2">
             <div className="relative">
@@ -354,7 +383,7 @@ export const MultiPhotoUpload = ({ label, value = [], onChange, testId, compact 
           ref={cameraInputRef}
           accept="image/*"
           capture="environment"
-          onChange={handleFileChange}
+          onChange={handleCameraChange}
           className="hidden"
           data-testid={`${testId}-camera-input`}
         />
@@ -439,6 +468,7 @@ export const MultiPhotoUpload = ({ label, value = [], onChange, testId, compact 
 
       {/* Remove confirmation */}
       {removeConfirmDialog}
+      {takeAnotherDialog}
 
       {/* Lightbox Dialog */}
       <Dialog open={!!lightboxPhoto} onOpenChange={() => setLightboxPhoto(null)}>

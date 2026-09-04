@@ -315,3 +315,9 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 
 ## 2026-06: All-items export verification + deploy
 - Comprehensive check (script kept at /app/memory/test_all_items_exports.py): created one of each of the 37 underground types + a pole in a test job — all 37 rows present in Job Excel with non-blank abbreviations, pole present, ASE Excel/SOW/Permission Stamp all 200. No gaps (earlier UG_ABBR fix covered everything). Test job deleted. Deployment queued.
+
+## 2026-06: Photo workflow upgrades (tested: iteration_50.json, 9/9 pass)
+- Height Measurement Tool as assign target: PoleForm stagingCategories has {key:"tool:height"}; handleStagedAssign "tool" branch sets measurerPreload; ReferenceHeightMeasurer gained preloadUrl/onPreloadHandled props (opens dialog, loadSuggestedPhoto, sets hasRestoredData to skip session restore). Staged photos also listed as "Gallery N" suggestedPhotos in both HOA and Down Guy measurers. tool:* assignments do NOT consume the staged photo.
+- Camera "Take Another" loop: MultiPhotoUpload handleCameraChange + AlertDialog ({testId}-take-another-dialog/-btn/-done) in both compact and full layouts; PhotoStagingGallery camera input same pattern. File input does NOT trigger it.
+- Multi-select assignment: PhotoStagingGallery circle select buttons ({testId}-select-{i}), "Assign N selected" ({testId}-assign-selected-btn), dialog shows thumbnail grid for "__MULTI__", assigns each photo to each category.
+- Post-test polish: remove X always visible on touch (md:opacity-0 pattern), aria-describedby={undefined} on both dialogs. NOT yet deployed.
