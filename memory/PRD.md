@@ -312,3 +312,6 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 
 ## 2026-06: Standalone items excluded from stations/measurements
 - Standalone items (standalone: true) no longer get station numbers or measurements unless on the path. Excluded from: JobMap stationNumbers chain (both ug + poles — previously their GPS fallback distance corrupted later stations), stationEntries list ("Station Numbers" list + badges), measurementEntries path rows, pathFeet header total; poleMapImage.js insertPathRows, totalPathFeet, buildSpanMeasurementTexts station chain (affects exports/ASE path of approach/PDF); MarkupTab stationNumbers. Verified E2E: test job with HH-A→500ft→HH-B + a standalone PED with 999ft path measurement — stations 0+00/5+00, PED absent from all lists, total 500 ft. Test job deleted. Deployment queued.
+
+## 2026-06: All-items export verification + deploy
+- Comprehensive check (script kept at /app/memory/test_all_items_exports.py): created one of each of the 37 underground types + a pole in a test job — all 37 rows present in Job Excel with non-blank abbreviations, pole present, ASE Excel/SOW/Permission Stamp all 200. No gaps (earlier UG_ABBR fix covered everything). Test job deleted. Deployment queued.
