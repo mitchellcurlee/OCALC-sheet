@@ -104,12 +104,13 @@ const SortableItem = ({ item, index, getConditionColor }) => {
   };
 
   const isPole = item._type === "pole";
+  const isRiser = item._type === "riser";
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={`industrial-card p-3 flex items-center justify-between bg-white cursor-grab active:cursor-grabbing ${isPole ? '' : 'border-l-4 border-l-green-500'}`}
+      className={`industrial-card p-3 flex items-center justify-between bg-white cursor-grab active:cursor-grabbing ${isPole ? '' : isRiser ? 'border-l-4 border-l-orange-500' : 'border-l-4 border-l-green-500'}`}
     >
       <div className="flex items-center gap-3">
         <div
@@ -127,6 +128,13 @@ const SortableItem = ({ item, index, getConditionColor }) => {
             <Badge className={`${getConditionColor(item.condition)} text-xs`}>
               {item.condition || "Not set"}
             </Badge>
+          </>
+        ) : isRiser ? (
+          <>
+            <div className="w-6 h-6 flex items-center justify-center bg-orange-500 text-white font-mono text-[10px] font-bold rounded">
+              RSR
+            </div>
+            <span className="font-bold text-zinc-900">{item.pole_number || "Pole"} New Riser{item.risers > 1 ? ` ×${item.risers}` : ""} = {item.risers * item.riser_height} ft</span>
           </>
         ) : (
           <>
@@ -169,6 +177,12 @@ const JobDetail = () => {
     const polesWithType = poles.map(p => ({ ...p, _type: "pole" }));
     const ugWithType = undergroundItems.map(u => ({ ...u, _type: "underground" }));
     const all = [...polesWithType, ...ugWithType];
+    poles.forEach((p) => {
+      const c = parseInt(p.risers) || 0, h = parseFloat(p.riser_height) || 0;
+      if (c > 0 && h > 0) {
+        all.push({ id: `riser:${p.id}`, _type: "riser", pole_number: p.pole_number, risers: c, riser_height: h, created_at: `${p.created_at || ""}~riser`, sort_order: p.riser_sort_order ?? ((p.sort_order ?? Infinity) + 0.5) });
+      }
+    });
     // Sort by sort_order, then by created_at
     all.sort((a, b) => {
       const orderA = a.sort_order ?? Infinity;
@@ -212,7 +226,7 @@ const JobDetail = () => {
   const saveReorder = async () => {
     try {
       const itemOrders = reorderedItems.map((item, i) => ({ 
-        id: item.id, 
+        id: item._type === "riser" ? item.id.split(":")[1] : item.id, 
         type: item._type,
         sort_order: i 
       }));
@@ -232,7 +246,7 @@ const JobDetail = () => {
     try {
       // First save the new order
       const itemOrders = reorderedItems.map((item, i) => ({ 
-        id: item.id, 
+        id: item._type === "riser" ? item.id.split(":")[1] : item.id, 
         type: item._type,
         sort_order: i 
       }));
@@ -559,6 +573,11 @@ const JobDetail = () => {
         item.job_number?.toLowerCase().includes(query) ||
         item.pole_owner?.toLowerCase().includes(query) ||
         item.condition?.toLowerCase().includes(query)
+      );
+    } else if (item._type === "riser") {
+      return (
+        item.pole_number?.toLowerCase().includes(query) ||
+        "riser".includes(query)
       );
     } else {
       return (
@@ -1187,6 +1206,19 @@ const JobDetail = () => {
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
+                    </div>
+                  </div>
+                </div>
+              ) : item._type === "riser" ? (
+                /* Riser Card */
+                <div key={item.id} className="industrial-card p-3 border-l-4 border-l-orange-500" data-testid={`riser-card-${item.id.split(":")[1]}`}>
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 flex items-center justify-center bg-orange-500 text-white font-mono text-xs font-bold rounded">
+                      RSR
+                    </div>
+                    <div>
+                      <span className="font-bold text-zinc-900">{item.pole_number || "Pole"} New Riser{item.risers > 1 ? ` ×${item.risers}` : ""} = {item.risers * item.riser_height} ft</span>
+                      <div className="text-xs text-zinc-500 mt-0.5">{item.risers} × {item.riser_height} ft — from pole {item.pole_number || ""}</div>
                     </div>
                   </div>
                 </div>

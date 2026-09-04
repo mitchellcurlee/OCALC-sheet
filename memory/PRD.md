@@ -329,3 +329,6 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 
 ## 2026-06: Span order regression fix (riser sort fallout)
 - Root cause: riser reorder feature added global sorts by `so` (entries.sort in JobMap measurementEntries; rows.sort + displayRows.sort in poleMapImage) which re-sorted SPAN rows by from.sort_order, breaking natural segment visit order. Fix: removed global sorts; spans keep natural order; only risers with explicit riser_sort_order are collected into a "later" list and spliced by so (riserLater in JobMap, riserLaterRows + riserLaterDisplay in poleMapImage). Verified E2E: 4-pole job reordered 4,3,2,1 — spans follow exactly and persist after reload; riser splice still works. Test job deleted. Deployment queued.
+
+## 2026-06: Risers in JobDetail attributes list
+- getCombinedItems (JobDetail.jsx) adds riser rows (id riser:{poleId}, _type "riser", positioned by riser_sort_order ?? sort_order+0.5); riser card rendered with orange RSR badge (testid riser-card-{poleId}); SortableItem reorder rows handle risers; saveReorder/saveAndSyncAll payloads map riser ids; search matches pole number or "riser". Verified via browser (riser card between poles). Test job deleted. Deployment queued.
