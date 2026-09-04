@@ -731,10 +731,18 @@ const JobMap = () => {
   }, [fetchData]);
 
   const combinedOrderItems = () => {
-    const all = [...poles.map((p) => ({ ...p, _type: "pole" })), ...underground.map((u) => ({ ...u, _type: "underground" }))];
+    const all = [
+      ...poles.map((p) => ({ ...p, _type: "pole", _key: p.sort_order ?? Infinity })),
+      ...underground.map((u) => ({ ...u, _type: "underground", _key: u.sort_order ?? Infinity })),
+    ];
+    poles.forEach((p) => {
+      const c = parseInt(p.risers) || 0, h = parseFloat(p.riser_height) || 0;
+      if (c > 0 && h > 0) {
+        all.push({ id: `riser:${p.id}`, _type: "riser", pole_number: p.pole_number, risers: c, riser_height: h, created_at: `${p.created_at || ""}~riser`, _key: p.riser_sort_order ?? ((p.sort_order ?? Infinity) + 0.5) });
+      }
+    });
     all.sort((a, b) => {
-      const oa = a.sort_order ?? Infinity, ob = b.sort_order ?? Infinity;
-      if (oa !== ob) return oa - ob;
+      if (a._key !== b._key) return a._key - b._key;
       return (a.created_at || "").localeCompare(b.created_at || "");
     });
     return all;
@@ -743,7 +751,7 @@ const JobMap = () => {
   const saveSpanOrder = async (items) => {
     setSavingOrder(true);
     try {
-      await axios.put(`/jobs/${jobId}/reorder-items`, items.map((it, i) => ({ id: it.id, type: it._type, sort_order: i })));
+      await axios.put(`/jobs/${jobId}/reorder-items`, items.map((it, i) => ({ id: it._type === "riser" ? it.id.split(":")[1] : it.id, type: it._type, sort_order: i })));
       toast.success("Route order updated");
       setSpanReorder(false);
       await fetchData();
@@ -757,7 +765,7 @@ const JobMap = () => {
   const saveSpanOrderSync = async (items) => {
     setSavingOrder(true);
     try {
-      await axios.put(`/jobs/${jobId}/reorder-items`, items.map((it, i) => ({ id: it.id, type: it._type, sort_order: i })));
+      await axios.put(`/jobs/${jobId}/reorder-items`, items.map((it, i) => ({ id: it._type === "riser" ? it.id.split(":")[1] : it.id, type: it._type, sort_order: i })));
       // Rebuild default connections around the new order: keep only user-drawn custom lines
       const customs = connections
         .filter((c) => c.connection_type === "custom")
@@ -1673,7 +1681,8 @@ const JobMap = () => {
       const r = riserInfo(item);
       if (r && !added.has(item.id)) {
         added.add(item.id);
-        entries.push({ kind: "riser", so: item.sort_order ?? Infinity, pos, itemId: item.id, text: `${poleName(item.label)} New Riser${r.c > 1 ? ` ×${r.c}` : ""} = ${fmtFeet(r.c * r.h)}` });
+        const p = route.find((x) => x.id === item.id);
+        entries.push({ kind: "riser", so: p?.riser_sort_order ?? item.sort_order ?? Infinity, pos, itemId: item.id, text: `${poleName(item.label)} New Riser${r.c > 1 ? ` ×${r.c}` : ""} = ${fmtFeet(r.c * r.h)}` });
       }
     };
     const pathText = (u) => {
@@ -1706,7 +1715,7 @@ const JobMap = () => {
         const r = riserInfo({ type: "pole", id: p.id });
         if (!r) return;
         added.add(p.id);
-        const so = p.sort_order ?? Infinity;
+        const so = p.riser_sort_order ?? p.sort_order ?? Infinity;
         const entry = { kind: "riser", so, pos: p.pos, itemId: p.id, text: `${poleName(p.pole_number)} New Riser${r.c > 1 ? ` ×${r.c}` : ""} = ${fmtFeet(r.c * r.h)}` };
         const idx = entries.findIndex((e) => (e.so ?? Infinity) > so);
         if (idx === -1) entries.push(entry);
@@ -1725,6 +1734,7 @@ const JobMap = () => {
         if (idx === -1) entries.push(entry);
         else entries.splice(idx, 0, entry);
       });
+    entries.sort((a, b) => (a.so ?? Infinity) - (b.so ?? Infinity));
     entries.forEach((e, idx) => {
       e.num = idx + 1;
       if (e.kind === "span") nums[e.segIndex] = e.num;

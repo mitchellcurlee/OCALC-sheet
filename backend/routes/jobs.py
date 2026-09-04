@@ -318,6 +318,11 @@ async def reorder_job_items(job_id: str, items: List[dict], current_user: dict =
             )
             if result.modified_count > 0:
                 updated_underground += 1
+        elif item_type == "riser":
+            await _db.poles.update_one(
+                {"id": item_id, "job_id": job_id},
+                {"$set": {"riser_sort_order": sort_order, "updated_at": now}}
+            )
     
     return {
         "message": f"Updated order for {updated_poles} poles and {updated_underground} underground items",

@@ -394,7 +394,7 @@ export const buildSpanMeasurementTexts = ({ poles, underground = [], connections
     if (c > 0 && h > 0) {
       riserDone.add(it.id);
       rows.push({
-        so: it.sort_order ?? Infinity,
+        so: p?.riser_sort_order ?? it.sort_order ?? Infinity,
         text: stationsOnly
           ? `${itemName(it)} New Riser${c > 1 ? ` x${c}` : ""} ${riserStations[it.id] || stations[it.id] || ""}`.trim()
           : `${itemName(it)} New Riser${c > 1 ? ` x${c}` : ""} = ${fmtFeet(c * h)}`,
@@ -436,6 +436,7 @@ export const buildSpanMeasurementTexts = ({ poles, underground = [], connections
       if (idx === -1) rows.push(row);
       else rows.splice(idx, 0, row);
     });
+  rows.sort((a, b) => (a.so ?? Infinity) - (b.so ?? Infinity));
   return rows.map((r) => r.text);
 };
 
@@ -911,7 +912,7 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
           riserDone.add(poleB.id);
           displayRows.push({ 
             type: "riser", 
-            so: sg.to.sort_order ?? Infinity,
+            so: poleB.riser_sort_order ?? sg.to.sort_order ?? Infinity,
             text: `  ↳ ${poleB.pole_number} Riser${riserCount > 1 ? ` x${riserCount}` : ""}`, 
             ft: riserCount * riserHeight 
           });
@@ -919,6 +920,7 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
       }
     });
     insertPathRows(displayRows, underground);
+    displayRows.sort((a, b) => (a.so ?? Infinity) - (b.so ?? Infinity));
     
     // Calculate required height to show all measurements
     const requiredPanelHeight = headerH + (displayRows.length * rowH) + bottomSection + 20 * s;

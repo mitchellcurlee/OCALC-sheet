@@ -321,3 +321,8 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 - Camera "Take Another" loop: MultiPhotoUpload handleCameraChange + AlertDialog ({testId}-take-another-dialog/-btn/-done) in both compact and full layouts; PhotoStagingGallery camera input same pattern. File input does NOT trigger it.
 - Multi-select assignment: PhotoStagingGallery circle select buttons ({testId}-select-{i}), "Assign N selected" ({testId}-assign-selected-btn), dialog shows thumbnail grid for "__MULTI__", assigns each photo to each category.
 - Post-test polish: remove X always visible on touch (md:opacity-0 pattern), aria-describedby={undefined} on both dialogs. Deployment queued.
+
+## 2026-06: Riser measurements reorderable + sync
+- Backend: Pole/PoleUpdate models gained riser_sort_order (float); reorder-items endpoint handles type "riser" (sets pole.riser_sort_order).
+- Frontend: combinedOrderItems adds riser rows (id `riser:{poleId}`, _type "riser", default position right after pole via sort_order+0.5 and created_at "~riser" tiebreak); SpanReorderList renders orange RSR rows; save/save&sync payload maps riser ids. Measurement ordering honors riser_sort_order in: JobMap measurementEntries (pushRiser + fallback + final stable sort), poleMapImage buildSpanMeasurementTexts (pushRiser so + rows stable sort), displayRows in map image export (riser so + stable sort). Chainage/stations unchanged (riser feet still advance at its pole physically).
+- Verified E2E: 3-pole test job, riser moved to end (list #3) and middle (list #2), reorder panel shows RSR row, Save & Sync works. Test job deleted. NOT yet deployed.
