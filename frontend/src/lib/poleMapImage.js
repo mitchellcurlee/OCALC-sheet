@@ -320,7 +320,7 @@ const pathMid = (path) => {
 // Insert UG path-measurement rows into a display-row list at their route position (by sort_order)
 const insertPathRows = (displayRows, underground) => {
   [...(underground || [])]
-    .filter((u) => (u.path_measurements || []).length > 0)
+    .filter((u) => u.standalone !== true && (u.path_measurements || []).length > 0)
     .sort((a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999))
     .forEach((u) => {
       const ft = u.path_measurements.reduce((s, m) => s + (parseFloat(m.feet) || 0), 0);
@@ -337,7 +337,7 @@ const insertPathRows = (displayRows, underground) => {
 };
 
 const totalPathFeet = (underground) =>
-  (underground || []).reduce((acc, u) => acc + (u.path_measurements || []).reduce((s, m) => s + (parseFloat(m.feet) || 0), 0), 0);
+  (underground || []).reduce((acc, u) => acc + (u.standalone === true ? 0 : (u.path_measurements || []).reduce((s, m) => s + (parseFloat(m.feet) || 0), 0)), 0);
 
 // Build the exact text lines shown in the interactive map's Span Measurements list.
 // Used by the ASE checklist "path of approach" so both always match.
@@ -356,8 +356,8 @@ export const buildSpanMeasurementTexts = ({ poles, underground = [], connections
   const riserStations = {};
   if (includeStations) {
     const all = [
-      ...ug.map((u) => ({ id: u.id, pos: u.pos, so: u.sort_order ?? Infinity, extraFeet: (u.path_measurements || []).reduce((s, m) => s + (parseFloat(m.feet) || 0), 0) })),
-      ...route.map((p) => ({ id: p.id, pos: p.pos, so: p.sort_order ?? Infinity, extraFeet: (parseInt(p.risers) || 0) * (parseFloat(p.riser_height) || 0) })),
+      ...ug.filter((u) => u.standalone !== true).map((u) => ({ id: u.id, pos: u.pos, so: u.sort_order ?? Infinity, extraFeet: (u.path_measurements || []).reduce((s, m) => s + (parseFloat(m.feet) || 0), 0) })),
+      ...route.filter((p) => p.standalone !== true).map((p) => ({ id: p.id, pos: p.pos, so: p.sort_order ?? Infinity, extraFeet: (parseInt(p.risers) || 0) * (parseFloat(p.riser_height) || 0) })),
     ].sort((a, b) => a.so - b.so);
     const segFt = computeStationSegFeet(route, ug, connections, routes);
     let run = 0, prev = null;

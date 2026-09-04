@@ -54,6 +54,7 @@ const MarkupTab = ({
     
     // Add underground items
     underground.forEach(item => {
+      if (item.standalone === true) return;
       if (item.latitude && item.longitude) {
         allItems.push({
           id: item.id,
@@ -67,6 +68,7 @@ const MarkupTab = ({
     
     // Add poles
     poles.forEach(pole => {
+      if (pole.standalone === true) return;
       if (pole.latitude && pole.longitude) {
         allItems.push({
           id: pole.id,

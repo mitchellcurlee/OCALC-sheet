@@ -854,8 +854,9 @@ const JobMap = () => {
     // Build ordered list of all items by sort_order
     const allItems = [];
     
-    // Add underground items (path measurements advance the chainage)
+    // Add underground items (path measurements advance the chainage; standalone items are off the path)
     ug.forEach(item => {
+      if (item.standalone === true) return;
       allItems.push({
         id: item.id,
         type: 'underground',
@@ -867,6 +868,7 @@ const JobMap = () => {
     
     // Add poles
     route.forEach(pole => {
+      if (pole.standalone === true) return;
       allItems.push({
         id: pole.id,
         type: 'pole',
@@ -1608,15 +1610,15 @@ const JobMap = () => {
 
   // Total path measurement footage (In/Over/Up/Down entries on attributes)
   const pathFeet = useMemo(
-    () => underground.reduce((sum, u) => sum + (u.path_measurements || []).reduce((s, m) => s + (parseFloat(m.feet) || 0), 0), 0),
+    () => underground.reduce((sum, u) => sum + (u.standalone === true ? 0 : (u.path_measurements || []).reduce((s, m) => s + (parseFloat(m.feet) || 0), 0)), 0),
     [underground]
   );
 
   // Numbered station entries (badges + list) when Sta #'s toggle is on
   const stationEntries = useMemo(() => {
     const items = [];
-    ug.forEach((u) => items.push({ id: u.id, pos: u.pos, sortOrder: u.sort_order ?? Infinity, name: `${undergroundAbbr(u.type)}${u.label ? `-${u.label}` : ""}` }));
-    route.forEach((p) => items.push({ id: p.id, pos: p.pos, sortOrder: p.sort_order ?? Infinity, name: /^\d/.test(String(p.pole_number || "")) ? `P${p.pole_number}` : (p.pole_number || "Pole") }));
+    ug.forEach((u) => { if (u.standalone === true) return; items.push({ id: u.id, pos: u.pos, sortOrder: u.sort_order ?? Infinity, name: `${undergroundAbbr(u.type)}${u.label ? `-${u.label}` : ""}` }); });
+    route.forEach((p) => { if (p.standalone === true) return; items.push({ id: p.id, pos: p.pos, sortOrder: p.sort_order ?? Infinity, name: /^\d/.test(String(p.pole_number || "")) ? `P${p.pole_number}` : (p.pole_number || "Pole") }); });
     items.sort((a, b) => a.sortOrder - b.sortOrder);
     return items.map((it, idx) => ({ ...it, num: idx + 1, station: stationNumbers[it.id] }));
   }, [route, ug, stationNumbers]);
@@ -1714,7 +1716,7 @@ const JobMap = () => {
     // insert at their respective place in route order using sort_order
     [...underground]
       .sort((a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999))
-      .filter((u) => (u.path_measurements || []).length > 0 && !pathAdded.has(u.id))
+      .filter((u) => u.standalone !== true && (u.path_measurements || []).length > 0 && !pathAdded.has(u.id))
       .forEach((u) => {
         pathAdded.add(u.id);
         const so = u.sort_order ?? Infinity;
