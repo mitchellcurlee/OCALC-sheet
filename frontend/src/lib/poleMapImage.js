@@ -417,6 +417,7 @@ export const buildSpanMeasurementTexts = ({ poles, underground = [], connections
     if (!pairIsManual(pr)) {
       rows.push({
         so: pr.from.sort_order ?? Infinity,
+        toSo: pr.to.sort_order ?? Infinity,
         text: stationsOnly
           ? `${nameWithSta(pr.from, true)} to ${nameWithSta(pr.to)}${pairIsAerial(pr) ? "" : " (UG)"}`
           : `${nameWithSta(pr.from, true)} to ${nameWithSta(pr.to)} = ${fmtFeet(pathFeet(segPath(pr, routes)))}${pairIsAerial(pr) ? "" : " (UG)"}`,
@@ -440,7 +441,7 @@ export const buildSpanMeasurementTexts = ({ poles, underground = [], connections
       else rows.splice(idx, 0, row);
     });
   riserLaterRows.sort((a, b) => a.so - b.so).forEach((row) => {
-    const idx = rows.findIndex((r) => (r.so ?? Infinity) > row.so);
+    const idx = rows.findIndex((r) => ((r.toSo ?? r.so) ?? Infinity) > row.so);
     if (idx === -1) rows.push(row);
     else rows.splice(idx, 0, row);
   });
@@ -911,7 +912,7 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
     const riserDone = new Set();
     const riserLaterDisplay = [];
     pairSegs.forEach((sg) => {
-      if (!sg.manual) displayRows.push({ type: "segment", so: sg.from.sort_order ?? Infinity, text: `${itemName(sg.from)} -> ${itemName(sg.to)}${sg.aerial ? "" : " (UG)"}`, ft: sg.ft });
+      if (!sg.manual) displayRows.push({ type: "segment", so: sg.from.sort_order ?? Infinity, toSo: sg.to.sort_order ?? Infinity, text: `${itemName(sg.from)} -> ${itemName(sg.to)}${sg.aerial ? "" : " (UG)"}`, ft: sg.ft });
       const poleB = sg.to.type === "pole" ? route.find((p) => p.id === sg.to.id) : null;
       if (poleB?.risers && poleB?.riser_height && !riserDone.has(poleB.id)) {
         const riserCount = parseInt(poleB.risers) || 0;
@@ -931,7 +932,7 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
     });
     insertPathRows(displayRows, underground);
     riserLaterDisplay.sort((a, b) => a.so - b.so).forEach((row) => {
-      const idx = displayRows.findIndex((r) => (r.so ?? Infinity) > row.so);
+      const idx = displayRows.findIndex((r) => ((r.toSo ?? r.so) ?? Infinity) > row.so);
       if (idx === -1) displayRows.push(row);
       else displayRows.splice(idx, 0, row);
     });

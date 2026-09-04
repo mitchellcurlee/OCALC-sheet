@@ -1702,7 +1702,7 @@ const JobMap = () => {
     orderedSegments.forEach((seg, i) => {
       pushRiser(seg.from, seg.fromPos);
       pushPath(seg.from, seg.fromPos);
-      if (!seg.manualMeasured) entries.push({ kind: "span", so: seg.from.sort_order ?? Infinity, segIndex: i, seg });
+      if (!seg.manualMeasured) entries.push({ kind: "span", so: seg.from.sort_order ?? Infinity, toSo: seg.to.sort_order ?? Infinity, segIndex: i, seg });
     });
     if (orderedSegments.length > 0) {
       const last = orderedSegments[orderedSegments.length - 1];
@@ -1720,7 +1720,7 @@ const JobMap = () => {
         added.add(p.id);
         const so = p.riser_sort_order ?? p.sort_order ?? Infinity;
         const entry = { kind: "riser", so, pos: p.pos, itemId: p.id, text: `${poleName(p.pole_number)} New Riser${r.c > 1 ? ` ×${r.c}` : ""} = ${fmtFeet(r.c * r.h)}` };
-        const idx = entries.findIndex((e) => (e.so ?? Infinity) > so);
+        const idx = entries.findIndex((e) => ((e.toSo ?? e.so) ?? Infinity) > so);
         if (idx === -1) entries.push(entry);
         else entries.splice(idx, 0, entry);
       });
@@ -1738,9 +1738,11 @@ const JobMap = () => {
         else entries.splice(idx, 0, entry);
       });
     // Risers with an explicit user-set position: splice by riser_sort_order without
-    // disturbing the natural (segment visit) order of span entries
+    // disturbing the natural (segment visit) order of span entries. A span P_a->P_b
+    // occupies the slot range (a..b), so compare against its END (toSo) — a riser
+    // placed right after pole P lands before the span leaving P.
     riserLater.sort((a, b) => a.so - b.so).forEach((entry) => {
-      const idx = entries.findIndex((e) => (e.so ?? Infinity) > entry.so);
+      const idx = entries.findIndex((e) => ((e.toSo ?? e.so) ?? Infinity) > entry.so);
       if (idx === -1) entries.push(entry);
       else entries.splice(idx, 0, entry);
     });
