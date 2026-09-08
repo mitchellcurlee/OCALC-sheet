@@ -1856,6 +1856,19 @@ const JobMap = () => {
       entries.forEach((e, i) => { if (((e.toSo ?? e.so) ?? Infinity) <= entry.so) at = i; });
       entries.splice(at + 1, 0, entry);
     });
+    // Ensure every map item shows in the list: items not part of any span/path/riser get their own line
+    const mentioned = new Set();
+    orderedSegments.forEach((seg) => { mentioned.add(seg.from.id); mentioned.add(seg.to.id); });
+    const allMapItems = [
+      ...route.filter((p) => p.pos && p.standalone !== true).map((p) => ({ id: p.id, so: p.sort_order ?? Infinity, pos: p.pos, name: poleName(p.pole_number) })),
+      ...ug.filter((u) => u.pos && u.standalone !== true).map((u) => ({ id: u.id, so: u.sort_order ?? Infinity, pos: u.pos, name: `${undergroundAbbr(u.type)}${u.label ? `-${u.label}` : ""}` })),
+    ];
+    allMapItems.filter((it) => !mentioned.has(it.id) && !added.has(it.id)).forEach((it) => {
+      const entry = { kind: "item", so: it.so, toSo: it.so, pos: it.pos, itemId: it.id, text: `${it.name} — no span` };
+      let at = -1;
+      entries.forEach((e, i) => { if (((e.toSo ?? e.so) ?? Infinity) <= entry.so) at = i; });
+      entries.splice(at + 1, 0, entry);
+    });
     // Span notes: user-added note lines spliced by saved position
     (job?.span_notes || []).slice().sort((a, b) => (a.so ?? Infinity) - (b.so ?? Infinity)).forEach((n) => {
       const entry = { kind: "note", so: n.so ?? Infinity, noteId: n.id, text: `Note: ${n.text}` };
