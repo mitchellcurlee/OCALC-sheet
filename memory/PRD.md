@@ -339,3 +339,7 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 ## 2026-06: Segment end-color override (red<->blue)
 - getSegmentColor (JobMap.jsx) now checks per-segment override BEFORE forced after-MPOE red — so red end segments can be flipped to blue (or any palette color) and blue segments can be set red, aerial or underground alike, via Edit Map > Edit Individual Segment Colors > tap line or pick from list.
 - aerialColor / undergroundColor / segmentColors now PERSIST per job in localStorage (aerialColor_{jobId}, undergroundColor_{jobId}, segmentColors_{jobId}) — previously they reset on reload. Verified: red UG segment with blue override renders #2563eb after full reload. Test job deleted. Deployment queued.
+
+## 2026-06: Height tool preload step fix + compass directions
+- Height tool assigned-photo flow no longer flashes past the reference dropdown: loadSuggestedPhoto(url, stayOnStep1) keeps step 1; preload effect passes true; step 1 shows preloaded photo panel (measurer-preloaded-photo) + Continue button (measurer-continue-btn) that advances to marking. Verified via browser.
+- PATH_DIRECTIONS (UndergroundForm.jsx) now: In, Over, Up, Down, North, Northeast, East, Southeast, South, Southwest, West, Northwest (trigger widened w-32). Direction is a string passthrough — verified Excel export row "Northeast 120ft to FBT = 120 ft"; ASE path-of-approach uses same shared text builder. Test job deleted. Deployment queued.

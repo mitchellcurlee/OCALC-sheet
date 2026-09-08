@@ -230,8 +230,9 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
     e.target.value = "";
   };
 
-  // Load one of the pole's existing photos (e.g. OCALC L/M/R) into the measurer
-  const loadSuggestedPhoto = async (url) => {
+  // Load one of the pole's existing photos (e.g. OCALC L/M/R) into the measurer.
+  // stayOnStep1 keeps the reference-height dropdown visible (assigned-photo flow).
+  const loadSuggestedPhoto = async (url, stayOnStep1 = false) => {
     try {
       let dataUrl = url;
       if (!url.startsWith("data:")) {
@@ -246,7 +247,7 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
       }
       setImagePreview(dataUrl);
       setImageBase64(dataUrl);
-      setStep(2);
+      setStep(stayOnStep1 ? 1 : 2);
       setMarkers({ refBottom: null, refTop: null, attachments: [] });
       setPixelsPerFoot(null);
     } catch {
@@ -259,7 +260,7 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
     if (preloadUrl) {
       setHasRestoredData(true);
       setOpen(true);
-      loadSuggestedPhoto(preloadUrl);
+      loadSuggestedPhoto(preloadUrl, true);
       onPreloadHandled && onPreloadHandled();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -740,6 +741,20 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
                     Upload Photo
                   </Button>
                 </div>
+                {imagePreview && (
+                  <div className="flex items-center gap-3 p-2 bg-sky-50 border border-sky-200 rounded" data-testid="measurer-preloaded-photo">
+                    <img src={imagePreview} alt="Selected" className="w-20 h-16 object-cover border border-sky-300 rounded" />
+                    <div className="flex-1 text-xs text-sky-800">Photo loaded. Pick the reference object height above, then continue.</div>
+                    <Button
+                      type="button"
+                      onClick={() => setStep(2)}
+                      className="h-10 bg-sky-600 hover:bg-sky-700 text-white"
+                      data-testid="measurer-continue-btn"
+                    >
+                      Continue
+                    </Button>
+                  </div>
+                )}
                 {suggestedPhotos.length > 0 && (
                   <div className="space-y-1.5 pt-1" data-testid="measurer-suggested-photos">
                     <Label className="text-xs text-zinc-500">Or use a photo already on this pole:</Label>

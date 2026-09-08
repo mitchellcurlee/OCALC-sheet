@@ -24,7 +24,7 @@ import { ArrowLeft, Save, Loader2, MapPin, Search, Pencil, Plus, Trash2 } from "
 
 // Types that get a FID box + Primary FID toggle
 const FID_TYPES = ["Handhole", "FBT", "NTE", "FBT/NTE", "Aerial Splice", "Loop", "PFP", "Manhole", "Brooks Enclosure", "Flowerpot", "FDF"];
-const PATH_DIRECTIONS = ["In", "Over", "Up", "Down"];
+const PATH_DIRECTIONS = ["In", "Over", "Up", "Down", "North", "Northeast", "East", "Southeast", "South", "Southwest", "West", "Northwest"];
 
 const MapClickHandler = ({ onSelect }) => {
   useMapEvents({ click: (e) => onSelect(e.latlng.lat, e.latlng.lng) });
@@ -556,7 +556,7 @@ const UndergroundForm = () => {
               {formData.path_measurements.map((m, i) => (
                 <div key={i} className="flex items-center gap-2 flex-wrap" data-testid={`path-measurement-row-${i}`}>
                   <Select value={m.direction} onValueChange={(v) => updatePathMeasurement(i, "direction", v)}>
-                    <SelectTrigger className="h-10 w-24 bg-white border-emerald-300 text-zinc-900" data-testid={`path-direction-select-${i}`}>
+                    <SelectTrigger className="h-10 w-32 bg-white border-emerald-300 text-zinc-900" data-testid={`path-direction-select-${i}`}>
                       <SelectValue placeholder="Direction" />
                     </SelectTrigger>
                     <SelectContent className="bg-zinc-50 border-zinc-300 z-[1200]">
