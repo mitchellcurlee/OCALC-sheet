@@ -366,4 +366,4 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 ## 2026-06: Job page Span Measurements list (synced with map)
 - JobDetail now renders a "Span Measurements" section (job-span-measurements testid) above Photo Markup using shared buildSpanMeasurementTexts (fetches connections + routes in fetchJobAndPoles; passes job.span_notes). Notes styled amber.
 - buildSpanMeasurementTexts also gained the "— no span" fallback for unmentioned non-standalone map items (matching the map's on-screen list exactly).
-- Sync is inherent: both lists derive from the same DB fields (sort_order/riser_sort_order/span_notes/connections); reorder on either page updates both on refresh. Verified E2E: identical 4-row lists (Note, P1 to P2, P1 New Riser, P2 to P3) on map and job page. Test job deleted. NOT yet deployed.
+- Sync is inherent: both lists derive from the same DB fields (sort_order/riser_sort_order/span_notes/connections); reorder on either page updates both on refresh. Verified E2E: identical 4-row lists (Note, P1 to P2, P1 New Riser, P2 to P3) on map and job page. Test job deleted. Deployment queued.
