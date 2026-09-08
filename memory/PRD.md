@@ -362,3 +362,8 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 
 ## 2026-06: All map items guaranteed in span measurements list
 - measurementEntries (JobMap.jsx) now appends a fallback line for any non-standalone map item (pole or UG with GPS) that appears in no span/path/riser entry (e.g., disconnected by End Path breaks): kind "item", text "{name} — no span", spliced by sort_order. Verified E2E: chain P1-P2 with End Path on P2 + disconnected HH shows "HH-LONE — no span" as entry 2; auto-connected items unaffected. Test job deleted. Deployment queued (also carries all-items list guarantee).
+
+## 2026-06: Job page Span Measurements list (synced with map)
+- JobDetail now renders a "Span Measurements" section (job-span-measurements testid) above Photo Markup using shared buildSpanMeasurementTexts (fetches connections + routes in fetchJobAndPoles; passes job.span_notes). Notes styled amber.
+- buildSpanMeasurementTexts also gained the "— no span" fallback for unmentioned non-standalone map items (matching the map's on-screen list exactly).
+- Sync is inherent: both lists derive from the same DB fields (sort_order/riser_sort_order/span_notes/connections); reorder on either page updates both on refresh. Verified E2E: identical 4-row lists (Note, P1 to P2, P1 New Riser, P2 to P3) on map and job page. Test job deleted. NOT yet deployed.

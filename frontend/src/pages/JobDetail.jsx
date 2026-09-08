@@ -3,7 +3,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
-import { UNDERGROUND_TYPES, undergroundAbbr } from "@/lib/poleMapImage";
+import { UNDERGROUND_TYPES, undergroundAbbr, buildSpanMeasurementTexts } from "@/lib/poleMapImage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -167,6 +167,8 @@ const JobDetail = () => {
   const [job, setJob] = useState(null);
   const [poles, setPoles] = useState([]);
   const [undergroundItems, setUndergroundItems] = useState([]);
+  const [connections, setConnections] = useState([]);
+  const [routesLookup, setRoutesLookup] = useState({});
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteId, setDeleteId] = useState(null);
@@ -308,15 +310,21 @@ const JobDetail = () => {
   const fetchJobAndPoles = useCallback(async () => {
     try {
       const ts = Date.now();
-      const [jobRes, polesRes, ugRes, aseRes] = await Promise.all([
+      const [jobRes, polesRes, ugRes, aseRes, connRes, routesRes] = await Promise.all([
         axios.get(`/jobs/${jobId}?_t=${ts}`),
         axios.get(`/jobs/${jobId}/poles?_t=${ts}`),
         axios.get(`/jobs/${jobId}/underground?_t=${ts}`),
         axios.get(`/jobs/${jobId}/ase-data?_t=${ts}`).catch(() => ({ data: { ase_data: null } })),
+        axios.get(`/jobs/${jobId}/connections?_t=${ts}`).catch(() => ({ data: [] })),
+        axios.get(`/jobs/${jobId}/routes?_t=${ts}`).catch(() => ({ data: [] })),
       ]);
       setJob(jobRes.data);
       setPoles(polesRes.data);
       setUndergroundItems(ugRes.data);
+      setConnections(connRes.data || []);
+      const rl = {};
+      (routesRes.data || []).forEach((r) => { rl[`${r.from_pole_id}-${r.to_pole_id}`] = r.waypoints || []; });
+      setRoutesLookup(rl);
       
       // Load markup photos from ASE data if available
       if (aseRes.data?.ase_data?.markup_photos) {
@@ -943,6 +951,22 @@ const JobDetail = () => {
           onDevice={() => runPendingExport("device")}
           onCloud={() => runPendingExport("cloud")}
         />
+        {/* Span Measurements — mirrors the interactive map's list (same data, always in sync) */}
+        {(poles.length + undergroundItems.length) >= 2 && (
+          <div className="industrial-card p-4 mb-6 bg-emerald-50/60 border-emerald-200" data-testid="job-span-measurements">
+            <h3 className="text-xs font-mono tracking-widest text-emerald-700 uppercase mb-2">Span Measurements</h3>
+            <ol className="space-y-0.5 text-sm text-zinc-800">
+              {buildSpanMeasurementTexts({ poles, underground: undergroundItems, connections, routes: routesLookup, spanNotes: job?.span_notes || [] }).map((t, i) => (
+                <li key={`jsm-${i}`} data-testid={`job-span-measurement-${i + 1}`}>
+                  <span className={`font-bold ${t.startsWith("Note:") ? "text-amber-700" : "text-emerald-700"}`}>{i + 1}.</span>{" "}
+                  <span className={t.startsWith("Note:") ? "text-amber-800" : ""}>{t}</span>
+                </li>
+              ))}
+            </ol>
+            <p className="text-[11px] text-emerald-600 mt-2">Matches the interactive map list — reorder items, risers or notes on either page and both update.</p>
+          </div>
+        )}
+
         {/* Photo Markup Section - Collapsible */}
         <div className="mb-6">
           <button
