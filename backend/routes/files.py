@@ -7,6 +7,8 @@ import logging
 import requests
 
 from services.storage import put_object, get_object, MIME_TYPES, APP_NAME
+from services.auth import get_current_user
+from fastapi import Depends
 
 router = APIRouter(tags=["files"])
 logger = logging.getLogger(__name__)
@@ -46,6 +48,52 @@ async def upload_photo(file: UploadFile = File(...)):
         "created_at": datetime.now(timezone.utc).isoformat(),
     })
     return {"url": f"/api/files/{stored_path}", "path": stored_path}
+
+
+@router.post("/jobs/{job_id}/files")
+async def upload_job_file(job_id: str, file: UploadFile = File(...), current_user: dict = Depends(get_current_user)):
+    """Upload any file type and attach it to a job."""
+    ext = (file.filename.rsplit(".", 1)[-1].lower() if file.filename and "." in file.filename else "bin")
+    content_type = file.content_type or MIME_TYPES.get(ext, "application/octet-stream")
+    data = await file.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="Empty file")
+    path = f"{APP_NAME}/jobfiles/{job_id}/{uuid.uuid4()}.{ext}"
+    try:
+        result = await asyncio.to_thread(put_object, path, data, content_type)
+    except Exception as e:
+        logger.error(f"Job file upload failed: {e}")
+        raise HTTPException(status_code=502, detail="File upload failed")
+    stored_path = result.get("path", path)
+    doc = {
+        "id": str(uuid.uuid4()),
+        "job_id": job_id,
+        "storage_path": stored_path,
+        "original_filename": file.filename or f"file.{ext}",
+        "content_type": content_type,
+        "size": result.get("size") or len(data),
+        "uploaded_by": current_user.get("email", ""),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await _db.job_files.insert_one(dict(doc))
+    doc["url"] = f"/api/files/{stored_path}"
+    return doc
+
+
+@router.get("/jobs/{job_id}/files")
+async def list_job_files(job_id: str, current_user: dict = Depends(get_current_user)):
+    docs = await _db.job_files.find({"job_id": job_id}, {"_id": 0}).sort("created_at", -1).to_list(500)
+    for d in docs:
+        d["url"] = f"/api/files/{d['storage_path']}"
+    return docs
+
+
+@router.delete("/jobs/{job_id}/files/{file_id}")
+async def delete_job_file(job_id: str, file_id: str, current_user: dict = Depends(get_current_user)):
+    result = await _db.job_files.delete_one({"id": file_id, "job_id": job_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="File not found")
+    return {"deleted": True}
 
 
 @router.get("/files/{path:path}")

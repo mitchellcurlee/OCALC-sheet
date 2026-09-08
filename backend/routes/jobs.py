@@ -108,7 +108,8 @@ async def can_access_job(job_id: str, current_user: dict) -> dict:
                     return job
         return None
     else:
-        return await _db.jobs.find_one({"id": job_id, "user_id": current_user["id"]}, {"_id": 0})
+        email = (current_user.get("email") or "").lower()
+        return await _db.jobs.find_one({"id": job_id, "$or": [{"user_id": current_user["id"]}, {"shared_with": email}]}, {"_id": 0})
 
 
 _COMPANY_DOMAINS = ("@mastec.com", "@byers.com", "@mastecbyers.com")
@@ -171,8 +172,9 @@ async def get_jobs(current_user: dict = Depends(get_current_user)):
         user_ids.append(current_user["id"])
         jobs = await _db.jobs.find({"user_id": {"$in": user_ids}}, {"_id": 0}).sort("created_at", -1).to_list(10000)
     else:
-        # Regular users see only their own jobs
-        jobs = await _db.jobs.find({"user_id": current_user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+        # Regular users see their own jobs plus jobs shared with them
+        email = (current_user.get("email") or "").lower()
+        jobs = await _db.jobs.find({"$or": [{"user_id": current_user["id"]}, {"shared_with": email}]}, {"_id": 0}).sort("created_at", -1).to_list(1000)
     
     if not jobs:
         return jobs
@@ -241,7 +243,7 @@ async def update_job(job_id: str, job_data: JobUpdate, current_user: dict = Depe
     
     update_data = {k: v for k, v in job_data.model_dump().items() if v is not None}
     update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
-    
+    update_data["last_modified_by"] = current_user.get("email", "")
     await _db.jobs.update_one({"id": job_id}, {"$set": update_data})
     updated = await _db.jobs.find_one({"id": job_id}, {"_id": 0})
     updated["pole_count"] = await _db.poles.count_documents({"job_id": job_id})
@@ -264,6 +266,27 @@ async def delete_job(job_id: str, current_user: dict = Depends(get_current_user)
         await _db[key].delete_many({"job_id": job_id})
     await _db.jobs.delete_one({"id": job_id})
     return {"message": "Job moved to Deleted Items"}
+
+
+@router.post("/jobs/{job_id}/share")
+async def share_job(job_id: str, request_body: dict, current_user: dict = Depends(get_current_user)):
+    """Share a job with multiple coworkers (they see it in their list; owner keeps it)."""
+    job = await can_access_job(job_id, current_user)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    emails = request_body.get("emails") or []
+    clean = []
+    for e in emails:
+        e = (e or "").strip().lower()
+        if not e:
+            continue
+        if not _is_company_email(e):
+            raise HTTPException(status_code=400, detail=f"{e} is not a company email")
+        if e != (job.get("user_email") or "").lower() and e not in clean:
+            clean.append(e)
+    now = datetime.now(timezone.utc).isoformat()
+    await _db.jobs.update_one({"id": job_id}, {"$set": {"shared_with": clean, "updated_at": now, "last_modified_by": current_user.get("email", "")}})
+    return {"shared_with": clean}
 
 
 @router.post("/jobs/{job_id}/duplicate", response_model=Job)

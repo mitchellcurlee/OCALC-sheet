@@ -85,6 +85,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import MarkupTab from "@/components/MarkupTab";
+import JobFilesShare from "@/components/JobFilesShare";
 
 // Sortable item component for drag-and-drop (poles and underground)
 const SortableItem = ({ item, index, getConditionColor }) => {
@@ -951,6 +952,9 @@ const JobDetail = () => {
           onDevice={() => runPendingExport("device")}
           onCloud={() => runPendingExport("cloud")}
         />
+        {/* Job files + share */}
+        <JobFilesShare jobId={jobId} job={job} onJobUpdated={fetchJobAndPoles} />
+
         {/* Span Measurements — mirrors the interactive map's list (same data, always in sync) */}
         {(poles.length + undergroundItems.length) >= 2 && (
           <div className="industrial-card p-4 mb-6 bg-emerald-50/60 border-emerald-200" data-testid="job-span-measurements">
@@ -963,7 +967,6 @@ const JobDetail = () => {
                 </li>
               ))}
             </ol>
-            <p className="text-[11px] text-emerald-600 mt-2">Matches the interactive map list — reorder items, risers or notes on either page and both update.</p>
           </div>
         )}
 
@@ -1296,6 +1299,7 @@ const JobDetail = () => {
                           )}
                           {item.owner && <span className="text-amber-700 font-semibold" data-testid={`ug-card-owner-${item.id}`}>Owner: {item.owner}</span>}
                           {item.material_type && <span className="text-zinc-600" data-testid={`ug-card-material-${item.id}`}>{item.material_type}</span>}
+                          {item.last_modified_by && <span className="text-[11px] text-zinc-400" data-testid={`ug-card-audit-${item.id}`}>Edited by {item.last_modified_by} · {new Date(item.updated_at).toLocaleDateString()}</span>}
                           {item.notes && <span className="truncate max-w-[200px]">{item.notes}</span>}
                         </div>
                       </div>

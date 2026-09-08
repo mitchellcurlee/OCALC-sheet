@@ -64,6 +64,7 @@ class PoleBase(BaseModel):
     existing_risers: Optional[str] = None
     riser_height: Optional[float] = None
     riser_sort_order: Optional[float] = None
+    last_modified_by: Optional[str] = None
     pole_line_start: Optional[bool] = False
     pole_line_end: Optional[bool] = False
     start_path: Optional[bool] = False

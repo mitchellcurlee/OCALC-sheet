@@ -450,8 +450,8 @@ export const buildSpanMeasurementTexts = ({ poles, underground = [], connections
   const mentionedIds = new Set();
   pairs.forEach((pr) => { mentionedIds.add(pr.from.id); mentionedIds.add(pr.to.id); });
   const extraItems = [
-    ...route.filter((p) => p.pos && p.standalone !== true && !mentionedIds.has(p.id) && !riserDone.has(p.id)).map((p) => ({ so: p.sort_order ?? Infinity, text: `${/^\d/.test(String(p.pole_number || "")) ? `P${p.pole_number}` : (p.pole_number || "Pole")} — no span` })),
-    ...ug.filter((u) => u.pos && u.standalone !== true && !mentionedIds.has(u.id) && !pathDone.has(u.id)).map((u) => ({ so: u.sort_order ?? Infinity, text: `${undergroundAbbr(u.type)}${u.label ? `-${u.label}` : ""} — no span` })),
+    ...poles.filter((p) => p.standalone !== true && !mentionedIds.has(p.id) && !riserDone.has(p.id)).map((p) => ({ so: p.sort_order ?? Infinity, text: `${/^\d/.test(String(p.pole_number || "")) ? `P${p.pole_number}` : (p.pole_number || "Pole")} — no span` })),
+    ...(underground || []).filter((u) => u.standalone !== true && !mentionedIds.has(u.id) && !pathDone.has(u.id)).map((u) => ({ so: u.sort_order ?? Infinity, text: `${undergroundAbbr(u.type)}${u.label ? `-${u.label}` : ""} — no span` })),
   ];
   extraItems.sort((a, b) => a.so - b.so).forEach((row) => {
     let at = -1;

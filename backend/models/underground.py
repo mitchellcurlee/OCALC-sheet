@@ -64,3 +64,4 @@ class Underground(UndergroundBase):
     job_id: Optional[str] = None
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    last_modified_by: Optional[str] = None

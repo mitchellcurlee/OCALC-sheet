@@ -46,6 +46,8 @@ class Job(BaseModel):
     completed: Optional[bool] = False
     folder_month: Optional[str] = None
     span_notes: Optional[List[Dict[str, Any]]] = []
+    shared_with: Optional[List[str]] = []
+    last_modified_by: Optional[str] = None
     transferred_from: Optional[str] = None
     transferred_at: Optional[str] = None
     transfer_history: Optional[List[dict]] = None

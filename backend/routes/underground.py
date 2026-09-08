@@ -115,12 +115,13 @@ async def get_underground(item_id: str):
 
 
 @router.put("/underground/{item_id}", response_model=Underground)
-async def update_underground(item_id: str, data: UndergroundUpdate):
+async def update_underground(item_id: str, data: UndergroundUpdate, current_user: dict = Depends(get_current_user)):
     existing = await _db.underground.find_one({"id": item_id}, {"_id": 0})
     if not existing:
         raise HTTPException(status_code=404, detail="Underground item not found")
     updates = {k: v for k, v in data.model_dump(exclude_unset=True).items()}
     updates["updated_at"] = datetime.now(timezone.utc).isoformat()
+    updates["last_modified_by"] = current_user.get("email", "")
     await _db.underground.update_one({"id": item_id}, {"$set": updates})
     merged = {**existing, **updates}
     return Underground(**merged)

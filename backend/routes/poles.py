@@ -414,7 +414,7 @@ async def get_pole(pole_id: str):
 
 
 @router.put("/poles/{pole_id}", response_model=Pole)
-async def update_pole(pole_id: str, pole_data: PoleUpdate):
+async def update_pole(pole_id: str, pole_data: PoleUpdate, current_user: dict = Depends(get_current_user)):
     """Update a pole entry"""
     existing = await _db.poles.find_one({"id": pole_id})
     if not existing:
@@ -422,6 +422,7 @@ async def update_pole(pole_id: str, pole_data: PoleUpdate):
     
     update_data = {k: v for k, v in pole_data.model_dump().items() if v is not None}
     update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    update_data["last_modified_by"] = current_user.get("email", "")
     
     await _db.poles.update_one({"id": pole_id}, {"$set": update_data})
     updated = await _db.poles.find_one({"id": pole_id}, {"_id": 0})
