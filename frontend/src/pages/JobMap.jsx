@@ -757,6 +757,9 @@ const JobMap = () => {
         all.push({ id: `riser:${p.id}`, _type: "riser", pole_number: p.pole_number, risers: c, riser_height: h, created_at: `${p.created_at || ""}~riser`, _key: p.riser_sort_order ?? ((p.sort_order ?? Infinity) + 0.5) });
       }
     });
+    (job?.span_notes || []).forEach((n) => {
+      all.push({ id: `note:${n.id}`, _type: "note", text: n.text, created_at: "~note", _key: n.so ?? Infinity });
+    });
     all.sort((a, b) => {
       if (a._key !== b._key) return a._key - b._key;
       return (a.created_at || "").localeCompare(b.created_at || "");
@@ -764,10 +767,28 @@ const JobMap = () => {
     return all;
   };
 
+  const buildOrderPayload = (items) => {
+    const orders = [];
+    const noteSos = {};
+    items.forEach((it, i) => {
+      if (it._type === "note") noteSos[it.id.split(":").slice(1).join(":")] = i;
+      else orders.push({ id: it._type === "riser" ? it.id.split(":")[1] : it.id, type: it._type, sort_order: i });
+    });
+    return { orders, noteSos };
+  };
+
+  const saveNoteOrders = async (noteSos) => {
+    if (!Object.keys(noteSos).length) return;
+    const notes = (job?.span_notes || []).map((n) => (noteSos[n.id] != null ? { ...n, so: noteSos[n.id] } : n));
+    await axios.put(`/jobs/${jobId}`, { span_notes: notes });
+  };
+
   const saveSpanOrder = async (items) => {
     setSavingOrder(true);
     try {
-      await axios.put(`/jobs/${jobId}/reorder-items`, items.map((it, i) => ({ id: it._type === "riser" ? it.id.split(":")[1] : it.id, type: it._type, sort_order: i })));
+      const { orders, noteSos } = buildOrderPayload(items);
+      await axios.put(`/jobs/${jobId}/reorder-items`, orders);
+      await saveNoteOrders(noteSos);
       toast.success("Route order updated");
       setSpanReorder(false);
       await fetchData();
@@ -781,7 +802,9 @@ const JobMap = () => {
   const saveSpanOrderSync = async (items) => {
     setSavingOrder(true);
     try {
-      await axios.put(`/jobs/${jobId}/reorder-items`, items.map((it, i) => ({ id: it._type === "riser" ? it.id.split(":")[1] : it.id, type: it._type, sort_order: i })));
+      const { orders, noteSos } = buildOrderPayload(items);
+      await axios.put(`/jobs/${jobId}/reorder-items`, orders);
+      await saveNoteOrders(noteSos);
       // Rebuild default connections around the new order: keep only user-drawn custom lines
       const customs = connections
         .filter((c) => c.connection_type === "custom")

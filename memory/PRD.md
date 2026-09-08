@@ -354,3 +354,8 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 - REORDER PANEL: Cancel/Save Order/Save & Sync duplicated at TOP of SpanReorderList (span-reorder-*-top-btn testids).
 - MERGED COORDINATES: new components/CoordinateInput.jsx — single "Longitude/Latitude" input parsing "lat, lng" (e.g. "30.04576436068295, -95.59152540980482") into separate latitude/longitude fields. Used in PoleForm (coordinates-input) and UndergroundForm (ug-coordinates-input). Excel exports keep separate lat/lng columns — verified round trip (form save → separate fields → separate Excel columns).
 - All verified E2E in preview; test job deleted. Deployment queued.
+
+## 2026-06: Notes + risers drag-and-drop everywhere
+- Notes are now draggable rows in BOTH reorder panels: JobMap combinedOrderItems + JobDetail getCombinedItems add note rows (id note:{id}, _type "note", _key/sort_order = n.so); SpanReorderList + JobDetail SortableItem render amber NOTE rows; shared buildOrderPayload/saveNoteOrders helpers in both pages split payloads (reorder-items for poles/ug/risers, PUT /jobs {span_notes} with so = panel index for notes). Applied to saveSpanOrder/saveSpanOrderSync (map) and saveReorder/saveAndSyncAll (job page).
+- Job page now DISPLAYS note cards (note-card-{id}) and riser cards in the attributes list at their exact positions; search matches note text.
+- Exports/reports already splice notes+risers by so on the same index scale (buildSpanMeasurementTexts, measurement-list images, ASE path-of-approach). Verified E2E: saved order P1, NOTE, P2, RSR, P3 reflected identically in map list, reorder panel rows, and job page. Test job deleted. NOT yet deployed.

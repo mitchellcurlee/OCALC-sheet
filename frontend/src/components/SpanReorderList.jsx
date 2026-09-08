@@ -11,8 +11,9 @@ const Row = ({ item, index }) => {
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.6 : 1 };
   const isPole = item._type === "pole";
   const isRiser = item._type === "riser";
+  const isNote = item._type === "note";
   return (
-    <div ref={setNodeRef} style={style} data-testid={`span-reorder-row-${index}`} className={`flex items-center gap-3 p-2 bg-white border rounded ${isPole ? "border-zinc-200" : isRiser ? "border-l-4 border-l-orange-500 border-zinc-200" : "border-l-4 border-l-green-500 border-zinc-200"}`}>
+    <div ref={setNodeRef} style={style} data-testid={`span-reorder-row-${index}`} className={`flex items-center gap-3 p-2 bg-white border rounded ${isPole ? "border-zinc-200" : isRiser ? "border-l-4 border-l-orange-500 border-zinc-200" : isNote ? "border-l-4 border-l-amber-400 border-zinc-200" : "border-l-4 border-l-green-500 border-zinc-200"}`}>
       <div {...attributes} {...listeners} className="text-zinc-400 hover:text-zinc-600 cursor-grab active:cursor-grabbing touch-none" data-testid={`span-reorder-handle-${index}`}>
         <GripVertical className="w-5 h-5" />
       </div>
@@ -21,6 +22,11 @@ const Row = ({ item, index }) => {
         <>
           <Zap className="w-4 h-4 text-yellow-600" />
           <span className="font-bold text-sm text-zinc-900">{item.pole_number || "No #"}</span>
+        </>
+      ) : isNote ? (
+        <>
+          <span className="w-9 h-5 flex items-center justify-center bg-amber-400 text-white font-mono text-[10px] font-bold rounded">NOTE</span>
+          <span className="text-sm text-amber-800 truncate">{item.text}</span>
         </>
       ) : isRiser ? (
         <>
@@ -33,7 +39,7 @@ const Row = ({ item, index }) => {
           <span className="font-bold text-sm text-zinc-900">{item.type}{item.label && item.label !== item.type ? ` · ${item.label}` : ""}</span>
         </>
       )}
-      {!isRiser && !(item.latitude && item.longitude) && <span className="text-[10px] text-zinc-400 ml-auto">no GPS</span>}
+      {!isRiser && !isNote && !(item.latitude && item.longitude) && <span className="text-[10px] text-zinc-400 ml-auto">no GPS</span>}
     </div>
   );
 };

@@ -136,6 +136,13 @@ const SortableItem = ({ item, index, getConditionColor }) => {
             </div>
             <span className="font-bold text-zinc-900">{item.pole_number || "Pole"} New Riser{item.risers > 1 ? ` ×${item.risers}` : ""} = {item.risers * item.riser_height} ft</span>
           </>
+        ) : item._type === "note" ? (
+          <>
+            <div className="w-6 h-6 flex items-center justify-center bg-amber-400 text-white font-mono text-[9px] font-bold rounded">
+              NOTE
+            </div>
+            <span className="text-amber-800 truncate max-w-[300px]">{item.text}</span>
+          </>
         ) : (
           <>
             <div className="w-6 h-6 flex items-center justify-center bg-green-600 text-white font-mono text-[10px] font-bold rounded">
@@ -183,6 +190,9 @@ const JobDetail = () => {
         all.push({ id: `riser:${p.id}`, _type: "riser", pole_number: p.pole_number, risers: c, riser_height: h, created_at: `${p.created_at || ""}~riser`, sort_order: p.riser_sort_order ?? ((p.sort_order ?? Infinity) + 0.5) });
       }
     });
+    (job?.span_notes || []).forEach((n) => {
+      all.push({ id: `note:${n.id}`, _type: "note", text: n.text, created_at: "~note", sort_order: n.so ?? Infinity });
+    });
     // Sort by sort_order, then by created_at
     all.sort((a, b) => {
       const orderA = a.sort_order ?? Infinity;
@@ -191,7 +201,23 @@ const JobDetail = () => {
       return (a.created_at || "").localeCompare(b.created_at || "");
     });
     return all;
-  }, [poles, undergroundItems]);
+  }, [poles, undergroundItems, job]);
+
+  const buildOrderPayload = (items) => {
+    const orders = [];
+    const noteSos = {};
+    items.forEach((it, i) => {
+      if (it._type === "note") noteSos[it.id.split(":").slice(1).join(":")] = i;
+      else orders.push({ id: it._type === "riser" ? it.id.split(":")[1] : it.id, type: it._type, sort_order: i });
+    });
+    return { orders, noteSos };
+  };
+
+  const saveNoteOrders = async (noteSos) => {
+    if (!Object.keys(noteSos).length) return;
+    const notes = (job?.span_notes || []).map((n) => (noteSos[n.id] != null ? { ...n, so: noteSos[n.id] } : n));
+    await axios.put(`/jobs/${jobId}`, { span_notes: notes });
+  };
 
   // Drag-and-drop sensors
   const sensors = useSensors(
@@ -225,12 +251,9 @@ const JobDetail = () => {
 
   const saveReorder = async () => {
     try {
-      const itemOrders = reorderedItems.map((item, i) => ({ 
-        id: item._type === "riser" ? item.id.split(":")[1] : item.id, 
-        type: item._type,
-        sort_order: i 
-      }));
-      await axios.put(`/jobs/${jobId}/reorder-items`, itemOrders);
+      const { orders, noteSos } = buildOrderPayload(reorderedItems);
+      await axios.put(`/jobs/${jobId}/reorder-items`, orders);
+      await saveNoteOrders(noteSos);
       toast.success("Order updated!");
       setReorderMode(false);
       setReorderedItems([]);
@@ -245,12 +268,9 @@ const JobDetail = () => {
     setSyncingAll(true);
     try {
       // First save the new order
-      const itemOrders = reorderedItems.map((item, i) => ({ 
-        id: item._type === "riser" ? item.id.split(":")[1] : item.id, 
-        type: item._type,
-        sort_order: i 
-      }));
-      await axios.put(`/jobs/${jobId}/reorder-items`, itemOrders);
+      const { orders, noteSos } = buildOrderPayload(reorderedItems);
+      await axios.put(`/jobs/${jobId}/reorder-items`, orders);
+      await saveNoteOrders(noteSos);
       
       // Then sync all distances based on new order
       const syncResult = await axios.post(`/jobs/${jobId}/sync-map-distances`);
@@ -579,6 +599,8 @@ const JobDetail = () => {
         item.pole_number?.toLowerCase().includes(query) ||
         "riser".includes(query)
       );
+    } else if (item._type === "note") {
+      return (item.text || "").toLowerCase().includes(query) || "note".includes(query);
     } else {
       return (
         item.type?.toLowerCase().includes(query) ||
@@ -1207,6 +1229,16 @@ const JobDetail = () => {
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
+                  </div>
+                </div>
+              ) : item._type === "note" ? (
+                /* Span Note Card */
+                <div key={item.id} className="industrial-card p-3 border-l-4 border-l-amber-400" data-testid={`note-card-${item.id.split(":").slice(1).join(":")}`}>
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 flex items-center justify-center bg-amber-400 text-white font-mono text-[10px] font-bold rounded">
+                      NOTE
+                    </div>
+                    <span className="text-amber-800">{item.text}</span>
                   </div>
                 </div>
               ) : item._type === "riser" ? (
