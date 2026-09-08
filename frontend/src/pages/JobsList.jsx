@@ -56,6 +56,8 @@ import {
   X,
   Map as MapIcon,
   WifiOff,
+  Copy,
+  FolderInput,
 } from "lucide-react";
 import { LifeBuoy } from "lucide-react";
 import { getOfflineSavedJobs } from "@/lib/offlineTiles";
@@ -140,14 +142,18 @@ const JobsList = () => {
     );
   }, [jobs, searchQuery]);
 
-  // Group jobs into month folders by created_at (newest month first)
+  // Group jobs into month folders by folder_month override or created_at (newest month first)
   const monthGroups = useMemo(() => {
     const groups = {};
     jobs.forEach((j) => {
-      const d = new Date(j.created_at);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      let key = /^\d{4}-\d{2}$/.test(j.folder_month || "") ? j.folder_month : null;
+      if (!key) {
+        const d = new Date(j.created_at);
+        key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      }
       if (!groups[key]) {
-        groups[key] = { key, label: d.toLocaleString("en-US", { month: "long", year: "numeric" }), jobs: [] };
+        const [y, m] = key.split("-").map(Number);
+        groups[key] = { key, label: new Date(y, m - 1, 1).toLocaleString("en-US", { month: "long", year: "numeric" }), jobs: [] };
       }
       groups[key].jobs.push(j);
     });
@@ -245,6 +251,43 @@ const JobsList = () => {
   const [transferUserId, setTransferUserId] = useState("");
   const [transferring, setTransferring] = useState(false);
 
+  const [moveMonthJob, setMoveMonthJob] = useState(null);
+  const [moveMonthValue, setMoveMonthValue] = useState("");
+  const [movingMonth, setMovingMonth] = useState(false);
+
+  const duplicateJob = async (job, e) => {
+    e.stopPropagation();
+    try {
+      await axios.post(`/jobs/${job.id}/duplicate`);
+      toast.success("Job duplicated");
+      fetchJobs();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Failed to duplicate job");
+    }
+  };
+
+  const openMoveMonthDialog = (job, e) => {
+    e.stopPropagation();
+    setMoveMonthJob(job);
+    const d = new Date(job.created_at);
+    setMoveMonthValue(/^\d{4}-\d{2}$/.test(job.folder_month || "") ? job.folder_month : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+  };
+
+  const handleMoveMonth = async () => {
+    if (!moveMonthJob || !/^\d{4}-\d{2}$/.test(moveMonthValue)) return;
+    setMovingMonth(true);
+    try {
+      await axios.put(`/jobs/${moveMonthJob.id}`, { folder_month: moveMonthValue });
+      toast.success("Job moved to new month");
+      setMoveMonthJob(null);
+      fetchJobs();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Failed to move job");
+    } finally {
+      setMovingMonth(false);
+    }
+  };
+
   const openTransferDialog = async (job, e) => {
     e.stopPropagation();
     setTransferJob(job);
@@ -303,6 +346,26 @@ const JobsList = () => {
           )}
         </label>
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-8 w-8 text-zinc-600 hover:text-emerald-600"
+            title="Duplicate job"
+            onClick={(e) => duplicateJob(job, e)}
+            data-testid={`job-duplicate-btn-${job.id}`}
+          >
+            <Copy className="w-4 h-4" />
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-8 w-8 text-zinc-600 hover:text-violet-600"
+            title="Move job to another month"
+            onClick={(e) => openMoveMonthDialog(job, e)}
+            data-testid={`job-move-month-btn-${job.id}`}
+          >
+            <FolderInput className="w-4 h-4" />
+          </Button>
           <Button
             size="icon"
             variant="ghost"
@@ -750,6 +813,34 @@ const JobsList = () => {
             </Button>
             <Button onClick={handleEdit} disabled={saving} className="bg-red-600 hover:bg-red-700 text-white">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Move to Month Dialog */}
+      <Dialog open={!!moveMonthJob} onOpenChange={(o) => { if (!o) setMoveMonthJob(null); }}>
+        <DialogContent className="bg-white border-zinc-200 max-w-sm" aria-describedby={undefined} data-testid="move-month-dialog">
+          <DialogHeader>
+            <DialogTitle className="text-zinc-900 flex items-center gap-2">
+              <FolderInput className="w-5 h-5 text-violet-600" />
+              Move Job to Month
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label className="text-zinc-700">Pick the month folder for "{moveMonthJob?.site_id || moveMonthJob?.name}"</Label>
+            <input
+              type="month"
+              value={moveMonthValue}
+              onChange={(e) => setMoveMonthValue(e.target.value)}
+              className="w-full h-11 px-3 bg-white border border-zinc-300 rounded-md text-zinc-900"
+              data-testid="move-month-input"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMoveMonthJob(null)} className="bg-zinc-100 border-zinc-300 text-zinc-900" data-testid="move-month-cancel">Cancel</Button>
+            <Button onClick={handleMoveMonth} disabled={movingMonth || !/^\d{4}-\d{2}$/.test(moveMonthValue)} className="bg-violet-600 hover:bg-violet-700 text-white" data-testid="move-month-confirm">
+              {movingMonth ? <Loader2 className="w-4 h-4 animate-spin" /> : "Move Job"}
             </Button>
           </DialogFooter>
         </DialogContent>

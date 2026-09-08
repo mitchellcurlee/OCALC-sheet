@@ -7,7 +7,7 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import domtoimage from "dom-to-image-more";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ChevronDown, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera, Hash, Link2, Move, Palette, Plus, Map as MapIcon, GripVertical, Upload, Trash2 } from "lucide-react";
+import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ChevronDown, ChevronUp, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera, Hash, Link2, Move, Palette, Plus, Map as MapIcon, GripVertical, Upload, Trash2 } from "lucide-react";
 import SpanReorderList from "@/components/SpanReorderList";
 import { computeRoute, fmtFeet, feetToStation, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, downloadMapPdfPages, ugWithGps, undergroundAbbr, computeUgConnectors, computeConnectionPairs, computeStationSegFeet, UNDERGROUND_TYPES, isAerialAttr, resolvePairAerial } from "@/lib/poleMapImage";
 import { ExportDestinationDialog } from "@/components/ExportDestinationDialog";
@@ -1679,6 +1679,43 @@ const JobMap = () => {
   );
 
   // Combined numbered measurement entries (spans + inline risers + inline path measurements, in route order)
+  // Move a riser row up/down within the measurement list by giving it a
+  // riser_sort_order between its new neighbors' keys — exact, persistent placement.
+  // First normalizes all sort_orders to sequential indices (many jobs have null
+  // sort_orders which previously made placement keys Infinity and the math collapse).
+  const moveRiserEntry = async (idx, dir) => {
+    const list = measurementEntries;
+    const entry = list[idx];
+    if (!entry || entry.kind !== "riser" || !entry.itemId) return;
+    const target = idx + dir;
+    if (target < 0 || target >= list.length) return;
+    try {
+      // Normalize: assign sequential indices matching the CURRENT natural order (no visual change)
+      const items = combinedOrderItems();
+      const idxMap = {};
+      items.forEach((it, i) => { idxMap[it.id] = i; });
+      await axios.put(`/jobs/${jobId}/reorder-items`, items.map((it, i) => ({ id: it._type === "riser" ? it.id.split(":")[1] : it.id, type: it._type, sort_order: i })));
+      // Entry keys on the same index scale
+      const keyOf = (en) => {
+        if (en.kind === "span") return idxMap[en.seg?.to?.id] ?? 0;
+        if (en.kind === "riser") return idxMap[`riser:${en.itemId}`] ?? 0;
+        return idxMap[en.itemId] ?? 0;
+      };
+      const others = list.filter((_, i) => i !== idx);
+      const insertAt = dir < 0 ? idx - 1 : idx + 1;
+      const above = others[insertAt - 1];
+      const below = others[insertAt];
+      let newSo;
+      if (!above) newSo = keyOf(below) - 1;
+      else if (!below) newSo = keyOf(above) + 1;
+      else newSo = (keyOf(above) + keyOf(below)) / 2;
+      await axios.put(`/poles/${entry.itemId}`, { riser_sort_order: newSo });
+      await fetchData();
+    } catch (e) {
+      toast.error("Failed to move riser");
+    }
+  };
+
   const { measurementEntries, spanNums } = useMemo(() => {
     const entries = [];
     const nums = {};
@@ -1694,13 +1731,14 @@ const JobMap = () => {
       return c > 0 && h > 0 ? { c, h } : null;
     };
     const riserLater = [];
+    const orderKeysUsable = route.some((p) => Number.isFinite(p.sort_order)) || underground.some((u) => Number.isFinite(u.sort_order));
     const pushRiser = (item, pos) => {
       const r = riserInfo(item);
       if (r && !added.has(item.id)) {
         added.add(item.id);
         const p = route.find((x) => x.id === item.id);
         const entry = { kind: "riser", so: p?.riser_sort_order ?? item.sort_order ?? Infinity, pos, itemId: item.id, text: `${poleName(item.label)} New Riser${r.c > 1 ? ` ×${r.c}` : ""} = ${fmtFeet(r.c * r.h)}` };
-        if (p?.riser_sort_order != null) riserLater.push(entry);
+        if (p?.riser_sort_order != null && orderKeysUsable) riserLater.push(entry);
         else entries.push(entry);
       }
     };
@@ -1736,9 +1774,9 @@ const JobMap = () => {
         added.add(p.id);
         const so = p.riser_sort_order ?? p.sort_order ?? Infinity;
         const entry = { kind: "riser", so, pos: p.pos, itemId: p.id, text: `${poleName(p.pole_number)} New Riser${r.c > 1 ? ` ×${r.c}` : ""} = ${fmtFeet(r.c * r.h)}` };
-        const idx = entries.findIndex((e) => ((e.toSo ?? e.so) ?? Infinity) > so);
-        if (idx === -1) entries.push(entry);
-        else entries.splice(idx, 0, entry);
+        let at = -1;
+        entries.forEach((e, i) => { if (((e.toSo ?? e.so) ?? Infinity) <= so) at = i; });
+        entries.splice(at + 1, 0, entry);
       });
     // Items with path measurements not on the route chain (standalone or no GPS) —
     // insert at their respective place in route order using sort_order
@@ -1758,9 +1796,9 @@ const JobMap = () => {
     // occupies the slot range (a..b), so compare against its END (toSo) — a riser
     // placed right after pole P lands before the span leaving P.
     riserLater.sort((a, b) => a.so - b.so).forEach((entry) => {
-      const idx = entries.findIndex((e) => ((e.toSo ?? e.so) ?? Infinity) > entry.so);
-      if (idx === -1) entries.push(entry);
-      else entries.splice(idx, 0, entry);
+      let at = -1;
+      entries.forEach((e, i) => { if (((e.toSo ?? e.so) ?? Infinity) <= entry.so) at = i; });
+      entries.splice(at + 1, 0, entry);
     });
     entries.forEach((e, idx) => {
       e.num = idx + 1;
@@ -3069,8 +3107,16 @@ const JobMap = () => {
                     {!e.seg.isAerial && <span className="text-emerald-700 text-xs ml-1">(UG)</span>}
                   </li>
                 ) : e.kind === "riser" ? (
-                  <li key={`entry-${e.num}`} data-testid={`riser-measurement-${e.num}`}>
-                    <span className="font-bold text-violet-700">{e.num}.</span> {e.text}{showStationNumbers && e.itemId && stationNumbers[`${e.itemId}:out`] ? <span className="text-indigo-700"> ({stationNumbers[e.itemId]} to {stationNumbers[`${e.itemId}:out`]})</span> : null}
+                  <li key={`entry-${e.num}`} data-testid={`riser-measurement-${e.num}`} className="flex items-center gap-1">
+                    <span><span className="font-bold text-violet-700">{e.num}.</span> {e.text}{showStationNumbers && e.itemId && stationNumbers[`${e.itemId}:out`] ? <span className="text-indigo-700"> ({stationNumbers[e.itemId]} to {stationNumbers[`${e.itemId}:out`]})</span> : null}</span>
+                    <span className="inline-flex items-center gap-0.5 ml-1">
+                      <button type="button" onClick={() => moveRiserEntry(e.num - 1, -1)} className="p-0.5 rounded border border-zinc-300 bg-white text-zinc-600 hover:bg-zinc-100" title="Move up" data-testid={`riser-move-up-${e.num}`}>
+                        <ChevronUp className="w-3.5 h-3.5" />
+                      </button>
+                      <button type="button" onClick={() => moveRiserEntry(e.num - 1, 1)} className="p-0.5 rounded border border-zinc-300 bg-white text-zinc-600 hover:bg-zinc-100" title="Move down" data-testid={`riser-move-down-${e.num}`}>
+                        <ChevronDown className="w-3.5 h-3.5" />
+                      </button>
+                    </span>
                   </li>
                 ) : (
                   <li key={`entry-${e.num}`} data-testid={`path-measurement-${e.num}`}>

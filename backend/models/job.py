@@ -25,6 +25,7 @@ class JobUpdate(BaseModel):
     site_id: Optional[str] = None
     employee_info: Optional[str] = None
     completed: Optional[bool] = None
+    folder_month: Optional[str] = None
     ase_data: Optional[Dict[str, Any]] = None  # ASE Site Walk Survey data
     permission_stamp: Optional[Dict[str, Any]] = None  # Permission Stamp form data
 
@@ -42,6 +43,7 @@ class Job(BaseModel):
     user_email: Optional[str] = None
     pole_count: int = 0
     completed: Optional[bool] = False
+    folder_month: Optional[str] = None
     transferred_from: Optional[str] = None
     transferred_at: Optional[str] = None
     transfer_history: Optional[List[dict]] = None

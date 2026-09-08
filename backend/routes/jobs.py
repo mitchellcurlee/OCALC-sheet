@@ -266,6 +266,58 @@ async def delete_job(job_id: str, current_user: dict = Depends(get_current_user)
     return {"message": "Job moved to Deleted Items"}
 
 
+@router.post("/jobs/{job_id}/duplicate", response_model=Job)
+async def duplicate_job(job_id: str, current_user: dict = Depends(get_current_user)):
+    """Duplicate a job with all poles, underground items, connections, routes and annotations"""
+    import uuid as _uuid
+    from routes.trash import JOB_CHILD_COLLECTIONS
+    existing = await can_access_job(job_id, current_user)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    new_job = {k: v for k, v in existing.items() if k != "_id"}
+    new_job["id"] = str(_uuid.uuid4())
+    now = datetime.now(timezone.utc).isoformat()
+    new_job["created_at"] = now
+    new_job["updated_at"] = now
+    if new_job.get("site_id"):
+        new_job["site_id"] = f"{new_job['site_id']} (Copy)"
+    elif new_job.get("name"):
+        new_job["name"] = f"{new_job['name']} (Copy)"
+    await _db.jobs.insert_one(dict(new_job))
+
+    id_map = {}
+    docs_by_coll = {}
+    for key in JOB_CHILD_COLLECTIONS:
+        docs = await _db[key].find({"job_id": job_id}, {"_id": 0}).to_list(10000)
+        docs_by_coll[key] = docs
+        if key in ("poles", "underground"):
+            for d in docs:
+                id_map[d["id"]] = str(_uuid.uuid4())
+
+    def remap(val):
+        if isinstance(val, str):
+            return id_map.get(val, val)
+        if isinstance(val, list):
+            return [remap(v) for v in val]
+        if isinstance(val, dict):
+            return {k: remap(v) for k, v in val.items()}
+        return val
+
+    for key, docs in docs_by_coll.items():
+        new_docs = []
+        for d in docs:
+            nd = remap(d)
+            nd["job_id"] = new_job["id"]
+            nd["id"] = id_map.get(d["id"], str(_uuid.uuid4()))
+            new_docs.append(dict(nd))
+        if new_docs:
+            await _db[key].insert_many(new_docs)
+
+    new_job["pole_count"] = len(docs_by_coll.get("poles", []))
+    return new_job
+
+
 @router.get("/jobs/{job_id}/poles", response_model=List[Pole])
 async def get_job_poles(job_id: str, current_user: dict = Depends(get_current_user)):
     """Get all poles for a specific job"""
