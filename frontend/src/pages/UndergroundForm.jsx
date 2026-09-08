@@ -6,6 +6,7 @@ import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from "react-lea
 import "leaflet/dist/leaflet.css";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CoordinateInput } from "@/components/CoordinateInput";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -485,15 +486,15 @@ const UndergroundForm = () => {
               <div className="w-1 h-5 bg-blue-500"></div>
               GPS Location
             </h2>
-            <div className="grid grid-cols-2 gap-3 mb-3">
-              <div className="space-y-1">
-                <Label className="text-xs font-mono text-zinc-500">Latitude</Label>
-                <Input value={formData.latitude} onChange={(e) => setFormData((p) => ({ ...p, latitude: e.target.value }))} placeholder="29.7604" className="h-10 bg-white border-zinc-300 text-zinc-900" data-testid="ug-latitude-input" />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs font-mono text-zinc-500">Longitude</Label>
-                <Input value={formData.longitude} onChange={(e) => setFormData((p) => ({ ...p, longitude: e.target.value }))} placeholder="-95.3698" className="h-10 bg-white border-zinc-300 text-zinc-900" data-testid="ug-longitude-input" />
-              </div>
+            <div className="mb-3 space-y-1">
+              <Label className="text-xs font-mono text-zinc-500">Longitude/Latitude</Label>
+              <CoordinateInput
+                latitude={formData.latitude}
+                longitude={formData.longitude}
+                onChange={(lat, lng) => setFormData((p) => ({ ...p, latitude: lat, longitude: lng }))}
+                className="h-10 bg-white border-zinc-300 text-zinc-900"
+                testId="ug-coordinates-input"
+              />
             </div>
             <div className="flex gap-2 mb-3">
               <Input value={addressQuery} onChange={(e) => setAddressQuery(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); searchAddress(); } }} placeholder="Search address" className="h-10 bg-white border-zinc-300 text-zinc-900 flex-1" />

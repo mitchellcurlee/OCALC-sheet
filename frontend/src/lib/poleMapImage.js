@@ -341,7 +341,7 @@ const totalPathFeet = (underground) =>
 
 // Build the exact text lines shown in the interactive map's Span Measurements list.
 // Used by the ASE checklist "path of approach" so both always match.
-export const buildSpanMeasurementTexts = ({ poles, underground = [], connections = [], includeStations = false, stationsOnly = false, routes = {} }) => {
+export const buildSpanMeasurementTexts = ({ poles, underground = [], connections = [], includeStations = false, stationsOnly = false, routes = {}, spanNotes = [] }) => {
   if (stationsOnly) includeStations = true;
   const { route } = computeRoute(poles);
   const ug = ugWithGps(underground);
@@ -442,6 +442,12 @@ export const buildSpanMeasurementTexts = ({ poles, underground = [], connections
       else rows.splice(idx, 0, row);
     });
   riserLaterRows.sort((a, b) => a.so - b.so).forEach((row) => {
+    let at = -1;
+    rows.forEach((r, i) => { if (((r.toSo ?? r.so) ?? Infinity) <= row.so) at = i; });
+    rows.splice(at + 1, 0, row);
+  });
+  (spanNotes || []).slice().sort((a, b) => (a.so ?? Infinity) - (b.so ?? Infinity)).forEach((n) => {
+    const row = { so: n.so ?? Infinity, text: `Note: ${n.text}` };
     let at = -1;
     rows.forEach((r, i) => { if (((r.toSo ?? r.so) ?? Infinity) <= row.so) at = i; });
     rows.splice(at + 1, 0, row);
@@ -938,6 +944,12 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
       displayRows.forEach((r, i) => { if (((r.toSo ?? r.so) ?? Infinity) <= row.so) at = i; });
       displayRows.splice(at + 1, 0, row);
     });
+    (job?.span_notes || []).slice().sort((a, b) => (a.so ?? Infinity) - (b.so ?? Infinity)).forEach((n) => {
+      const row = { type: "note", so: n.so ?? Infinity, text: `Note: ${n.text}`, ft: null };
+      let at = -1;
+      displayRows.forEach((r, i) => { if (((r.toSo ?? r.so) ?? Infinity) <= row.so) at = i; });
+      displayRows.splice(at + 1, 0, row);
+    });
     
     // Calculate required height to show all measurements
     const requiredPanelHeight = headerH + (displayRows.length * rowH) + bottomSection + 20 * s;
@@ -972,8 +984,8 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
     };
     for (let i = 0; i < displayRows.length; i++) {
       const row = displayRows[i];
-      fctx.fillStyle = row.type === "riser" ? "#f97316" : row.type === "path" ? "#059669" : "#18181b";
-      const valText = row.type === "riser" ? `+${fmtFeet(row.ft)}` : fmtFeet(row.ft);
+      fctx.fillStyle = row.type === "riser" ? "#f97316" : row.type === "path" ? "#059669" : row.type === "note" ? "#b45309" : "#18181b";
+      const valText = row.type === "note" ? "" : row.type === "riser" ? `+${fmtFeet(row.ft)}` : fmtFeet(row.ft);
       const maxTextW = panelW - 28 * s - fctx.measureText(valText).width - 6 * s;
       fctx.textAlign = "left";
       fctx.fillText(fitText(row.text, maxTextW), mapW + 14 * s, yy);
@@ -1506,6 +1518,12 @@ const generateMeasurementListImage = ({ pairSegs, route, totalRiserFeet, job, un
     }
   });
   insertPathRows(displayRows, underground);
+  (job?.span_notes || []).slice().sort((a, b) => (a.so ?? Infinity) - (b.so ?? Infinity)).forEach((n) => {
+    const row = { type: "note", so: n.so ?? Infinity, text: `Note: ${n.text}`, ft: null };
+    let at = -1;
+    displayRows.forEach((r, i) => { if (((r.toSo ?? r.so) ?? Infinity) <= row.so) at = i; });
+    displayRows.splice(at + 1, 0, row);
+  });
   
   const pairFt = pairSegs.reduce((acc, x) => acc + (x.manual ? 0 : x.ft), 0);
   const pathFt = totalPathFeet(underground);
@@ -1547,8 +1565,8 @@ const generateMeasurementListImage = ({ pairSegs, route, totalRiserFeet, job, un
     return s2 + "…";
   };
   for (const row of displayRows) {
-    ctx.fillStyle = row.type === "riser" ? "#f97316" : row.type === "path" ? "#059669" : "#18181b";
-    const valText = row.type === "riser" ? `+${fmtFeet(row.ft)}` : fmtFeet(row.ft);
+    ctx.fillStyle = row.type === "riser" ? "#f97316" : row.type === "path" ? "#059669" : row.type === "note" ? "#b45309" : "#18181b";
+    const valText = row.type === "note" ? "" : row.type === "riser" ? `+${fmtFeet(row.ft)}` : fmtFeet(row.ft);
     const maxTextW = panelW - 32 * s - ctx.measureText(valText).width - 6 * s;
     ctx.textAlign = "left";
     ctx.fillText(fitText(row.text, maxTextW), 16 * s, yy);

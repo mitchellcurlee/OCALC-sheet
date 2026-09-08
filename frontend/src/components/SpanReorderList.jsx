@@ -49,6 +49,15 @@ export const SpanReorderList = ({ initialItems, onSave, onSaveSync, onCancel, sa
   return (
     <div className="bg-amber-50 border-2 border-amber-300 rounded-lg p-3" data-testid="span-reorder-panel">
       <p className="text-xs text-amber-700 mb-2">Drag items to fine-tune the route order, then save. Span measurements and default connections follow this order.</p>
+      <div className="flex justify-end gap-2 mb-3">
+        <Button variant="outline" size="sm" onClick={onCancel} disabled={saving} className="bg-white" data-testid="span-reorder-cancel-top-btn"><X className="w-4 h-4 mr-1" />Cancel</Button>
+        <Button size="sm" onClick={() => onSave(items)} disabled={saving} className="bg-green-600 hover:bg-green-700 text-white" data-testid="span-reorder-save-top-btn">
+          {saving ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Check className="w-4 h-4 mr-1" />}Save Order
+        </Button>
+        <Button size="sm" onClick={() => onSaveSync(items)} disabled={saving} className="bg-blue-600 hover:bg-blue-700 text-white" title="Save order, rebuild default connection lines to match it, and re-sync span distances from GPS" data-testid="span-reorder-save-sync-top-btn">
+          {saving ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-1" />}Save &amp; Sync
+        </Button>
+      </div>
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
           <div className="space-y-1.5">

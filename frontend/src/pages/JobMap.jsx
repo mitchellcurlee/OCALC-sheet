@@ -1686,7 +1686,8 @@ const JobMap = () => {
   const moveRiserEntry = async (idx, dir) => {
     const list = measurementEntries;
     const entry = list[idx];
-    if (!entry || entry.kind !== "riser" || !entry.itemId) return;
+    if (!entry || (entry.kind !== "riser" && entry.kind !== "note")) return;
+    if (entry.kind === "riser" && !entry.itemId) return;
     const target = idx + dir;
     if (target < 0 || target >= list.length) return;
     try {
@@ -1696,9 +1697,12 @@ const JobMap = () => {
       items.forEach((it, i) => { idxMap[it.id] = i; });
       await axios.put(`/jobs/${jobId}/reorder-items`, items.map((it, i) => ({ id: it._type === "riser" ? it.id.split(":")[1] : it.id, type: it._type, sort_order: i })));
       // Entry keys on the same index scale
+      const noteSoMap = {};
+      (job?.span_notes || []).forEach((n) => { noteSoMap[n.id] = n.so; });
       const keyOf = (en) => {
         if (en.kind === "span") return idxMap[en.seg?.to?.id] ?? 0;
         if (en.kind === "riser") return idxMap[`riser:${en.itemId}`] ?? 0;
+        if (en.kind === "note") return Number.isFinite(noteSoMap[en.noteId]) ? noteSoMap[en.noteId] : items.length;
         return idxMap[en.itemId] ?? 0;
       };
       const others = list.filter((_, i) => i !== idx);
@@ -1709,10 +1713,39 @@ const JobMap = () => {
       if (!above) newSo = keyOf(below) - 1;
       else if (!below) newSo = keyOf(above) + 1;
       else newSo = (keyOf(above) + keyOf(below)) / 2;
-      await axios.put(`/poles/${entry.itemId}`, { riser_sort_order: newSo });
+      if (entry.kind === "riser") {
+        await axios.put(`/poles/${entry.itemId}`, { riser_sort_order: newSo });
+      } else {
+        const notes = (job?.span_notes || []).map((n) => (n.id === entry.noteId ? { ...n, so: newSo } : n));
+        await axios.put(`/jobs/${jobId}`, { span_notes: notes });
+      }
       await fetchData();
     } catch (e) {
-      toast.error("Failed to move riser");
+      toast.error("Failed to move entry");
+    }
+  };
+
+  const addSpanNote = async (text) => {
+    const clean = (text || "").trim();
+    if (!clean) return;
+    try {
+      const items = combinedOrderItems();
+      await axios.put(`/jobs/${jobId}/reorder-items`, items.map((it, i) => ({ id: it._type === "riser" ? it.id.split(":")[1] : it.id, type: it._type, sort_order: i })));
+      const newNote = { id: (window.crypto?.randomUUID ? window.crypto.randomUUID() : `note-${Date.now()}`), text: clean, so: items.length + 1 };
+      await axios.put(`/jobs/${jobId}`, { span_notes: [...(job?.span_notes || []), newNote] });
+      await fetchData();
+      toast.success("Note added to the bottom — use the arrows to place it");
+    } catch (e) {
+      toast.error("Failed to add note");
+    }
+  };
+
+  const deleteSpanNote = async (noteId) => {
+    try {
+      await axios.put(`/jobs/${jobId}`, { span_notes: (job?.span_notes || []).filter((n) => n.id !== noteId) });
+      await fetchData();
+    } catch (e) {
+      toast.error("Failed to delete note");
     }
   };
 
@@ -1800,12 +1833,19 @@ const JobMap = () => {
       entries.forEach((e, i) => { if (((e.toSo ?? e.so) ?? Infinity) <= entry.so) at = i; });
       entries.splice(at + 1, 0, entry);
     });
+    // Span notes: user-added note lines spliced by saved position
+    (job?.span_notes || []).slice().sort((a, b) => (a.so ?? Infinity) - (b.so ?? Infinity)).forEach((n) => {
+      const entry = { kind: "note", so: n.so ?? Infinity, noteId: n.id, text: `Note: ${n.text}` };
+      let at = -1;
+      entries.forEach((e, i) => { if (((e.toSo ?? e.so) ?? Infinity) <= entry.so) at = i; });
+      entries.splice(at + 1, 0, entry);
+    });
     entries.forEach((e, idx) => {
       e.num = idx + 1;
       if (e.kind === "span") nums[e.segIndex] = e.num;
     });
     return { measurementEntries: entries, spanNums: nums };
-  }, [orderedSegments, route, underground]);
+  }, [orderedSegments, route, underground, job]);
 
   // Total aerial footage from ordered segments (includes Loop spans + waypoint routes)
   const aerialFeetTotal = useMemo(
@@ -3090,11 +3130,16 @@ const JobMap = () => {
                 <div className="w-1 h-5 bg-orange-500"></div>
                 SPAN MEASUREMENTS
               </h2>
-              {!spanReorder && (poles.length + underground.length) >= 2 && (
-                <Button variant="outline" size="sm" onClick={() => setSpanReorder(true)} className="gap-1 bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900" data-testid="span-reorder-btn">
-                  <GripVertical className="w-4 h-4" /> Reorder
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => { const t = window.prompt("Note text (e.g. Address 12345 Jones Rd):"); if (t) addSpanNote(t); }} className="gap-1 bg-amber-50 border-amber-300 hover:bg-amber-100 text-amber-800" data-testid="span-add-note-btn">
+                  <StickyNote className="w-4 h-4" /> Note
                 </Button>
-              )}
+                {!spanReorder && (poles.length + underground.length) >= 2 && (
+                  <Button variant="outline" size="sm" onClick={() => setSpanReorder(true)} className="gap-1 bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900" data-testid="span-reorder-btn">
+                    <GripVertical className="w-4 h-4" /> Reorder
+                  </Button>
+                )}
+              </div>
             </div>
             {spanReorder ? (
               <SpanReorderList initialItems={combinedOrderItems()} onSave={saveSpanOrder} onSaveSync={saveSpanOrderSync} onCancel={() => setSpanReorder(false)} saving={savingOrder} />
@@ -3105,6 +3150,21 @@ const JobMap = () => {
                   <li key={`entry-${e.num}`} data-testid={`span-measurement-${e.num}`}>
                     <span className="font-bold text-orange-700">{e.num}.</span> {segItemName(e.seg.from)}{showStationNumbers && (stationNumbers[`${e.seg.from.id}:out`] || stationNumbers[e.seg.from.id]) ? <span className="text-indigo-700"> {stationNumbers[`${e.seg.from.id}:out`] || stationNumbers[e.seg.from.id]}</span> : null} to {segItemName(e.seg.to)}{showStationNumbers && stationNumbers[e.seg.to.id] ? <span className="text-indigo-700"> {stationNumbers[e.seg.to.id]}</span> : null} = {fmtFeet(segListDistance(e.seg))}
                     {!e.seg.isAerial && <span className="text-emerald-700 text-xs ml-1">(UG)</span>}
+                  </li>
+                ) : e.kind === "note" ? (
+                  <li key={`entry-${e.num}`} data-testid={`note-measurement-${e.num}`} className="flex items-center gap-1">
+                    <span><span className="font-bold text-amber-700">{e.num}.</span> <span className="text-amber-800">{e.text}</span></span>
+                    <span className="inline-flex items-center gap-0.5 ml-1">
+                      <button type="button" onClick={() => moveRiserEntry(e.num - 1, -1)} className="p-0.5 rounded border border-zinc-300 bg-white text-zinc-600 hover:bg-zinc-100" title="Move up" data-testid={`note-move-up-${e.num}`}>
+                        <ChevronUp className="w-3.5 h-3.5" />
+                      </button>
+                      <button type="button" onClick={() => moveRiserEntry(e.num - 1, 1)} className="p-0.5 rounded border border-zinc-300 bg-white text-zinc-600 hover:bg-zinc-100" title="Move down" data-testid={`note-move-down-${e.num}`}>
+                        <ChevronDown className="w-3.5 h-3.5" />
+                      </button>
+                      <button type="button" onClick={() => deleteSpanNote(e.noteId)} className="p-0.5 rounded border border-red-200 bg-white text-red-500 hover:bg-red-50" title="Delete note" data-testid={`note-delete-${e.num}`}>
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </span>
                   </li>
                 ) : e.kind === "riser" ? (
                   <li key={`entry-${e.num}`} data-testid={`riser-measurement-${e.num}`} className="flex items-center gap-1">

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { CoordinateInput } from "@/components/CoordinateInput";
 import { Switch } from "@/components/ui/switch";
 import {
   Select,
@@ -993,15 +994,14 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Latitude</Label>
-                      <Input type="text" name="latitude" value={formData.latitude} onChange={handleInputChange} placeholder="29.7604" className="h-10 bg-white border-zinc-300 text-zinc-900 font-mono" data-testid="latitude-input" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Longitude</Label>
-                      <Input type="text" name="longitude" value={formData.longitude} onChange={handleInputChange} placeholder="-95.3698" className="h-10 bg-white border-zinc-300 text-zinc-900 font-mono" data-testid="longitude-input" />
-                    </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs font-mono tracking-widest text-zinc-500 uppercase">Longitude/Latitude</Label>
+                    <CoordinateInput
+                      latitude={formData.latitude}
+                      longitude={formData.longitude}
+                      onChange={(lat, lng) => setFormData((prev) => ({ ...prev, latitude: lat, longitude: lng }))}
+                      testId="coordinates-input"
+                    />
                   </div>
                   <Button type="button" onClick={getGPSLocation} disabled={gpsLoading} className="w-full h-10 bg-zinc-100 hover:bg-zinc-200 text-zinc-900 border border-zinc-300" data-testid="get-gps-btn">
                     {gpsLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <MapPin className="w-4 h-4 mr-2" />}
