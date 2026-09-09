@@ -3,7 +3,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
-import { UNDERGROUND_TYPES, undergroundAbbr, buildSpanMeasurementTexts } from "@/lib/poleMapImage";
+import { UNDERGROUND_TYPES, undergroundAbbr } from "@/lib/poleMapImage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -47,6 +47,7 @@ import {
   FileDown,
   Image as ImageIcon,
   Download,
+  Share2,
   FileUp,
   WifiOff,
 } from "lucide-react";
@@ -86,6 +87,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import MarkupTab from "@/components/MarkupTab";
 import JobFilesShare from "@/components/JobFilesShare";
+import JobShareDialog from "@/components/JobShareDialog";
 
 // Sortable item component for drag-and-drop (poles and underground)
 const SortableItem = ({ item, index, getConditionColor }) => {
@@ -168,8 +170,6 @@ const JobDetail = () => {
   const [job, setJob] = useState(null);
   const [poles, setPoles] = useState([]);
   const [undergroundItems, setUndergroundItems] = useState([]);
-  const [connections, setConnections] = useState([]);
-  const [routesLookup, setRoutesLookup] = useState({});
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteId, setDeleteId] = useState(null);
@@ -311,21 +311,15 @@ const JobDetail = () => {
   const fetchJobAndPoles = useCallback(async () => {
     try {
       const ts = Date.now();
-      const [jobRes, polesRes, ugRes, aseRes, connRes, routesRes] = await Promise.all([
+      const [jobRes, polesRes, ugRes, aseRes] = await Promise.all([
         axios.get(`/jobs/${jobId}?_t=${ts}`),
         axios.get(`/jobs/${jobId}/poles?_t=${ts}`),
         axios.get(`/jobs/${jobId}/underground?_t=${ts}`),
         axios.get(`/jobs/${jobId}/ase-data?_t=${ts}`).catch(() => ({ data: { ase_data: null } })),
-        axios.get(`/jobs/${jobId}/connections?_t=${ts}`).catch(() => ({ data: [] })),
-        axios.get(`/jobs/${jobId}/routes?_t=${ts}`).catch(() => ({ data: [] })),
       ]);
       setJob(jobRes.data);
       setPoles(polesRes.data);
       setUndergroundItems(ugRes.data);
-      setConnections(connRes.data || []);
-      const rl = {};
-      (routesRes.data || []).forEach((r) => { rl[`${r.from_pole_id}-${r.to_pole_id}`] = r.waypoints || []; });
-      setRoutesLookup(rl);
       
       // Load markup photos from ASE data if available
       if (aseRes.data?.ase_data?.markup_photos) {
@@ -476,6 +470,7 @@ const JobDetail = () => {
   };
 
   const [pendingExport, setPendingExport] = useState(null);
+  const [shareOpen, setShareOpen] = useState(false);
   const [exportBusy, setExportBusy] = useState(false);
 
   const getExportBlob = async (type) => {
@@ -756,6 +751,10 @@ const JobDetail = () => {
                     <FileDown className="w-4 h-4 mr-2 text-green-600" />
                     Permission Stamp (Word)
                   </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setShareOpen(true)} data-testid="share-job-menu-btn" className="cursor-pointer border-t border-zinc-200 mt-1 pt-2">
+                    <Share2 className="w-4 h-4 mr-2 text-emerald-600" />
+                    Share This Job / Team
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
 
@@ -952,23 +951,9 @@ const JobDetail = () => {
           onDevice={() => runPendingExport("device")}
           onCloud={() => runPendingExport("cloud")}
         />
-        {/* Job files + share */}
-        <JobFilesShare jobId={jobId} job={job} onJobUpdated={fetchJobAndPoles} />
-
-        {/* Span Measurements — mirrors the interactive map's list (same data, always in sync) */}
-        {(poles.length + undergroundItems.length) >= 2 && (
-          <div className="industrial-card p-4 mb-6 bg-emerald-50/60 border-emerald-200" data-testid="job-span-measurements">
-            <h3 className="text-xs font-mono tracking-widest text-emerald-700 uppercase mb-2">Span Measurements</h3>
-            <ol className="space-y-0.5 text-sm text-zinc-800">
-              {buildSpanMeasurementTexts({ poles, underground: undergroundItems, connections, routes: routesLookup, spanNotes: job?.span_notes || [] }).map((t, i) => (
-                <li key={`jsm-${i}`} data-testid={`job-span-measurement-${i + 1}`}>
-                  <span className={`font-bold ${t.startsWith("Note:") ? "text-amber-700" : "text-emerald-700"}`}>{i + 1}.</span>{" "}
-                  <span className={t.startsWith("Note:") ? "text-amber-800" : ""}>{t}</span>
-                </li>
-              ))}
-            </ol>
-          </div>
-        )}
+        <JobShareDialog open={shareOpen} onOpenChange={setShareOpen} jobId={jobId} job={job} onJobUpdated={fetchJobAndPoles} />
+        {/* Job files */}
+        <JobFilesShare jobId={jobId} />
 
         {/* Photo Markup Section - Collapsible */}
         <div className="mb-6">

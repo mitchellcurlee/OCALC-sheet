@@ -381,3 +381,7 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 - "Job Number:" row in ASE Checklist Excel -> "Job Type:" (job.job_type, default OCALC). Job Data Excel row 1 "JOB #" -> "JOB TYPE" (job_type); row 2 now SITE ID / EMPLOYEE / DESCRIPTION (old JOB TYPE cell removed). Job type comes from the create/edit job dropdown.
 - Frontend: buildSowNotesText (ASESOWNotesTab.jsx) defaults FIBER AT SITE / EXISTING NTE / PIPELINES / RAILROADS lines to NO; ASE header subtitle shows job type (+ site id) instead of job_number (testid ase-header-job-type).
 - Verified via /app/memory/test_exports_no_defaults.py (login uses access_token; ASE save is PUT /jobs/{id}/ase-data). .gitignore .env patterns removed (deployment blocker). Deployment readiness PASS; deploy triggered (includes prior job files/share/audit/span-list batch).
+
+## 2026-06: Share moved into Export menu + span box removed from job page
+- New components/JobShareDialog.jsx (job-share-dialog): copy link (job-share-link / job-copy-link-btn) + team member emails (job-share-emails-input / job-share-save-btn / job-shared-with). Opened from Export dropdown item "Share This Job / Team" (share-job-menu-btn) on JobDetail.
+- JobFilesShare.jsx now only the Job Files card (upload/list/delete). Span Measurements box (job-span-measurements) removed from JobDetail along with its connections/routes fetch + buildSpanMeasurementTexts import (map list unaffected). Verified via browser. NOT yet deployed.
