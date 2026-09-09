@@ -2083,7 +2083,8 @@ const JobMap = () => {
       // Download the image
       const link = document.createElement("a");
       link.href = dataUrl;
-      link.download = `${(job?.name || "map").replace(/[^a-z0-9-_]+/gi, "_")}_screenshot.png`;
+      const addr = (job?.location || job?.ase_data?.address || "").trim();
+      link.download = `Screenshot${addr ? ` (${addr})` : ""} ${showStationNumbers ? "Station numbers" : "Linear"}.png`.replace(/[^\w \-.,()]/g, "_");
       document.body.appendChild(link);
       link.click();
       link.remove();

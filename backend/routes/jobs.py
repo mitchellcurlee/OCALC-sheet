@@ -92,6 +92,14 @@ def form_export_filename(job: dict, form: str, ext: str) -> str:
     return f"{safe or 'export'}.{ext}"
 
 
+def photo_export_filename(job: dict, form: str, ext: str = "zip") -> str:
+    """Photo/screenshot style name: 'Job type (address) Form'"""
+    address = (job.get("location") or (job.get("ase_data") or {}).get("address") or "").strip()
+    raw = f"{(job.get('job_type') or 'OCALC').strip()}{f' ({address})' if address else ''} {form}"
+    safe = "".join(c if c.isalnum() or c in " -_.,()" else "_" for c in raw).strip()
+    return f"{safe or 'export'}.{ext}"
+
+
 async def can_access_job(job_id: str, current_user: dict) -> dict:
     """Check if user can access a job and return it if so"""
     if is_admin_user(current_user):
@@ -1127,7 +1135,7 @@ def build_job_photo_entries(job, poles, underground_items):
             safe_label = safe_name(label, "Photo")
             fname = safe_label if safe_label.startswith(folder_name) else f"{folder_name}_{safe_label}"
             entries.append((f"{job_name}/Underground/{folder_name}/{fname}.jpeg", photo_url))
-    return entries, f"{job_name}_Photos.zip"
+    return entries, photo_export_filename(job, "Photos")
 
 
 @router.get("/users/transferable")
@@ -1322,7 +1330,7 @@ async def export_selected_photos_zip(job_id: str, request: Request, token: Optio
     if not entries:
         raise HTTPException(status_code=400, detail="No valid photos selected")
 
-    fname = f"{safe_name(job.get('name', 'Job'))}_Selected_{len(entries)}_Photos.zip"
+    fname = photo_export_filename(job, f"Selected {len(entries)} Photos")
     return StreamingResponse(
         _stream_zip(entries),
         media_type="application/zip",
@@ -1704,7 +1712,7 @@ async def export_ase_photos_zip(job_id: str, token: Optional[str] = Query(None),
         _stream_zip(entries),
         media_type="application/zip",
         headers={
-            "Content-Disposition": f'attachment; filename="{job_name}_ASE_Photos.zip"',
+            "Content-Disposition": f'attachment; filename="{photo_export_filename(job, "ASE Photos")}"',
             "Content-Type": "application/zip"
         }
     )

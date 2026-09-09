@@ -385,3 +385,7 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 ## 2026-06: Share moved into Export menu + span box removed from job page
 - New components/JobShareDialog.jsx (job-share-dialog): copy link (job-share-link / job-copy-link-btn) + team member emails (job-share-emails-input / job-share-save-btn / job-shared-with). Opened from Export dropdown item "Share This Job / Team" (share-job-menu-btn) on JobDetail.
 - JobFilesShare.jsx now only the Job Files card (upload/list/delete). Span Measurements box (job-span-measurements) removed from JobDetail along with its connections/routes fetch + buildSpanMeasurementTexts import (map list unaffected). Verified via browser. NOT yet deployed.
+
+## 2026-06: Photo ZIP + screenshot filenames = "Job type (address) Form"
+- Backend helper photo_export_filename(job, form) in routes/jobs.py -> e.g. "OCALC (24810 Majestic Cone Lane, Magnolia, tx 77355) Photos.zip". Applied to job photos ZIP (build_job_photo_entries, also used by cloud export), ASE photos ZIP ("ASE Photos"), selected-photos ZIP ("Selected N Photos").
+- Map Screenshot button (JobMap.jsx) now saves "Screenshot (address) Station numbers.png" when Sta #'s toggle is on, else "Screenshot (address) Linear.png". Verified via curl (Content-Disposition) + browser downloads both toggle states. Other form exports keep the earlier "Type_address_Form" underscore style. NOT yet deployed.
