@@ -98,6 +98,24 @@ async def create_underground(data: UndergroundCreate):
     return item
 
 
+@router.post("/underground/{item_id}/duplicate", response_model=Underground, status_code=201)
+async def duplicate_underground(item_id: str, current_user: dict = Depends(get_current_user)):
+    """Copy an underground/aerial attribute (no GPS, placed right after the source in the list)"""
+    src = await _db.underground.find_one({"id": item_id}, {"_id": 0})
+    if not src:
+        raise HTTPException(status_code=404, detail="Underground item not found")
+    for k in ("id", "created_at", "updated_at", "last_modified_by", "primary_fid", "soc_start", "soc_end"):
+        src.pop(k, None)
+    src["latitude"] = None
+    src["longitude"] = None
+    src["photos"] = []
+    src["staged_photos"] = []
+    item = Underground(**src)
+    item.last_modified_by = current_user.get("email", "")
+    await _db.underground.insert_one(item.model_dump())
+    return item
+
+
 @router.get("/jobs/{job_id}/underground", response_model=List[Underground])
 async def get_job_underground(job_id: str):
     items = await _db.underground.find({"job_id": job_id}, {"_id": 0}).to_list(10000)

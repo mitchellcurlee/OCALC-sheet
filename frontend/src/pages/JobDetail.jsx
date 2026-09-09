@@ -37,6 +37,7 @@ import {
   Map as MapIcon,
   Layers,
   ChevronDown,
+  MoreVertical,
   ChevronUp,
   RefreshCw,
   Repeat,
@@ -61,6 +62,9 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 } from "@/components/ui/dropdown-menu";
 import {
   Dialog,
@@ -563,6 +567,16 @@ const JobDetail = () => {
   const confirmDelete = (id, type = "pole") => {
     setDeleteId(id);
     setDeleteType(type);
+  };
+
+  const handleDuplicateUg = async (ugId) => {
+    try {
+      await axios.post(`/underground/${ugId}/duplicate`);
+      toast.success("Attribute duplicated — edit the copy");
+      fetchJobAndPoles();
+    } catch (error) {
+      toast.error("Failed to duplicate attribute");
+    }
   };
 
   const handleDuplicate = async (poleId) => {
@@ -1160,11 +1174,27 @@ const JobDetail = () => {
                 /* Pole Card */
                 <div
                   key={item.id}
-                  className="industrial-card p-4 hover:border-zinc-300 transition-colors"
+                  className="industrial-card p-4 hover:border-zinc-400 hover:bg-zinc-50 transition-colors cursor-pointer"
                   data-testid={`pole-card-${item.id}`}
+                  onClick={() => navigate(`/jobs/${jobId}/edit/${item.id}`)}
+                  role="button"
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button size="sm" variant="ghost" className="h-9 w-9 p-0 text-zinc-500 hover:text-zinc-900 hover:bg-zinc-200" onClick={(e) => e.stopPropagation()} title="Item options" data-testid={`pole-menu-${item.id}`}>
+                            <MoreVertical className="w-5 h-5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="bg-white border-zinc-200 w-48" onClick={(e) => e.stopPropagation()}>
+                          <DropdownMenuItem onClick={() => navigate(`/jobs/${jobId}/edit/${item.id}`)} data-testid={`pole-menu-edit-${item.id}`} className="cursor-pointer"><Pencil className="w-4 h-4 mr-2 text-zinc-600" />Edit</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => navigate(`/jobs/${jobId}/view/${item.id}`)} data-testid={`pole-menu-view-${item.id}`} className="cursor-pointer"><Eye className="w-4 h-4 mr-2 text-zinc-600" />View</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleDuplicate(item.id)} data-testid={`duplicate-pole-${item.id}`} className="cursor-pointer"><Copy className="w-4 h-4 mr-2 text-zinc-600" />Duplicate</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleSyncPoleDist(item.id)} disabled={syncingPoleId === item.id || !item.latitude || !item.longitude} data-testid={`sync-pole-${item.id}`} className="cursor-pointer"><RefreshCw className="w-4 h-4 mr-2 text-blue-600" />Sync GPS distances</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => confirmDelete(item.id, "pole")} data-testid={`delete-pole-${item.id}`} className="cursor-pointer text-red-600 focus:text-red-700"><Trash2 className="w-4 h-4 mr-2" />Delete</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                       <div className={`w-10 h-10 flex items-center justify-center ${item.pole_owner === "Foreign Owned" ? "bg-red-600" : "bg-orange-600"}`}>
                         <Zap className="w-5 h-5 text-white" />
                       </div>
@@ -1192,54 +1222,10 @@ const JobDetail = () => {
                       </div>
                     </div>
                     
-                    <div className="flex items-center gap-2 sm:gap-3">
-                      <div className="text-xs text-zinc-500 flex items-center gap-1 mr-2">
-                        <Calendar className="w-3 h-3" />
-                        {new Date(item.inspection_date).toLocaleDateString()}
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-blue-600 hover:text-blue-800 hover:bg-blue-50"
-                        onClick={() => handleSyncPoleDist(item.id)}
-                        disabled={syncingPoleId === item.id || !item.latitude || !item.longitude}
-                        title="Sync GPS distances for this pole"
-                        data-testid={`sync-pole-${item.id}`}
-                      >
-                        {syncingPoleId === item.id ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <RefreshCw className="w-4 h-4" />
-                        )}
-                      </Button>
-                      <Link to={`/jobs/${jobId}/view/${item.id}`}>
-                        <Button size="sm" variant="ghost" className="text-zinc-600 hover:text-zinc-900">
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                      </Link>
-                      <Link to={`/jobs/${jobId}/edit/${item.id}`}>
-                        <Button size="sm" variant="ghost" className="text-zinc-600 hover:text-zinc-900">
-                          <Pencil className="w-4 h-4" />
-                        </Button>
-                      </Link>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-zinc-600 hover:text-zinc-900"
-                        onClick={() => handleDuplicate(item.id)}
-                        title="Duplicate pole"
-                        data-testid={`duplicate-pole-${item.id}`}
-                      >
-                        <Copy className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-zinc-600 hover:text-red-600"
-                        onClick={() => confirmDelete(item.id, "pole")}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                    <div className="text-xs text-zinc-500 flex items-center gap-1 sm:mr-2">
+                      <Calendar className="w-3 h-3" />
+                      {new Date(item.inspection_date).toLocaleDateString()}
+                      {syncingPoleId === item.id && <Loader2 className="w-3 h-3 animate-spin ml-2 text-blue-600" />}
                     </div>
                   </div>
                 </div>
@@ -1268,9 +1254,31 @@ const JobDetail = () => {
                 </div>
               ) : (
                 /* Underground Card */
-                <div key={item.id} className="industrial-card p-4 border-l-4 border-l-green-500" data-testid={`ug-card-${item.id}`}>
+                <div key={item.id} className="industrial-card p-4 border-l-4 border-l-green-500 hover:border-zinc-400 hover:bg-zinc-50 transition-colors cursor-pointer" data-testid={`ug-card-${item.id}`} onClick={() => navigate(`/jobs/${jobId}/underground/edit/${item.id}`)} role="button">
                   <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button size="sm" variant="ghost" className="h-9 w-9 p-0 text-zinc-500 hover:text-zinc-900 hover:bg-zinc-200" onClick={(e) => e.stopPropagation()} title="Item options" data-testid={`ug-menu-${item.id}`}>
+                            <MoreVertical className="w-5 h-5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="bg-white border-zinc-200 w-48" onClick={(e) => e.stopPropagation()}>
+                          <DropdownMenuItem onClick={() => navigate(`/jobs/${jobId}/underground/edit/${item.id}`)} data-testid={`edit-ug-${item.id}`} className="cursor-pointer"><Pencil className="w-4 h-4 mr-2 text-zinc-600" />Edit</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleDuplicateUg(item.id)} data-testid={`duplicate-ug-${item.id}`} className="cursor-pointer"><Copy className="w-4 h-4 mr-2 text-zinc-600" />Duplicate</DropdownMenuItem>
+                          <DropdownMenuSub>
+                            <DropdownMenuSubTrigger data-testid={`change-type-${item.id}`} className="cursor-pointer"><Repeat className="w-4 h-4 mr-2 text-zinc-600" />Change type</DropdownMenuSubTrigger>
+                            <DropdownMenuSubContent className="bg-white border-zinc-200 max-h-72 overflow-y-auto">
+                              {UNDERGROUND_TYPES.filter((t) => t !== item.type).map((t) => (
+                                <DropdownMenuItem key={t} onClick={() => handleChangeType(item, t)} data-testid={`change-type-${item.id}-${t}`} className="cursor-pointer">
+                                  {t}
+                                </DropdownMenuItem>
+                              ))}
+                            </DropdownMenuSubContent>
+                          </DropdownMenuSub>
+                          <DropdownMenuItem onClick={() => confirmDelete(item.id, "underground")} data-testid={`delete-ug-${item.id}`} className="cursor-pointer text-red-600 focus:text-red-700"><Trash2 className="w-4 h-4 mr-2" />Delete</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                       <div className="w-10 h-10 flex items-center justify-center bg-green-600 text-white font-mono text-xs font-bold rounded">
                         {undergroundAbbr(item.type)}
                       </div>
@@ -1288,31 +1296,6 @@ const JobDetail = () => {
                           {item.notes && <span className="truncate max-w-[200px]">{item.notes}</span>}
                         </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button size="sm" variant="ghost" className="text-zinc-600 hover:text-zinc-900" title="Change attribute type" data-testid={`change-type-${item.id}`}>
-                            <Repeat className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="bg-zinc-50 border-zinc-300 max-h-72 overflow-y-auto">
-                          <div className="px-2 py-1 text-[10px] font-mono uppercase text-zinc-500">Change type to</div>
-                          {UNDERGROUND_TYPES.filter((t) => t !== item.type).map((t) => (
-                            <DropdownMenuItem key={t} onClick={() => handleChangeType(item, t)} data-testid={`change-type-${item.id}-${t}`}>
-                              {t}
-                            </DropdownMenuItem>
-                          ))}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                      <Link to={`/jobs/${jobId}/underground/edit/${item.id}`}>
-                        <Button size="sm" variant="ghost" className="text-zinc-600 hover:text-zinc-900" data-testid={`edit-ug-${item.id}`}>
-                          <Pencil className="w-4 h-4" />
-                        </Button>
-                      </Link>
-                      <Button size="sm" variant="ghost" className="text-zinc-600 hover:text-red-600" onClick={() => confirmDelete(item.id, "underground")} data-testid={`delete-ug-${item.id}`}>
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
                     </div>
                   </div>
                 </div>
