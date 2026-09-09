@@ -389,3 +389,6 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 ## 2026-06: Photo ZIP + screenshot filenames = "Job type (address) Form"
 - Backend helper photo_export_filename(job, form) in routes/jobs.py -> e.g. "OCALC (24810 Majestic Cone Lane, Magnolia, tx 77355) Photos.zip". Applied to job photos ZIP (build_job_photo_entries, also used by cloud export), ASE photos ZIP ("ASE Photos"), selected-photos ZIP ("Selected N Photos").
 - Map Screenshot button (JobMap.jsx) now saves "Screenshot (address) Station numbers.png" when Sta #'s toggle is on, else "Screenshot (address) Linear.png". Verified via curl (Content-Disposition) + browser downloads both toggle states. Other form exports keep the earlier "Type_address_Form" underscore style. NOT yet deployed.
+
+## 2026-06: F2 job type
+- Added "F2" to JOB_TYPES in JobsList.jsx (create + edit dialogs) and backend/models/job.py. Verified in browser: dropdown shows ... PFP, F1, F2. NOT yet deployed.
