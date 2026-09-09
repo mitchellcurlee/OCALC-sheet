@@ -587,6 +587,9 @@ const JobMap = () => {
     window.addEventListener('pointerup', up);
   }, []);
   const [placingType, setPlacingType] = useState(null); // "__pole__" | "__pole_terminal__" | underground type name
+  const [multiPlace, setMultiPlace] = useState(false); // quick-drop mode: every tap creates an attribute immediately
+  const [multiPlacedCount, setMultiPlacedCount] = useState(0);
+  const [multiSaving, setMultiSaving] = useState(false);
   const basemap = "esri";
   const [mapLayer, setMapLayer] = useState(() => {
     try { return localStorage.getItem('mapLayer') || 'aerial'; } catch (e) { return 'aerial'; }
@@ -2184,6 +2187,9 @@ const JobMap = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56 bg-white z-[1100]">
+                  <DropdownMenuItem onClick={() => { setMultiPlace(true); setMultiPlacedCount(0); setPlacingType((t) => t || "Handhole"); toast.info("Quick drop: every tap places an attribute — tap Done when finished"); }} data-testid="map-add-multiple" className="cursor-pointer font-semibold text-emerald-700 border-b border-zinc-200">
+                    Place Multiple (quick drop)
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => { setPlacingType("__pole__"); toast.info("Tap the map where the Pole goes"); }} data-testid="map-add-pole" className="cursor-pointer font-medium">
                     Add Pole
                   </DropdownMenuItem>
@@ -2451,7 +2457,23 @@ const JobMap = () => {
       </header>
 
       <main className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-4">
-        {placingType && (
+        {placingType && multiPlace && (
+          <div className="flex flex-wrap items-center gap-3 bg-emerald-700 text-white rounded-lg px-4 py-2.5 text-sm font-medium shadow" data-testid="multi-placing-banner">
+            <span className="shrink-0">Quick drop — tap the map to place each:</span>
+            <Select value={placingType} onValueChange={(v) => setPlacingType(v)}>
+              <SelectTrigger className="h-8 w-48 bg-white text-zinc-900 border-0 text-sm" data-testid="multi-place-type-select"><SelectValue /></SelectTrigger>
+              <SelectContent className="z-[1200] max-h-80">
+                <SelectItem value="__pole__">Pole</SelectItem>
+                <SelectItem value="__pole_terminal__">Pole Terminal</SelectItem>
+                {UNDERGROUND_TYPES.map((t) => (<SelectItem key={t} value={t}>{t}</SelectItem>))}
+              </SelectContent>
+            </Select>
+            <span className="text-emerald-100 text-xs" data-testid="multi-place-count">{multiPlacedCount} placed{multiSaving ? " · saving…" : ""}</span>
+            <span className="text-emerald-100 text-xs hidden sm:inline">Details (label, photos, notes) can be edited afterwards from the list.</span>
+            <Button size="sm" className="h-7 text-xs bg-white text-emerald-800 hover:bg-emerald-50 border-0 ml-auto shrink-0 font-semibold" onClick={() => { setMultiPlace(false); setPlacingType(null); toast.success(`${multiPlacedCount} attribute${multiPlacedCount === 1 ? "" : "s"} placed`); }} data-testid="multi-place-done-btn">Done</Button>
+          </div>
+        )}
+        {placingType && !multiPlace && (
           <div className="flex items-center justify-between gap-3 bg-emerald-600 text-white rounded-lg px-4 py-2.5 text-sm font-medium shadow" data-testid="placing-banner">
             <span>Tap the map where the {placingType === "__pole__" ? "Pole" : placingType === "__pole_terminal__" ? "Pole Terminal" : placingType} goes — the form will open with that location filled in</span>
             <Button size="sm" variant="outline" className="h-7 text-xs bg-white text-zinc-900 hover:bg-zinc-100 border-0 shrink-0" onClick={() => setPlacingType(null)} data-testid="placing-cancel-btn">Cancel</Button>
@@ -2706,10 +2728,29 @@ const JobMap = () => {
               <MapRefSetter mapRef={mapRef} />
               {placingType && (
                 <PlaceAttributeHandler
-                  onPlace={(latlng) => {
+                  onPlace={async (latlng) => {
                     const lat = latlng.lat.toFixed(6);
                     const lng = latlng.lng.toFixed(6);
                     const t = placingType;
+                    if (multiPlace) {
+                      if (multiSaving) return;
+                      setMultiSaving(true);
+                      try {
+                        if (t === "__pole__" || t === "__pole_terminal__") {
+                          await axios.post("/poles", { job_id: jobId, pole_number: `P-${poles.length + 1}`, latitude: parseFloat(lat), longitude: parseFloat(lng), pole_terminal: t === "__pole_terminal__" ? "Yes" : "" });
+                        } else {
+                          await axios.post("/underground", { job_id: jobId, type: t, latitude: parseFloat(lat), longitude: parseFloat(lng) });
+                        }
+                        setMultiPlacedCount((c) => c + 1);
+                        toast.success(`${t === "__pole__" ? "Pole" : t === "__pole_terminal__" ? "Pole Terminal" : t} placed`, { duration: 1200 });
+                        await fetchData();
+                      } catch (e) {
+                        toast.error("Failed to place attribute");
+                      } finally {
+                        setMultiSaving(false);
+                      }
+                      return;
+                    }
                     setPlacingType(null);
                     if (t === "__pole__") {
                       navigate(`/jobs/${jobId}/add?lat=${lat}&lng=${lng}&from=map`);
