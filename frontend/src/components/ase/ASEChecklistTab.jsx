@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { Section, CollapsibleSection, StyledInput, StyledTextarea, DropdownSelect, YesNoSelect, FieldRow, isFilled, DatePickerField } from "./ASEFormHelpers";
 import { Switch } from "@/components/ui/switch";
 import { ASE_OPTIONS } from "./ASEFormConstants";
+import { EF_REQ_ITEMS, buildSiteRequirementsText } from "./efRequirements";
 import { PhotoMarkupEditor } from "@/components/PhotoMarkupEditor";
 import { ASEPhotoField } from "@/components/ASEPhotoField";
 import MarkupTab from "@/components/MarkupTab";
@@ -73,14 +74,15 @@ const ASEChecklistTab = ({ formData, handleChange, poles = [], underground = [],
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [poles, underground]);
 
-  // EF Requirements: "Provided" toggle → "What Site Requirements are already provided?" sync
-  const handleEfProvidedToggle = (item, checked) => {
-    handleChange(`${item.key}_provided`, checked);
-    const current = formData.site_requirements_provided || "";
-    const parts = current.split(";").map((s) => s.trim()).filter(Boolean).filter((s) => s !== item.shortName);
-    if (checked) parts.push(item.shortName);
-    handleChange("site_requirements_provided", parts.join("; "));
-  };
+  // EF Requirements summary auto-built from the Yes/No, Customer to place and Provided toggles (+ qty)
+  const efAutoText = buildSiteRequirementsText(formData);
+  useEffect(() => {
+    const cur = formData.site_requirements_provided || "";
+    if (formData.site_requirements_manual === undefined && cur && cur !== efAutoText) { handleChange("site_requirements_manual", true); return; }
+    if (formData.site_requirements_manual) return;
+    if (cur !== efAutoText) { handleChange("site_requirements_provided", efAutoText); handleChange("site_requirements_manual", false); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [efAutoText, formData.site_requirements_manual]);
 
   // Fiber Pedestal -> FBT toggle
   const handlePedestalFbtToggle = (v) => {
@@ -377,26 +379,16 @@ const ASEChecklistTab = ({ formData, handleChange, poles = [], underground = [],
       {/* EF REQUIREMENTS Table */}
       <Section title="EF REQUIREMENTS">
         <div className="space-y-3">
-          <div className="grid grid-cols-3 gap-2 text-xs font-mono font-bold text-zinc-600 border-b pb-2 uppercase">
+          <div className="hidden sm:grid grid-cols-5 gap-2 text-xs font-mono font-bold text-zinc-600 border-b pb-2 uppercase">
             <span>Requirement</span>
             <span>YES/NO</span>
             <span>QTTY</span>
+            <span className="text-right">Customer</span>
+            <span className="text-right">Provided</span>
           </div>
-          {[
-            { label: "Do we need a buried PVC pipe?", key: "buried_pvc", qtyKey: "buried_pvc_length", qtyLabel: "Length", shortName: "Buried PVC pipe" },
-            { label: "Do we need buried innerduct on customer property?", key: "buried_innerduct", qtyKey: "buried_innerduct_length", qtyLabel: "Length", shortName: "Buried innerduct" },
-            { label: "Do we need EMT? (metallic bldg pipe)", key: "need_emt", qtyKey: "emt_length", qtyLabel: "Length", shortName: "EMT" },
-            { label: "Do we need plastic building duct/pipe (Plenum)?", key: "need_plenum", qtyKey: "plenum_length", qtyLabel: "Length", shortName: "Plenum duct/pipe" },
-            { label: "Do we need a core drill?", key: "need_core_drill", qtyKey: "core_drill_qty", qtyLabel: "QTTY", shortName: "Core drill" },
-            { label: "Do we need an eye-bolt / weatherhead?", key: "need_eyebolt", qtyKey: null, shortName: "Eye-bolt / weatherhead" },
-            { label: "Do we need a Pullbox?", key: "need_pullbox", qtyKey: "pullbox_qty", qtyLabel: "QTTY", shortName: "Pullbox" },
-            { label: "Do we need a Hoffman box?", key: "need_hoffman_box", qtyKey: "hoffman_box_qty", qtyLabel: "QTTY", shortName: "Hoffman box" },
-            { label: "Do we need a backboard?", key: "need_backboard", qtyKey: "backboard_qty", qtyLabel: "QTTY", shortName: "Backboard" },
-            { label: "Do we need an outlet?", key: "need_outlet", qtyKey: null, shortName: "Outlet" },
-            { label: "Do we need a groundbar?", key: "need_groundbar", qtyKey: "groundbar_qty", qtyLabel: "QTTY", shortName: "Groundbar" },
-          ].map((item) => (
-            <div key={item.key} className="grid grid-cols-4 gap-2 items-center py-2 border-b border-zinc-100">
-              <span className="text-xs font-mono text-zinc-700">{item.label}</span>
+          {EF_REQ_ITEMS.map((item) => (
+            <div key={item.key} className="grid grid-cols-2 sm:grid-cols-5 gap-2 items-center py-2 border-b border-zinc-100">
+              <span className="text-xs font-mono text-zinc-700 col-span-2 sm:col-span-1">{item.label}</span>
               <YesNoSelect value={formData[item.key]} onChange={(v) => handleChange(item.key, v)} filled={isFilled(formData[item.key])} />
               {item.qtyKey ? (
                 <StyledInput 
@@ -409,10 +401,18 @@ const ASEChecklistTab = ({ formData, handleChange, poles = [], underground = [],
               ) : (
                 <span className="text-zinc-400 text-xs">-</span>
               )}
-              <label className="flex items-center gap-2 justify-end cursor-pointer" title="Add to 'What Site Requirements are already provided?'">
+              <label className="flex items-center gap-2 sm:justify-end cursor-pointer" title="Customer will place this item">
+                <Switch
+                  checked={formData[`${item.key}_customer`] === true}
+                  onCheckedChange={(v) => handleChange(`${item.key}_customer`, v)}
+                  data-testid={`ef-customer-${item.key}`}
+                />
+                <span className="text-[10px] font-mono uppercase text-zinc-500">Customer to place</span>
+              </label>
+              <label className="flex items-center gap-2 sm:justify-end cursor-pointer" title="Already provided at the site">
                 <Switch
                   checked={formData[`${item.key}_provided`] === true}
-                  onCheckedChange={(v) => handleEfProvidedToggle(item, v)}
+                  onCheckedChange={(v) => handleChange(`${item.key}_provided`, v)}
                   data-testid={`ef-provided-${item.key}`}
                 />
                 <span className="text-[10px] font-mono uppercase text-zinc-500">Provided</span>
@@ -528,8 +528,11 @@ const ASEChecklistTab = ({ formData, handleChange, poles = [], underground = [],
           <FieldRow label="Proposed POLE and BLDG Height of Attachment" note="IF PLACING AERIAL">
             <StyledInput value={formData.proposed_pole_bldg_height} onChange={(e) => handleChange("proposed_pole_bldg_height", e.target.value)} filled={isFilled(formData.proposed_pole_bldg_height)} />
           </FieldRow>
-          <FieldRow label="What Site Requirements are already provided?" wide>
-            <StyledTextarea value={formData.site_requirements_provided} onChange={(e) => handleChange("site_requirements_provided", e.target.value)} rows={2} filled={isFilled(formData.site_requirements_provided)} />
+          <FieldRow label="What Site Requirements are already needed, customer to place or provided?" wide>
+            <StyledTextarea value={formData.site_requirements_provided} onChange={(e) => { handleChange("site_requirements_manual", true); handleChange("site_requirements_provided", e.target.value); }} rows={2} filled={isFilled(formData.site_requirements_provided)} data-testid="site-requirements-textarea" />
+            {formData.site_requirements_manual && (
+              <button type="button" onClick={() => { handleChange("site_requirements_manual", false); handleChange("site_requirements_provided", efAutoText); }} className="text-[11px] font-mono text-blue-600 hover:underline mt-1" data-testid="site-requirements-reset-btn">Reset to auto (from EF toggles)</button>
+            )}
           </FieldRow>
           <FieldRow label="Are there any pipelines in the vicinity?">
             <YesNoSelect value={formData.pipelines_vicinity} onChange={(v) => handleChange("pipelines_vicinity", v)} filled={isFilled(formData.pipelines_vicinity)} />

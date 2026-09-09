@@ -3,6 +3,7 @@ from fastapi.responses import StreamingResponse, HTMLResponse
 from typing import List, Optional
 from datetime import datetime, timezone, timedelta
 import io
+import re
 import hashlib
 import hmac
 import os
@@ -1738,33 +1739,47 @@ def _ase_with_no_defaults(ase: dict) -> dict:
     return ase
 
 
+EF_REQ_ITEMS = [
+    ("PVC", "buried_pvc", "buried_pvc_length", "FT"),
+    ("Innerduct", "buried_innerduct", "buried_innerduct_length", "FT"),
+    ("EMT", "need_emt", "emt_length", "FT"),
+    ("Plenum", "need_plenum", "plenum_length", "FT"),
+    ("Core drill", "need_core_drill", "core_drill_qty", "QTY"),
+    ("Eye-bolt/weatherhead", "need_eyebolt", None, None),
+    ("Pullbox", "need_pullbox", "pullbox_qty", "QTY"),
+    ("Hoffman box", "need_hoffman_box", "hoffman_box_qty", "QTY"),
+    ("Backboard", "need_backboard", "backboard_qty", "QTY"),
+    ("Outlet", "need_outlet", None, None),
+    ("Groundbar", "need_groundbar", "groundbar_qty", "QTY"),
+]
+
+
+def _site_requirements_text(ase: dict) -> str:
+    """'(Needed) PVC 17ft, EMT 20ft (Customer to place) Backboard 2x2 (Provided) Power' — user text wins"""
+    ase = ase or {}
+    if (ase.get("site_requirements_provided") or "").strip():
+        return str(ase["site_requirements_provided"])
+    def _yes(v):
+        return str(v or "").strip().upper() in ("YES", "TRUE", "Y")
+    groups = {"Needed": [], "Customer to place": [], "Provided": []}
+    for name, key, qty_key, unit in EF_REQ_ITEMS:
+        q = str(ase.get(qty_key) or "").strip() if qty_key else ""
+        is_num = bool(re.fullmatch(r"\d+(\.\d+)?", q))
+        text = name if not q else f"{name} {q}{'ft' if unit == 'FT' and is_num else ''}"
+        if ase.get(f"{key}_provided") is True:
+            groups["Provided"].append(text)
+        elif ase.get(f"{key}_customer") is True:
+            groups["Customer to place"].append(text)
+        elif _yes(ase.get(key)):
+            groups["Needed"].append(text)
+    return " ".join(f"({g}) {', '.join(xs)}" for g, xs in groups.items() if xs)
+
+
 def _build_sow_text(ase: dict) -> str:
     """Full SOW Notes text exactly as shown in the app (user override or auto-generated)"""
     ase = _ase_with_no_defaults(ase)
     if (ase.get("sow_notes_override") or "").strip():
         return str(ase["sow_notes_override"])
-    ef_items = [
-        ("BURIED PVC", "buried_pvc", "buried_pvc_provided", "buried_pvc_length", "FT"),
-        ("BURIED INNERDUCT", "buried_innerduct", "buried_innerduct_provided", "buried_innerduct_length", "FT"),
-        ("EMT", "need_emt", "need_emt_provided", "emt_length", "FT"),
-        ("PLENUM", "need_plenum", "need_plenum_provided", "plenum_length", "FT"),
-        ("CORE DRILL", "need_core_drill", "need_core_drill_provided", "core_drill_qty", "QTY"),
-        ("EYE-BOLT/WEATHERHEAD", "need_eyebolt", "need_eyebolt_provided", None, None),
-        ("PULLBOX", "need_pullbox", "need_pullbox_provided", "pullbox_qty", "QTY"),
-        ("HOFFMAN BOX", "need_hoffman_box", "need_hoffman_box_provided", "hoffman_box_qty", "QTY"),
-        ("BACKBOARD", "need_backboard", "need_backboard_provided", "backboard_qty", "QTY"),
-        ("OUTLET", "need_outlet", "need_outlet_provided", None, None),
-        ("GROUNDBAR", "need_groundbar", "need_groundbar_provided", "groundbar_qty", "QTY"),
-    ]
-    def _yes(v):
-        return str(v or "").strip().upper() in ("YES", "TRUE", "Y")
-    def _with_qty(label, qty_key, unit):
-        v = str(ase.get(qty_key) or "").strip() if qty_key else ""
-        if not v:
-            return label
-        return f"{label} ({v} FT)" if unit == "FT" else f"{label} (QTY {v})"
-    in_place = ase.get("site_requirements_provided") or ", ".join(l for l, _k, pk, _q, _u in ef_items if _yes(ase.get(pk)))
-    needed = ", ".join(_with_qty(l, qk, u) for l, k, _pk, qk, u in ef_items if _yes(ase.get(k)))
     def _g(k, d=""):
         return str(ase[k]) if ase.get(k) else d
     lines = [
@@ -1786,9 +1801,7 @@ def _build_sow_text(ase: dict) -> str:
         f"POLE LINE END: {_g('soc_pole_line_end', 'N/A')}",
         f"SOC START: {_g('soc_start_lat_long', '0')}",
         f"SOC END: {_g('soc_end_lat_long', '0')}",
-        "EF REQUIREMENTS: ",
-        f"IN PLACE {in_place}",
-        f"NEEDED {needed}",
+        f"EF REQUIREMENTS: {_site_requirements_text(ase)}",
         f"EXISTING NTE/EMTS @SITE: {_g('existing_nte')}",
         f"PROPOSED EQUIPMENT LOCATION: {_g('nte_location_description')}  LAT/LONG: {_g('nte_lat_long')}",
         "PROPOSED EQUIPMENT: CIENA 3903X OR EQUIVALENT RAD",
@@ -2177,7 +2190,7 @@ async def export_ase_excel(job_id: str, request: Request, current_user: dict = D
     row = add_row(ws1, row, "SOC START Lat/Long:", ase.get("soc_start_lat_long", ""))
     row = add_row(ws1, row, "SOC END Lat/Long:", ase.get("soc_end_lat_long", ""))
     row = add_row(ws1, row, "Proposed POLE and BLDG Height of Attachment:", ase.get("proposed_pole_bldg_height", ""))
-    row = add_row(ws1, row, "What Site Requirements are already provided?:", ase.get("site_requirements_provided", ""))
+    row = add_wide_row(ws1, row, "What Site Requirements are already needed, customer to place or provided?:", _site_requirements_text(ase))
     row = add_row(ws1, row, "Are there any pipelines in the vicinity?:", ase.get("pipelines_vicinity", ""))
     row = add_row(ws1, row, "Are there any pipelines in the path?:", ase.get("pipelines_path", ""))
     row = add_row(ws1, row, "Are there any railroads in the vicinity?:", ase.get("railroads_vicinity", ""))

@@ -6,34 +6,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Copy, RotateCcw, FileDown } from "lucide-react";
 import { toast } from "sonner";
 
-const EF_ITEMS = [
-  ["BURIED PVC", "buried_pvc", "buried_pvc_provided", "buried_pvc_length", "FT"],
-  ["BURIED INNERDUCT", "buried_innerduct", "buried_innerduct_provided", "buried_innerduct_length", "FT"],
-  ["EMT", "need_emt", "need_emt_provided", "emt_length", "FT"],
-  ["PLENUM", "need_plenum", "need_plenum_provided", "plenum_length", "FT"],
-  ["CORE DRILL", "need_core_drill", "need_core_drill_provided", "core_drill_qty", "QTY"],
-  ["EYE-BOLT/WEATHERHEAD", "need_eyebolt", "need_eyebolt_provided", null, null],
-  ["PULLBOX", "need_pullbox", "need_pullbox_provided", "pullbox_qty", "QTY"],
-  ["HOFFMAN BOX", "need_hoffman_box", "need_hoffman_box_provided", "hoffman_box_qty", "QTY"],
-  ["BACKBOARD", "need_backboard", "need_backboard_provided", "backboard_qty", "QTY"],
-  ["OUTLET", "need_outlet", "need_outlet_provided", null, null],
-  ["GROUNDBAR", "need_groundbar", "need_groundbar_provided", "groundbar_qty", "QTY"],
-];
-
-const yes = (v) => ["YES", "TRUE", "Y"].includes(String(v || "").trim().toUpperCase());
-
-const labelWithQty = (f, label, qtyKey, unit) => {
-  const v = qtyKey ? String(f[qtyKey] || "").trim() : "";
-  if (!v) return label;
-  return unit === "FT" ? `${label} (${v} FT)` : `${label} (QTY ${v})`;
-};
+import { buildSiteRequirementsText } from "./efRequirements";
 
 const YES_NO_KEYS = ["existing_fiber_terminal", "existing_nte", "pipelines_vicinity", "railroads_vicinity"];
 
 export const buildSowNotesText = (f) => {
   const g = (k, d = "") => (f[k] ? String(f[k]) : YES_NO_KEYS.includes(k) ? "NO" : d);
-  const inPlace = g("site_requirements_provided") || EF_ITEMS.filter(([, , pk]) => yes(f[pk])).map(([l]) => l).join(", ");
-  const needed = EF_ITEMS.filter(([, k]) => yes(f[k])).map(([l, , , qk, u]) => labelWithQty(f, l, qk, u)).join(", ");
+  const efReq = g("site_requirements_provided") || buildSiteRequirementsText(f);
   const lines = [
     `ASSIGNED ATT ENG: ${g("assigned_att_eng")}`,
     `SITE WALKED BY: ${g("employee_info")}`,
@@ -53,9 +32,7 @@ export const buildSowNotesText = (f) => {
     `POLE LINE END: ${g("soc_pole_line_end", "N/A")}`,
     `SOC START: ${g("soc_start_lat_long", "0")}`,
     `SOC END: ${g("soc_end_lat_long", "0")}`,
-    `EF REQUIREMENTS: `,
-    `IN PLACE ${inPlace}`,
-    `NEEDED ${needed}`,
+    `EF REQUIREMENTS: ${efReq}`,
     `EXISTING NTE/EMTS @SITE: ${g("existing_nte")}`,
     `PROPOSED EQUIPMENT LOCATION: ${g("nte_location_description")}  LAT/LONG: ${g("nte_lat_long")}`,
     `PROPOSED EQUIPMENT: CIENA 3903X OR EQUIVALENT RAD`,

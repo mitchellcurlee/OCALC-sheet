@@ -392,3 +392,9 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 
 ## 2026-06: F2 job type
 - Added "F2" to JOB_TYPES in JobsList.jsx (create + edit dialogs) and backend/models/job.py. Verified in browser: dropdown shows ... PFP, F1, F2. NOT yet deployed.
+
+## 2026-06: EF Requirements — Customer to place toggle + itemized summary
+- New "Customer to place" switch (ef-customer-{key}, field {key}_customer bool) left of "Provided" on every EF row; header row hidden on mobile, rows wrap to 2 cols (<640px).
+- Shared builder components/ase/efRequirements.js (EF_REQ_ITEMS with short names PVC/Innerduct/EMT/Plenum/Core drill/Eye-bolt/weatherhead/Pullbox/Hoffman box/Backboard/Outlet/Groundbar; buildSiteRequirementsText) -> "(Needed) PVC 17ft, EMT 20ft (Customer to place) Backboard 2x2 (Provided) Outlet". Grouping: provided > customer > yes=needed; numeric FT qty gets "ft" suffix.
+- Box renamed "What Site Requirements are already needed, customer to place or provided?" (site-requirements-textarea); auto-synced from toggles (stored in site_requirements_provided); typing sets site_requirements_manual=true + shows "Reset to auto" (site-requirements-reset-btn). Legacy jobs with non-matching text are treated as manual on load.
+- Exports: backend _site_requirements_text(ase) (user text wins, else built from toggles) used in ASE Excel row (add_wide_row, new label) and SOW Notes line "EF REQUIREMENTS: ..." (replaces old IN PLACE/NEEDED lines) in Excel tab + Word docx; frontend buildSowNotesText matches. Verified via /app/memory/test_ef_requirements.py + browser. NOT yet deployed.
