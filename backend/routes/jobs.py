@@ -446,13 +446,12 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
     section_fill = PatternFill(start_color="1f2937", end_color="1f2937", fill_type="solid")
     section_font = Font(bold=True, color="FFFFFF")
     
-    job_number = next((p.get("job_number") for p in poles if p.get("job_number")), "")
     ws.cell(row=1, column=1, value="JOB NAME").fill = header_fill
     ws.cell(row=1, column=1).font = header_font
     ws.cell(row=1, column=2, value=job.get("name", ""))
-    ws.cell(row=1, column=3, value="JOB #").fill = header_fill
+    ws.cell(row=1, column=3, value="JOB TYPE").fill = header_fill
     ws.cell(row=1, column=3).font = header_font
-    ws.cell(row=1, column=4, value=job_number)
+    ws.cell(row=1, column=4, value=job.get("job_type", "") or "OCALC")
     ws.cell(row=1, column=5, value="LOCATION").fill = header_fill
     ws.cell(row=1, column=5).font = header_font
     ws.cell(row=1, column=6, value=job.get("location", ""))
@@ -471,19 +470,16 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
     img_cell.font = Font(color="2563EB", underline="single", bold=True)
 
     # Second header row: remaining job-level data
-    ws.cell(row=2, column=1, value="JOB TYPE").fill = header_fill
+    ws.cell(row=2, column=1, value="SITE ID").fill = header_fill
     ws.cell(row=2, column=1).font = header_font
-    ws.cell(row=2, column=2, value=job.get("job_type", ""))
-    ws.cell(row=2, column=3, value="SITE ID").fill = header_fill
+    ws.cell(row=2, column=2, value=job.get("site_id", "") or "")
+    ws.cell(row=2, column=3, value="EMPLOYEE").fill = header_fill
     ws.cell(row=2, column=3).font = header_font
-    ws.cell(row=2, column=4, value=job.get("site_id", "") or "")
-    ws.cell(row=2, column=5, value="EMPLOYEE").fill = header_fill
-    ws.cell(row=2, column=5).font = header_font
-    ws.cell(row=2, column=6, value=job.get("employee_info", "") or "")
+    ws.cell(row=2, column=4, value=job.get("employee_info", "") or "")
     if job.get("description"):
-        ws.cell(row=2, column=7, value="DESCRIPTION").fill = header_fill
-        ws.cell(row=2, column=7).font = header_font
-        ws.cell(row=2, column=8, value=job.get("description", ""))
+        ws.cell(row=2, column=5, value="DESCRIPTION").fill = header_fill
+        ws.cell(row=2, column=5).font = header_font
+        ws.cell(row=2, column=6, value=job.get("description", ""))
     
     # Add All Photos link (gallery page, not download)
     job_photos_token = generate_download_token("job_photos", job_id)
@@ -563,7 +559,7 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
         section("BIRTHMARK & MGNV")
         label_value_row([
             ("Has Birthmark", "Yes" if pole.get("has_birthmark", True) else "No"),
-            ("MGNV Present", pole.get("mgnv", "")),
+            ("MGNV Present", pole.get("mgnv", "") or "No"),
             ("MGNV Condition", pole.get("mgnv_condition", "")),
         ])
 
@@ -581,7 +577,7 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
                 current_row += 1
         label_value_row([
             ("Tree Trimming Needed", "Yes" if pole.get("tree_trimming_needed") is True else "No"),
-            ("Pole Terminal", pole.get("pole_terminal", "")),
+            ("Pole Terminal", pole.get("pole_terminal", "") or "No"),
             ("Existing Risers", pole.get("existing_risers", "")),
             ("New Risers", pole.get("risers", "")),
             ("Riser Height", format_height(pole.get("riser_height"))),
@@ -1715,9 +1711,28 @@ async def export_ase_photos_zip(job_id: str, token: Optional[str] = Query(None),
 
 
 
+ASE_YES_NO_KEYS = {
+    "bidi_retrofit_qualify", "customer_ef_aware", "ef_qualified", "existing_fiber_terminal", "existing_inc",
+    "existing_nte", "inc_required", "it_same_floor_as_nte", "multi_tenant", "pedestal_fiber_as_fbt",
+    "pipelines_path", "pipelines_vicinity", "proposed_nte_common_space", "railroads_path", "railroads_vicinity",
+    "multi_tenant_eligibility", "router_on_same_floor", "buried_pvc", "buried_innerduct", "need_emt",
+    "need_plenum", "need_core_drill", "need_eyebolt", "need_pullbox", "need_hoffman_box", "need_backboard",
+    "need_outlet", "need_groundbar",
+}
+
+
+def _ase_with_no_defaults(ase: dict) -> dict:
+    """Yes/No toggles left off export as explicit 'NO' instead of blank"""
+    ase = dict(ase or {})
+    for k in ASE_YES_NO_KEYS:
+        if not ase.get(k):
+            ase[k] = "NO"
+    return ase
+
+
 def _build_sow_text(ase: dict) -> str:
     """Full SOW Notes text exactly as shown in the app (user override or auto-generated)"""
-    ase = ase or {}
+    ase = _ase_with_no_defaults(ase)
     if (ase.get("sow_notes_override") or "").strip():
         return str(ase["sow_notes_override"])
     ef_items = [
@@ -1879,8 +1894,8 @@ async def export_ase_excel(job_id: str, request: Request, current_user: dict = D
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
     
-    # Handle None or missing ase_data
-    ase = job.get("ase_data") or {}
+    # Handle None or missing ase_data; Yes/No toggles left off print "NO"
+    ase = _ase_with_no_defaults(job.get("ase_data"))
 
     # Server-side fallbacks mirroring the ASE form auto-population, so the export
     # always includes coordinates/FID even if the form wasn't re-opened and saved.
@@ -2020,7 +2035,7 @@ async def export_ase_excel(job_id: str, request: Request, current_user: dict = D
     
     # Job Info
     row = add_row(ws1, row, "Job Name:", job.get("name", ""))
-    row = add_row(ws1, row, "Job Number:", job.get("job_number", ""))
+    row = add_row(ws1, row, "Job Type:", job.get("job_type", "") or "OCALC")
     row = add_row(ws1, row, "Location:", job.get("location", ""))
     row += 1
     

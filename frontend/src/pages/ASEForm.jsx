@@ -490,7 +490,7 @@ const ASEForm = () => {
             </Link>
             <div>
               <h1 className="font-heading text-lg sm:text-xl font-bold">ASE SITE WALK SURVEY</h1>
-              <p className="text-xs text-zinc-500 font-mono">{job?.job_number} • {job?.job_type}</p>
+              <p className="text-xs text-zinc-500 font-mono" data-testid="ase-header-job-type">{job?.job_type || "OCALC"}{job?.site_id ? ` • ${job.site_id}` : ""}</p>
             </div>
           </div>
           <div className="flex gap-2">

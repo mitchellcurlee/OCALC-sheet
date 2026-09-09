@@ -28,8 +28,10 @@ const labelWithQty = (f, label, qtyKey, unit) => {
   return unit === "FT" ? `${label} (${v} FT)` : `${label} (QTY ${v})`;
 };
 
+const YES_NO_KEYS = ["existing_fiber_terminal", "existing_nte", "pipelines_vicinity", "railroads_vicinity"];
+
 export const buildSowNotesText = (f) => {
-  const g = (k, d = "") => (f[k] ? String(f[k]) : d);
+  const g = (k, d = "") => (f[k] ? String(f[k]) : YES_NO_KEYS.includes(k) ? "NO" : d);
   const inPlace = g("site_requirements_provided") || EF_ITEMS.filter(([, , pk]) => yes(f[pk])).map(([l]) => l).join(", ");
   const needed = EF_ITEMS.filter(([, k]) => yes(f[k])).map(([l, , , qk, u]) => labelWithQty(f, l, qk, u)).join(", ");
   const lines = [

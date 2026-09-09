@@ -375,3 +375,9 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 - AUDIT: PUT poles, PUT underground, PUT jobs, and share all stamp last_modified_by (editor email) + updated_at (UTC ISO). Job file records carry uploaded_by + created_at.
 - SPAN LIST ALL ITEMS: buildSpanMeasurementTexts fallback now scans RAW poles/underground (GPS no longer required) so every non-standalone job item appears (as "— no span" if unspanned); JobMap fallback matches for map items. Removed "Matches the interactive map list…" caption from job page.
 - Testing: iteration_51.json — backend 10/10, frontend 100%; job-level last_modified_by gap fixed after report + curl verified. Regression pytest: /app/backend/tests/test_job_files_share_audit.py. NOT yet deployed (user did not request deploy for this batch).
+
+## 2026-06: "NO" toggles in exports + Job Type replaces Job Number
+- Backend (routes/jobs.py): ASE_YES_NO_KEYS + _ase_with_no_defaults() — every Yes/No switch left off (all ASE checklist toggles, EF requirement rows, MTEI toggles) exports as explicit "NO" (ASE CKLIST, SVCL Output, SOW Notes tab, SOW docx) instead of a blank cell. Job Data Excel: MGNV Present / Pole Terminal default "No".
+- "Job Number:" row in ASE Checklist Excel -> "Job Type:" (job.job_type, default OCALC). Job Data Excel row 1 "JOB #" -> "JOB TYPE" (job_type); row 2 now SITE ID / EMPLOYEE / DESCRIPTION (old JOB TYPE cell removed). Job type comes from the create/edit job dropdown.
+- Frontend: buildSowNotesText (ASESOWNotesTab.jsx) defaults FIBER AT SITE / EXISTING NTE / PIPELINES / RAILROADS lines to NO; ASE header subtitle shows job type (+ site id) instead of job_number (testid ase-header-job-type).
+- Verified via /app/memory/test_exports_no_defaults.py (login uses access_token; ASE save is PUT /jobs/{id}/ase-data). .gitignore .env patterns removed (deployment blocker). Deployment readiness PASS; deploy triggered (includes prior job files/share/audit/span-list batch).
