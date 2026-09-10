@@ -27,6 +27,7 @@ class JobUpdate(BaseModel):
     completed: Optional[bool] = None
     folder_month: Optional[str] = None
     span_notes: Optional[List[Dict[str, Any]]] = None
+    span_order: Optional[List[str]] = None  # user-swapped span numbering (direction-free pair keys)
     ase_data: Optional[Dict[str, Any]] = None  # ASE Site Walk Survey data
     permission_stamp: Optional[Dict[str, Any]] = None  # Permission Stamp form data
 
@@ -46,6 +47,7 @@ class Job(BaseModel):
     completed: Optional[bool] = False
     folder_month: Optional[str] = None
     span_notes: Optional[List[Dict[str, Any]]] = []
+    span_order: Optional[List[str]] = []
     shared_with: Optional[List[str]] = []
     last_modified_by: Optional[str] = None
     transferred_from: Optional[str] = None

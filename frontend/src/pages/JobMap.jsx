@@ -9,7 +9,7 @@ import domtoimage from "dom-to-image-more";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ChevronDown, ChevronUp, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera, Hash, Link2, Move, Palette, Plus, Map as MapIcon, GripVertical, Upload, Trash2 } from "lucide-react";
 import SpanReorderList from "@/components/SpanReorderList";
-import { computeRoute, fmtFeet, feetToStation, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, downloadMapPdfPages, ugWithGps, undergroundAbbr, computeUgConnectors, computeConnectionPairs, computeStationSegFeet, UNDERGROUND_TYPES, isAerialAttr, resolvePairAerial } from "@/lib/poleMapImage";
+import { computeRoute, fmtFeet, feetToStation, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, downloadMapPdfPages, ugWithGps, undergroundAbbr, computeUgConnectors, computeConnectionPairs, computeStationSegFeet, UNDERGROUND_TYPES, isAerialAttr, resolvePairAerial, spanKey, routeWaypoints } from "@/lib/poleMapImage";
 import { ExportDestinationDialog } from "@/components/ExportDestinationDialog";
 import { CLOUD_EXPORT_LABELS, uploadExportToCloud } from "@/lib/cloudExports";
 import {
@@ -506,6 +506,13 @@ const DraggableMarker = ({ position, icon, children, draggable, onDragEnd, onDou
   }, [autoOpen]);
   
   const eventHandlers = useMemo(() => ({
+    popupopen(e) {
+      // Pan into view once on open; later content changes (quick edit) must not move the map
+      setTimeout(() => { if (e.popup) e.popup.options.autoPan = false; }, 350);
+    },
+    popupclose(e) {
+      if (e.popup) e.popup.options.autoPan = true;
+    },
     dragend() {
       const marker = markerRef.current;
       if (marker && onDragEnd) {
@@ -629,10 +636,12 @@ const JobMap = () => {
   const mapRef = useRef(null);
   // Focus an item after returning from its edit page (?focus=<itemId>)
   const focusItemId = searchParams.get("focus");
+  const focusedOnceRef = useRef(null);
   useEffect(() => {
-    if (!focusItemId) return;
+    if (!focusItemId || focusedOnceRef.current === focusItemId) return;
     const target = poles.find((x) => x.id === focusItemId) || underground.find((x) => x.id === focusItemId);
     if (!target || target.latitude == null || target.longitude == null) return;
+    focusedOnceRef.current = focusItemId;
     const pos = [parseFloat(target.latitude), parseFloat(target.longitude)];
     if (!Number.isFinite(pos[0]) || !Number.isFinite(pos[1])) return;
     const timers = [500, 1500].map((ms) => setTimeout(() => {
@@ -649,9 +658,10 @@ const JobMap = () => {
   
   // Get color for a specific segment (override wins — lets users flip red end
   // segments to blue and vice versa; then after-MPOE red; then defaults)
-  const getSegmentColor = useCallback((segmentKey, isAerial, isRed) => {
-    if (segmentColors[segmentKey]) {
-      return PATH_COLORS[segmentColors[segmentKey]]?.hex || (isAerial ? aerialColorHex : undergroundColorHex);
+  const getSegmentColor = useCallback((segmentKey, isAerial, isRed, reverseKey = null) => {
+    const override = segmentColors[segmentKey] || (reverseKey ? segmentColors[reverseKey] : null);
+    if (override) {
+      return PATH_COLORS[override]?.hex || (isAerial ? aerialColorHex : undergroundColorHex);
     }
     if (isRed) return "#dc2626"; // Red for after MPOE
     return isAerial ? aerialColorHex : undergroundColorHex;
@@ -1587,7 +1597,7 @@ const JobMap = () => {
     allItems.sort((a, b) => a.sort_order - b.sort_order);
     
     // Pairs mirror the shared logic (custom connections, End Path breaks, standalone items)
-    const pairs = computeConnectionPairs(route, ug, connections);
+    const pairs = computeConnectionPairs(route, ug, connections, job?.span_order);
     
     const mpoeItem = allItems.find((item) => item.ugType === "MPOE");
     const mpoeOrder = mpoeItem ? mpoeItem.sort_order : null;
@@ -1632,7 +1642,7 @@ const JobMap = () => {
     });
     
     return segments;
-  }, [route, ug, connections]);
+  }, [route, ug, connections, job?.span_order]);
 
 
   // Wire the actual save implementation now that orderedSegments is available (fixes TDZ)
@@ -1644,7 +1654,7 @@ const JobMap = () => {
           job_id: jobId,
           from_pole_id: seg.from.id,
           to_pole_id: seg.to.id,
-          waypoints: customRoutes[`${seg.from.id}-${seg.to.id}`] || [],
+          waypoints: routeWaypoints(customRoutes, seg.from.id, seg.to.id),
         }));
         await axios.post(`/jobs/${jobId}/routes/bulk`, routesToSave);
         toast.success("Route edits saved");
@@ -1686,7 +1696,7 @@ const JobMap = () => {
 
   // Distance for the list — follows custom waypoints on aerial segments (matches map pill)
   const segListDistance = useCallback((seg) => {
-    const wps = customRoutes[`${seg.from.id}-${seg.to.id}`] || [];
+    const wps = routeWaypoints(customRoutes, seg.from.id, seg.to.id);
     const path = [seg.fromPos, ...wps.map((w) => [w.lat, w.lng]), seg.toPos];
     const hav = (p1, p2) => {
       const R = 6371000;
@@ -1709,6 +1719,21 @@ const JobMap = () => {
   // riser_sort_order between its new neighbors' keys — exact, persistent placement.
   // First normalizes all sort_orders to sequential indices (many jobs have null
   // sort_orders which previously made placement keys Infinity and the math collapse).
+  // Swap a span's number with the neighbouring span (persists as job.span_order)
+  const swapSpan = async (segIndex, dir) => {
+    const target = segIndex + dir;
+    if (target < 0 || target >= orderedSegments.length) return;
+    const keys = orderedSegments.map((sg) => spanKey(sg.from.id, sg.to.id));
+    [keys[segIndex], keys[target]] = [keys[target], keys[segIndex]];
+    try {
+      const res = await axios.put(`/jobs/${jobId}`, { span_order: keys });
+      setJob((prev) => ({ ...(prev || {}), ...(res.data || {}), span_order: keys }));
+      toast.success(`Span ${segIndex + 1} ↔ ${target + 1} swapped`);
+    } catch (e) {
+      toast.error("Failed to swap spans");
+    }
+  };
+
   const moveRiserEntry = async (idx, dir) => {
     const list = measurementEntries;
     const entry = list[idx];
@@ -2517,7 +2542,7 @@ const JobMap = () => {
                         {addingConn ? (
                           <>
                             <div className="text-xs text-emerald-700 font-medium" data-testid="conn-panel-instruction">
-                              {addingConn.from ? `Start: ${addingConn.from.label}. Now tap the SECOND item.` : "Tap the FIRST item to connect."}
+                              {addingConn.from ? `${addingConn.from.label} selected. Now tap the other item (either order works).` : "Tap one item to connect."}
                             </div>
                             <Button size="sm" variant="outline" className="w-full h-8 text-xs" onClick={() => setAddingConn(null)} data-testid="conn-cancel-action-btn">Cancel</Button>
                           </>
@@ -2545,8 +2570,9 @@ const JobMap = () => {
                                 </div>
                               );
                             })()}
-                            <Button size="sm" className="w-full h-8 text-xs bg-blue-600 hover:bg-blue-700 text-white" onClick={() => setReconnectSide("from")} data-testid="conn-move-start-btn">Move start (blue dot)</Button>
-                            <Button size="sm" className="w-full h-8 text-xs bg-red-600 hover:bg-red-700 text-white" onClick={() => setReconnectSide("to")} data-testid="conn-move-end-btn">Move end (red dot)</Button>
+                            <Button size="sm" className="w-full h-8 text-xs bg-blue-600 hover:bg-blue-700 text-white" onClick={() => setReconnectSide("from")} data-testid="conn-move-start-btn">Move blue end</Button>
+                            <Button size="sm" className="w-full h-8 text-xs bg-red-600 hover:bg-red-700 text-white" onClick={() => setReconnectSide("to")} data-testid="conn-move-end-btn">Move red end</Button>
+                            <div className="text-[10px] text-zinc-500">Direction doesn't matter — every line runs in list order automatically.</div>
                             <Button size="sm" variant="outline" className="w-full h-8 text-xs text-red-700 border-red-300 hover:bg-red-50" onClick={() => setConfirmDeleteConn(selectedConn)} data-testid="conn-delete-btn">Delete line</Button>
                             <Button size="sm" variant="outline" className="w-full h-8 text-xs" onClick={() => setSelectedConn(null)} data-testid="conn-deselect-btn">Done with this line</Button>
                           </>
@@ -2600,7 +2626,7 @@ const JobMap = () => {
                           return (
                             <SelectItem key={segKey} value={segKey}>
                               <div className="flex items-center gap-2">
-                                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: getSegmentColor(segKey, seg.isAerial, seg.isRed) }}></span>
+                                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: getSegmentColor(segKey, seg.isAerial, seg.isRed, `${seg.to.id}-${seg.from.id}`) }}></span>
                                 {fromLabel} → {toLabel} ({seg.isAerial ? 'Aerial' : 'Underground'})
                               </div>
                             </SelectItem>
@@ -2767,13 +2793,13 @@ const JobMap = () => {
               {orderedSegments.map((seg, i) => {
                 const segmentKey = `${seg.from.id}-${seg.to.id}`;
                 const isSelected = selectedSegment === segmentKey;
-                const segmentColor = getSegmentColor(segmentKey, seg.isAerial, seg.isRed);
+                const segmentColor = getSegmentColor(segmentKey, seg.isAerial, seg.isRed, `${seg.to.id}-${seg.from.id}`);
                 // Use precomputed position with collision avoidance
                 const measurementLabelPos = computedLabelPositions.measurements[segmentKey] || getMeasurementLabelPosition(segmentKey, seg.mid, i);
                 
                 // For aerial pole-to-pole segments, use EditableRoute with waypoints
                 if (seg.isAerial) {
-                  const waypoints = customRoutes[segmentKey] || [];
+                  const waypoints = routeWaypoints(customRoutes, seg.from.id, seg.to.id);
                   let badgePos = seg.mid;
                   if (waypoints.length > 0) {
                     const path = [seg.fromPos, ...waypoints.map((w) => [w.lat, w.lng]), seg.toPos];
@@ -2813,7 +2839,7 @@ const JobMap = () => {
                 }
                 
                 // For segments involving underground items, use EditableRoute (dashed) with waypoints
-                const ugWaypoints = customRoutes[segmentKey] || [];
+                const ugWaypoints = routeWaypoints(customRoutes, seg.from.id, seg.to.id);
                 let ugBadgePos = seg.mid;
                 if (ugWaypoints.length > 0) {
                   const path = [seg.fromPos, ...ugWaypoints.map((w) => [w.lat, w.lng]), seg.toPos];
@@ -3225,9 +3251,19 @@ const JobMap = () => {
             <ol className="space-y-1 font-mono text-sm text-zinc-800">
               {measurementEntries.map((e) => (
                 e.kind === "span" ? (
-                  <li key={`entry-${e.num}`} data-testid={`span-measurement-${e.num}`}>
-                    <span className="font-bold text-orange-700">{e.num}.</span> {segItemName(e.seg.from)}{showStationNumbers && (stationNumbers[`${e.seg.from.id}:out`] || stationNumbers[e.seg.from.id]) ? <span className="text-indigo-700"> {stationNumbers[`${e.seg.from.id}:out`] || stationNumbers[e.seg.from.id]}</span> : null} to {segItemName(e.seg.to)}{showStationNumbers && stationNumbers[e.seg.to.id] ? <span className="text-indigo-700"> {stationNumbers[e.seg.to.id]}</span> : null} = {fmtFeet(segListDistance(e.seg))}
-                    {!e.seg.isAerial && <span className="text-emerald-700 text-xs ml-1">(UG)</span>}
+                  <li key={`entry-${e.num}`} data-testid={`span-measurement-${e.num}`} className="flex items-center gap-1">
+                    <span><span className="font-bold text-orange-700">{e.num}.</span> {segItemName(e.seg.from)}{showStationNumbers && (stationNumbers[`${e.seg.from.id}:out`] || stationNumbers[e.seg.from.id]) ? <span className="text-indigo-700"> {stationNumbers[`${e.seg.from.id}:out`] || stationNumbers[e.seg.from.id]}</span> : null} to {segItemName(e.seg.to)}{showStationNumbers && stationNumbers[e.seg.to.id] ? <span className="text-indigo-700"> {stationNumbers[e.seg.to.id]}</span> : null} = {fmtFeet(segListDistance(e.seg))}
+                    {!e.seg.isAerial && <span className="text-emerald-700 text-xs ml-1">(UG)</span>}</span>
+                    {orderedSegments.length > 1 && (
+                      <span className="inline-flex items-center gap-0.5 ml-1">
+                        <button type="button" onClick={() => swapSpan(e.segIndex, -1)} disabled={e.segIndex === 0} className="p-0.5 rounded border border-zinc-300 bg-white text-zinc-600 hover:bg-zinc-100 disabled:opacity-30" title="Swap with previous span" data-testid={`span-swap-up-${e.num}`}>
+                          <ChevronUp className="w-3.5 h-3.5" />
+                        </button>
+                        <button type="button" onClick={() => swapSpan(e.segIndex, 1)} disabled={e.segIndex === orderedSegments.length - 1} className="p-0.5 rounded border border-zinc-300 bg-white text-zinc-600 hover:bg-zinc-100 disabled:opacity-30" title="Swap with next span" data-testid={`span-swap-down-${e.num}`}>
+                          <ChevronDown className="w-3.5 h-3.5" />
+                        </button>
+                      </span>
+                    )}
                   </li>
                 ) : e.kind === "note" ? (
                   <li key={`entry-${e.num}`} data-testid={`note-measurement-${e.num}`} className="flex items-center gap-1">

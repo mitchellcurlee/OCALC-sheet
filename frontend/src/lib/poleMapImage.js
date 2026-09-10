@@ -226,7 +226,19 @@ export const resolvePairAerial = (fromItem, toItem) => {
 };
 
 // Build map line pairs the same way the live Job Map does (custom connections + End Path breaks + standalone items)
-export const computeConnectionPairs = (route, ug, connections = []) => {
+// Direction-free key for a span (A|B == B|A)
+export const spanKey = (a, b) => (String(a) < String(b) ? `${a}|${b}` : `${b}|${a}`);
+
+// Waypoints for a segment regardless of which way the line was drawn
+export const routeWaypoints = (routes, fromId, toId) => {
+  if (!routes) return [];
+  const direct = routes[`${fromId}-${toId}`];
+  if (direct && direct.length) return direct;
+  const rev = routes[`${toId}-${fromId}`];
+  return rev && rev.length ? [...rev].reverse() : [];
+};
+
+export const computeConnectionPairs = (route, ug, connections = [], spanOrder = null) => {
   const allItems = [];
   route.forEach((p) => allItems.push({ id: p.id, type: "pole", pos: p.pos, sort_order: p.sort_order ?? Infinity, label: p.pole_number || "Pole", start_path: p.start_path === true, end_path: p.end_path === true, standalone: p.standalone === true, markerColor: p.marker_color || null }));
   ug.forEach((u) => allItems.push({ id: u.id, type: "underground", ugType: u.type, materialType: u.material_type || "", aerialOverride: ["aerial", "underground", "neutral"].includes(u.aerial_override) ? u.aerial_override : null, pos: u.pos, sort_order: u.sort_order ?? Infinity, label: u.label || u.type, start_path: u.start_path === true, end_path: u.end_path === true, standalone: u.standalone === true, hasPath: (u.path_measurements || []).length > 0, markerColor: u.marker_color || null }));
@@ -278,6 +290,30 @@ export const computeConnectionPairs = (route, ug, connections = []) => {
       pairs.push({ from: pathItems[i], to: pathItems[i + 1] });
     }
   }
+  // Universal direction: a line always runs from the earlier list item to the later one,
+  // no matter which end the user tapped first; the same pair never appears twice
+  const seen = new Set();
+  pairs = pairs
+    .map((pr) => {
+      const flip = pr.from.sort_order > pr.to.sort_order || (pr.from.sort_order === pr.to.sort_order && pr.from.id > pr.to.id);
+      return flip ? { ...pr, from: pr.to, to: pr.from } : pr;
+    })
+    .filter((pr) => {
+      const k = spanKey(pr.from.id, pr.to.id);
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+  // User-swapped span numbering: permute the ordered spans among their own slots
+  if (Array.isArray(spanOrder) && spanOrder.length > 1) {
+    const rank = new Map(spanOrder.map((k, i) => [k, i]));
+    const slots = [];
+    pairs.forEach((pr, i) => { if (rank.has(spanKey(pr.from.id, pr.to.id))) slots.push(i); });
+    if (slots.length > 1) {
+      const ordered = slots.map((i) => pairs[i]).sort((a, b) => rank.get(spanKey(a.from.id, a.to.id)) - rank.get(spanKey(b.from.id, b.to.id)));
+      slots.forEach((slot, j) => { pairs[slot] = ordered[j]; });
+    }
+  }
   return pairs;
 };
 
@@ -292,7 +328,7 @@ export const pairIsManual = (pr) => pr.from.type === "underground" && pr.from.ha
 
 // Waypoint-following path helpers (routes = { "fromId-toId": [{lat,lng}, ...] })
 const segPath = (pr, routes) => {
-  const wps = (routes && routes[`${pr.from.id}-${pr.to.id}`]) || [];
+  const wps = routeWaypoints(routes, pr.from.id, pr.to.id);
   return [pr.from.pos, ...wps.map((w) => [w.lat, w.lng]), pr.to.pos];
 };
 const pathFeet = (path) => path.reduce((s2, p, i) => (i === 0 ? 0 : s2 + distanceFeet(path[i - 1], p)), 0);
@@ -341,11 +377,11 @@ const totalPathFeet = (underground) =>
 
 // Build the exact text lines shown in the interactive map's Span Measurements list.
 // Used by the ASE checklist "path of approach" so both always match.
-export const buildSpanMeasurementTexts = ({ poles, underground = [], connections = [], includeStations = false, stationsOnly = false, routes = {}, spanNotes = [] }) => {
+export const buildSpanMeasurementTexts = ({ poles, underground = [], connections = [], includeStations = false, stationsOnly = false, routes = {}, spanNotes = [], spanOrder = null }) => {
   if (stationsOnly) includeStations = true;
   const { route } = computeRoute(poles);
   const ug = ugWithGps(underground);
-  const pairs = computeConnectionPairs(route, ug, connections);
+  const pairs = computeConnectionPairs(route, ug, connections, spanOrder);
   const itemName = (it) => it.type === "pole"
     ? (/^\d/.test(String(it.label || "")) ? `P${it.label}` : (it.label || "Pole"))
     : `${undergroundAbbr(it.ugType)}${it.label && it.label !== it.ugType ? ` ${it.label}` : ""}`;
@@ -473,7 +509,7 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
   const { route, totalRiserFeet } = computeRoute(poles);
   const ug = ugWithGps(underground);
   // Mirror the live Job Map lines: custom connections + End Path breaks
-  const pairSegs = computeConnectionPairs(route, ug, connections).map((pr) => {
+  const pairSegs = computeConnectionPairs(route, ug, connections, job?.span_order).map((pr) => {
     const path = segPath(pr, routes);
     return {
       from: pr.from,
@@ -1622,7 +1658,7 @@ export const downloadSegmentedMapPages = async ({
   const { route, totalRiserFeet } = computeRoute(poles);
   const ug = ugWithGps(underground);
   // Mirror the live Job Map lines: custom connections + End Path breaks + standalone items
-  const pairSegs = computeConnectionPairs(route, ug, connections).map((pr) => {
+  const pairSegs = computeConnectionPairs(route, ug, connections, job?.span_order).map((pr) => {
     const path = segPath(pr, routes);
     return {
       from: pr.from,
@@ -1725,7 +1761,7 @@ export const downloadMapPdfPages = async ({
 }) => {
   const { route, totalRiserFeet } = computeRoute(poles);
   const ug = ugWithGps(underground);
-  const pairSegs = computeConnectionPairs(route, ug, connections).map((pr) => {
+  const pairSegs = computeConnectionPairs(route, ug, connections, job?.span_order).map((pr) => {
     const path = segPath(pr, routes);
     return {
       from: pr.from, to: pr.to, path,
