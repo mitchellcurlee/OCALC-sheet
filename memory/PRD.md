@@ -412,3 +412,6 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 - Span number swap: job.span_order (List[str] of spanKeys; added to JobUpdate/Job models). ▲/▼ on span rows in map Span Measurements list (span-swap-up-{n}/span-swap-down-{n}) call swapSpan -> PUT /jobs/{id} {span_order}. Applied in orderedSegments, buildSpanMeasurementTexts (spanOrder param; ASEForm passes job.span_order) and all download* image/PDF exports via job.span_order.
 - Quick-edit map jump fixed: ?focus= effect now runs once per focus id (focusedOnceRef) instead of on every poles/underground state change; popups disable Leaflet autoPan 350ms after opening (re-enabled on close) so content updates don't pan.
 - Connection panel copy: "Move blue end"/"Move red end" + note that direction doesn't matter. Verified E2E with reversed custom connections, swap persisted across reload, map pane transform unchanged through quick edit. NOT yet deployed.
+
+## 2026-06: Tap-to-swap span numbers on the map
+- Span number badges (aerial + UG) are now tappable: first tap picks (badge turns yellow, span-swap-banner shows "Span N: A to B = X ft", Cancel = span-swap-cancel-btn), second tap on another badge swaps them (swapSpanIndices -> job.span_order). Tapping the same badge again deselects. UG badge distance popup replaced by the banner text. Verified E2E (1 ↔ 3). NOT yet deployed.

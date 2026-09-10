@@ -424,10 +424,10 @@ const arrowIcon = (deg) =>
 // Attribute types treated as AERIAL (blue) on the map
 const AERIAL_ATTR_TYPES = new Set(["Loop", "Aerial Splice", "X-Messenger", "Eyebolt", "Pullbox", "Weather Head", "Aerial NTE", "Aerial PI", "Aerial FBT"]);
 
-const numberBadgeIcon = (num, color = "#ea580c", anchor = [13, 13]) =>
+const numberBadgeIcon = (num, color = "#ea580c", anchor = [13, 13], picked = false) =>
   L.divIcon({
     className: "measurement-number-badge",
-    html: `<div style="background:${color};color:#fff;border:2px solid #fff;border-radius:9999px;min-width:26px;height:26px;display:flex;align-items:center;justify-content:center;font:700 13px/1 ui-monospace,monospace;box-shadow:0 1px 4px rgba(0,0,0,.5);padding:0 4px;">${num}</div>`,
+    html: `<div style="background:${picked ? "#facc15" : color};color:${picked ? "#111" : "#fff"};border:2px solid ${picked ? "#111" : "#fff"};border-radius:9999px;min-width:26px;height:26px;display:flex;align-items:center;justify-content:center;font:700 13px/1 ui-monospace,monospace;box-shadow:0 ${picked ? "0 0 4px rgba(250,204,21,.9)" : "1px 4px rgba(0,0,0,.5)"};padding:0 4px;cursor:pointer;">${num}</div>`,
     iconSize: [26, 26],
     iconAnchor: anchor,
   });
@@ -594,6 +594,7 @@ const JobMap = () => {
     window.addEventListener('pointerup', up);
   }, []);
   const [placingType, setPlacingType] = useState(null); // "__pole__" | "__pole_terminal__" | underground type name
+  const [swapPick, setSwapPick] = useState(null); // segIndex of the span number tapped first (swap-by-tap)
   const [multiPlace, setMultiPlace] = useState(false); // quick-drop mode: every tap creates an attribute immediately
   const [multiPlacedCount, setMultiPlacedCount] = useState(0);
   const [multiSaving, setMultiSaving] = useState(false);
@@ -1720,18 +1721,26 @@ const JobMap = () => {
   // First normalizes all sort_orders to sequential indices (many jobs have null
   // sort_orders which previously made placement keys Infinity and the math collapse).
   // Swap a span's number with the neighbouring span (persists as job.span_order)
-  const swapSpan = async (segIndex, dir) => {
-    const target = segIndex + dir;
-    if (target < 0 || target >= orderedSegments.length) return;
+  const swapSpanIndices = async (a, b) => {
+    if (a === b || a < 0 || b < 0 || a >= orderedSegments.length || b >= orderedSegments.length) return;
     const keys = orderedSegments.map((sg) => spanKey(sg.from.id, sg.to.id));
-    [keys[segIndex], keys[target]] = [keys[target], keys[segIndex]];
+    [keys[a], keys[b]] = [keys[b], keys[a]];
     try {
       const res = await axios.put(`/jobs/${jobId}`, { span_order: keys });
       setJob((prev) => ({ ...(prev || {}), ...(res.data || {}), span_order: keys }));
-      toast.success(`Span ${segIndex + 1} ↔ ${target + 1} swapped`);
+      toast.success(`Span ${spanNums[a] ?? a + 1} ↔ ${spanNums[b] ?? b + 1} swapped`);
     } catch (e) {
       toast.error("Failed to swap spans");
     }
+  };
+  const swapSpan = (segIndex, dir) => swapSpanIndices(segIndex, segIndex + dir);
+  // Tap a span number on the map, then tap another to swap them
+  const handleBadgeTap = (segIndex) => {
+    if (swapPick === null) { setSwapPick(segIndex); return; }
+    if (swapPick === segIndex) { setSwapPick(null); return; }
+    const a = swapPick;
+    setSwapPick(null);
+    swapSpanIndices(a, segIndex);
   };
 
   const moveRiserEntry = async (idx, dir) => {
@@ -2482,6 +2491,14 @@ const JobMap = () => {
       </header>
 
       <main className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-4">
+        {swapPick !== null && orderedSegments[swapPick] && (
+          <div className="flex flex-wrap items-center gap-3 bg-yellow-400 text-zinc-900 rounded-lg px-4 py-2.5 text-sm font-medium shadow" data-testid="span-swap-banner">
+            <span className="font-mono font-bold">Span {spanNums[swapPick] ?? swapPick + 1}:</span>
+            <span className="font-mono">{segItemName(orderedSegments[swapPick].from)} to {segItemName(orderedSegments[swapPick].to)} = {fmtFeet(segListDistance(orderedSegments[swapPick]))}</span>
+            <span className="text-zinc-800">— tap another span number on the map to swap their numbers.</span>
+            <Button size="sm" variant="outline" className="h-7 text-xs bg-white border-zinc-400 ml-auto shrink-0" onClick={() => setSwapPick(null)} data-testid="span-swap-cancel-btn">Cancel</Button>
+          </div>
+        )}
         {placingType && multiPlace && (
           <div className="flex flex-wrap items-center gap-3 bg-emerald-700 text-white rounded-lg px-4 py-2.5 text-sm font-medium shadow" data-testid="multi-placing-banner">
             <span className="shrink-0">Quick drop — tap the map to place each:</span>
@@ -2825,7 +2842,7 @@ const JobMap = () => {
                       />
                       {/* Numbered badge — measurement is in the list below the map */}
                       {!showStationNumbers && spanNums[i] != null && (
-                        <Marker position={badgePos} icon={numberBadgeIcon(spanNums[i])} interactive={false} zIndexOffset={800} />
+                        <Marker position={badgePos} icon={numberBadgeIcon(spanNums[i], "#ea580c", [13, 13], swapPick === i)} zIndexOffset={swapPick === i ? 1600 : 800} eventHandlers={{ click: (e) => { L.DomEvent.stopPropagation(e); handleBadgeTap(i); } }} />
                       )}
                       {/* Selection highlight */}
                       {isSelected && (
@@ -2873,13 +2890,7 @@ const JobMap = () => {
                     )}
                     {/* Numbered badge — click to see the distance */}
                     {!showStationNumbers && spanNums[i] != null && (
-                      <Marker position={ugBadgePos} icon={numberBadgeIcon(spanNums[i])} zIndexOffset={800}>
-                        <Popup>
-                          <div className="text-sm font-mono" data-testid={`span-badge-popup-${spanNums[i]}`}>
-                            {segItemName(seg.from)} to {segItemName(seg.to)} = {fmtFeet(segListDistance(seg))} (UG)
-                          </div>
-                        </Popup>
-                      </Marker>
+                      <Marker position={ugBadgePos} icon={numberBadgeIcon(spanNums[i], "#ea580c", [13, 13], swapPick === i)} zIndexOffset={swapPick === i ? 1600 : 800} eventHandlers={{ click: (e) => { L.DomEvent.stopPropagation(e); handleBadgeTap(i); } }} />
                     )}
                   </React.Fragment>
                 );
