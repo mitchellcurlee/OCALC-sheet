@@ -59,7 +59,7 @@ import {
   Copy,
   FolderInput,
 } from "lucide-react";
-import { LifeBuoy } from "lucide-react";
+import { LifeBuoy, Home } from "lucide-react";
 import { getOfflineSavedJobs } from "@/lib/offlineTiles";
 import { useAuth } from "@/context/AuthContext";
 import { OfflineIndicator } from "@/components/OfflineIndicator";
@@ -124,6 +124,7 @@ const JobsList = () => {
     return () => window.removeEventListener("offline-saved-jobs-changed", refresh);
   }, []);
   const [loading, setLoading] = useState(true);
+  const [backfilling, setBackfilling] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [editingJob, setEditingJob] = useState(null);
@@ -496,6 +497,26 @@ const JobsList = () => {
                 data-testid="deleted-items-btn"
               >
                 <Trash2 className="w-4 h-4" />
+              </Button>
+              <Button
+                onClick={async () => {
+                  if (!window.confirm("Fill in the lot address (building # + street) for every GPS'd pole and attribute that has none yet?")) return;
+                  setBackfilling(true);
+                  try {
+                    const r = await axios.post("/maps/backfill-addresses");
+                    toast.success(`Addresses filled: ${r.data.filled} (${r.data.no_match} without a nearby home) across ${r.data.jobs} job${r.data.jobs === 1 ? "" : "s"}`);
+                  } catch (e) {
+                    toast.error("Address backfill failed");
+                  } finally { setBackfilling(false); }
+                }}
+                disabled={backfilling}
+                size="icon"
+                variant="ghost"
+                className="text-zinc-400 hover:text-sky-400 hover:bg-zinc-800"
+                title="Fill in missing item addresses on all my jobs"
+                data-testid="backfill-addresses-btn"
+              >
+                {backfilling ? <Loader2 className="w-4 h-4 animate-spin" /> : <Home className="w-4 h-4" />}
               </Button>
               {isAdmin && (
                 <Button

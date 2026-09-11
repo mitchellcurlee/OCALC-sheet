@@ -4,7 +4,7 @@ import logging
 import time
 import requests
 
-from services.auth import get_current_user
+from services.auth import get_current_user, is_admin_user
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -117,3 +117,42 @@ async def nearest_address(lat: float, lng: float, max_m: float = 90.0) -> str:
 async def address_at(lat: float = Query(...), lng: float = Query(...), current_user: dict = Depends(get_current_user)):
     """Nearest home address for a point (used to auto-fill the item's Address box)"""
     return {"address": await nearest_address(lat, lng)}
+
+
+_db = None
+
+
+def set_db(db):
+    global _db
+    _db = db
+
+
+@router.post("/maps/backfill-addresses")
+async def backfill_addresses(force: bool = False, current_user: dict = Depends(get_current_user)):
+    """Fill the address of every GPS'd pole/attribute (on jobs this user can see) that has none yet"""
+    email = (current_user.get("email") or "").lower()
+    q = {"latitude": {"$ne": None}, "longitude": {"$ne": None}}
+    if is_admin_user(current_user):
+        job_ids = [j["id"] for j in await _db.jobs.find({}, {"_id": 0, "id": 1}).to_list(5000)]  # admins: every job
+    else:
+        jobs = await _db.jobs.find({"$or": [{"user_id": current_user["id"]}, {"shared_with": email}]}, {"_id": 0, "id": 1}).to_list(5000)
+        job_ids = [j["id"] for j in jobs]
+        q["job_id"] = {"$in": job_ids}
+    if not force:
+        q["$or"] = [{"address": None}, {"address": ""}, {"address": {"$exists": False}}]
+    poles = await _db.poles.find(q, {"_id": 0, "id": 1, "latitude": 1, "longitude": 1}).to_list(20000)
+    ugs = await _db.underground.find(q, {"_id": 0, "id": 1, "latitude": 1, "longitude": 1}).to_list(20000)
+    sem = asyncio.Semaphore(6)
+    stats = {"jobs": len(job_ids), "poles_checked": len(poles), "attributes_checked": len(ugs), "filled": 0, "no_match": 0}
+
+    async def fill(coll, it):
+        async with sem:
+            addr = await nearest_address(float(it["latitude"]), float(it["longitude"]))
+        if addr:
+            await coll.update_one({"id": it["id"]}, {"$set": {"address": addr}})
+            stats["filled"] += 1
+        else:
+            stats["no_match"] += 1
+
+    await asyncio.gather(*[fill(_db.poles, p) for p in poles], *[fill(_db.underground, u) for u in ugs])
+    return stats
