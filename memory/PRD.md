@@ -423,3 +423,8 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 - handleConnectionAdd (JobMap.jsx) freezes the current span order (all current spanKeys) and appends the new line's key to job.span_order -> new custom line becomes span #N+1, existing numbers untouched (orderedSegmentsRef gives the callback the latest segments). Toast "Line added — span #N".
 - "+ Add line" now stays active after each line (addingConn.count); instruction shows "N lines added. Tap the first item of the next line, or Done"; button toggles Cancel -> Done.
 - Header fix: edit-mode toolbar wraps (flex-wrap, justify-end), mode badge hidden below 2xl, title no-wrap — no more squished title/badge at 1920 or cut-off buttons at 390. Verified E2E (A–F became #4 with 1–3 intact, persisted after reload). NOT yet deployed.
+
+## 2026-06: "Connect to…" from popups + Reset span order
+- Pole & UG popups have "Connect to…" (popup-connect-{id} / ug-popup-connect-{id}): sets connectFrom, closes popup, fits map to all items, shows connect-from-banner (Cancel = connect-from-cancel-btn) and pulsing .conn-target markers on every other item; tapping one calls handleConnectionAdd (custom line, next span number). Hidden while in connection edit mode.
+- "Reset order" button (span-reset-order-btn, shown only when job.span_order non-empty) in Span Measurements header -> PUT span_order [] -> automatic list-order numbering.
+- Verified E2E (C→E became #4, persisted; reset returns default order). NOT yet deployed.

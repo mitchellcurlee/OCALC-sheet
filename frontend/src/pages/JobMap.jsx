@@ -7,7 +7,7 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import domtoimage from "dom-to-image-more";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ChevronDown, ChevronUp, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera, Hash, Link2, Move, Palette, Plus, Map as MapIcon, GripVertical, Upload, Trash2 } from "lucide-react";
+import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ChevronDown, ChevronUp, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera, Hash, Link2, Move, Palette, Plus, Map as MapIcon, GripVertical, Upload, Trash2, RotateCcw } from "lucide-react";
 import SpanReorderList from "@/components/SpanReorderList";
 import { computeRoute, fmtFeet, feetToStation, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, downloadMapPdfPages, ugWithGps, undergroundAbbr, computeUgConnectors, computeConnectionPairs, computeStationSegFeet, UNDERGROUND_TYPES, isAerialAttr, resolvePairAerial, spanKey, routeWaypoints } from "@/lib/poleMapImage";
 import { ExportDestinationDialog } from "@/components/ExportDestinationDialog";
@@ -596,6 +596,7 @@ const JobMap = () => {
   const [placingType, setPlacingType] = useState(null); // "__pole__" | "__pole_terminal__" | underground type name
   const [swapPick, setSwapPick] = useState(null); // segIndex of the span number tapped first (swap-by-tap)
   const orderedSegmentsRef = useRef([]); // latest orderedSegments for callbacks declared before it
+  const [connectFrom, setConnectFrom] = useState(null); // "Connect to…" from a popup: {id,type,label}
   const [multiPlace, setMultiPlace] = useState(false); // quick-drop mode: every tap creates an attribute immediately
   const [multiPlacedCount, setMultiPlacedCount] = useState(0);
   const [multiSaving, setMultiSaving] = useState(false);
@@ -1748,6 +1749,31 @@ const JobMap = () => {
   };
   const swapSpan = (segIndex, dir) => swapSpanIndices(segIndex, segIndex + dir);
   // Tap a span number on the map, then tap another to swap them
+  // "Connect to…" from an item popup (no Edit Map needed)
+  const startConnectFrom = (item) => {
+    setConnectFrom(item);
+    try {
+      mapRef.current?.closePopup();
+      // Show every possible target
+      if (allPoints.length > 1) mapRef.current?.fitBounds(allPoints, { padding: [60, 60], maxZoom: 20 });
+    } catch (e) { /* ignore */ }
+    toast.info(`Connecting from ${item.label} — tap the item to connect it to`);
+  };
+  const finishConnectTo = (item) => {
+    if (!connectFrom) return;
+    if (item.id === connectFrom.id) { toast.error("Pick a different item"); return; }
+    handleConnectionAdd(connectFrom, item);
+    setConnectFrom(null);
+  };
+  const resetSpanOrder = async () => {
+    try {
+      const res = await axios.put(`/jobs/${jobId}`, { span_order: [] });
+      setJob((prev) => ({ ...(prev || {}), ...(res.data || {}), span_order: [] }));
+      toast.success("Span numbering reset to list order");
+    } catch (e) {
+      toast.error("Failed to reset span order");
+    }
+  };
   const handleBadgeTap = (segIndex) => {
     if (swapPick === null) { setSwapPick(segIndex); return; }
     if (swapPick === segIndex) { setSwapPick(null); return; }
@@ -2504,6 +2530,13 @@ const JobMap = () => {
       </header>
 
       <main className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-4">
+        {connectFrom && (
+          <div className="flex flex-wrap items-center gap-3 bg-emerald-600 text-white rounded-lg px-4 py-2.5 text-sm font-medium shadow" data-testid="connect-from-banner">
+            <Link2 className="w-4 h-4 shrink-0" />
+            <span>Connecting from <span className="font-mono font-bold">{connectFrom.label}</span> — tap the item to connect it to. The new line gets the next span number.</span>
+            <Button size="sm" variant="outline" className="h-7 text-xs bg-white text-zinc-900 hover:bg-zinc-100 border-0 ml-auto shrink-0" onClick={() => setConnectFrom(null)} data-testid="connect-from-cancel-btn">Cancel</Button>
+          </div>
+        )}
         {swapPick !== null && orderedSegments[swapPick] && (
           <div className="flex flex-wrap items-center gap-3 bg-yellow-400 text-zinc-900 rounded-lg px-4 py-2.5 text-sm font-medium shadow" data-testid="span-swap-banner">
             <span className="font-mono font-bold">Span {spanNums[swapPick] ?? swapPick + 1}:</span>
@@ -2963,6 +2996,11 @@ const JobMap = () => {
                               </Link>
                             </div>
                           )}
+                          {!positionEditMode && !connectionEditMode && (
+                            <Button size="sm" variant="outline" className="w-full h-8 mt-2 bg-emerald-50 border-emerald-300 hover:bg-emerald-100 text-emerald-800" onClick={() => startConnectFrom({ id: p.id, type: "pole", label: p.pole_number ? `Pole ${p.pole_number}` : "Pole" })} data-testid={`popup-connect-${p.id}`}>
+                              <Link2 className="w-3.5 h-3.5 mr-1" />Connect to…
+                            </Button>
+                          )}
                           {!positionEditMode && (
                             <PolePopupEditor
                               pole={p}
@@ -3023,6 +3061,11 @@ const JobMap = () => {
                             <Link to={`/jobs/${jobId}/underground/edit/${u.id}?from=map`}>
                               <Button size="sm" className="w-full h-8 mt-2 text-white" style={{ backgroundColor: isRed ? '#dc2626' : itemColor }} data-testid={`ug-edit-${u.id}`}>Edit</Button>
                             </Link>
+                            {!connectionEditMode && (
+                              <Button size="sm" variant="outline" className="w-full h-8 mt-2 bg-emerald-50 border-emerald-300 hover:bg-emerald-100 text-emerald-800" onClick={() => startConnectFrom({ id: u.id, type: "underground", label: `${u.type}${u.label ? ` · ${u.label}` : ""}` })} data-testid={`ug-popup-connect-${u.id}`}>
+                                <Link2 className="w-3.5 h-3.5 mr-1" />Connect to…
+                              </Button>
+                            )}
                             <UgPopupEditor
                               item={u}
                               defaultColor={u.aerial_override === "neutral" ? "#9333ea" : isAerialAttr(u) ? "#2563eb" : undergroundColorHex}
@@ -3056,6 +3099,20 @@ const JobMap = () => {
                 onAnnotationDelete={handleAnnotationDelete}
               />
               {/* Connection edit mode - tap-to-reconnect */}
+              {connectFrom && !connectionEditMode && allConnectableItems.filter((it) => it.id !== connectFrom.id).map((item) => (
+                <Marker
+                  key={`connect-target-${item.id}`}
+                  position={item.pos}
+                  icon={L.divIcon({
+                    className: "conn-target",
+                    html: `<div style="width:34px;height:34px;border-radius:50%;background:rgba(34,197,94,0.25);border:3px solid #16a34a;cursor:pointer;animation:connPulse 1.2s infinite;"></div>`,
+                    iconSize: [34, 34],
+                    iconAnchor: [17, 17]
+                  })}
+                  zIndexOffset={1400}
+                  eventHandlers={{ click: (e) => { L.DomEvent.stopPropagation(e); finishConnectTo(item); } }}
+                />
+              ))}
               {connectionEditMode && (
                 <>
                   {/* Target indicators for all connectable items (tappable while choosing a target) */}
@@ -3263,6 +3320,11 @@ const JobMap = () => {
                 <Button variant="outline" size="sm" onClick={() => { const t = window.prompt("Note text (e.g. Address 12345 Jones Rd):"); if (t) addSpanNote(t); }} className="gap-1 bg-amber-50 border-amber-300 hover:bg-amber-100 text-amber-800" data-testid="span-add-note-btn">
                   <StickyNote className="w-4 h-4" /> Note
                 </Button>
+                {!spanReorder && (job?.span_order || []).length > 0 && (
+                  <Button variant="outline" size="sm" onClick={resetSpanOrder} className="gap-1 bg-orange-50 border-orange-300 hover:bg-orange-100 text-orange-800" title="Return to automatic list-order numbering" data-testid="span-reset-order-btn">
+                    <RotateCcw className="w-4 h-4" /> Reset order
+                  </Button>
+                )}
                 {!spanReorder && (poles.length + underground.length) >= 2 && (
                   <Button variant="outline" size="sm" onClick={() => setSpanReorder(true)} className="gap-1 bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900" data-testid="span-reorder-btn">
                     <GripVertical className="w-4 h-4" /> Reorder
