@@ -418,3 +418,8 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 
 ## 2026-06: Quick-drop items are unconnected
 - Quick drop (Place Multiple) now creates poles/underground with standalone: true -> excluded from the auto path chain, no span lines/badges drawn. User connects them manually via Edit Map -> Connections (custom lines render for standalone items). Banner/toast text updated. Verified E2E (3 drops, 0 polylines). NOT yet deployed.
+
+## 2026-06: New lines take the next span number + multi-line add
+- handleConnectionAdd (JobMap.jsx) freezes the current span order (all current spanKeys) and appends the new line's key to job.span_order -> new custom line becomes span #N+1, existing numbers untouched (orderedSegmentsRef gives the callback the latest segments). Toast "Line added — span #N".
+- "+ Add line" now stays active after each line (addingConn.count); instruction shows "N lines added. Tap the first item of the next line, or Done"; button toggles Cancel -> Done.
+- Header fix: edit-mode toolbar wraps (flex-wrap, justify-end), mode badge hidden below 2xl, title no-wrap — no more squished title/badge at 1920 or cut-off buttons at 390. Verified E2E (A–F became #4 with 1–3 intact, persisted after reload). NOT yet deployed.

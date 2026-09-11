@@ -595,6 +595,7 @@ const JobMap = () => {
   }, []);
   const [placingType, setPlacingType] = useState(null); // "__pole__" | "__pole_terminal__" | underground type name
   const [swapPick, setSwapPick] = useState(null); // segIndex of the span number tapped first (swap-by-tap)
+  const orderedSegmentsRef = useRef([]); // latest orderedSegments for callbacks declared before it
   const [multiPlace, setMultiPlace] = useState(false); // quick-drop mode: every tap creates an attribute immediately
   const [multiPlacedCount, setMultiPlacedCount] = useState(0);
   const [multiSaving, setMultiSaving] = useState(false);
@@ -1478,8 +1479,17 @@ const JobMap = () => {
         connection_type: "custom"
       });
       setConnections(prev => [...prev, response.data]);
+      // Keep the established numbering: freeze the current span order and give the new line the next number
+      const newKey = spanKey(fromItem.id, toItem.id);
+      const current = orderedSegmentsRef.current.map((sg) => spanKey(sg.from.id, sg.to.id));
+      if (!current.includes(newKey)) {
+        const keys = [...current, newKey];
+        axios.put(`/jobs/${jobId}`, { span_order: keys })
+          .then((r) => setJob((prev) => ({ ...(prev || {}), ...(r.data || {}), span_order: keys })))
+          .catch(() => {});
+      }
       axios.post(`/jobs/${jobId}/sync-map-distances`).catch(() => {});
-      toast.success("Connection added");
+      toast.success(`Line added — span #${current.length + 1}`);
     } catch (e) {
       toast.error("Failed to add connection");
     }
@@ -1495,7 +1505,8 @@ const JobMap = () => {
         toast.error("Pick a different item for the second end");
       } else {
         handleConnectionAdd(addingConn.from, item);
-        setAddingConn(null);
+        // Stay in add mode so several lines can be drawn back-to-back (Done/Cancel exits)
+        setAddingConn({ from: null, count: (addingConn.count || 0) + 1 });
       }
       return;
     }
@@ -1645,6 +1656,8 @@ const JobMap = () => {
     return segments;
   }, [route, ug, connections, job?.span_order]);
 
+
+  orderedSegmentsRef.current = orderedSegments;
 
   // Wire the actual save implementation now that orderedSegments is available (fixes TDZ)
   useEffect(() => {
@@ -2167,8 +2180,8 @@ const JobMap = () => {
             <div className="w-9 h-9 bg-red-600 flex items-center justify-center flex-shrink-0">
               <Zap className="w-5 h-5 text-white" />
             </div>
-            <div>
-              <h1 className="font-heading text-sm sm:text-lg font-bold tracking-tight uppercase text-zinc-900 leading-tight">
+            <div className="min-w-[200px]">
+              <h1 className="font-heading text-sm sm:text-lg font-bold tracking-tight uppercase text-zinc-900 leading-tight whitespace-nowrap">
                 {job?.name || "Job"} — Pole Map
               </h1>
               <p className="text-xs font-mono text-zinc-500" data-testid="map-measurements-summary">
@@ -2177,7 +2190,7 @@ const JobMap = () => {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
             <Button onClick={recenter} disabled={allPoints.length === 0} variant="outline" className="bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900" data-testid="recenter-btn">
               <Crosshair className="w-4 h-4 mr-2" />
               Fit all
@@ -2398,10 +2411,10 @@ const JobMap = () => {
                 </DropdownMenu>
               </div>
             ) : (
-              <div className="flex gap-2">
+              <div className="flex flex-wrap justify-end gap-2">
                 {/* Show current mode indicators */}
                 {(editMode || positionEditMode || connectionEditMode) && !addingType && (
-                  <span className="flex items-center px-3 py-1 bg-blue-100 text-blue-800 rounded text-sm font-medium">
+                  <span className="hidden 2xl:flex items-center px-3 py-1 bg-blue-100 text-blue-800 rounded text-sm font-medium whitespace-nowrap">
                     {positionEditMode && !editMode && !connectionEditMode
                       ? "Move Mode: Drag markers & text boxes to reposition"
                       : "Edit Mode: Drag markers, edit lines, reconnect items"}
@@ -2559,9 +2572,10 @@ const JobMap = () => {
                         {addingConn ? (
                           <>
                             <div className="text-xs text-emerald-700 font-medium" data-testid="conn-panel-instruction">
-                              {addingConn.from ? `${addingConn.from.label} selected. Now tap the other item (either order works).` : "Tap one item to connect."}
+                              {addingConn.from ? `${addingConn.from.label} selected. Now tap the other item (either order works).` : addingConn.count ? `${addingConn.count} line${addingConn.count === 1 ? "" : "s"} added. Tap the first item of the next line, or Done.` : "Tap one item to connect."}
                             </div>
-                            <Button size="sm" variant="outline" className="w-full h-8 text-xs" onClick={() => setAddingConn(null)} data-testid="conn-cancel-action-btn">Cancel</Button>
+                            <div className="text-[10px] text-zinc-500">New lines get the next span number — existing numbering is kept.</div>
+                            <Button size="sm" className="w-full h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => setAddingConn(null)} data-testid="conn-cancel-action-btn">{addingConn.count ? "Done" : "Cancel"}</Button>
                           </>
                         ) : selectedConn && reconnectSide && conn ? (
                           <>
