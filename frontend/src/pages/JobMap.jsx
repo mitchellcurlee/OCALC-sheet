@@ -1705,12 +1705,13 @@ const JobMap = () => {
 
   // Display name for a segment endpoint (e.g. "P1", "HH HH-1")
   const segItemName = useCallback((item) => {
+    const addr = item.address ? ` (${item.address})` : "";
     if (item.type === "pole") {
       const n = String(item.label || "");
-      return /^\d/.test(n) ? `P${n}` : (n || "Pole");
+      return (/^\d/.test(n) ? `P${n}` : (n || "Pole")) + addr;
     }
     const abbr = undergroundAbbr(item.ugType);
-    return item.label && item.label !== item.ugType ? `${abbr} ${item.label}` : abbr;
+    return (item.label && item.label !== item.ugType ? `${abbr} ${item.label}` : abbr) + addr;
   }, []);
 
   // Distance for the list — follows custom waypoints on aerial segments (matches map pill)

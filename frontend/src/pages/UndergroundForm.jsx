@@ -20,6 +20,7 @@ import { Switch } from "@/components/ui/switch";
 import { PhotoMarkupEditor } from "@/components/PhotoMarkupEditor";
 import { PhotoStagingGallery } from "@/components/PhotoStagingGallery";
 import { getJobAddressCenter } from "@/lib/jobAddressCenter";
+import AddressField from "@/components/AddressField";
 import { undergroundAbbr } from "@/lib/poleMapImage";
 import { ArrowLeft, Save, Loader2, MapPin, Search, Pencil, Plus, Trash2 } from "lucide-react";
 
@@ -65,6 +66,7 @@ const UndergroundForm = () => {
     owner: "",
     latitude: searchParams.get("lat") || "",
     longitude: searchParams.get("lng") || "-",
+    address: "",
     label: "",
     notes: "",
     photos: [],
@@ -124,6 +126,7 @@ const UndergroundForm = () => {
         owner: u.owner || "",
         latitude: u.latitude?.toString() || "",
         longitude: u.longitude?.toString() || "-",
+        address: u.address || "",
         label: u.label || "",
         notes: u.notes || "",
         photos: photos,
@@ -310,6 +313,7 @@ const UndergroundForm = () => {
         material_type: formData.material_type || null,
         owner: formData.owner || null,
         label: formData.label,
+        address: formData.address || null,
         notes: formData.notes,
         photos: formData.photos,
         staged_photos: formData.staged_photos || [],
@@ -495,6 +499,9 @@ const UndergroundForm = () => {
                 className="h-10 bg-white border-zinc-300 text-zinc-900"
                 testId="ug-coordinates-input"
               />
+            </div>
+            <div className="mb-3">
+              <AddressField latitude={formData.latitude} longitude={formData.longitude} value={formData.address} onChange={(v) => setFormData((p) => ({ ...p, address: v }))} testId="ug-address-input" />
             </div>
             <div className="flex gap-2 mb-3">
               <Input value={addressQuery} onChange={(e) => setAddressQuery(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); searchAddress(); } }} placeholder="Search address" className="h-10 bg-white border-zinc-300 text-zinc-900 flex-1" />

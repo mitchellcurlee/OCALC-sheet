@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from models.underground import Underground, UndergroundCreate, UndergroundUpdate
 from services.auth import get_current_user
 from services.helpers import pole_sort_key
+from routes.addresses import nearest_address
 
 router = APIRouter(tags=["underground"])
 
@@ -90,6 +91,8 @@ async def _insert_into_route_order(item):
 @router.post("/underground", response_model=Underground, status_code=201)
 async def create_underground(data: UndergroundCreate):
     item = Underground(**data.model_dump())
+    if not item.address and item.latitude is not None and item.longitude is not None:
+        item.address = await nearest_address(item.latitude, item.longitude)
     if item.sort_order is None:
         assigned = await _insert_into_route_order(item)
         if assigned is not None:
@@ -138,6 +141,12 @@ async def update_underground(item_id: str, data: UndergroundUpdate, current_user
     if not existing:
         raise HTTPException(status_code=404, detail="Underground item not found")
     updates = {k: v for k, v in data.model_dump(exclude_unset=True).items()}
+    # GPS moved (or first set) without an explicit address -> refresh the nearest home address
+    if ("latitude" in updates or "longitude" in updates) and "address" not in updates:
+        lat = updates.get("latitude", existing.get("latitude"))
+        lng = updates.get("longitude", existing.get("longitude"))
+        if lat is not None and lng is not None and (lat != existing.get("latitude") or lng != existing.get("longitude") or not existing.get("address")):
+            updates["address"] = await nearest_address(lat, lng)
     updates["updated_at"] = datetime.now(timezone.utc).isoformat()
     updates["last_modified_by"] = current_user.get("email", "")
     await _db.underground.update_one({"id": item_id}, {"$set": updates})

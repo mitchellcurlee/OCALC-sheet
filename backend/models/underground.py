@@ -12,6 +12,7 @@ class UndergroundBase(BaseModel):
     longitude: Optional[float] = None
     label: Optional[str] = None
     notes: Optional[str] = None
+    address: Optional[str] = None  # nearest home address (building number + street)
     photos: Optional[List[str]] = []
     staged_photos: Optional[List[str]] = []  # Unsorted photos from the form's top gallery
     auto_label_unsorted: Optional[bool] = False  # Label unsorted photos with the item name in exports
@@ -41,6 +42,7 @@ class UndergroundUpdate(BaseModel):
     longitude: Optional[float] = None
     label: Optional[str] = None
     notes: Optional[str] = None
+    address: Optional[str] = None  # nearest home address (building number + street)
     photos: Optional[List[str]] = None
     staged_photos: Optional[List[str]] = None
     auto_label_unsorted: Optional[bool] = None

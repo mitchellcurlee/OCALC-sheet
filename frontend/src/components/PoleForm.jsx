@@ -37,6 +37,7 @@ import { PhotoMarkupEditor } from "@/components/PhotoMarkupEditor";
 import { MultiPhotoUpload } from "@/components/MultiPhotoUpload";
 import { PhotoStagingGallery } from "@/components/PhotoStagingGallery";
 import { getJobAddressCenter } from "@/lib/jobAddressCenter";
+import AddressField from "@/components/AddressField";
 
 // Fix Leaflet marker icon issue
 delete L.Icon.Default.prototype._getIconUrl;
@@ -96,7 +97,7 @@ const emptyFormData = () => ({
   span2_direction: "", span2_distance: "", span2_owner: "",
   span3_direction: "", span3_distance: "", span3_owner: "",
   span4_direction: "", span4_distance: "", span4_owner: "",
-  latitude: "", longitude: "-", notes: "", row_information: "",
+  latitude: "", longitude: "-", address: "", notes: "", row_information: "",
   hoa_markup_photos: [], // Photos for HOA markup/annotation
   tree_trimming_needed: false,
   staged_photos: [], // Unsorted photos from the top Photo Gallery
@@ -245,7 +246,7 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
       span2_direction: p.span2_direction || "", span2_distance: p.span2_distance?.toString() || "", span2_owner: p.span2_owner || "",
       span3_direction: p.span3_direction || "", span3_distance: p.span3_distance?.toString() || "", span3_owner: p.span3_owner || "",
       span4_direction: p.span4_direction || "", span4_distance: p.span4_distance?.toString() || "", span4_owner: p.span4_owner || "",
-      latitude: p.latitude?.toString() || "", longitude: p.longitude?.toString() || "-", notes: p.notes || "", row_information: p.row_information || "",
+      latitude: p.latitude?.toString() || "", longitude: p.longitude?.toString() || "-", address: p.address || "", notes: p.notes || "", row_information: p.row_information || "",
       hoa_markup_photos: p.hoa_markup_photos || [],
       tree_trimming_needed: p.tree_trimming_needed === true,
       staged_photos: p.staged_photos || [],
@@ -585,6 +586,7 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
       span4_distance: formData.span4_distance ? parseFloat(formData.span4_distance) : null,
       latitude: Number.isFinite(parseFloat(formData.latitude)) ? parseFloat(formData.latitude) : null,
       longitude: Number.isFinite(parseFloat(formData.longitude)) ? parseFloat(formData.longitude) : null,
+      address: formData.address || null,
       // Dynamic arrays
       down_guys: downGuys.filter(dg => dg.owner || dg.direction || dg.size || dg.type || dg.condition || dg.height || dg.lead).map(({ _key, ...dg }) => ({
         ...dg,
@@ -991,6 +993,8 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
                 </div>
                 <p className="text-xs text-zinc-500">Search for an address to auto-fill coordinates</p>
               </div>
+
+              <AddressField latitude={formData.latitude} longitude={formData.longitude} value={formData.address} onChange={(v) => setFormData((prev) => ({ ...prev, address: v }))} testId="pole-address-input" />
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div className="space-y-4">

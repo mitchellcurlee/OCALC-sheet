@@ -32,6 +32,7 @@ class Attachment(BaseModel):
     height: Optional[float] = None
     hoa_type: Optional[str] = None  # Fiber new strand, Fiber over lashed to copper, Copper
     notes: Optional[str] = None
+    address: Optional[str] = None  # nearest home address (building number + street)
     photos: Optional[List[str]] = []
 
 
@@ -91,6 +92,7 @@ class PoleBase(BaseModel):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     notes: Optional[str] = None
+    address: Optional[str] = None  # nearest home address (building number + street)
     row_information: Optional[str] = None  # R.O.W. Information notes
     sort_order: Optional[int] = None  # Custom sort order for manual reordering
 
@@ -153,6 +155,7 @@ class PoleUpdate(BaseModel):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     notes: Optional[str] = None
+    address: Optional[str] = None  # nearest home address (building number + street)
     row_information: Optional[str] = None
     sort_order: Optional[int] = None
 

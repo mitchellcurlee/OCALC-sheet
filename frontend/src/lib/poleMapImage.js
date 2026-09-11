@@ -240,8 +240,8 @@ export const routeWaypoints = (routes, fromId, toId) => {
 
 export const computeConnectionPairs = (route, ug, connections = [], spanOrder = null) => {
   const allItems = [];
-  route.forEach((p) => allItems.push({ id: p.id, type: "pole", pos: p.pos, sort_order: p.sort_order ?? Infinity, label: p.pole_number || "Pole", start_path: p.start_path === true, end_path: p.end_path === true, standalone: p.standalone === true, markerColor: p.marker_color || null }));
-  ug.forEach((u) => allItems.push({ id: u.id, type: "underground", ugType: u.type, materialType: u.material_type || "", aerialOverride: ["aerial", "underground", "neutral"].includes(u.aerial_override) ? u.aerial_override : null, pos: u.pos, sort_order: u.sort_order ?? Infinity, label: u.label || u.type, start_path: u.start_path === true, end_path: u.end_path === true, standalone: u.standalone === true, hasPath: (u.path_measurements || []).length > 0, markerColor: u.marker_color || null }));
+  route.forEach((p) => allItems.push({ id: p.id, type: "pole", pos: p.pos, sort_order: p.sort_order ?? Infinity, label: p.pole_number || "Pole", address: p.address || "", start_path: p.start_path === true, end_path: p.end_path === true, standalone: p.standalone === true, markerColor: p.marker_color || null }));
+  ug.forEach((u) => allItems.push({ id: u.id, type: "underground", ugType: u.type, materialType: u.material_type || "", aerialOverride: ["aerial", "underground", "neutral"].includes(u.aerial_override) ? u.aerial_override : null, pos: u.pos, sort_order: u.sort_order ?? Infinity, label: u.label || u.type, address: u.address || "", start_path: u.start_path === true, end_path: u.end_path === true, standalone: u.standalone === true, hasPath: (u.path_measurements || []).length > 0, markerColor: u.marker_color || null }));
   allItems.sort((a, b) => a.sort_order - b.sort_order);
   const byId = {};
   allItems.forEach((it) => { byId[it.id] = it; });
@@ -382,9 +382,11 @@ export const buildSpanMeasurementTexts = ({ poles, underground = [], connections
   const { route } = computeRoute(poles);
   const ug = ugWithGps(underground);
   const pairs = computeConnectionPairs(route, ug, connections, spanOrder);
-  const itemName = (it) => it.type === "pole"
+  const baseName = (it) => it.type === "pole"
     ? (/^\d/.test(String(it.label || "")) ? `P${it.label}` : (it.label || "Pole"))
     : `${undergroundAbbr(it.ugType)}${it.label && it.label !== it.ugType ? ` ${it.label}` : ""}`;
+  // Building number + street name of the lot the item sits on (when known)
+  const itemName = (it) => `${baseName(it)}${it.address ? ` (${it.address})` : ""}`;
 
   // Cumulative station numbers per item (matches the map's Sta #'s toggle).
   // New-riser footage advances the chainage after its pole.
@@ -960,9 +962,9 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
     const bottomSection = hasRisers ? 68 * s : 34 * s;
     
     // Build display rows: pair segments (in live-map order) interleaved with riser info
-    const itemName = (it) => it.type === "pole"
+    const itemName = (it) => (it.type === "pole"
       ? (it.label || "Pole")
-      : `${undergroundAbbr(it.ugType)}${it.label && it.label !== it.ugType ? ` ${it.label}` : ""}`;
+      : `${undergroundAbbr(it.ugType)}${it.label && it.label !== it.ugType ? ` ${it.label}` : ""}`) + (it.address ? ` (${it.address})` : "");
     const displayRows = [];
     const riserDone = new Set();
     const riserLaterDisplay = [];
@@ -1541,9 +1543,9 @@ const generateMeasurementListImage = ({ pairSegs, route, totalRiserFeet, job, un
   const hasRisers = totalRiserFeet > 0;
   const bottomSection = hasRisers ? 80 * s : 44 * s;
   
-  const itemName = (it) => it.type === "pole"
+  const itemName = (it) => (it.type === "pole"
     ? (it.label || "Pole")
-    : `${undergroundAbbr(it.ugType)}${it.label && it.label !== it.ugType ? ` ${it.label}` : ""}`;
+    : `${undergroundAbbr(it.ugType)}${it.label && it.label !== it.ugType ? ` ${it.label}` : ""}`) + (it.address ? ` (${it.address})` : "");
   
   // Build display rows: pair segments interleaved with riser info
   const displayRows = [];

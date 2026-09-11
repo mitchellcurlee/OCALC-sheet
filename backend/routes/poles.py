@@ -12,6 +12,7 @@ from models.pole import Pole, PoleCreate, PoleUpdate
 from models.options import POLE_CONDITIONS
 from services.helpers import pole_sort_key, format_height, pole_photo_items, haversine_feet, has_gps
 from services.auth import get_current_user
+from routes.addresses import nearest_address
 
 router = APIRouter(tags=["poles"])
 
@@ -296,6 +297,8 @@ async def sync_map_distances_to_poles(job_id: str):
 async def create_pole(pole_data: PoleCreate):
     """Create a new pole entry"""
     pole = Pole(**pole_data.model_dump())
+    if not pole.address and pole.latitude is not None and pole.longitude is not None:
+        pole.address = await nearest_address(pole.latitude, pole.longitude)
     doc = pole.model_dump()
     await _db.poles.insert_one(doc)
     
@@ -421,6 +424,12 @@ async def update_pole(pole_id: str, pole_data: PoleUpdate, current_user: dict = 
         raise HTTPException(status_code=404, detail="Pole not found")
     
     update_data = {k: v for k, v in pole_data.model_dump().items() if v is not None}
+    # GPS moved (or first set) without an explicit address -> refresh the nearest home address
+    if ("latitude" in update_data or "longitude" in update_data) and not update_data.get("address"):
+        lat = update_data.get("latitude", existing.get("latitude"))
+        lng = update_data.get("longitude", existing.get("longitude"))
+        if lat is not None and lng is not None and (lat != existing.get("latitude") or lng != existing.get("longitude") or not existing.get("address")):
+            update_data["address"] = await nearest_address(lat, lng)
     update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
     update_data["last_modified_by"] = current_user.get("email", "")
     
