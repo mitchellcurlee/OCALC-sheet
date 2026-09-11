@@ -415,3 +415,6 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 
 ## 2026-06: Tap-to-swap span numbers on the map
 - Span number badges (aerial + UG) are now tappable: first tap picks (badge turns yellow, span-swap-banner shows "Span N: A to B = X ft", Cancel = span-swap-cancel-btn), second tap on another badge swaps them (swapSpanIndices -> job.span_order). Tapping the same badge again deselects. UG badge distance popup replaced by the banner text. Verified E2E (1 ↔ 3). NOT yet deployed.
+
+## 2026-06: Quick-drop items are unconnected
+- Quick drop (Place Multiple) now creates poles/underground with standalone: true -> excluded from the auto path chain, no span lines/badges drawn. User connects them manually via Edit Map -> Connections (custom lines render for standalone items). Banner/toast text updated. Verified E2E (3 drops, 0 polylines). NOT yet deployed.
