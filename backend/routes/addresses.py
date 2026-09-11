@@ -71,13 +71,23 @@ async def map_addresses(
     return {"addresses": rows, "too_wide": False}
 
 
-def _abbr_street(street: str) -> str:
-    """'Majestic Cone Lane' -> 'Majestic Cone Ln'"""
-    ab = {"Lane": "Ln", "Road": "Rd", "Street": "St", "Drive": "Dr", "Avenue": "Ave", "Court": "Ct", "Circle": "Cir",
-          "Boulevard": "Blvd", "Place": "Pl", "Trail": "Trl", "Parkway": "Pkwy", "Highway": "Hwy", "Way": "Way", "Terrace": "Ter", "Loop": "Loop"}
-    parts = (street or "").split()
-    if parts and parts[-1] in ab:
-        parts[-1] = ab[parts[-1]]
+STREET_SUFFIXES = {
+    "LN", "LANE", "DR", "DRIVE", "RD", "ROAD", "ST", "STREET", "CT", "COURT", "CIR", "CIRCLE", "AVE", "AVENUE", "BLVD",
+    "BOULEVARD", "PL", "PLACE", "TRL", "TRAIL", "PKWY", "PARKWAY", "HWY", "HIGHWAY", "WAY", "LOOP", "TER", "TERRACE",
+    "CV", "COVE", "PASS", "PATH", "RUN", "BND", "BEND", "XING", "CROSSING", "PT", "POINT", "HL", "HILL", "HOLW", "HOLLOW",
+    "VW", "VIEW", "ROW", "SQ", "SQUARE", "RDG", "RIDGE", "GRV", "GROVE", "CRK", "CREEK", "EST", "ESTATES", "MNR", "MANOR",
+    "PK", "PARK", "ALY", "ALLEY", "EXPY", "EXPRESSWAY", "FWY", "FREEWAY", "BYP", "BYPASS", "PLZ", "PLAZA", "SPUR",
+}
+DIRECTIONS = {"N", "S", "E", "W", "NE", "NW", "SE", "SW", "NORTH", "SOUTH", "EAST", "WEST"}
+
+
+def street_base_upper(street: str) -> str:
+    """'Misty Morning Ln' -> 'MISTY MORNING' (drop trailing street type / direction, uppercase)"""
+    parts = [w for w in (street or "").upper().replace(".", "").split() if w]
+    while len(parts) > 1 and parts[-1] in DIRECTIONS:
+        parts.pop()
+    if len(parts) > 1 and parts[-1] in STREET_SUFFIXES:
+        parts.pop()
     return " ".join(parts)
 
 
@@ -110,7 +120,8 @@ async def nearest_address(lat: float, lng: float, max_m: float = 90.0) -> str:
     if not best or best_m > max_m:
         return ""
     unit = (best.get("Unit") or "").strip()
-    return f"{best['AddNo_Full'].strip()}{f' #{unit}' if unit else ''} {_abbr_street(_title(best.get('StNam_Full')))}".strip()
+    # Format used in the span list: "7123 MISTY MORNING"
+    return f"{best['AddNo_Full'].strip()}{f' #{unit}' if unit else ''} {street_base_upper(best.get('StNam_Full'))}".strip()
 
 
 @router.get("/maps/address-at")
