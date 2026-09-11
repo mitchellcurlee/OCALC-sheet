@@ -443,3 +443,6 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 
 ## 2026-06: Span list item format = "Type Label Address"
 - segItemName (JobMap) + all itemName builders in poleMapImage.js now: UG -> full type name (e.g. "Pedestal", not PED) + label (if differs) + address, no parentheses; poles -> P# + address. e.g. "Handhole HH-1 24814 Majestic Cone Ln to Hoffman Box HB-1 16935 Needle Tea Ct = 438 ft". Applies to map list, ASE path text and download image/PDF lists. NOT yet deployed.
+
+## 2026-06: Random span numbering fix (NaN sort)
+- Root cause: items without sort_order were given Infinity and comparators used subtraction (Infinity - Infinity = NaN) -> unstable/random ordering of pairs and items (10 legacy poles in DB have sort_order null). computeConnectionPairs now assigns a stable `seq` (sort_order asc, missing ones keep incoming order at end) and uses seq for all pair ordering/direction; JobMap station-order + connectable-items sorts made NaN-safe. Backend create_pole now assigns sort_order = max(job order)+1 when missing. Verified: 6 null-sort_order poles number 1..5 identically across reloads. NOT yet deployed.

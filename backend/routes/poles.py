@@ -299,6 +299,14 @@ async def create_pole(pole_data: PoleCreate):
     pole = Pole(**pole_data.model_dump())
     if not pole.address and pole.latitude is not None and pole.longitude is not None:
         pole.address = await nearest_address(pole.latitude, pole.longitude)
+    if pole.sort_order is None and pole.job_id:
+        # Append to the end of the job's combined order so span numbering stays sequential
+        mx = -1
+        for coll in (_db.poles, _db.underground):
+            top = await coll.find({"job_id": pole.job_id, "sort_order": {"$ne": None}}, {"_id": 0, "sort_order": 1}).sort("sort_order", -1).limit(1).to_list(1)
+            if top and top[0].get("sort_order") is not None:
+                mx = max(mx, int(top[0]["sort_order"]))
+        pole.sort_order = mx + 1
     doc = pole.model_dump()
     await _db.poles.insert_one(doc)
     

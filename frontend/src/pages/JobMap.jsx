@@ -945,8 +945,8 @@ const JobMap = () => {
       });
     });
     
-    // Sort by sort_order
-    allItems.sort((a, b) => a.sortOrder - b.sortOrder);
+    // Sort by sort_order (NaN-safe: items without one stay at the end in their incoming order)
+    allItems.sort((a, b) => (a.sortOrder < b.sortOrder ? -1 : a.sortOrder > b.sortOrder ? 1 : 0));
     
     // Calculate cumulative station numbers (chainage uses actual span footage,
     // so stations match linear feet from the start of the path)
@@ -1575,8 +1575,8 @@ const JobMap = () => {
         end_path: u.end_path === true
       });
     });
-    // Sort by sort_order to match job page order
-    items.sort((a, b) => a.sort_order - b.sort_order);
+    // Sort by sort_order to match job page order (NaN-safe for items without one)
+    items.sort((a, b) => ((a.sort_order ?? Infinity) < (b.sort_order ?? Infinity) ? -1 : (a.sort_order ?? Infinity) > (b.sort_order ?? Infinity) ? 1 : 0));
     return items;
   }, [route, ug]);
 

@@ -242,7 +242,11 @@ export const computeConnectionPairs = (route, ug, connections = [], spanOrder = 
   const allItems = [];
   route.forEach((p) => allItems.push({ id: p.id, type: "pole", pos: p.pos, sort_order: p.sort_order ?? Infinity, label: p.pole_number || "Pole", address: p.address || "", start_path: p.start_path === true, end_path: p.end_path === true, standalone: p.standalone === true, markerColor: p.marker_color || null }));
   ug.forEach((u) => allItems.push({ id: u.id, type: "underground", ugType: u.type, materialType: u.material_type || "", aerialOverride: ["aerial", "underground", "neutral"].includes(u.aerial_override) ? u.aerial_override : null, pos: u.pos, sort_order: u.sort_order ?? Infinity, label: u.label || u.type, address: u.address || "", start_path: u.start_path === true, end_path: u.end_path === true, standalone: u.standalone === true, hasPath: (u.path_measurements || []).length > 0, markerColor: u.marker_color || null }));
-  allItems.sort((a, b) => a.sort_order - b.sort_order);
+  // Stable list order: explicit sort_order first, items without one keep their incoming order at the end
+  // (never subtract sort_orders — Infinity - Infinity is NaN and made the numbering random)
+  allItems.forEach((it, i) => { it._in = i; });
+  allItems.sort((a, b) => (a.sort_order < b.sort_order ? -1 : a.sort_order > b.sort_order ? 1 : a._in - b._in));
+  allItems.forEach((it, i) => { it.seq = i; delete it._in; });
   const byId = {};
   allItems.forEach((it) => { byId[it.id] = it; });
   // Standalone items are excluded from the path chain entirely
@@ -258,8 +262,8 @@ export const computeConnectionPairs = (route, ug, connections = [], spanOrder = 
       .filter((p) => {
         if (p.connType === "custom") return true;
         if (p.from.standalone || p.to.standalone) return false;
-        const earlier = p.from.sort_order <= p.to.sort_order ? p.from : p.to;
-        const later = p.from.sort_order <= p.to.sort_order ? p.to : p.from;
+        const earlier = p.from.seq <= p.to.seq ? p.from : p.to;
+        const later = p.from.seq <= p.to.seq ? p.to : p.from;
         return !earlier.end_path && !later.start_path;
       });
     const referenced = new Set();
@@ -270,9 +274,9 @@ export const computeConnectionPairs = (route, ug, connections = [], spanOrder = 
     if (unreferenced.length > 0) {
       pairs = pairs.filter((p) => {
         if (p.connType === "custom") return true;
-        const lo = Math.min(p.from.sort_order, p.to.sort_order);
-        const hi = Math.max(p.from.sort_order, p.to.sort_order);
-        return !unreferenced.some((it) => it.sort_order > lo && it.sort_order < hi);
+        const lo = Math.min(p.from.seq, p.to.seq);
+        const hi = Math.max(p.from.seq, p.to.seq);
+        return !unreferenced.some((it) => it.seq > lo && it.seq < hi);
       });
     }
     for (let i = 0; i < pathItems.length - 1; i++) {
@@ -281,8 +285,8 @@ export const computeConnectionPairs = (route, ug, connections = [], spanOrder = 
     }
     // Keep the whole list in route order (fallback pairs included)
     pairs.sort((a, b) =>
-      (Math.min(a.from.sort_order, a.to.sort_order) - Math.min(b.from.sort_order, b.to.sort_order)) ||
-      (Math.max(a.from.sort_order, a.to.sort_order) - Math.max(b.from.sort_order, b.to.sort_order))
+      (Math.min(a.from.seq, a.to.seq) - Math.min(b.from.seq, b.to.seq)) ||
+      (Math.max(a.from.seq, a.to.seq) - Math.max(b.from.seq, b.to.seq))
     );
   } else {
     for (let i = 0; i < pathItems.length - 1; i++) {
@@ -295,7 +299,7 @@ export const computeConnectionPairs = (route, ug, connections = [], spanOrder = 
   const seen = new Set();
   pairs = pairs
     .map((pr) => {
-      const flip = pr.from.sort_order > pr.to.sort_order || (pr.from.sort_order === pr.to.sort_order && pr.from.id > pr.to.id);
+      const flip = pr.from.seq > pr.to.seq;
       return flip ? { ...pr, from: pr.to, to: pr.from } : pr;
     })
     .filter((pr) => {
