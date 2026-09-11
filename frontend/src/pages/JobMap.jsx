@@ -7,7 +7,7 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import domtoimage from "dom-to-image-more";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ChevronDown, ChevronUp, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera, Hash, Link2, Move, Palette, Plus, Map as MapIcon, GripVertical, Upload, Trash2, RotateCcw } from "lucide-react";
+import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ChevronDown, ChevronUp, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera, Hash, Link2, Move, Palette, Plus, Map as MapIcon, GripVertical, Upload, Trash2, RotateCcw, Home } from "lucide-react";
 import SpanReorderList from "@/components/SpanReorderList";
 import { computeRoute, fmtFeet, feetToStation, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, downloadMapPdfPages, ugWithGps, undergroundAbbr, computeUgConnectors, computeConnectionPairs, computeStationSegFeet, UNDERGROUND_TYPES, isAerialAttr, resolvePairAerial, spanKey, routeWaypoints } from "@/lib/poleMapImage";
 import { ExportDestinationDialog } from "@/components/ExportDestinationDialog";
@@ -42,6 +42,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import EditableRoute from "@/components/EditableRoute";
 import MapAnnotations from "@/components/MapAnnotations";
+import HomeAddressLayer from "@/components/HomeAddressLayer";
 
 const MAP_AERIAL_ADD_TYPES = ["Loop", "Aerial Splice", "Power", "X-Messenger", "Eyebolt", "Pullbox", "Weather Head"];
 
@@ -552,6 +553,9 @@ const JobMap = () => {
   const [annotations, setAnnotations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
+  const [showAddresses, setShowAddresses] = useState(() => localStorage.getItem("mapAddrToggle") === "1");
+  const [addrStatus, setAddrStatus] = useState("ok");
+  useEffect(() => { localStorage.setItem("mapAddrToggle", showAddresses ? "1" : "0"); }, [showAddresses]);
   const [showStationNumbers, setShowStationNumbers] = useState(() => {
     try { return localStorage.getItem(`staToggle:${jobId}`) === '1'; } catch (e) { return false; }
   });
@@ -2225,6 +2229,10 @@ const JobMap = () => {
               <MapIcon className="w-4 h-4 mr-2" />
               {mapLayer === "street" ? "Street" : "Aerial"}
             </Button>
+            <Button onClick={() => setShowAddresses((v) => !v)} aria-pressed={showAddresses} variant="outline" className={showAddresses ? "bg-sky-600 border-sky-600 hover:bg-sky-700 text-white" : "bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900"} data-testid="toggle-addresses-btn" title="Show home addresses (house numbers) per lot">
+              <Home className="w-4 h-4 mr-2" />
+              Addresses
+            </Button>
             <Button onClick={() => setShowStationNumbers((v) => !v)} disabled={route.length === 0 && ug.length === 0} aria-pressed={showStationNumbers} variant="outline" className={showStationNumbers ? "bg-indigo-600 border-indigo-600 hover:bg-indigo-700 text-white" : "bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900"} data-testid="toggle-station-btn">
               <Hash className="w-4 h-4 mr-2" />
               Sta #{"'"}s
@@ -2530,6 +2538,11 @@ const JobMap = () => {
       </header>
 
       <main className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-4">
+        {showAddresses && addrStatus !== "ok" && (
+          <div className="text-xs font-mono text-sky-800 bg-sky-50 border border-sky-200 rounded px-3 py-1.5" data-testid="addresses-status">
+            {addrStatus === "zoom" ? "Addresses: zoom in closer to see house numbers per lot" : addrStatus === "loading" ? "Addresses: loading…" : addrStatus === "none" ? "Addresses: none on record for this area (USDOT National Address Database)" : "Addresses: service unavailable right now"}
+          </div>
+        )}
         {connectFrom && (
           <div className="flex flex-wrap items-center gap-3 bg-emerald-600 text-white rounded-lg px-4 py-2.5 text-sm font-medium shadow" data-testid="connect-from-banner">
             <Link2 className="w-4 h-4 shrink-0" />
@@ -2816,6 +2829,7 @@ const JobMap = () => {
               )}
               <FitBounds points={allPoints} disabled={editMode} />
               <MapRefSetter mapRef={mapRef} />
+              <HomeAddressLayer enabled={showAddresses} onStatus={setAddrStatus} />
               {placingType && (
                 <PlaceAttributeHandler
                   onPlace={async (latlng) => {

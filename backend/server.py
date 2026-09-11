@@ -78,6 +78,7 @@ from routes import import_excel as import_excel_routes
 from routes import trash as trash_routes
 from routes import backup as backup_routes
 from routes import cloud_exports as cloud_exports_routes
+from routes import addresses as addresses_routes
 
 auth_routes.set_db(db)
 jobs_routes.set_db(db)
@@ -107,6 +108,7 @@ api_router.include_router(import_excel_routes.router)
 api_router.include_router(trash_routes.router)
 api_router.include_router(backup_routes.router)
 api_router.include_router(cloud_exports_routes.router)
+api_router.include_router(addresses_routes.router)
 
 
 # Root endpoint
