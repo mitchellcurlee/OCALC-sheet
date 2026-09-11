@@ -440,3 +440,6 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 
 ## 2026-06: Address backfill
 - POST /api/maps/backfill-addresses (routes/addresses.py, set_db wired in server.py): fills `address` for every GPS'd pole/attribute lacking one (admins: all jobs; others: owned/shared jobs), concurrency 6, returns {jobs, poles_checked, attributes_checked, filled, no_match}; ?force=true re-computes all. Ran on preview DB: 17 filled, 1 no nearby home. Home-icon button in JobsList header (backfill-addresses-btn, confirm dialog + toast) so it can be run on production after deploy. NOT yet deployed.
+
+## 2026-06: Span list item format = "Type Label Address"
+- segItemName (JobMap) + all itemName builders in poleMapImage.js now: UG -> full type name (e.g. "Pedestal", not PED) + label (if differs) + address, no parentheses; poles -> P# + address. e.g. "Handhole HH-1 24814 Majestic Cone Ln to Hoffman Box HB-1 16935 Needle Tea Ct = 438 ft". Applies to map list, ASE path text and download image/PDF lists. NOT yet deployed.

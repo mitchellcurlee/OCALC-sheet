@@ -384,9 +384,9 @@ export const buildSpanMeasurementTexts = ({ poles, underground = [], connections
   const pairs = computeConnectionPairs(route, ug, connections, spanOrder);
   const baseName = (it) => it.type === "pole"
     ? (/^\d/.test(String(it.label || "")) ? `P${it.label}` : (it.label || "Pole"))
-    : `${undergroundAbbr(it.ugType)}${it.label && it.label !== it.ugType ? ` ${it.label}` : ""}`;
-  // Building number + street name of the lot the item sits on (when known)
-  const itemName = (it) => `${baseName(it)}${it.address ? ` (${it.address})` : ""}`;
+    : `${it.ugType || "Attribute"}${it.label && it.label !== it.ugType ? ` ${it.label}` : ""}`;
+  // "Pedestal PED-2 12345 Jones Rd" — building number + street of the lot the item sits on
+  const itemName = (it) => `${baseName(it)}${it.address ? ` ${it.address}` : ""}`;
 
   // Cumulative station numbers per item (matches the map's Sta #'s toggle).
   // New-riser footage advances the chainage after its pole.
@@ -964,7 +964,7 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
     // Build display rows: pair segments (in live-map order) interleaved with riser info
     const itemName = (it) => (it.type === "pole"
       ? (it.label || "Pole")
-      : `${undergroundAbbr(it.ugType)}${it.label && it.label !== it.ugType ? ` ${it.label}` : ""}`) + (it.address ? ` (${it.address})` : "");
+      : `${it.ugType || "Attribute"}${it.label && it.label !== it.ugType ? ` ${it.label}` : ""}`) + (it.address ? ` ${it.address}` : "");
     const displayRows = [];
     const riserDone = new Set();
     const riserLaterDisplay = [];
@@ -1545,7 +1545,7 @@ const generateMeasurementListImage = ({ pairSegs, route, totalRiserFeet, job, un
   
   const itemName = (it) => (it.type === "pole"
     ? (it.label || "Pole")
-    : `${undergroundAbbr(it.ugType)}${it.label && it.label !== it.ugType ? ` ${it.label}` : ""}`) + (it.address ? ` (${it.address})` : "");
+    : `${it.ugType || "Attribute"}${it.label && it.label !== it.ugType ? ` ${it.label}` : ""}`) + (it.address ? ` ${it.address}` : "");
   
   // Build display rows: pair segments interleaved with riser info
   const displayRows = [];

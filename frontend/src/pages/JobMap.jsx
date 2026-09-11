@@ -1704,14 +1704,15 @@ const JobMap = () => {
   const stationNumById = useMemo(() => Object.fromEntries(stationEntries.map((e) => [e.id, e.num])), [stationEntries]);
 
   // Display name for a segment endpoint (e.g. "P1", "HH HH-1")
+  // "Pedestal PED-2 12345 Jones Rd" — type, label (if any) and the lot address side by side
   const segItemName = useCallback((item) => {
-    const addr = item.address ? ` (${item.address})` : "";
+    const addr = item.address ? ` ${item.address}` : "";
     if (item.type === "pole") {
       const n = String(item.label || "");
       return (/^\d/.test(n) ? `P${n}` : (n || "Pole")) + addr;
     }
-    const abbr = undergroundAbbr(item.ugType);
-    return (item.label && item.label !== item.ugType ? `${abbr} ${item.label}` : abbr) + addr;
+    const typeName = item.ugType || "Attribute";
+    return (item.label && item.label !== item.ugType ? `${typeName} ${item.label}` : typeName) + addr;
   }, []);
 
   // Distance for the list — follows custom waypoints on aerial segments (matches map pill)
