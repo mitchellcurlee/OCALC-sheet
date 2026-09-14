@@ -1233,16 +1233,13 @@ const JobDetail = () => {
                               </span>
                             </>
                           )}
-                          {item.address && (
-                            <>
-                              <span>•</span>
-                              <span className="flex items-center gap-1 text-sky-800 font-mono" data-testid={`pole-card-address-${item.id}`}>
-                                <Home className="w-3 h-3" />
-                                {item.address}
-                              </span>
-                            </>
-                          )}
                         </div>
+                        {item.address ? (
+                          <div className="flex items-center gap-1.5 mt-1 text-sm font-mono font-semibold text-sky-800" data-testid={`pole-card-address-${item.id}`}>
+                            <Home className="w-3.5 h-3.5 shrink-0" />
+                            <span className="truncate">{item.address}</span>
+                          </div>
+                        ) : null}
                       </div>
                     </div>
                     
@@ -1308,18 +1305,23 @@ const JobDetail = () => {
                       </div>
                       <div>
                         <span className="font-bold text-zinc-900">{item.type}{item.label ? ` · ${item.label}` : ""}</span>
-                        <div className="flex items-center gap-3 text-xs text-zinc-500 mt-1">
+                        <div className="flex items-center gap-3 text-xs text-zinc-500 mt-1 flex-wrap">
                           {item.latitude && item.longitude ? (
                             <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />GPS</span>
                           ) : (
                             <span className="text-amber-600">No GPS</span>
                           )}
-                          {item.address && <span className="flex items-center gap-1 text-sky-800 font-mono" data-testid={`ug-card-address-${item.id}`}><Home className="w-3 h-3" />{item.address}</span>}
                           {item.owner && <span className="text-amber-700 font-semibold" data-testid={`ug-card-owner-${item.id}`}>Owner: {item.owner}</span>}
                           {item.material_type && <span className="text-zinc-600" data-testid={`ug-card-material-${item.id}`}>{item.material_type}</span>}
                           {item.last_modified_by && <span className="text-[11px] text-zinc-400" data-testid={`ug-card-audit-${item.id}`}>Edited by {item.last_modified_by} · {new Date(item.updated_at).toLocaleDateString()}</span>}
                           {item.notes && <span className="truncate max-w-[200px]">{item.notes}</span>}
                         </div>
+                        {item.address ? (
+                          <div className="flex items-center gap-1.5 mt-1 text-sm font-mono font-semibold text-sky-800" data-testid={`ug-card-address-${item.id}`}>
+                            <Home className="w-3.5 h-3.5 shrink-0" />
+                            <span className="truncate">{item.address}</span>
+                          </div>
+                        ) : null}
                       </div>
                     </div>
                   </div>
