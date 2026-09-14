@@ -472,3 +472,8 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 
 ## 2026-06 Draw Route: Undo Last Tap
 - JobMap.jsx draw-route banner: "Undo Last Tap" button (data-testid draw-route-undo-btn) pops last item from currentRoute; disabled when route empty or saving. Preview line/badges/counter update instantly. Verified in browser (3 taps -> undo -> 1 span -> undo x2 -> 0, disabled). NOT yet deployed.
+
+## 2026-06 Draw Route: route mode / first-activation wipe / Clear Route wipe
+- Job model: route_mode (bool). lib routeArg(job): route_sequence when non-empty, `true` (drawn-only, no auto chain) when route_mode set but wiped, [] for legacy jobs. Used by JobMap orderedSegments, lib download funcs, ASEForm/buildSpanMeasurementTexts (exports follow the same order).
+- JobMap: startDrawRoute on a non-route-mode job -> wipeSpans (POST connections/bulk [] + PUT route_mode true, route_sequence/draw_routes/span_order []) so next span = 1. Reopen continues from last number. endDrawRoute no longer calls initializeConnections. Clear Route (banner, confirm) and "Reset spans" (Span Measurements header, route-mode jobs) = job-level wipe. Verified E2E: auto 1-4 -> activate -> 0 spans next 1 -> route P1-P2-P3 = 1,2 -> next 3 -> P4-P5 = 3 -> reload next 4 -> clear -> next 1 -> P3->P1 = span 1; job page order 3,1,2,4,5.
+- NOTE: activation persists the wipe immediately (Cancel afterwards leaves the job with no spans). NOT yet deployed.

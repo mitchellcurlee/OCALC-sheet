@@ -9,7 +9,7 @@ import domtoimage from "dom-to-image-more";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ChevronDown, ChevronUp, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera, Hash, Link2, Move, Palette, Plus, Map as MapIcon, GripVertical, Upload, Trash2, RotateCcw, Home, Route as RouteIcon } from "lucide-react";
 import SpanReorderList from "@/components/SpanReorderList";
-import { computeRoute, fmtFeet, feetToStation, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, downloadMapPdfPages, ugWithGps, undergroundAbbr, computeUgConnectors, computeConnectionPairs, computeStationSegFeet, UNDERGROUND_TYPES, isAerialAttr, resolvePairAerial, spanKey, routeWaypoints } from "@/lib/poleMapImage";
+import { computeRoute, fmtFeet, feetToStation, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, downloadMapPdfPages, ugWithGps, undergroundAbbr, computeUgConnectors, computeConnectionPairs, computeStationSegFeet, UNDERGROUND_TYPES, isAerialAttr, resolvePairAerial, spanKey, routeWaypoints, routeArg } from "@/lib/poleMapImage";
 import { ExportDestinationDialog } from "@/components/ExportDestinationDialog";
 import { CLOUD_EXPORT_LABELS, uploadExportToCloud } from "@/lib/cloudExports";
 import {
@@ -1617,7 +1617,7 @@ const JobMap = () => {
     allItems.sort((a, b) => a.sort_order - b.sort_order);
     
     // Pairs mirror the shared logic (custom connections, End Path breaks, standalone items)
-    const pairs = computeConnectionPairs(route, ug, connections, job?.span_order, job?.route_sequence || []);
+    const pairs = computeConnectionPairs(route, ug, connections, job?.span_order, routeArg(job));
     
     const mpoeItem = allItems.find((item) => item.ugType === "MPOE");
     const mpoeOrder = mpoeItem ? mpoeItem.sort_order : null;
@@ -1662,7 +1662,7 @@ const JobMap = () => {
     });
     
     return segments;
-  }, [route, ug, connections, job?.span_order, job?.route_sequence]);
+  }, [route, ug, connections, job?.span_order, job?.route_sequence, job?.route_mode]);
 
 
   orderedSegmentsRef.current = orderedSegments;
@@ -1760,11 +1760,46 @@ const JobMap = () => {
   // Tap a span number on the map, then tap another to swap them
   // ---- Draw Route mode ----
   const routeSeq = job?.route_sequence || [];
-  const startDrawRoute = () => {
-    setDrawRouteMode(true);
+  const routeMode = job?.route_mode === true || routeSeq.length > 0;
+  // Wipe every span on the job: numbers, drawn lines and the tapped sequence — next route starts at Span 1
+  const wipeSpans = async () => {
+    await axios.post(`/jobs/${jobId}/connections/bulk`, []);
+    const res = await axios.put(`/jobs/${jobId}`, { route_mode: true, route_sequence: [], draw_routes: [], span_order: [] });
+    setJob((prev) => ({ ...(prev || {}), ...(res.data || {}), route_mode: true, route_sequence: [], draw_routes: [], span_order: [] }));
+    setConnections([]);
+    setCurrentRoute([]);
+  };
+  const startDrawRoute = async () => {
     setCurrentRoute([]);
     try { mapRef.current?.closePopup(); } catch (e) { /* ignore */ }
-    toast.info("Draw Route: tap items in order — drawn spans take the next numbers; any span you redraw is renumbered");
+    if (!routeMode) {
+      // First Draw Route on this job: existing span numbers are cleared and the sequence starts at 1
+      try {
+        setSavingRoute(true);
+        await wipeSpans();
+        toast.info("Draw Route started — existing span numbers cleared. Tap items in order; the first span will be Span 1");
+      } catch (e) {
+        toast.error("Failed to start Draw Route");
+        return;
+      } finally {
+        setSavingRoute(false);
+      }
+    } else {
+      toast.info(`Draw Route: tap items in order — next span is Span ${orderedSegments.length + 1}; any span you redraw is renumbered`);
+    }
+    setDrawRouteMode(true);
+  };
+  const clearAllSpans = async () => {
+    if (!window.confirm("Clear ALL span numbers on this job? Every drawn span is removed and the next route restarts at Span 1.")) return;
+    try {
+      setSavingRoute(true);
+      await wipeSpans();
+      toast.success("All spans cleared — next route starts at Span 1");
+    } catch (e) {
+      toast.error("Failed to clear spans");
+    } finally {
+      setSavingRoute(false);
+    }
   };
   // Live preview numbering: spans being (re)drawn move to the end of the sequence; every other span
   // compacts to its new position. The drawn route is the source of truth — old numbers are overwritten.
@@ -1796,8 +1831,6 @@ const JobMap = () => {
     if (currentRoute.length === 0) { setDrawRouteMode(false); return; }
     setSavingRoute(true);
     try {
-      // First route on a job: keep today's automatic lines by making them real connection records
-      if (routeSeq.length === 0) await initializeConnections();
       const fresh = (await axios.get(`/jobs/${jobId}/connections`)).data || [];
       const have = new Set(fresh.filter((c) => c.connection_type !== "removed").map((c) => spanKey(c.from_item_id, c.to_item_id)));
       const newKeys = [];
@@ -1814,7 +1847,7 @@ const JobMap = () => {
       const uniqueNew = newKeys.filter((k, i) => newKeys.indexOf(k) === i);
       const spanOrder = [...frozen.filter((k) => !uniqueNew.includes(k)), ...uniqueNew];
       const ids = currentRoute.map((it) => it.id);
-      await axios.put(`/jobs/${jobId}`, { route_sequence: [...routeSeq, ...ids], draw_routes: [...(job?.draw_routes || []), ids], span_order: spanOrder });
+      await axios.put(`/jobs/${jobId}`, { route_mode: true, route_sequence: [...routeSeq, ...ids], draw_routes: [...(job?.draw_routes || []), ids], span_order: spanOrder });
       axios.post(`/jobs/${jobId}/sync-map-distances`).catch(() => {});
       toast.success(ids.length > 1 ? `Route saved — Span ${remainingCount + 1} to Span ${remainingCount + uniqueNew.length}; lists renumbered to match` : "Route saved");
       setDrawRouteMode(false);
@@ -2630,7 +2663,7 @@ const JobMap = () => {
             {currentRoute.length > 0 && <span className="text-indigo-200 text-xs font-mono hidden md:inline">{currentRoute.map((it) => it.label).join(" → ")}</span>}
             <div className="flex items-center gap-2 ml-auto shrink-0">
               <Button size="sm" variant="outline" className="h-7 text-xs bg-white text-zinc-900 hover:bg-zinc-100 border-0" onClick={() => setCurrentRoute((prev) => prev.slice(0, -1))} disabled={currentRoute.length === 0 || savingRoute} data-testid="draw-route-undo-btn" title="Remove the last tapped item">Undo Last Tap</Button>
-              <Button size="sm" variant="outline" className="h-7 text-xs bg-white text-zinc-900 hover:bg-zinc-100 border-0" onClick={() => setCurrentRoute([])} disabled={currentRoute.length === 0 || savingRoute} data-testid="draw-route-clear-btn">Clear Route</Button>
+              <Button size="sm" variant="outline" className="h-7 text-xs bg-white text-red-700 hover:bg-red-50 border-0" onClick={clearAllSpans} disabled={savingRoute || (currentRoute.length === 0 && orderedSegments.length === 0)} title="Wipe every span number on this job and restart from Span 1" data-testid="draw-route-clear-btn">Clear Route</Button>
               <Button size="sm" variant="outline" className="h-7 text-xs bg-white text-zinc-900 hover:bg-zinc-100 border-0" onClick={() => { setDrawRouteMode(false); setCurrentRoute([]); }} disabled={savingRoute} data-testid="draw-route-cancel-btn">Cancel</Button>
               <Button size="sm" className="h-7 text-xs bg-emerald-500 hover:bg-emerald-600 text-white border-0 font-semibold" onClick={endDrawRoute} disabled={currentRoute.length === 0 || savingRoute} data-testid="draw-route-end-btn">{savingRoute ? "Saving…" : "End Route"}</Button>
             </div>
@@ -3455,7 +3488,12 @@ const JobMap = () => {
                 <Button variant="outline" size="sm" onClick={() => { const t = window.prompt("Note text (e.g. Address 12345 Jones Rd):"); if (t) addSpanNote(t); }} className="gap-1 bg-amber-50 border-amber-300 hover:bg-amber-100 text-amber-800" data-testid="span-add-note-btn">
                   <StickyNote className="w-4 h-4" /> Note
                 </Button>
-                {!spanReorder && (job?.span_order || []).length > 0 && (
+                {!spanReorder && routeMode && orderedSegments.length > 0 && (
+                  <Button variant="outline" size="sm" onClick={clearAllSpans} disabled={savingRoute} className="gap-1 bg-red-50 border-red-300 hover:bg-red-100 text-red-800" title="Wipe every span number on this job and restart from Span 1" data-testid="span-reset-spans-btn">
+                    <RotateCcw className="w-4 h-4" /> Reset spans
+                  </Button>
+                )}
+                {!spanReorder && !routeMode && (job?.span_order || []).length > 0 && (
                   <Button variant="outline" size="sm" onClick={resetSpanOrder} className="gap-1 bg-orange-50 border-orange-300 hover:bg-orange-100 text-orange-800" title="Return to automatic list-order numbering" data-testid="span-reset-order-btn">
                     <RotateCcw className="w-4 h-4" /> Reset order
                   </Button>

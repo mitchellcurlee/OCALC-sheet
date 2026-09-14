@@ -238,6 +238,13 @@ export const routeWaypoints = (routes, fromId, toId) => {
   return rev && rev.length ? [...rev].reverse() : [];
 };
 
+// Draw Route argument for computeConnectionPairs: tapped sequence when present; `true` (drawn-only, no
+// auto chain) for a route-mode job whose spans were wiped; [] for jobs that never used Draw Route
+export const routeArg = (job) => {
+  const seq = job?.route_sequence || [];
+  return seq.length > 0 ? seq : (job?.route_mode ? true : []);
+};
+
 export const computeConnectionPairs = (route, ug, connections = [], spanOrder = null, drawnOnly = false) => {
   const allItems = [];
   route.forEach((p) => allItems.push({ id: p.id, type: "pole", pos: p.pos, sort_order: p.sort_order ?? Infinity, label: p.pole_number || "Pole", address: p.address || "", start_path: p.start_path === true, end_path: p.end_path === true, standalone: p.standalone === true, markerColor: p.marker_color || null }));
@@ -538,7 +545,7 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
   const { route, totalRiserFeet } = computeRoute(poles);
   const ug = ugWithGps(underground);
   // Mirror the live Job Map lines: custom connections + End Path breaks
-  const pairSegs = computeConnectionPairs(route, ug, connections, job?.span_order, job?.route_sequence || []).map((pr) => {
+  const pairSegs = computeConnectionPairs(route, ug, connections, job?.span_order, routeArg(job)).map((pr) => {
     const path = segPath(pr, routes);
     return {
       from: pr.from,
@@ -1687,7 +1694,7 @@ export const downloadSegmentedMapPages = async ({
   const { route, totalRiserFeet } = computeRoute(poles);
   const ug = ugWithGps(underground);
   // Mirror the live Job Map lines: custom connections + End Path breaks + standalone items
-  const pairSegs = computeConnectionPairs(route, ug, connections, job?.span_order, job?.route_sequence || []).map((pr) => {
+  const pairSegs = computeConnectionPairs(route, ug, connections, job?.span_order, routeArg(job)).map((pr) => {
     const path = segPath(pr, routes);
     return {
       from: pr.from,
@@ -1790,7 +1797,7 @@ export const downloadMapPdfPages = async ({
 }) => {
   const { route, totalRiserFeet } = computeRoute(poles);
   const ug = ugWithGps(underground);
-  const pairSegs = computeConnectionPairs(route, ug, connections, job?.span_order, job?.route_sequence || []).map((pr) => {
+  const pairSegs = computeConnectionPairs(route, ug, connections, job?.span_order, routeArg(job)).map((pr) => {
     const path = segPath(pr, routes);
     return {
       from: pr.from, to: pr.to, path,
