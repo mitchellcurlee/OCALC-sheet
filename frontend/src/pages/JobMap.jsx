@@ -1760,20 +1760,16 @@ const JobMap = () => {
   // Tap a span number on the map, then tap another to swap them
   // ---- Draw Route mode ----
   const routeSeq = job?.route_sequence || [];
-  const routeNumberOf = useCallback((id) => {
-    const i = routeSeq.indexOf(id);
-    if (i >= 0) return i + 1;
-    const j = currentRoute.findIndex((it) => it.id === id);
-    return j >= 0 ? routeSeq.length + j + 1 : null;
-  }, [routeSeq, currentRoute]);
   const startDrawRoute = () => {
     setDrawRouteMode(true);
     setCurrentRoute([]);
     try { mapRef.current?.closePopup(); } catch (e) { /* ignore */ }
-    toast.info(`Draw Route: tap items in order — numbering continues from #${routeSeq.length + 1}`);
+    toast.info(`Draw Route: tap items in order — spans continue from Span ${savedSpanCount + 1}`);
   };
+  const savedSpanCount = (job?.draw_routes || []).reduce((n, r) => n + Math.max(0, (r?.length || 0) - 1), 0);
   const drawRouteTap = (item) => {
-    if (routeSeq.includes(item.id) || currentRoute.some((it) => it.id === item.id)) { toast.error(`${item.label} is already numbered`); return; }
+    const last = currentRoute[currentRoute.length - 1];
+    if (last && last.id === item.id) { toast.error(`${item.label} was just tapped — pick the next item`); return; }
     setCurrentRoute((prev) => [...prev, item]);
   };
   const endDrawRoute = async () => {
@@ -1798,7 +1794,7 @@ const JobMap = () => {
       const ids = currentRoute.map((it) => it.id);
       await axios.put(`/jobs/${jobId}`, { route_sequence: [...routeSeq, ...ids], draw_routes: [...(job?.draw_routes || []), ids], span_order: spanOrder });
       axios.post(`/jobs/${jobId}/sync-map-distances`).catch(() => {});
-      toast.success(`Route saved — items #${routeSeq.length + 1} to #${routeSeq.length + ids.length}`);
+      toast.success(ids.length > 1 ? `Route saved — Span ${savedSpanCount + 1} to Span ${savedSpanCount + ids.length - 1}; lists reordered to match` : "Route saved");
       setDrawRouteMode(false);
       setCurrentRoute([]);
       await fetchData();
@@ -2608,8 +2604,8 @@ const JobMap = () => {
         {drawRouteMode && (
           <div className="flex flex-wrap items-center gap-3 bg-indigo-700 text-white rounded-lg px-4 py-2.5 text-sm font-medium shadow" data-testid="draw-route-banner">
             <RouteIcon className="w-4 h-4 shrink-0" />
-            <span>Draw Route — tap items in order. <span className="font-mono font-bold" data-testid="draw-route-count">{currentRoute.length}</span> in this route · next # <span className="font-mono font-bold" data-testid="draw-route-next">{routeSeq.length + currentRoute.length + 1}</span></span>
-            {currentRoute.length > 0 && <span className="text-indigo-200 text-xs font-mono hidden md:inline">{currentRoute.map((it, i) => `${routeSeq.length + i + 1}:${it.label}`).join(" → ")}</span>}
+            <span>Draw Route — tap items in order. <span className="font-mono font-bold" data-testid="draw-route-count">{Math.max(0, currentRoute.length - 1)}</span> span{currentRoute.length === 2 ? "" : "s"} in this route · next: Span <span className="font-mono font-bold" data-testid="draw-route-next">{savedSpanCount + Math.max(0, currentRoute.length - 1) + 1}</span></span>
+            {currentRoute.length > 0 && <span className="text-indigo-200 text-xs font-mono hidden md:inline">{currentRoute.map((it) => it.label).join(" → ")}</span>}
             <div className="flex items-center gap-2 ml-auto shrink-0">
               <Button size="sm" variant="outline" className="h-7 text-xs bg-white text-zinc-900 hover:bg-zinc-100 border-0" onClick={() => setCurrentRoute([])} disabled={currentRoute.length === 0 || savingRoute} data-testid="draw-route-clear-btn">Clear Route</Button>
               <Button size="sm" variant="outline" className="h-7 text-xs bg-white text-zinc-900 hover:bg-zinc-100 border-0" onClick={() => { setDrawRouteMode(false); setCurrentRoute([]); }} disabled={savingRoute} data-testid="draw-route-cancel-btn">Cancel</Button>
@@ -3187,19 +3183,19 @@ const JobMap = () => {
                 onAnnotationDelete={handleAnnotationDelete}
               />
               {/* Connection edit mode - tap-to-reconnect */}
-              {/* Draw Route: sequence numbers on numbered items (saved + live) */}
-              {(routeSeq.length > 0 || currentRoute.length > 0) && allConnectableItems.map((item) => {
-                const n = routeNumberOf(item.id);
-                if (!n) return null;
-                const live = !routeSeq.includes(item.id);
-                return <Marker key={`route-num-${item.id}`} position={item.pos} icon={numberBadgeIcon(n, live ? "#f59e0b" : "#4f46e5", [-6, 34])} interactive={false} zIndexOffset={900} />;
-              })}
               {/* Draw Route: live line through the tapped items */}
               {drawRouteMode && currentRoute.length > 1 && (
-                <Polyline positions={currentRoute.map((it) => it.pos)} pathOptions={{ color: "#f59e0b", weight: 4, dashArray: "8 6", opacity: 0.95 }} />
+                <>
+                  <Polyline positions={currentRoute.map((it) => it.pos)} pathOptions={{ color: "#f59e0b", weight: 4, dashArray: "8 6", opacity: 0.95 }} />
+                  {/* Live span numbers on each drawn line (continue the job's span count) */}
+                  {currentRoute.slice(1).map((it, i) => {
+                    const a = currentRoute[i].pos, b = it.pos;
+                    return <Marker key={`live-span-${i}`} position={[(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]} icon={numberBadgeIcon(savedSpanCount + i + 1, "#f59e0b")} interactive={false} zIndexOffset={950} />;
+                  })}
+                </>
               )}
               {drawRouteMode && allConnectableItems.map((item) => {
-                const taken = routeSeq.includes(item.id) || currentRoute.some((it) => it.id === item.id);
+                const taken = currentRoute.length > 0 && currentRoute[currentRoute.length - 1].id === item.id;
                 return (
                   <Marker
                     key={`route-target-${item.id}`}

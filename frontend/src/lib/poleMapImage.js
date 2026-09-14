@@ -250,8 +250,13 @@ export const computeConnectionPairs = (route, ug, connections = [], spanOrder = 
   // Draw Route jobs: pass the tapped item order (array) — it drives line direction and span numbering
   const routeSeqArr = Array.isArray(drawnOnly) ? drawnOnly : null;
   const drawn = routeSeqArr ? routeSeqArr.length > 0 : !!drawnOnly;
+  const drawnDir = {}; // spanKey -> id of the item tapped first
   if (drawn && routeSeqArr) {
     allItems.forEach((it) => { const i = routeSeqArr.indexOf(it.id); it.seq = i >= 0 ? i : 100000 + it.seq; });
+    for (let i = 0; i < routeSeqArr.length - 1; i++) {
+      const k = spanKey(routeSeqArr[i], routeSeqArr[i + 1]);
+      if (!drawnDir[k]) drawnDir[k] = routeSeqArr[i];
+    }
   }
   const byId = {};
   allItems.forEach((it) => { byId[it.id] = it; });
@@ -312,6 +317,11 @@ export const computeConnectionPairs = (route, ug, connections = [], spanOrder = 
   const seen = new Set();
   pairs = pairs
     .map((pr) => {
+      // Drawn routes: the line runs in the order the tech tapped the two items
+      if (drawn && routeSeqArr) {
+        const k = spanKey(pr.from.id, pr.to.id);
+        if (drawnDir[k]) return drawnDir[k] === pr.from.id ? pr : { ...pr, from: pr.to, to: pr.from };
+      }
       const flip = pr.from.seq > pr.to.seq;
       return flip ? { ...pr, from: pr.to, to: pr.from } : pr;
     })

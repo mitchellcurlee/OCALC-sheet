@@ -207,9 +207,21 @@ const JobDetail = () => {
     all.sort((a, b) => {
       const orderA = a.sort_order ?? Infinity;
       const orderB = b.sort_order ?? Infinity;
-      if (orderA !== orderB) return orderA - orderB;
+      if (orderA !== orderB) return orderA < orderB ? -1 : 1;
       return (a.created_at || "").localeCompare(b.created_at || "");
     });
+    // Draw Route jobs: list follows the drawn route(s) exactly (Span 1 → last); an item that sits in
+    // two routes appears twice; anything not routed stays at the bottom in the order it was added
+    const routeSeq = job?.route_sequence || [];
+    if (routeSeq.length > 0) {
+      const byId = {};
+      all.forEach((it) => { if (it._type === "pole" || it._type === "underground") byId[it.id] = it; });
+      const routed = [];
+      routeSeq.forEach((id, i) => { if (byId[id]) routed.push({ ...byId[id], _routePos: i + 1, _dupKey: `${id}#${i}` }); });
+      const inRoute = new Set(routeSeq);
+      const rest = all.filter((it) => !((it._type === "pole" || it._type === "underground") && inRoute.has(it.id)));
+      return [...routed, ...rest];
+    }
     return all;
   }, [poles, undergroundItems, job]);
 
@@ -1176,7 +1188,7 @@ const JobDetail = () => {
               item._type === "pole" ? (
                 /* Pole Card */
                 <div
-                  key={item.id}
+                  key={item._dupKey || item.id}
                   className="industrial-card p-4 hover:border-zinc-400 hover:bg-zinc-50 transition-colors cursor-pointer"
                   data-testid={`pole-card-${item.id}`}
                   onClick={() => navigate(`/jobs/${jobId}/edit/${item.id}`)}
@@ -1266,7 +1278,7 @@ const JobDetail = () => {
                 </div>
               ) : (
                 /* Underground Card */
-                <div key={item.id} className="industrial-card p-4 border-l-4 border-l-green-500 hover:border-zinc-400 hover:bg-zinc-50 transition-colors cursor-pointer" data-testid={`ug-card-${item.id}`} onClick={() => navigate(`/jobs/${jobId}/underground/edit/${item.id}`)} role="button">
+                <div key={item._dupKey || item.id} className="industrial-card p-4 border-l-4 border-l-green-500 hover:border-zinc-400 hover:bg-zinc-50 transition-colors cursor-pointer" data-testid={`ug-card-${item.id}`} onClick={() => navigate(`/jobs/${jobId}/underground/edit/${item.id}`)} role="button">
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
                       <DropdownMenu>
