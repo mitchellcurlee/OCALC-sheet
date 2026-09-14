@@ -469,3 +469,6 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 
 ## 2026-06 Deploy request (Draw Route overwrite numbering)
 - Deployment readiness scan: PASS, no blockers (env-only URLs, CORS *, compile ok). User to click Deploy in Emergent UI. Post-deploy: user validates Draw Route renumbering on production job; tap Home/Backfill Addresses once in production (separate DB).
+
+## 2026-06 Draw Route: Undo Last Tap
+- JobMap.jsx draw-route banner: "Undo Last Tap" button (data-testid draw-route-undo-btn) pops last item from currentRoute; disabled when route empty or saving. Preview line/badges/counter update instantly. Verified in browser (3 taps -> undo -> 1 span -> undo x2 -> 0, disabled). NOT yet deployed.
