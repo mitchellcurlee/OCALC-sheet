@@ -466,3 +466,6 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 ## 2026-06: Draw Route overwrites span numbers
 - End Route: span_order = [current keys NOT in the drawn route] + [drawn keys in tap order] -> redrawn spans are renumbered to their new positions, others compact. Live preview (JobMap): liveKeys/remainingRank — badges of spans being redrawn are hidden, other saved badges show compacted numbers (previewSpanNum), live amber badges = remainingCount + i + 1; banner "next: Span" matches.
 - Lib: in drawn mode only drawn spans take tapped direction (drawnDir); untouched spans keep list-order direction (seq override removed). Verified E2E (chain A-B-C-D + route D→C→E => 1 A-B, 2 B-C, 3 D→C, 4 C→E; job page D,C,E,A,B). NOT yet deployed.
+
+## 2026-06 Deploy request (Draw Route overwrite numbering)
+- Deployment readiness scan: PASS, no blockers (env-only URLs, CORS *, compile ok). User to click Deploy in Emergent UI. Post-deploy: user validates Draw Route renumbering on production job; tap Home/Backfill Addresses once in production (separate DB).
