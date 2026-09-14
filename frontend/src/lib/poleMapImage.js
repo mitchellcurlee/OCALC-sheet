@@ -252,7 +252,7 @@ export const computeConnectionPairs = (route, ug, connections = [], spanOrder = 
   const drawn = routeSeqArr ? routeSeqArr.length > 0 : !!drawnOnly;
   const drawnDir = {}; // spanKey -> id of the item tapped first
   if (drawn && routeSeqArr) {
-    allItems.forEach((it) => { const i = routeSeqArr.indexOf(it.id); it.seq = i >= 0 ? i : 100000 + it.seq; });
+    // Only drawn spans take the tapped direction; untouched spans keep their list-order direction
     for (let i = 0; i < routeSeqArr.length - 1; i++) {
       const k = spanKey(routeSeqArr[i], routeSeqArr[i + 1]);
       if (!drawnDir[k]) drawnDir[k] = routeSeqArr[i];

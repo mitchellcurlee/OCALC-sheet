@@ -1764,9 +1764,29 @@ const JobMap = () => {
     setDrawRouteMode(true);
     setCurrentRoute([]);
     try { mapRef.current?.closePopup(); } catch (e) { /* ignore */ }
-    toast.info(`Draw Route: tap items in order — spans continue from Span ${savedSpanCount + 1}`);
+    toast.info("Draw Route: tap items in order — drawn spans take the next numbers; any span you redraw is renumbered");
   };
-  const savedSpanCount = (job?.draw_routes || []).reduce((n, r) => n + Math.max(0, (r?.length || 0) - 1), 0);
+  // Live preview numbering: spans being (re)drawn move to the end of the sequence; every other span
+  // compacts to its new position. The drawn route is the source of truth — old numbers are overwritten.
+  const liveKeys = useMemo(() => {
+    const ks = new Set();
+    for (let i = 0; i < currentRoute.length - 1; i++) ks.add(spanKey(currentRoute[i].id, currentRoute[i + 1].id));
+    return ks;
+  }, [currentRoute]);
+  const remainingRank = useMemo(() => {
+    const r = {};
+    let n = 0;
+    orderedSegments.forEach((sg) => { const k = spanKey(sg.from.id, sg.to.id); if (!liveKeys.has(k)) r[k] = ++n; });
+    return r;
+  }, [orderedSegments, liveKeys]);
+  const remainingCount = Object.keys(remainingRank).length;
+  const savedSpanCount = remainingCount; // spans not touched by the route being drawn
+  // Badge number for a saved span: compacted during Draw Route preview, normal otherwise
+  const previewSpanNum = (i) => {
+    if (!drawRouteMode) return spanNums[i];
+    const k = spanKey(orderedSegments[i].from.id, orderedSegments[i].to.id);
+    return liveKeys.has(k) ? null : remainingRank[k];
+  };
   const drawRouteTap = (item) => {
     const last = currentRoute[currentRoute.length - 1];
     if (last && last.id === item.id) { toast.error(`${item.label} was just tapped — pick the next item`); return; }
@@ -1789,12 +1809,14 @@ const JobMap = () => {
         await axios.post(`/jobs/${jobId}/connections`, { job_id: jobId, from_item_id: a.id, from_item_type: a.type, to_item_id: b.id, to_item_type: b.type, connection_type: "custom" });
         have.add(k);
       }
+      // Spans touched by this route are pulled out of their old slots and renumbered in drawn order
       const frozen = orderedSegmentsRef.current.map((sg) => spanKey(sg.from.id, sg.to.id));
-      const spanOrder = [...frozen, ...newKeys.filter((k) => !frozen.includes(k))];
+      const uniqueNew = newKeys.filter((k, i) => newKeys.indexOf(k) === i);
+      const spanOrder = [...frozen.filter((k) => !uniqueNew.includes(k)), ...uniqueNew];
       const ids = currentRoute.map((it) => it.id);
       await axios.put(`/jobs/${jobId}`, { route_sequence: [...routeSeq, ...ids], draw_routes: [...(job?.draw_routes || []), ids], span_order: spanOrder });
       axios.post(`/jobs/${jobId}/sync-map-distances`).catch(() => {});
-      toast.success(ids.length > 1 ? `Route saved — Span ${savedSpanCount + 1} to Span ${savedSpanCount + ids.length - 1}; lists reordered to match` : "Route saved");
+      toast.success(ids.length > 1 ? `Route saved — Span ${remainingCount + 1} to Span ${remainingCount + uniqueNew.length}; lists renumbered to match` : "Route saved");
       setDrawRouteMode(false);
       setCurrentRoute([]);
       await fetchData();
@@ -2972,8 +2994,8 @@ const JobMap = () => {
                         onClick={() => handleSegmentClick(segmentKey)}
                       />
                       {/* Numbered badge — measurement is in the list below the map */}
-                      {!showStationNumbers && spanNums[i] != null && (
-                        <Marker position={badgePos} icon={numberBadgeIcon(spanNums[i], "#ea580c", [13, 13], swapPick === i)} zIndexOffset={swapPick === i ? 1600 : 800} eventHandlers={{ click: (e) => { L.DomEvent.stopPropagation(e); handleBadgeTap(i); } }} />
+                      {!showStationNumbers && previewSpanNum(i) != null && (
+                        <Marker position={badgePos} icon={numberBadgeIcon(previewSpanNum(i), "#ea580c", [13, 13], swapPick === i)} zIndexOffset={swapPick === i ? 1600 : 800} eventHandlers={{ click: (e) => { L.DomEvent.stopPropagation(e); handleBadgeTap(i); } }} />
                       )}
                       {/* Selection highlight */}
                       {isSelected && (
@@ -3020,8 +3042,8 @@ const JobMap = () => {
                       />
                     )}
                     {/* Numbered badge — click to see the distance */}
-                    {!showStationNumbers && spanNums[i] != null && (
-                      <Marker position={ugBadgePos} icon={numberBadgeIcon(spanNums[i], "#ea580c", [13, 13], swapPick === i)} zIndexOffset={swapPick === i ? 1600 : 800} eventHandlers={{ click: (e) => { L.DomEvent.stopPropagation(e); handleBadgeTap(i); } }} />
+                    {!showStationNumbers && previewSpanNum(i) != null && (
+                      <Marker position={ugBadgePos} icon={numberBadgeIcon(previewSpanNum(i), "#ea580c", [13, 13], swapPick === i)} zIndexOffset={swapPick === i ? 1600 : 800} eventHandlers={{ click: (e) => { L.DomEvent.stopPropagation(e); handleBadgeTap(i); } }} />
                     )}
                   </React.Fragment>
                 );
