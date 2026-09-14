@@ -449,3 +449,6 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 
 ## 2026-06: Address format "7123 MISTY MORNING"
 - nearest_address now returns number + street base name UPPERCASE with trailing street type/direction stripped (street_base_upper; suffix list in routes/addresses.py; "Walk"/"Trace" intentionally kept). Backfill ?force=true re-ran on preview (290 filled / 6 no match). NOTE: NAD service can be slow; force backfill through the proxy may 502 after 100s — the backend keeps running; call via localhost or wait. After deploy: tap Home (backfill) button once in production (force re-run needs ?force=true via API if old-format addresses exist there — they won't, production never had addresses). NOT yet deployed.
+
+## 2026-06: Address on job page list rows
+- JobDetail.jsx: item.address shown (only when present) on pole cards (pole-card-address-{id}, Home icon in meta row), UG cards (ug-card-address-{id}) and compact sortable reorder rows (sort-row-address-{id}). Verified in browser. NOT yet deployed.

@@ -25,6 +25,7 @@ import {
   Zap,
   Radio,
   MapPin,
+  Home,
   Calendar,
   Eye,
   Pencil,
@@ -135,6 +136,7 @@ const SortableItem = ({ item, index, getConditionColor }) => {
             <Badge className={`${getConditionColor(item.condition)} text-xs`}>
               {item.condition || "Not set"}
             </Badge>
+            {item.address && <span className="text-xs font-mono text-sky-800 truncate max-w-[220px]" data-testid={`sort-row-address-${item.id}`}>{item.address}</span>}
           </>
         ) : isRiser ? (
           <>
@@ -157,6 +159,7 @@ const SortableItem = ({ item, index, getConditionColor }) => {
             </div>
             <span className="font-bold text-zinc-900">{item.type}{item.label ? ` · ${item.label}` : ""}</span>
             <Badge className="bg-green-100 text-green-800 text-xs">UG</Badge>
+            {item.address && <span className="text-xs font-mono text-sky-800 truncate max-w-[220px]" data-testid={`sort-row-address-${item.id}`}>{item.address}</span>}
           </>
         )}
       </div>
@@ -1218,6 +1221,15 @@ const JobDetail = () => {
                               </span>
                             </>
                           )}
+                          {item.address && (
+                            <>
+                              <span>•</span>
+                              <span className="flex items-center gap-1 text-sky-800 font-mono" data-testid={`pole-card-address-${item.id}`}>
+                                <Home className="w-3 h-3" />
+                                {item.address}
+                              </span>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1290,6 +1302,7 @@ const JobDetail = () => {
                           ) : (
                             <span className="text-amber-600">No GPS</span>
                           )}
+                          {item.address && <span className="flex items-center gap-1 text-sky-800 font-mono" data-testid={`ug-card-address-${item.id}`}><Home className="w-3 h-3" />{item.address}</span>}
                           {item.owner && <span className="text-amber-700 font-semibold" data-testid={`ug-card-owner-${item.id}`}>Owner: {item.owner}</span>}
                           {item.material_type && <span className="text-zinc-600" data-testid={`ug-card-material-${item.id}`}>{item.material_type}</span>}
                           {item.last_modified_by && <span className="text-[11px] text-zinc-400" data-testid={`ug-card-audit-${item.id}`}>Edited by {item.last_modified_by} · {new Date(item.updated_at).toLocaleDateString()}</span>}
