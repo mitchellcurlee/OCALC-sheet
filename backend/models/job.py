@@ -28,6 +28,8 @@ class JobUpdate(BaseModel):
     folder_month: Optional[str] = None
     span_notes: Optional[List[Dict[str, Any]]] = None
     span_order: Optional[List[str]] = None  # user-swapped span numbering (direction-free pair keys)
+    route_sequence: Optional[List[str]] = None  # Draw Route: item ids in tapped order (overall job sequence)
+    draw_routes: Optional[List[List[str]]] = None  # Draw Route: each separately drawn route
     ase_data: Optional[Dict[str, Any]] = None  # ASE Site Walk Survey data
     permission_stamp: Optional[Dict[str, Any]] = None  # Permission Stamp form data
 
@@ -48,6 +50,8 @@ class Job(BaseModel):
     folder_month: Optional[str] = None
     span_notes: Optional[List[Dict[str, Any]]] = []
     span_order: Optional[List[str]] = []
+    route_sequence: Optional[List[str]] = []
+    draw_routes: Optional[List[List[str]]] = []
     shared_with: Optional[List[str]] = []
     last_modified_by: Optional[str] = None
     transferred_from: Optional[str] = None

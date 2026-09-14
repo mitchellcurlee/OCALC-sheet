@@ -452,3 +452,8 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 
 ## 2026-06: Address on job page list rows
 - JobDetail.jsx: item.address shown (only when present) on pole cards (pole-card-address-{id}, Home icon in meta row), UG cards (ug-card-address-{id}) and compact sortable reorder rows (sort-row-address-{id}). Verified in browser. NOT yet deployed.
+
+## 2026-06: Draw Route mode
+- Job model: route_sequence (item ids, overall tapped order) + draw_routes ([[ids],...]). JobMap header "Draw Route" (draw-route-btn, indigo; hidden in edit modes). Banner draw-route-banner: count/next #, Clear Route (draw-route-clear-btn, resets current only), Cancel, End Route (draw-route-end-btn). Tapping pulsing .conn-target markers adds item (duplicates/already-numbered rejected); live amber dashed Polyline + amber number badges; saved numbers indigo badges via numberBadgeIcon(n, color, [-6,34]); untapped items unnumbered.
+- End Route: first route on a job -> initializeConnections() materializes current auto lines as records; then POST custom connections for consecutive tapped pairs (skip existing), PUT job {route_sequence (append), draw_routes (append), span_order = frozen current + new keys}; refetch.
+- computeConnectionPairs 5th param `drawnOnly` accepts the route_sequence array: when non-empty -> only explicit connections (no auto chain) and item seq = index in route_sequence (drives direction A→C→B + span order). Passed from JobMap, lib download funcs, buildSpanMeasurementTexts (ASEForm). Jobs without route_sequence behave exactly as before. Verified E2E (route A→C→B, second route D = #4, clear, reload). NOT yet deployed.

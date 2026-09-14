@@ -7,7 +7,7 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import domtoimage from "dom-to-image-more";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ChevronDown, ChevronUp, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera, Hash, Link2, Move, Palette, Plus, Map as MapIcon, GripVertical, Upload, Trash2, RotateCcw, Home } from "lucide-react";
+import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ChevronDown, ChevronUp, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera, Hash, Link2, Move, Palette, Plus, Map as MapIcon, GripVertical, Upload, Trash2, RotateCcw, Home, Route as RouteIcon } from "lucide-react";
 import SpanReorderList from "@/components/SpanReorderList";
 import { computeRoute, fmtFeet, feetToStation, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, downloadMapPdfPages, ugWithGps, undergroundAbbr, computeUgConnectors, computeConnectionPairs, computeStationSegFeet, UNDERGROUND_TYPES, isAerialAttr, resolvePairAerial, spanKey, routeWaypoints } from "@/lib/poleMapImage";
 import { ExportDestinationDialog } from "@/components/ExportDestinationDialog";
@@ -601,6 +601,9 @@ const JobMap = () => {
   const [swapPick, setSwapPick] = useState(null); // segIndex of the span number tapped first (swap-by-tap)
   const orderedSegmentsRef = useRef([]); // latest orderedSegments for callbacks declared before it
   const [connectFrom, setConnectFrom] = useState(null); // "Connect to…" from a popup: {id,type,label}
+  const [drawRouteMode, setDrawRouteMode] = useState(false); // Draw Route: tap items in order
+  const [currentRoute, setCurrentRoute] = useState([]); // items tapped in the route being drawn
+  const [savingRoute, setSavingRoute] = useState(false);
   const [multiPlace, setMultiPlace] = useState(false); // quick-drop mode: every tap creates an attribute immediately
   const [multiPlacedCount, setMultiPlacedCount] = useState(0);
   const [multiSaving, setMultiSaving] = useState(false);
@@ -1614,7 +1617,7 @@ const JobMap = () => {
     allItems.sort((a, b) => a.sort_order - b.sort_order);
     
     // Pairs mirror the shared logic (custom connections, End Path breaks, standalone items)
-    const pairs = computeConnectionPairs(route, ug, connections, job?.span_order);
+    const pairs = computeConnectionPairs(route, ug, connections, job?.span_order, job?.route_sequence || []);
     
     const mpoeItem = allItems.find((item) => item.ugType === "MPOE");
     const mpoeOrder = mpoeItem ? mpoeItem.sort_order : null;
@@ -1659,7 +1662,7 @@ const JobMap = () => {
     });
     
     return segments;
-  }, [route, ug, connections, job?.span_order]);
+  }, [route, ug, connections, job?.span_order, job?.route_sequence]);
 
 
   orderedSegmentsRef.current = orderedSegments;
@@ -1755,6 +1758,57 @@ const JobMap = () => {
   };
   const swapSpan = (segIndex, dir) => swapSpanIndices(segIndex, segIndex + dir);
   // Tap a span number on the map, then tap another to swap them
+  // ---- Draw Route mode ----
+  const routeSeq = job?.route_sequence || [];
+  const routeNumberOf = useCallback((id) => {
+    const i = routeSeq.indexOf(id);
+    if (i >= 0) return i + 1;
+    const j = currentRoute.findIndex((it) => it.id === id);
+    return j >= 0 ? routeSeq.length + j + 1 : null;
+  }, [routeSeq, currentRoute]);
+  const startDrawRoute = () => {
+    setDrawRouteMode(true);
+    setCurrentRoute([]);
+    try { mapRef.current?.closePopup(); } catch (e) { /* ignore */ }
+    toast.info(`Draw Route: tap items in order — numbering continues from #${routeSeq.length + 1}`);
+  };
+  const drawRouteTap = (item) => {
+    if (routeSeq.includes(item.id) || currentRoute.some((it) => it.id === item.id)) { toast.error(`${item.label} is already numbered`); return; }
+    setCurrentRoute((prev) => [...prev, item]);
+  };
+  const endDrawRoute = async () => {
+    if (currentRoute.length === 0) { setDrawRouteMode(false); return; }
+    setSavingRoute(true);
+    try {
+      // First route on a job: keep today's automatic lines by making them real connection records
+      if (routeSeq.length === 0) await initializeConnections();
+      const fresh = (await axios.get(`/jobs/${jobId}/connections`)).data || [];
+      const have = new Set(fresh.filter((c) => c.connection_type !== "removed").map((c) => spanKey(c.from_item_id, c.to_item_id)));
+      const newKeys = [];
+      for (let i = 0; i < currentRoute.length - 1; i++) {
+        const a = currentRoute[i], b = currentRoute[i + 1];
+        const k = spanKey(a.id, b.id);
+        newKeys.push(k);
+        if (have.has(k)) continue;
+        await axios.post(`/jobs/${jobId}/connections`, { job_id: jobId, from_item_id: a.id, from_item_type: a.type, to_item_id: b.id, to_item_type: b.type, connection_type: "custom" });
+        have.add(k);
+      }
+      const frozen = orderedSegmentsRef.current.map((sg) => spanKey(sg.from.id, sg.to.id));
+      const spanOrder = [...frozen, ...newKeys.filter((k) => !frozen.includes(k))];
+      const ids = currentRoute.map((it) => it.id);
+      await axios.put(`/jobs/${jobId}`, { route_sequence: [...routeSeq, ...ids], draw_routes: [...(job?.draw_routes || []), ids], span_order: spanOrder });
+      axios.post(`/jobs/${jobId}/sync-map-distances`).catch(() => {});
+      toast.success(`Route saved — items #${routeSeq.length + 1} to #${routeSeq.length + ids.length}`);
+      setDrawRouteMode(false);
+      setCurrentRoute([]);
+      await fetchData();
+    } catch (e) {
+      toast.error("Failed to save route");
+    } finally {
+      setSavingRoute(false);
+    }
+  };
+
   // "Connect to…" from an item popup (no Edit Map needed)
   const startConnectFrom = (item) => {
     setConnectFrom(item);
@@ -2231,6 +2285,12 @@ const JobMap = () => {
               <MapIcon className="w-4 h-4 mr-2" />
               {mapLayer === "street" ? "Street" : "Aerial"}
             </Button>
+            {!drawRouteMode && !positionEditMode && !editMode && !connectionEditMode && (
+              <Button onClick={startDrawRoute} disabled={allConnectableItems.length < 2} variant="outline" className="bg-indigo-600 border-indigo-600 hover:bg-indigo-700 text-white" data-testid="draw-route-btn" title="Tap items in order to draw and number a route">
+                <RouteIcon className="w-4 h-4 mr-2" />
+                Draw Route
+              </Button>
+            )}
             <Button onClick={() => setShowAddresses((v) => !v)} aria-pressed={showAddresses} variant="outline" className={showAddresses ? "bg-sky-600 border-sky-600 hover:bg-sky-700 text-white" : "bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900"} data-testid="toggle-addresses-btn" title="Show home addresses (house numbers) per lot">
               <Home className="w-4 h-4 mr-2" />
               Addresses
@@ -2543,6 +2603,18 @@ const JobMap = () => {
         {showAddresses && addrStatus !== "ok" && (
           <div className="text-xs font-mono text-sky-800 bg-sky-50 border border-sky-200 rounded px-3 py-1.5" data-testid="addresses-status">
             {addrStatus === "zoom" ? "Addresses: zoom in closer to see house numbers per lot" : addrStatus === "loading" ? "Addresses: loading…" : addrStatus === "none" ? "Addresses: none on record for this area (USDOT National Address Database)" : "Addresses: service unavailable right now"}
+          </div>
+        )}
+        {drawRouteMode && (
+          <div className="flex flex-wrap items-center gap-3 bg-indigo-700 text-white rounded-lg px-4 py-2.5 text-sm font-medium shadow" data-testid="draw-route-banner">
+            <RouteIcon className="w-4 h-4 shrink-0" />
+            <span>Draw Route — tap items in order. <span className="font-mono font-bold" data-testid="draw-route-count">{currentRoute.length}</span> in this route · next # <span className="font-mono font-bold" data-testid="draw-route-next">{routeSeq.length + currentRoute.length + 1}</span></span>
+            {currentRoute.length > 0 && <span className="text-indigo-200 text-xs font-mono hidden md:inline">{currentRoute.map((it, i) => `${routeSeq.length + i + 1}:${it.label}`).join(" → ")}</span>}
+            <div className="flex items-center gap-2 ml-auto shrink-0">
+              <Button size="sm" variant="outline" className="h-7 text-xs bg-white text-zinc-900 hover:bg-zinc-100 border-0" onClick={() => setCurrentRoute([])} disabled={currentRoute.length === 0 || savingRoute} data-testid="draw-route-clear-btn">Clear Route</Button>
+              <Button size="sm" variant="outline" className="h-7 text-xs bg-white text-zinc-900 hover:bg-zinc-100 border-0" onClick={() => { setDrawRouteMode(false); setCurrentRoute([]); }} disabled={savingRoute} data-testid="draw-route-cancel-btn">Cancel</Button>
+              <Button size="sm" className="h-7 text-xs bg-emerald-500 hover:bg-emerald-600 text-white border-0 font-semibold" onClick={endDrawRoute} disabled={currentRoute.length === 0 || savingRoute} data-testid="draw-route-end-btn">{savingRoute ? "Saving…" : "End Route"}</Button>
+            </div>
           </div>
         )}
         {connectFrom && (
@@ -3115,6 +3187,34 @@ const JobMap = () => {
                 onAnnotationDelete={handleAnnotationDelete}
               />
               {/* Connection edit mode - tap-to-reconnect */}
+              {/* Draw Route: sequence numbers on numbered items (saved + live) */}
+              {(routeSeq.length > 0 || currentRoute.length > 0) && allConnectableItems.map((item) => {
+                const n = routeNumberOf(item.id);
+                if (!n) return null;
+                const live = !routeSeq.includes(item.id);
+                return <Marker key={`route-num-${item.id}`} position={item.pos} icon={numberBadgeIcon(n, live ? "#f59e0b" : "#4f46e5", [-6, 34])} interactive={false} zIndexOffset={900} />;
+              })}
+              {/* Draw Route: live line through the tapped items */}
+              {drawRouteMode && currentRoute.length > 1 && (
+                <Polyline positions={currentRoute.map((it) => it.pos)} pathOptions={{ color: "#f59e0b", weight: 4, dashArray: "8 6", opacity: 0.95 }} />
+              )}
+              {drawRouteMode && allConnectableItems.map((item) => {
+                const taken = routeSeq.includes(item.id) || currentRoute.some((it) => it.id === item.id);
+                return (
+                  <Marker
+                    key={`route-target-${item.id}`}
+                    position={item.pos}
+                    icon={L.divIcon({
+                      className: "conn-target",
+                      html: `<div style="width:34px;height:34px;border-radius:50%;background:${taken ? "rgba(99,102,241,0.15)" : "rgba(99,102,241,0.3)"};border:3px solid ${taken ? "#a5b4fc" : "#4f46e5"};cursor:pointer;${taken ? "" : "animation:connPulse 1.2s infinite;"}"></div>`,
+                      iconSize: [34, 34],
+                      iconAnchor: [17, 17]
+                    })}
+                    zIndexOffset={1400}
+                    eventHandlers={{ click: (e) => { L.DomEvent.stopPropagation(e); drawRouteTap(item); } }}
+                  />
+                );
+              })}
               {connectFrom && !connectionEditMode && allConnectableItems.filter((it) => it.id !== connectFrom.id).map((item) => (
                 <Marker
                   key={`connect-target-${item.id}`}

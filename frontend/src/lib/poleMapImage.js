@@ -238,7 +238,7 @@ export const routeWaypoints = (routes, fromId, toId) => {
   return rev && rev.length ? [...rev].reverse() : [];
 };
 
-export const computeConnectionPairs = (route, ug, connections = [], spanOrder = null) => {
+export const computeConnectionPairs = (route, ug, connections = [], spanOrder = null, drawnOnly = false) => {
   const allItems = [];
   route.forEach((p) => allItems.push({ id: p.id, type: "pole", pos: p.pos, sort_order: p.sort_order ?? Infinity, label: p.pole_number || "Pole", address: p.address || "", start_path: p.start_path === true, end_path: p.end_path === true, standalone: p.standalone === true, markerColor: p.marker_color || null }));
   ug.forEach((u) => allItems.push({ id: u.id, type: "underground", ugType: u.type, materialType: u.material_type || "", aerialOverride: ["aerial", "underground", "neutral"].includes(u.aerial_override) ? u.aerial_override : null, pos: u.pos, sort_order: u.sort_order ?? Infinity, label: u.label || u.type, address: u.address || "", start_path: u.start_path === true, end_path: u.end_path === true, standalone: u.standalone === true, hasPath: (u.path_measurements || []).length > 0, markerColor: u.marker_color || null }));
@@ -247,12 +247,25 @@ export const computeConnectionPairs = (route, ug, connections = [], spanOrder = 
   allItems.forEach((it, i) => { it._in = i; });
   allItems.sort((a, b) => (a.sort_order < b.sort_order ? -1 : a.sort_order > b.sort_order ? 1 : a._in - b._in));
   allItems.forEach((it, i) => { it.seq = i; delete it._in; });
+  // Draw Route jobs: pass the tapped item order (array) — it drives line direction and span numbering
+  const routeSeqArr = Array.isArray(drawnOnly) ? drawnOnly : null;
+  const drawn = routeSeqArr ? routeSeqArr.length > 0 : !!drawnOnly;
+  if (drawn && routeSeqArr) {
+    allItems.forEach((it) => { const i = routeSeqArr.indexOf(it.id); it.seq = i >= 0 ? i : 100000 + it.seq; });
+  }
   const byId = {};
   allItems.forEach((it) => { byId[it.id] = it; });
   // Standalone items are excluded from the path chain entirely
   const pathItems = allItems.filter((it) => !it.standalone);
   let pairs = [];
-  if (connections.length > 0) {
+  if (drawn) {
+    // Draw Route jobs: only lines the tech drew (or that were materialized) — no automatic chaining
+    connections.forEach((c) => {
+      if (c.connection_type === "removed") return;
+      const f = byId[c.from_item_id], t = byId[c.to_item_id];
+      if (f && t) pairs.push({ from: f, to: t, custom: c.connection_type === "custom" });
+    });
+  } else if (connections.length > 0) {
     // "removed" tombstones: user deleted this auto line — draw nothing, but keep
     // the endpoints counted as referenced so the chain fallback doesn't resurrect it
     pairs = connections
@@ -381,11 +394,11 @@ const totalPathFeet = (underground) =>
 
 // Build the exact text lines shown in the interactive map's Span Measurements list.
 // Used by the ASE checklist "path of approach" so both always match.
-export const buildSpanMeasurementTexts = ({ poles, underground = [], connections = [], includeStations = false, stationsOnly = false, routes = {}, spanNotes = [], spanOrder = null }) => {
+export const buildSpanMeasurementTexts = ({ poles, underground = [], connections = [], includeStations = false, stationsOnly = false, routes = {}, spanNotes = [], spanOrder = null, drawnOnly = false }) => {
   if (stationsOnly) includeStations = true;
   const { route } = computeRoute(poles);
   const ug = ugWithGps(underground);
-  const pairs = computeConnectionPairs(route, ug, connections, spanOrder);
+  const pairs = computeConnectionPairs(route, ug, connections, spanOrder, drawnOnly);
   const baseName = (it) => it.type === "pole"
     ? (/^\d/.test(String(it.label || "")) ? `P${it.label}` : (it.label || "Pole"))
     : `${it.ugType || "Attribute"}${it.label && it.label !== it.ugType ? ` ${it.label}` : ""}`;
@@ -515,7 +528,7 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
   const { route, totalRiserFeet } = computeRoute(poles);
   const ug = ugWithGps(underground);
   // Mirror the live Job Map lines: custom connections + End Path breaks
-  const pairSegs = computeConnectionPairs(route, ug, connections, job?.span_order).map((pr) => {
+  const pairSegs = computeConnectionPairs(route, ug, connections, job?.span_order, job?.route_sequence || []).map((pr) => {
     const path = segPath(pr, routes);
     return {
       from: pr.from,
@@ -1664,7 +1677,7 @@ export const downloadSegmentedMapPages = async ({
   const { route, totalRiserFeet } = computeRoute(poles);
   const ug = ugWithGps(underground);
   // Mirror the live Job Map lines: custom connections + End Path breaks + standalone items
-  const pairSegs = computeConnectionPairs(route, ug, connections, job?.span_order).map((pr) => {
+  const pairSegs = computeConnectionPairs(route, ug, connections, job?.span_order, job?.route_sequence || []).map((pr) => {
     const path = segPath(pr, routes);
     return {
       from: pr.from,
@@ -1767,7 +1780,7 @@ export const downloadMapPdfPages = async ({
 }) => {
   const { route, totalRiserFeet } = computeRoute(poles);
   const ug = ugWithGps(underground);
-  const pairSegs = computeConnectionPairs(route, ug, connections, job?.span_order).map((pr) => {
+  const pairSegs = computeConnectionPairs(route, ug, connections, job?.span_order, job?.route_sequence || []).map((pr) => {
     const path = segPath(pr, routes);
     return {
       from: pr.from, to: pr.to, path,
