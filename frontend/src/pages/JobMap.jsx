@@ -599,6 +599,8 @@ const JobMap = () => {
   }, []);
   const [placingType, setPlacingType] = useState(null); // "__pole__" | "__pole_terminal__" | underground type name
   const [swapPick, setSwapPick] = useState(null); // segIndex of the span number tapped first (swap-by-tap)
+  const [editingSpan, setEditingSpan] = useState(null); // { segIndex, value } — manual span number edit in the list
+  const spanEditLock = useRef(false);
   const orderedSegmentsRef = useRef([]); // latest orderedSegments for callbacks declared before it
   const [connectFrom, setConnectFrom] = useState(null); // "Connect to…" from a popup: {id,type,label}
   const [drawRouteMode, setDrawRouteMode] = useState(false); // Draw Route: tap items in order
@@ -1757,6 +1759,40 @@ const JobMap = () => {
     }
   };
   const swapSpan = (segIndex, dir) => swapSpanIndices(segIndex, segIndex + dir);
+  // Manual span number: move the span to that number, every span after it shifts to stay in sequence
+  const setSpanNumber = async (segIndex, rawValue) => {
+    if (spanEditLock.current) return; // Enter + blur both fire — handle once
+    spanEditLock.current = true;
+    setEditingSpan(null);
+    const spanEntries = measurementEntries.filter((e) => e.kind === "span");
+    const cur = spanEntries.find((e) => e.segIndex === segIndex);
+    const n = Math.round(Number(rawValue));
+    if (!cur || !Number.isFinite(n) || n < 1) { toast.error("Enter a span number of 1 or more"); return; }
+    const target = Math.min(n, measurementEntries.length);
+    if (target === cur.num) return;
+    const others = spanEntries.filter((e) => e.segIndex !== segIndex);
+    const insertIdx = others.filter((e) => e.num < target || (target > cur.num && e.num === target)).length;
+    const segs = orderedSegments.slice();
+    const [moved] = segs.splice(segIndex, 1);
+    segs.splice(insertIdx, 0, moved);
+    const keys = segs.map((sg) => spanKey(sg.from.id, sg.to.id));
+    const payload = { span_order: keys };
+    if (routeMode) {
+      // Keep the job page order in step: items listed in the order their spans now run
+      const seq = [];
+      segs.forEach((sg) => { if (seq[seq.length - 1] !== sg.from.id) seq.push(sg.from.id); seq.push(sg.to.id); });
+      payload.route_sequence = seq;
+    }
+    setJob((prev) => ({ ...(prev || {}), ...payload }));
+    try {
+      const res = await axios.put(`/jobs/${jobId}`, payload);
+      setJob((prev) => ({ ...(prev || {}), ...(res.data || {}), ...payload }));
+      toast.success(`Span ${cur.num} is now Span ${target} — following spans renumbered`);
+    } catch (e) {
+      toast.error("Failed to renumber span");
+      fetchData();
+    }
+  };
   // Tap a span number on the map, then tap another to swap them
   // ---- Draw Route mode ----
   const routeSeq = job?.route_sequence || [];
@@ -3574,7 +3610,22 @@ const JobMap = () => {
               {measurementEntries.map((e) => (
                 e.kind === "span" ? (
                   <li key={`entry-${e.num}`} data-testid={`span-measurement-${e.num}`} className="flex items-center gap-1">
-                    <span><span className="font-bold text-orange-700">{e.num}.</span> {segItemName(e.seg.from)}{showStationNumbers && (stationNumbers[`${e.seg.from.id}:out`] || stationNumbers[e.seg.from.id]) ? <span className="text-indigo-700"> {stationNumbers[`${e.seg.from.id}:out`] || stationNumbers[e.seg.from.id]}</span> : null} to {segItemName(e.seg.to)}{showStationNumbers && stationNumbers[e.seg.to.id] ? <span className="text-indigo-700"> {stationNumbers[e.seg.to.id]}</span> : null} = {fmtFeet(segListDistance(e.seg))}
+                    <span>{editingSpan?.segIndex === e.segIndex ? (
+                      <input
+                        type="number"
+                        min={1}
+                        max={measurementEntries.length}
+                        autoFocus
+                        value={editingSpan.value}
+                        onChange={(ev) => setEditingSpan({ segIndex: e.segIndex, value: ev.target.value })}
+                        onBlur={() => setSpanNumber(e.segIndex, editingSpan.value)}
+                        onKeyDown={(ev) => { if (ev.key === "Enter") { ev.preventDefault(); setSpanNumber(e.segIndex, editingSpan.value); } else if (ev.key === "Escape") setEditingSpan(null); }}
+                        className="w-14 h-6 px-1 mr-1 rounded border border-orange-400 bg-orange-50 font-bold text-orange-800 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                        data-testid={`span-num-input-${e.num}`}
+                      />
+                    ) : (
+                      <button type="button" onClick={() => { spanEditLock.current = false; setEditingSpan({ segIndex: e.segIndex, value: String(e.num) }); }} className="font-bold text-orange-700 hover:bg-orange-100 rounded px-0.5 -mx-0.5 border-b border-dashed border-orange-400" title="Tap to type a new span number" data-testid={`span-num-${e.num}`}>{e.num}.</button>
+                    )} {segItemName(e.seg.from)}{showStationNumbers && (stationNumbers[`${e.seg.from.id}:out`] || stationNumbers[e.seg.from.id]) ? <span className="text-indigo-700"> {stationNumbers[`${e.seg.from.id}:out`] || stationNumbers[e.seg.from.id]}</span> : null} to {segItemName(e.seg.to)}{showStationNumbers && stationNumbers[e.seg.to.id] ? <span className="text-indigo-700"> {stationNumbers[e.seg.to.id]}</span> : null} = {fmtFeet(segListDistance(e.seg))}
                     {!e.seg.isAerial && <span className="text-emerald-700 text-xs ml-1">(UG)</span>}</span>
                     {orderedSegments.length > 1 && (
                       <span className="inline-flex items-center gap-0.5 ml-1">
