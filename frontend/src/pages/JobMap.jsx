@@ -7,7 +7,7 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import domtoimage from "dom-to-image-more";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ChevronDown, ChevronUp, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera, Hash, Link2, Move, Palette, Plus, Map as MapIcon, GripVertical, Upload, Trash2, RotateCcw, Home, Route as RouteIcon } from "lucide-react";
+import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ChevronDown, ChevronUp, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera, Hash, Link2, Move, Palette, Plus, Map as MapIcon, GripVertical, Upload, Trash2, RotateCcw, Home, Route as RouteIcon, ListOrdered } from "lucide-react";
 import SpanReorderList from "@/components/SpanReorderList";
 import { computeRoute, fmtFeet, feetToStation, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, downloadMapPdfPages, ugWithGps, undergroundAbbr, computeUgConnectors, computeConnectionPairs, computeStationSegFeet, UNDERGROUND_TYPES, isAerialAttr, resolvePairAerial, spanKey, routeWaypoints, routeArg, placeSpanNotes } from "@/lib/poleMapImage";
 import { ExportDestinationDialog } from "@/components/ExportDestinationDialog";
@@ -2249,56 +2249,64 @@ const JobMap = () => {
     }
   };
 
-  // Screenshot the visible map frame using dom-to-image-more - captures entire app frame
-  const captureMapScreenshot = useCallback(async () => {
+  // Screenshot: "map" = header measurements + map frame (no lists); "both" = that image plus a second image of the span list
+  const captureMapScreenshot = useCallback(async (mode = "map") => {
     setScreenshotting(true);
     try {
-      // Find the entire page container to capture everything within the app frame
       const pageContainer = document.querySelector('[data-testid="job-map-page"]');
-      if (!pageContainer) {
-        toast.error("Page container not found");
-        setScreenshotting(false);
+      const mapFrame = document.querySelector('[data-testid="map-frame"]');
+      if (!pageContainer || !mapFrame) {
+        toast.error("Map not ready to capture");
         return;
       }
-
-      toast.info("Capturing screenshot...");
-      
-      // Use dom-to-image-more which handles SVG/Canvas overlays better
-      const dataUrl = await domtoimage.toPng(pageContainer, {
+      toast.info(mode === "both" ? "Capturing map and span list..." : "Capturing map...");
+      const addr = (job?.location || job?.ase_data?.address || "").trim();
+      const baseName = `Screenshot${addr ? ` (${addr})` : ""} ${showStationNumbers ? "Station numbers" : "Linear"}`;
+      const save = (dataUrl, name) => {
+        const link = document.createElement("a");
+        link.href = dataUrl;
+        link.download = `${name}.png`.replace(/[^\w \-.,()+]/g, "_");
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      };
+      const isList = (node) => node.getAttribute && ["span-measurements-list", "station-numbers-list"].includes(node.getAttribute("data-testid"));
+      // Map image ends at the bottom edge of the map frame — everything below (lists) is left out
+      const mapHeight = Math.ceil(mapFrame.getBoundingClientRect().bottom - pageContainer.getBoundingClientRect().top + 16);
+      const mapUrl = await domtoimage.toPng(pageContainer, {
         quality: 1,
         bgcolor: "#ffffff",
         width: pageContainer.scrollWidth,
-        height: pageContainer.scrollHeight,
-        style: {
-          // Ensure proper rendering
-          transform: "none",
-        },
-        filter: (node) => {
-          // Exclude some elements that might cause issues
-          if (node.classList && node.classList.contains("leaflet-control-zoom")) {
-            return false; // Exclude zoom controls from screenshot
-          }
-          return true;
-        },
+        height: mapHeight,
+        style: { transform: "none" },
+        filter: (node) => !(node.classList && node.classList.contains("leaflet-control-zoom")) && !isList(node),
       });
-
-      // Download the image
-      const link = document.createElement("a");
-      link.href = dataUrl;
-      const addr = (job?.location || job?.ase_data?.address || "").trim();
-      link.download = `Screenshot${addr ? ` (${addr})` : ""} ${showStationNumbers ? "Station numbers" : "Linear"}.png`.replace(/[^\w \-.,()]/g, "_");
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-
-      toast.success("Screenshot saved!");
+      save(mapUrl, baseName);
+      if (mode === "both") {
+        const listEl = document.querySelector('[data-testid="span-measurements-list"]');
+        if (!listEl) {
+          toast.warning("No span measurements list to capture");
+        } else {
+          const listUrl = await domtoimage.toPng(listEl, {
+            quality: 1,
+            bgcolor: "#ffffff",
+            width: listEl.scrollWidth,
+            height: listEl.scrollHeight,
+            style: { transform: "none" },
+            filter: (node) => !(node.tagName === "BUTTON"),
+          });
+          await new Promise((r) => setTimeout(r, 400));
+          save(listUrl, `${baseName} Span List`);
+        }
+      }
+      toast.success(mode === "both" ? "Map and span list images saved!" : "Map screenshot saved!");
     } catch (e) {
       console.error("Screenshot error:", e);
       toast.error("Failed to capture screenshot. Try zooming out slightly.");
     } finally {
       setScreenshotting(false);
     }
-  }, [job]);
+  }, [job, showStationNumbers]);
 
   // Auto-download when opened with ?download=1 (e.g. from the Excel "Map Image" link)
   useEffect(() => {
@@ -2365,17 +2373,31 @@ const JobMap = () => {
               <Hash className="w-4 h-4 mr-2" />
               Sta #{"'"}s
             </Button>
-            <Button
-              onClick={captureMapScreenshot}
-              disabled={screenshotting || allPoints.length === 0}
-              variant="outline"
-              className="bg-purple-50 border-purple-300 hover:bg-purple-100 text-purple-700"
-              data-testid="screenshot-btn"
-              title="Capture visible map area"
-            >
-              {screenshotting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Camera className="w-4 h-4 mr-2" />}
-              Screenshot
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  disabled={screenshotting || allPoints.length === 0}
+                  variant="outline"
+                  className="bg-purple-50 border-purple-300 hover:bg-purple-100 text-purple-700"
+                  data-testid="screenshot-btn"
+                  title="Save the map as an image"
+                >
+                  {screenshotting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Camera className="w-4 h-4 mr-2" />}
+                  Screenshot
+                  <ChevronDown className="w-3.5 h-3.5 ml-1.5 opacity-70" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="bg-white border-zinc-200 w-56">
+                <DropdownMenuItem onClick={() => captureMapScreenshot("map")} className="cursor-pointer" data-testid="screenshot-map-only">
+                  <Camera className="w-4 h-4 mr-2 text-purple-700" />
+                  <div><div className="font-medium">Map Only</div><div className="text-[11px] text-zinc-500">Header totals + map, one image</div></div>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => captureMapScreenshot("both")} className="cursor-pointer" data-testid="screenshot-map-span-list">
+                  <ListOrdered className="w-4 h-4 mr-2 text-purple-700" />
+                  <div><div className="font-medium">Map + Span List</div><div className="text-[11px] text-zinc-500">Two images: map, then span list</div></div>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button 
               onClick={() => setPendingMapExport("map_image")}
               disabled={downloading || allPoints.length === 0} 
@@ -2736,7 +2758,7 @@ const JobMap = () => {
             No poles or underground items with GPS coordinates yet. Add coordinates to see them on the map.
           </div>
         ) : (
-          <div className="h-[70vh] border border-zinc-300 overflow-hidden rounded relative">
+          <div className="h-[70vh] border border-zinc-300 overflow-hidden rounded relative" data-testid="map-frame">
             {/* Universal edit mode indicator */}
             {(editMode || positionEditMode || connectionEditMode) && !selectedSegment && (
               <div className="absolute top-2 left-2 z-[1000] bg-blue-600 text-white px-3 py-1.5 rounded text-sm font-medium shadow-lg max-w-md">
@@ -3495,7 +3517,7 @@ const JobMap = () => {
         {measurementEntries.length > 0 && (
           <div className="industrial-card p-4 sm:p-5" data-testid="span-measurements-list">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="font-heading text-base sm:text-lg font-bold text-zinc-900 flex items-center gap-2">
+              <h2 className="font-heading text-base sm:text-lg font-bold text-zinc-900 flex items-center gap-2 whitespace-nowrap">
                 <div className="w-1 h-5 bg-orange-500"></div>
                 SPAN MEASUREMENTS
               </h2>
