@@ -486,3 +486,7 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 
 ## 2026-06 Screenshot menu
 - JobMap Screenshot button is now a dropdown: "Map Only" (screenshot-map-only) -> one PNG of header (with totals) + map frame, height cut at map-frame bottom, lists filtered out; "Map + Span List" (screenshot-map-span-list) -> same map PNG + second PNG of span-measurements-list (buttons filtered). Files: "Screenshot (addr) Linear.png" and "... Linear Span List.png" (Station numbers variant when Sta toggle on). map-frame testid added. Verified: downloads 1920x729 map (page 1048 tall) + 1230x293 list. NOT yet deployed.
+
+## 2026-06 Span list pagination (25 lines/page)
+- lib LIST_PAGE_LINES=25. generateMeasurementListImages (plural) returns one canvas PNG per page, header "ROUTE MEASUREMENTS — Page N of M", totals only on last page; rows carry keys and use placeSpanNotes. ZIP export: 00_measurement_list_page_NN_of_MM.png per page; PDF export: one page per list page, index + totalPages adjusted.
+- JobMap "Map + Span List": clones span-measurements-list per page (offscreen), removes buttons + out-of-range li, appends "Page N of M" badge to h2, total only on last page -> "Screenshot (addr) Linear Span List Page N of M.png". Verified with 29-line job: 25 + 4 lines, 3 downloads; ZIP had 2 list pages. NOT yet deployed.

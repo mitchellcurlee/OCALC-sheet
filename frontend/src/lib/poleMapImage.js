@@ -396,6 +396,7 @@ const insertPathRows = (displayRows, underground) => {
       const ft = u.path_measurements.reduce((s, m) => s + (parseFloat(m.feet) || 0), 0);
       const row = {
         type: "path",
+        key: `path:${u.id}`,
         so: u.sort_order ?? Infinity,
         text: `${undergroundAbbr(u.type)}${u.label && u.label !== u.type ? ` ${u.label}` : ""}: ${u.path_measurements.map((m) => `${m.direction} ${m.feet}ft`).join(", ")}`,
         ft,
@@ -1592,8 +1593,9 @@ const generateSegmentPage = async ({
   return canvas.toDataURL("image/png");
 };
 
-// Generate a separate measurement list image showing all span measurements
-const generateMeasurementListImage = ({ pairSegs, route, totalRiserFeet, job, underground = [] }) => {
+// Generate the measurement list as page images of at most LIST_PAGE_LINES rows each ("Page N of M" in the header)
+export const LIST_PAGE_LINES = 25;
+const generateMeasurementListImages = ({ pairSegs, route, totalRiserFeet, job, underground = [] }) => {
   const s = 2;
   const panelW = 500 * s;
   const rowH = 22 * s;
@@ -1609,7 +1611,7 @@ const generateMeasurementListImage = ({ pairSegs, route, totalRiserFeet, job, un
   const displayRows = [];
   const riserDone = new Set();
   pairSegs.forEach((sg) => {
-    if (!sg.manual) displayRows.push({ type: "segment", so: sg.from.sort_order ?? Infinity, text: `${itemName(sg.from)} → ${itemName(sg.to)}${sg.aerial ? "" : " (UG)"}`, ft: sg.ft });
+    if (!sg.manual) displayRows.push({ type: "segment", key: `span:${spanKey(sg.from.id, sg.to.id)}`, so: sg.from.sort_order ?? Infinity, toSo: sg.to.sort_order ?? Infinity, text: `${itemName(sg.from)} → ${itemName(sg.to)}${sg.aerial ? "" : " (UG)"}`, ft: sg.ft });
     const poleB = sg.to.type === "pole" ? route.find((p) => p.id === sg.to.id) : null;
     if (poleB?.risers && poleB?.riser_height && !riserDone.has(poleB.id)) {
       const riserCount = parseInt(poleB.risers) || 0;
@@ -1618,6 +1620,7 @@ const generateMeasurementListImage = ({ pairSegs, route, totalRiserFeet, job, un
         riserDone.add(poleB.id);
         displayRows.push({ 
           type: "riser", 
+          key: `riser:${poleB.id}`,
           so: sg.to.sort_order ?? Infinity,
           text: `  ↳ ${poleB.pole_number} Riser${riserCount > 1 ? ` x${riserCount}` : ""}`, 
           ft: riserCount * riserHeight 
@@ -1626,18 +1629,19 @@ const generateMeasurementListImage = ({ pairSegs, route, totalRiserFeet, job, un
     }
   });
   insertPathRows(displayRows, underground);
-  (job?.span_notes || []).slice().sort((a, b) => (a.so ?? Infinity) - (b.so ?? Infinity)).forEach((n) => {
-    const row = { type: "note", so: n.so ?? Infinity, text: `Note: ${n.text}`, ft: null };
-    let at = -1;
-    displayRows.forEach((r, i) => { if (((r.toSo ?? r.so) ?? Infinity) <= row.so) at = i; });
-    displayRows.splice(at + 1, 0, row);
-  });
+  placeSpanNotes(displayRows, job?.span_notes, (n) => ({ type: "note", key: `note:${n.id}`, so: n.so ?? Infinity, text: `Note: ${n.text}`, ft: null }));
   
   const pairFt = pairSegs.reduce((acc, x) => acc + (x.manual ? 0 : x.ft), 0);
   const pathFt = totalPathFeet(underground);
   const grandTotalFeet = pairFt + totalRiserFeet + pathFt;
-  
-  const requiredHeight = headerH + (displayRows.length * rowH) + bottomSection + 30 * s;
+  const pageCount = Math.max(1, Math.ceil(displayRows.length / LIST_PAGE_LINES));
+  const images = [];
+
+  for (let pg = 0; pg < pageCount; pg++) {
+    const rows = displayRows.slice(pg * LIST_PAGE_LINES, (pg + 1) * LIST_PAGE_LINES);
+    const isLast = pg === pageCount - 1;
+    const footer = isLast ? bottomSection : 0;
+    const requiredHeight = headerH + (rows.length * rowH) + footer + 30 * s;
   
   const canvas = document.createElement("canvas");
   canvas.width = panelW;
@@ -1655,7 +1659,7 @@ const generateMeasurementListImage = ({ pairSegs, route, totalRiserFeet, job, un
   ctx.font = `700 ${16 * s}px ui-monospace, monospace`;
   ctx.textAlign = "left";
   ctx.textBaseline = "middle";
-  ctx.fillText("ROUTE MEASUREMENTS", 16 * s, headerH / 2);
+  ctx.fillText(`ROUTE MEASUREMENTS — Page ${pg + 1} of ${pageCount}`, 16 * s, headerH / 2);
   
   // Job name
   ctx.font = `${11 * s}px ui-monospace, monospace`;
@@ -1672,7 +1676,7 @@ const generateMeasurementListImage = ({ pairSegs, route, totalRiserFeet, job, un
     while (s2.length > 1 && ctx.measureText(s2 + "…").width > maxW) s2 = s2.slice(0, -1);
     return s2 + "…";
   };
-  for (const row of displayRows) {
+  for (const row of rows) {
     ctx.fillStyle = row.type === "riser" ? "#f97316" : row.type === "path" ? "#059669" : row.type === "note" ? "#b45309" : "#18181b";
     const valText = row.type === "note" ? "" : row.type === "riser" ? `+${fmtFeet(row.ft)}` : fmtFeet(row.ft);
     const maxTextW = panelW - 32 * s - ctx.measureText(valText).width - 6 * s;
@@ -1683,6 +1687,7 @@ const generateMeasurementListImage = ({ pairSegs, route, totalRiserFeet, job, un
     yy += rowH;
   }
   
+  if (isLast) {
   // Riser total row if applicable
   if (hasRisers) {
     const riserY = requiredHeight - bottomSection;
@@ -1706,8 +1711,11 @@ const generateMeasurementListImage = ({ pairSegs, route, totalRiserFeet, job, un
   ctx.fillText("GRAND TOTAL", 16 * s, totalY + 22 * s);
   ctx.textAlign = "right";
   ctx.fillText(fmtFeet(grandTotalFeet), panelW - 16 * s, totalY + 22 * s);
+  }
   
-  return canvas.toDataURL("image/png");
+    images.push(canvas.toDataURL("image/png"));
+  }
+  return images;
 };
 
 // Download segmented map pages as a ZIP file with separate measurement list
@@ -1785,13 +1793,14 @@ export const downloadSegmentedMapPages = async ({
       }
     }
     
-    // Generate separate measurement list image
+    // Generate separate measurement list images (max 25 lines per page)
     toast.info("Generating measurement list...");
-    const measurementDataUrl = generateMeasurementListImage({
+    const listImages = generateMeasurementListImages({
       pairSegs, route, totalRiserFeet, job, underground
     });
-    const measurementBase64 = measurementDataUrl.split(",")[1];
-    zip.file("00_measurement_list.png", measurementBase64, { base64: true });
+    listImages.forEach((url, i) => {
+      zip.file(`00_measurement_list_page_${String(i + 1).padStart(2, "0")}_of_${String(listImages.length).padStart(2, "0")}.png`, url.split(",")[1], { base64: true });
+    });
     
     // Generate and download ZIP
     const zipBlob = await zip.generateAsync({ type: "blob" });
@@ -1889,7 +1898,8 @@ export const downloadMapPdfPages = async ({
     }).sort((a, b) => a.row - b.row || a.col - b.col);
     const pageOf = {};
     tiles.forEach((t, i) => { pageOf[`${t.row},${t.col}`] = i + 2; }); // page 1 = cover
-    const totalPages = tiles.length + 2; // cover + tiles + measurement list
+    const listImages = generateMeasurementListImages({ pairSegs, route, totalRiserFeet, job, underground });
+    const totalPages = tiles.length + 1 + listImages.length; // cover + tiles + measurement list pages
 
     const { jsPDF } = await import("jspdf");
     const pdf = new jsPDF({ orientation: "landscape", unit: "pt", format: [842, 700] });
@@ -1970,7 +1980,7 @@ export const downloadMapPdfPages = async ({
         }).length;
         idx.push([`${i2 + 2}`, `Map grid — row ${t.row + 1}, col ${t.col + 1} (${cnt} items)`]);
       });
-      idx.push([`${totalPages}`, "Span measurements list"]);
+      listImages.forEach((_, li) => idx.push([`${tiles.length + 2 + li}`, `Span measurements list — page ${li + 1} of ${listImages.length}`]));
       idx.forEach(([n, d2]) => {
         if (py > H - 30 * s2) return;
         c.fillStyle = "#71717a"; c.fillText(`PAGE ${n}`, 30 * s2, py);
@@ -2034,16 +2044,17 @@ export const downloadMapPdfPages = async ({
       pdf.text(`${job?.name || job?.site_id || "Job"} — 1000ft Map Pages — Page ${i + 2} of ${totalPages}`, 421, 690, { align: "center" });
     }
 
-    // Final page: full span measurement list (all spans visible)
-    const measUrl = generateMeasurementListImage({ pairSegs, route, totalRiserFeet, job, underground });
-    if (measUrl) {
+    // Final pages: span measurement list, max 25 lines per page
+    for (let li = 0; li < listImages.length; li++) {
+      const measUrl = listImages[li];
       if (!first) pdf.addPage([842, 700], "landscape");
+      first = false;
       const mi = new Image();
       await new Promise((res) => { mi.onload = res; mi.src = measUrl; });
       const scale = Math.min(802 / mi.width, 660 / mi.height);
       pdf.addImage(measUrl, "PNG", (842 - mi.width * scale) / 2, 20, mi.width * scale, mi.height * scale);
       pdf.setFontSize(9);
-      pdf.text(`Span Measurements — Page ${totalPages} of ${totalPages}`, 421, 690, { align: "center" });
+      pdf.text(`Span Measurements (page ${li + 1} of ${listImages.length}) — Page ${tiles.length + 2 + li} of ${totalPages}`, 421, 690, { align: "center" });
     }
 
     if (returnBlob) return pdf.output("blob");

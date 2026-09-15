@@ -9,7 +9,7 @@ import domtoimage from "dom-to-image-more";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ChevronDown, ChevronUp, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera, Hash, Link2, Move, Palette, Plus, Map as MapIcon, GripVertical, Upload, Trash2, RotateCcw, Home, Route as RouteIcon, ListOrdered } from "lucide-react";
 import SpanReorderList from "@/components/SpanReorderList";
-import { computeRoute, fmtFeet, feetToStation, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, downloadMapPdfPages, ugWithGps, undergroundAbbr, computeUgConnectors, computeConnectionPairs, computeStationSegFeet, UNDERGROUND_TYPES, isAerialAttr, resolvePairAerial, spanKey, routeWaypoints, routeArg, placeSpanNotes } from "@/lib/poleMapImage";
+import { computeRoute, fmtFeet, feetToStation, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, downloadMapPdfPages, ugWithGps, undergroundAbbr, computeUgConnectors, computeConnectionPairs, computeStationSegFeet, UNDERGROUND_TYPES, isAerialAttr, resolvePairAerial, spanKey, routeWaypoints, routeArg, placeSpanNotes, LIST_PAGE_LINES } from "@/lib/poleMapImage";
 import { ExportDestinationDialog } from "@/components/ExportDestinationDialog";
 import { CLOUD_EXPORT_LABELS, uploadExportToCloud } from "@/lib/cloudExports";
 import {
@@ -2287,16 +2287,41 @@ const JobMap = () => {
         if (!listEl) {
           toast.warning("No span measurements list to capture");
         } else {
-          const listUrl = await domtoimage.toPng(listEl, {
-            quality: 1,
-            bgcolor: "#ffffff",
-            width: listEl.scrollWidth,
-            height: listEl.scrollHeight,
-            style: { transform: "none" },
-            filter: (node) => !(node.tagName === "BUTTON"),
-          });
-          await new Promise((r) => setTimeout(r, 400));
-          save(listUrl, `${baseName} Span List`);
+          // Split the list into pages of at most LIST_PAGE_LINES rows; each page is its own image
+          const lineCount = listEl.querySelectorAll("ol > li").length;
+          const pageCount = Math.max(1, Math.ceil(lineCount / LIST_PAGE_LINES));
+          for (let pg = 0; pg < pageCount; pg++) {
+            const clone = listEl.cloneNode(true);
+            clone.removeAttribute("data-testid");
+            clone.style.position = "fixed";
+            clone.style.left = "-20000px";
+            clone.style.top = "0";
+            clone.style.width = `${listEl.offsetWidth}px`;
+            clone.querySelectorAll("button").forEach((b) => b.remove());
+            clone.querySelectorAll("ol > li").forEach((li, i) => { if (i < pg * LIST_PAGE_LINES || i >= (pg + 1) * LIST_PAGE_LINES) li.remove(); });
+            const h2 = clone.querySelector("h2");
+            if (h2) {
+              const tag = document.createElement("span");
+              tag.textContent = `Page ${pg + 1} of ${pageCount}`;
+              tag.className = "ml-3 px-2 py-0.5 rounded bg-zinc-900 text-white text-xs font-mono font-semibold";
+              h2.appendChild(tag);
+            }
+            if (pg < pageCount - 1) clone.querySelector('[data-testid="span-measurements-total"]')?.remove();
+            document.body.appendChild(clone);
+            try {
+              const listUrl = await domtoimage.toPng(clone, {
+                quality: 1,
+                bgcolor: "#ffffff",
+                width: clone.scrollWidth,
+                height: clone.scrollHeight,
+                style: { transform: "none", position: "static", left: "0" },
+              });
+              await new Promise((r) => setTimeout(r, 400));
+              save(listUrl, `${baseName} Span List Page ${pg + 1} of ${pageCount}`);
+            } finally {
+              clone.remove();
+            }
+          }
         }
       }
       toast.success(mode === "both" ? "Map and span list images saved!" : "Map screenshot saved!");
