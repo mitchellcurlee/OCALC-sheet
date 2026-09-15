@@ -9,7 +9,7 @@ import domtoimage from "dom-to-image-more";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ChevronDown, ChevronUp, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera, Hash, Link2, Move, Palette, Plus, Map as MapIcon, GripVertical, Upload, Trash2, RotateCcw, Home, Route as RouteIcon } from "lucide-react";
 import SpanReorderList from "@/components/SpanReorderList";
-import { computeRoute, fmtFeet, feetToStation, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, downloadMapPdfPages, ugWithGps, undergroundAbbr, computeUgConnectors, computeConnectionPairs, computeStationSegFeet, UNDERGROUND_TYPES, isAerialAttr, resolvePairAerial, spanKey, routeWaypoints, routeArg } from "@/lib/poleMapImage";
+import { computeRoute, fmtFeet, feetToStation, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, downloadMapPdfPages, ugWithGps, undergroundAbbr, computeUgConnectors, computeConnectionPairs, computeStationSegFeet, UNDERGROUND_TYPES, isAerialAttr, resolvePairAerial, spanKey, routeWaypoints, routeArg, placeSpanNotes } from "@/lib/poleMapImage";
 import { ExportDestinationDialog } from "@/components/ExportDestinationDialog";
 import { CLOUD_EXPORT_LABELS, uploadExportToCloud } from "@/lib/cloudExports";
 import {
@@ -802,7 +802,7 @@ const JobMap = () => {
 
   const saveNoteOrders = async (noteSos) => {
     if (!Object.keys(noteSos).length) return;
-    const notes = (job?.span_notes || []).map((n) => (noteSos[n.id] != null ? { ...n, so: noteSos[n.id] } : n));
+    const notes = (job?.span_notes || []).map((n) => (noteSos[n.id] != null ? { id: n.id, text: n.text, so: noteSos[n.id] } : n));
     await axios.put(`/jobs/${jobId}`, { span_notes: notes });
   };
 
@@ -1896,8 +1896,7 @@ const JobMap = () => {
   const moveRiserEntry = async (idx, dir) => {
     const list = measurementEntries;
     const entry = list[idx];
-    if (!entry || (entry.kind !== "riser" && entry.kind !== "note")) return;
-    if (entry.kind === "riser" && !entry.itemId) return;
+    if (!entry || entry.kind !== "riser" || !entry.itemId) return;
     const target = idx + dir;
     if (target < 0 || target >= list.length) return;
     try {
@@ -1932,6 +1931,27 @@ const JobMap = () => {
       await fetchData();
     } catch (e) {
       toast.error("Failed to move entry");
+    }
+  };
+
+  // Notes move exactly one row per tap and are pinned below the row they land under (null = top of list)
+  const moveNoteEntry = async (idx, dir) => {
+    const list = measurementEntries;
+    const entry = list[idx];
+    if (!entry || entry.kind !== "note") return;
+    const target = idx + dir;
+    if (target < 0 || target >= list.length) return;
+    const others = list.filter((_, i) => i !== idx);
+    const above = others[target - 1];
+    const after = above ? above.key : null;
+    const soHint = above ? ((above.toSo ?? above.so) ?? Infinity) : -1;
+    const notes = (job?.span_notes || []).map((n) => (n.id === entry.noteId ? { id: n.id, text: n.text, after, so: Number.isFinite(soHint) ? soHint + 0.5 : n.so } : n));
+    setJob((prev) => ({ ...(prev || {}), span_notes: notes }));
+    try {
+      await axios.put(`/jobs/${jobId}`, { span_notes: notes });
+    } catch (e) {
+      toast.error("Failed to move note");
+      fetchData();
     }
   };
 
@@ -1980,7 +2000,7 @@ const JobMap = () => {
       if (r && !added.has(item.id)) {
         added.add(item.id);
         const p = route.find((x) => x.id === item.id);
-        const entry = { kind: "riser", so: p?.riser_sort_order ?? item.sort_order ?? Infinity, pos, itemId: item.id, text: `${poleName(item.label)} New Riser${r.c > 1 ? ` ×${r.c}` : ""} = ${fmtFeet(r.c * r.h)}` };
+        const entry = { kind: "riser", key: `riser:${item.id}`, so: p?.riser_sort_order ?? item.sort_order ?? Infinity, pos, itemId: item.id, text: `${poleName(item.label)} New Riser${r.c > 1 ? ` ×${r.c}` : ""} = ${fmtFeet(r.c * r.h)}` };
         if (p?.riser_sort_order != null && orderKeysUsable) riserLater.push(entry);
         else entries.push(entry);
       }
@@ -1994,12 +2014,12 @@ const JobMap = () => {
       const u = underground.find((x) => x.id === item.id);
       if (!u || !(u.path_measurements || []).length) return;
       pathAdded.add(item.id);
-      entries.push({ kind: "path", so: item.sort_order ?? Infinity, pos, itemId: item.id, text: pathText(u) });
+      entries.push({ kind: "path", key: `path:${item.id}`, so: item.sort_order ?? Infinity, pos, itemId: item.id, text: pathText(u) });
     };
     orderedSegments.forEach((seg, i) => {
       pushRiser(seg.from, seg.fromPos);
       pushPath(seg.from, seg.fromPos);
-      if (!seg.manualMeasured) entries.push({ kind: "span", so: seg.from.sort_order ?? Infinity, toSo: seg.to.sort_order ?? Infinity, segIndex: i, seg });
+      if (!seg.manualMeasured) entries.push({ kind: "span", key: `span:${spanKey(seg.from.id, seg.to.id)}`, so: seg.from.sort_order ?? Infinity, toSo: seg.to.sort_order ?? Infinity, segIndex: i, seg });
     });
     if (orderedSegments.length > 0) {
       const last = orderedSegments[orderedSegments.length - 1];
@@ -2016,7 +2036,7 @@ const JobMap = () => {
         if (!r) return;
         added.add(p.id);
         const so = p.riser_sort_order ?? p.sort_order ?? Infinity;
-        const entry = { kind: "riser", so, pos: p.pos, itemId: p.id, text: `${poleName(p.pole_number)} New Riser${r.c > 1 ? ` ×${r.c}` : ""} = ${fmtFeet(r.c * r.h)}` };
+        const entry = { kind: "riser", key: `riser:${p.id}`, so, pos: p.pos, itemId: p.id, text: `${poleName(p.pole_number)} New Riser${r.c > 1 ? ` ×${r.c}` : ""} = ${fmtFeet(r.c * r.h)}` };
         let at = -1;
         entries.forEach((e, i) => { if (((e.toSo ?? e.so) ?? Infinity) <= so) at = i; });
         entries.splice(at + 1, 0, entry);
@@ -2029,7 +2049,7 @@ const JobMap = () => {
       .forEach((u) => {
         pathAdded.add(u.id);
         const so = u.sort_order ?? Infinity;
-        const entry = { kind: "path", so, pos: null, itemId: u.id, text: pathText(u) };
+        const entry = { kind: "path", key: `path:${u.id}`, so, pos: null, itemId: u.id, text: pathText(u) };
         const idx = entries.findIndex((e) => (e.so ?? Infinity) > so);
         if (idx === -1) entries.push(entry);
         else entries.splice(idx, 0, entry);
@@ -2051,18 +2071,13 @@ const JobMap = () => {
       ...ug.filter((u) => u.standalone !== true).map((u) => ({ id: u.id, so: u.sort_order ?? Infinity, pos: u.pos, name: `${undergroundAbbr(u.type)}${u.label ? `-${u.label}` : ""}` })),
     ];
     allMapItems.filter((it) => !mentioned.has(it.id) && !added.has(it.id)).forEach((it) => {
-      const entry = { kind: "item", so: it.so, toSo: it.so, pos: it.pos, itemId: it.id, text: `${it.name} — no span` };
+      const entry = { kind: "item", key: `item:${it.id}`, so: it.so, toSo: it.so, pos: it.pos, itemId: it.id, text: `${it.name} — no span` };
       let at = -1;
       entries.forEach((e, i) => { if (((e.toSo ?? e.so) ?? Infinity) <= entry.so) at = i; });
       entries.splice(at + 1, 0, entry);
     });
-    // Span notes: user-added note lines spliced by saved position
-    (job?.span_notes || []).slice().sort((a, b) => (a.so ?? Infinity) - (b.so ?? Infinity)).forEach((n) => {
-      const entry = { kind: "note", so: n.so ?? Infinity, noteId: n.id, text: `Note: ${n.text}` };
-      let at = -1;
-      entries.forEach((e, i) => { if (((e.toSo ?? e.so) ?? Infinity) <= entry.so) at = i; });
-      entries.splice(at + 1, 0, entry);
-    });
+    // Span notes: legacy notes by saved sort key, moved notes pinned directly below their anchor row
+    placeSpanNotes(entries, job?.span_notes, (n) => ({ kind: "note", key: `note:${n.id}`, so: n.so ?? Infinity, noteId: n.id, text: `Note: ${n.text}` }));
     entries.forEach((e, idx) => {
       e.num = idx + 1;
       if (e.kind === "span") nums[e.segIndex] = e.num;
@@ -3529,10 +3544,10 @@ const JobMap = () => {
                   <li key={`entry-${e.num}`} data-testid={`note-measurement-${e.num}`} className="flex items-center gap-1">
                     <span><span className="font-bold text-amber-700">{e.num}.</span> <span className="text-amber-800">{e.text}</span></span>
                     <span className="inline-flex items-center gap-0.5 ml-1">
-                      <button type="button" onClick={() => moveRiserEntry(e.num - 1, -1)} className="p-0.5 rounded border border-zinc-300 bg-white text-zinc-600 hover:bg-zinc-100" title="Move up" data-testid={`note-move-up-${e.num}`}>
+                      <button type="button" onClick={() => moveNoteEntry(e.num - 1, -1)} disabled={e.num === 1} className="p-0.5 rounded border border-zinc-300 bg-white text-zinc-600 hover:bg-zinc-100 disabled:opacity-30" title="Move up one row" data-testid={`note-move-up-${e.num}`}>
                         <ChevronUp className="w-3.5 h-3.5" />
                       </button>
-                      <button type="button" onClick={() => moveRiserEntry(e.num - 1, 1)} className="p-0.5 rounded border border-zinc-300 bg-white text-zinc-600 hover:bg-zinc-100" title="Move down" data-testid={`note-move-down-${e.num}`}>
+                      <button type="button" onClick={() => moveNoteEntry(e.num - 1, 1)} disabled={e.num === measurementEntries.length} className="p-0.5 rounded border border-zinc-300 bg-white text-zinc-600 hover:bg-zinc-100 disabled:opacity-30" title="Move down one row" data-testid={`note-move-down-${e.num}`}>
                         <ChevronDown className="w-3.5 h-3.5" />
                       </button>
                       <button type="button" onClick={() => deleteSpanNote(e.noteId)} className="p-0.5 rounded border border-red-200 bg-white text-red-500 hover:bg-red-50" title="Delete note" data-testid={`note-delete-${e.num}`}>

@@ -237,7 +237,7 @@ const JobDetail = () => {
 
   const saveNoteOrders = async (noteSos) => {
     if (!Object.keys(noteSos).length) return;
-    const notes = (job?.span_notes || []).map((n) => (noteSos[n.id] != null ? { ...n, so: noteSos[n.id] } : n));
+    const notes = (job?.span_notes || []).map((n) => (noteSos[n.id] != null ? { id: n.id, text: n.text, so: noteSos[n.id] } : n));
     await axios.put(`/jobs/${jobId}`, { span_notes: notes });
   };
 

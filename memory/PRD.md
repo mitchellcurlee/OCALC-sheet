@@ -480,3 +480,6 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 
 ## 2026-06 JobDetail address line (re-request)
 - Pole and UG cards: address moved from the tiny meta row to its own dedicated line under the title (Home icon, sky-800 mono, semibold, truncate). Same testids pole-card-address-{id} / ug-card-address-{id}; rendered via ternary -> null when empty. Compact reorder rows unchanged (sort-row-address-{id}). Verified desktop + 390px. Pre-existing: header button row overflows at 390px (not touched). NOT yet deployed.
+
+## 2026-06 Span note arrows fix
+- Notes now persist an anchor: span_notes[i].after = key of the row directly above (span:<pairKey> | riser:<id> | path:<id> | item:<id> | note:<id>), null = top. Legacy notes (no `after`) still use numeric `so`. Shared lib placeSpanNotes(rows, notes, makeRow) used by JobMap measurementEntries and buildSpanMeasurementTexts (exports match). All rows carry `key`. JobMap moveNoteEntry: one row per tap, optimistic setJob, PUT span_notes. Drag Reorder save strips `after` (JobMap + JobDetail). Verified E2E: 8->1 one step each, persists, down 1 step each.

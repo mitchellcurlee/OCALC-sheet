@@ -468,6 +468,7 @@ export const buildSpanMeasurementTexts = ({ poles, underground = [], connections
     if (c > 0 && h > 0) {
       riserDone.add(it.id);
       const row = {
+        key: `riser:${it.id}`,
         so: p?.riser_sort_order ?? it.sort_order ?? Infinity,
         text: stationsOnly
           ? `${itemName(it)} New Riser${c > 1 ? ` x${c}` : ""} ${riserStations[it.id] || stations[it.id] || ""}`.trim()
@@ -482,13 +483,14 @@ export const buildSpanMeasurementTexts = ({ poles, underground = [], connections
     const u = underground.find((x) => x.id === it.id);
     if (!u || !(u.path_measurements || []).length) return;
     pathDone.add(it.id);
-    rows.push({ so: it.sort_order ?? Infinity, text: pathTextOf(u) });
+    rows.push({ key: `path:${it.id}`, so: it.sort_order ?? Infinity, text: pathTextOf(u) });
   };
   pairs.forEach((pr) => {
     pushRiser(pr.from);
     pushPath(pr.from);
     if (!pairIsManual(pr)) {
       rows.push({
+        key: `span:${spanKey(pr.from.id, pr.to.id)}`,
         so: pr.from.sort_order ?? Infinity,
         toSo: pr.to.sort_order ?? Infinity,
         text: stationsOnly
@@ -508,7 +510,7 @@ export const buildSpanMeasurementTexts = ({ poles, underground = [], connections
     .forEach((u) => {
       pathDone.add(u.id);
       const so = u.sort_order ?? Infinity;
-      const row = { so, text: pathTextOf(u) };
+      const row = { key: `path:${u.id}`, so, text: pathTextOf(u) };
       const idx = rows.findIndex((r) => (r.so ?? Infinity) > so);
       if (idx === -1) rows.push(row);
       else rows.splice(idx, 0, row);
@@ -522,21 +524,43 @@ export const buildSpanMeasurementTexts = ({ poles, underground = [], connections
   const mentionedIds = new Set();
   pairs.forEach((pr) => { mentionedIds.add(pr.from.id); mentionedIds.add(pr.to.id); });
   const extraItems = [
-    ...poles.filter((p) => p.standalone !== true && !mentionedIds.has(p.id) && !riserDone.has(p.id)).map((p) => ({ so: p.sort_order ?? Infinity, text: `${/^\d/.test(String(p.pole_number || "")) ? `P${p.pole_number}` : (p.pole_number || "Pole")} — no span` })),
-    ...(underground || []).filter((u) => u.standalone !== true && !mentionedIds.has(u.id) && !pathDone.has(u.id)).map((u) => ({ so: u.sort_order ?? Infinity, text: `${undergroundAbbr(u.type)}${u.label ? `-${u.label}` : ""} — no span` })),
+    ...poles.filter((p) => p.standalone !== true && !mentionedIds.has(p.id) && !riserDone.has(p.id)).map((p) => ({ key: `item:${p.id}`, so: p.sort_order ?? Infinity, text: `${/^\d/.test(String(p.pole_number || "")) ? `P${p.pole_number}` : (p.pole_number || "Pole")} — no span` })),
+    ...(underground || []).filter((u) => u.standalone !== true && !mentionedIds.has(u.id) && !pathDone.has(u.id)).map((u) => ({ key: `item:${u.id}`, so: u.sort_order ?? Infinity, text: `${undergroundAbbr(u.type)}${u.label ? `-${u.label}` : ""} — no span` })),
   ];
   extraItems.sort((a, b) => a.so - b.so).forEach((row) => {
     let at = -1;
     rows.forEach((r, i) => { if (((r.toSo ?? r.so) ?? Infinity) <= row.so) at = i; });
     rows.splice(at + 1, 0, row);
   });
-  (spanNotes || []).slice().sort((a, b) => (a.so ?? Infinity) - (b.so ?? Infinity)).forEach((n) => {
-    const row = { so: n.so ?? Infinity, text: `Note: ${n.text}` };
-    let at = -1;
-    rows.forEach((r, i) => { if (((r.toSo ?? r.so) ?? Infinity) <= row.so) at = i; });
-    rows.splice(at + 1, 0, row);
-  });
+  placeSpanNotes(rows, spanNotes, (n) => ({ key: `note:${n.id}`, so: n.so ?? Infinity, text: `Note: ${n.text}` }));
   return rows.map((r) => r.text);
+};
+
+// Span notes: legacy notes carry a numeric `so`; notes moved with the arrows carry `after`
+// (key of the row they sit directly below, null = top of list) so they stay exactly where placed
+export const placeSpanNotes = (rows, spanNotes, makeRow) => {
+  const notes = (spanNotes || []).slice();
+  notes.filter((n) => n.after === undefined).sort((a, b) => (a.so ?? Infinity) - (b.so ?? Infinity)).forEach((n) => {
+    const so = n.so ?? Infinity;
+    let at = -1;
+    rows.forEach((r, i) => { if (((r.toSo ?? r.so) ?? Infinity) <= so) at = i; });
+    rows.splice(at + 1, 0, makeRow(n));
+  });
+  let pending = notes.filter((n) => n.after !== undefined);
+  let top = 0;
+  let progress = true;
+  while (pending.length && progress) {
+    progress = false;
+    pending = pending.filter((n) => {
+      if (n.after === null) { rows.splice(top++, 0, makeRow(n)); progress = true; return false; }
+      const at = rows.findIndex((r) => r.key === n.after);
+      if (at === -1) return true;
+      rows.splice(at + 1, 0, makeRow(n));
+      progress = true;
+      return false;
+    });
+  }
+  pending.forEach((n) => rows.push(makeRow(n)));
 };
 
 // Fetch a single satellite image (via backend proxy) and draw the annotated
