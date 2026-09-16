@@ -598,7 +598,8 @@ const JobMap = () => {
     window.addEventListener('pointerup', up);
   }, []);
   const [placingType, setPlacingType] = useState(null); // "__pole__" | "__pole_terminal__" | underground type name
-  const [swapPick, setSwapPick] = useState(null); // segIndex of the span number tapped first (swap-by-tap)
+  const [swapPick, setSwapPick] = useState(null); // segIndex of the span number tapped on the map (edit / swap-by-tap)
+  const [badgeValue, setBadgeValue] = useState(""); // typed number for the tapped map badge
   const [editingSpan, setEditingSpan] = useState(null); // { segIndex, value } — manual span number edit in the list
   const spanEditLock = useRef(false);
   const orderedSegmentsRef = useRef([]); // latest orderedSegments for callbacks declared before it
@@ -1745,25 +1746,35 @@ const JobMap = () => {
   // riser_sort_order between its new neighbors' keys — exact, persistent placement.
   // First normalizes all sort_orders to sequential indices (many jobs have null
   // sort_orders which previously made placement keys Infinity and the math collapse).
-  // Swap a span's number with the neighbouring span (persists as job.span_order)
-  const swapSpanIndices = async (a, b) => {
-    if (a === b || a < 0 || b < 0 || a >= orderedSegments.length || b >= orderedSegments.length) return;
-    const keys = orderedSegments.map((sg) => spanKey(sg.from.id, sg.to.id));
-    [keys[a], keys[b]] = [keys[b], keys[a]];
+  // Persist a new span order (map badges, list and — on Draw Route jobs — the job page order follow)
+  const persistSpanSegs = async (segs, successMsg) => {
+    const keys = segs.map((sg) => spanKey(sg.from.id, sg.to.id));
+    const payload = { span_order: keys };
+    if (routeMode) {
+      const seq = [];
+      segs.forEach((sg) => { if (seq[seq.length - 1] !== sg.from.id) seq.push(sg.from.id); seq.push(sg.to.id); });
+      payload.route_sequence = seq;
+    }
+    setJob((prev) => ({ ...(prev || {}), ...payload }));
     try {
-      const res = await axios.put(`/jobs/${jobId}`, { span_order: keys });
-      setJob((prev) => ({ ...(prev || {}), ...(res.data || {}), span_order: keys }));
-      toast.success(`Span ${spanNums[a] ?? a + 1} ↔ ${spanNums[b] ?? b + 1} swapped`);
+      const res = await axios.put(`/jobs/${jobId}`, payload);
+      setJob((prev) => ({ ...(prev || {}), ...(res.data || {}), ...payload }));
+      if (successMsg) toast.success(successMsg);
     } catch (e) {
-      toast.error("Failed to swap spans");
+      toast.error("Failed to renumber spans");
+      fetchData();
     }
   };
+  // Swap two spans' numbers
+  const swapSpanIndices = async (a, b) => {
+    if (a === b || a < 0 || b < 0 || a >= orderedSegments.length || b >= orderedSegments.length) return;
+    const segs = orderedSegments.slice();
+    [segs[a], segs[b]] = [segs[b], segs[a]];
+    await persistSpanSegs(segs, `Span ${spanNums[a] ?? a + 1} ↔ ${spanNums[b] ?? b + 1} swapped`);
+  };
   const swapSpan = (segIndex, dir) => swapSpanIndices(segIndex, segIndex + dir);
-  // Manual span number: move the span to that number, every span after it shifts to stay in sequence
-  const setSpanNumber = async (segIndex, rawValue) => {
-    if (spanEditLock.current) return; // Enter + blur both fire — handle once
-    spanEditLock.current = true;
-    setEditingSpan(null);
+  // Move a span to a number; every span after it shifts to stay in sequence
+  const moveSpanToNumber = async (segIndex, rawValue) => {
     const spanEntries = measurementEntries.filter((e) => e.kind === "span");
     const cur = spanEntries.find((e) => e.segIndex === segIndex);
     const n = Math.round(Number(rawValue));
@@ -1775,23 +1786,28 @@ const JobMap = () => {
     const segs = orderedSegments.slice();
     const [moved] = segs.splice(segIndex, 1);
     segs.splice(insertIdx, 0, moved);
-    const keys = segs.map((sg) => spanKey(sg.from.id, sg.to.id));
-    const payload = { span_order: keys };
-    if (routeMode) {
-      // Keep the job page order in step: items listed in the order their spans now run
-      const seq = [];
-      segs.forEach((sg) => { if (seq[seq.length - 1] !== sg.from.id) seq.push(sg.from.id); seq.push(sg.to.id); });
-      payload.route_sequence = seq;
-    }
-    setJob((prev) => ({ ...(prev || {}), ...payload }));
-    try {
-      const res = await axios.put(`/jobs/${jobId}`, payload);
-      setJob((prev) => ({ ...(prev || {}), ...(res.data || {}), ...payload }));
-      toast.success(`Span ${cur.num} is now Span ${target} — following spans renumbered`);
-    } catch (e) {
-      toast.error("Failed to renumber span");
-      fetchData();
-    }
+    await persistSpanSegs(segs, `Span ${cur.num} is now Span ${target} — following spans renumbered`);
+  };
+  // List edit: typed number shifts the sequence
+  const setSpanNumber = async (segIndex, rawValue) => {
+    if (spanEditLock.current) return; // Enter + blur both fire — handle once
+    spanEditLock.current = true;
+    setEditingSpan(null);
+    await moveSpanToNumber(segIndex, rawValue);
+  };
+  // Map badge edit: a number already held by another span swaps the two; a free number shifts the sequence
+  const applyBadgeNumber = async (rawValue) => {
+    const segIndex = swapPick;
+    setSwapPick(null);
+    if (segIndex === null) return;
+    const n = Math.round(Number(rawValue));
+    const spanEntries = measurementEntries.filter((e) => e.kind === "span");
+    const cur = spanEntries.find((e) => e.segIndex === segIndex);
+    if (!cur || !Number.isFinite(n) || n < 1) { toast.error("Enter a span number of 1 or more"); return; }
+    if (n === cur.num) return;
+    const other = spanEntries.find((e) => e.num === n);
+    if (other) await swapSpanIndices(segIndex, other.segIndex);
+    else await moveSpanToNumber(segIndex, n);
   };
   // Tap a span number on the map, then tap another to swap them
   // ---- Draw Route mode ----
@@ -1922,7 +1938,7 @@ const JobMap = () => {
     }
   };
   const handleBadgeTap = (segIndex) => {
-    if (swapPick === null) { setSwapPick(segIndex); return; }
+    if (swapPick === null) { setSwapPick(segIndex); setBadgeValue(String(spanNums[segIndex] ?? segIndex + 1)); return; }
     if (swapPick === segIndex) { setSwapPick(null); return; }
     const a = swapPick;
     setSwapPick(null);
@@ -2778,7 +2794,23 @@ const JobMap = () => {
           <div className="flex flex-wrap items-center gap-3 bg-yellow-400 text-zinc-900 rounded-lg px-4 py-2.5 text-sm font-medium shadow" data-testid="span-swap-banner">
             <span className="font-mono font-bold">Span {spanNums[swapPick] ?? swapPick + 1}:</span>
             <span className="font-mono">{segItemName(orderedSegments[swapPick].from)} to {segItemName(orderedSegments[swapPick].to)} = {fmtFeet(segListDistance(orderedSegments[swapPick]))}</span>
-            <span className="text-zinc-800">— tap another span number on the map to swap their numbers.</span>
+            <form className="flex items-center gap-2" onSubmit={(ev) => { ev.preventDefault(); applyBadgeNumber(badgeValue); }}>
+              <label htmlFor="badge-span-number" className="text-zinc-800">New number:</label>
+              <input
+                id="badge-span-number"
+                type="number"
+                min={1}
+                max={measurementEntries.length}
+                autoFocus
+                value={badgeValue}
+                onChange={(ev) => setBadgeValue(ev.target.value)}
+                onKeyDown={(ev) => { if (ev.key === "Escape") setSwapPick(null); }}
+                className="w-16 h-7 px-2 rounded border border-zinc-500 bg-white font-mono font-bold text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-700"
+                data-testid="badge-span-number-input"
+              />
+              <Button type="submit" size="sm" className="h-7 text-xs bg-zinc-900 hover:bg-zinc-800 text-white border-0" data-testid="badge-span-number-save-btn">Save</Button>
+            </form>
+            <span className="text-zinc-800 text-xs">A number another span already has swaps the two; a free number shifts the rest. Or tap another badge to swap.</span>
             <Button size="sm" variant="outline" className="h-7 text-xs bg-white border-zinc-400 ml-auto shrink-0" onClick={() => setSwapPick(null)} data-testid="span-swap-cancel-btn">Cancel</Button>
           </div>
         )}

@@ -493,3 +493,6 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 
 ## 2026-06 Manual span number edit
 - JobMap span list: span number is a button (span-num-{n}); tap -> number input (span-num-input-{n}); Enter/blur saves, Esc cancels (spanEditLock ref dedupes Enter+blur). setSpanNumber moves the span to that number (clamped to list length), others shift; persists span_order and, in route mode, route_sequence rebuilt from span order (from/to flattened) so job page order follows. Optimistic setJob. Verified: 3->1, 1->5, 2->99 clamps, reload persists, job page order follows. Legacy (non-route-mode) jobs: numbers/map/list update, job page order unchanged (sort_order-based).
+
+## 2026-06 Map badge span number edit
+- Tapping a span badge on the map opens the yellow banner with a "New number" input (badge-span-number-input / -save-btn, prefilled). applyBadgeNumber: number held by another span -> swapSpanIndices (swap); free number (riser/note row or beyond) -> moveSpanToNumber (shift). Tapping a second badge still swaps. persistSpanSegs shared by swap/move/list edit: span_order + (route mode) route_sequence rebuilt so job page order follows; optimistic setJob. Verified: 1->5 swap, 6->3 (riser row number) shift, reload persists, job page order follows.
