@@ -497,3 +497,4 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 ## 2026-06 Map badge span number edit
 - Tapping a span badge on the map opens the yellow banner with a "New number" input (badge-span-number-input / -save-btn, prefilled). applyBadgeNumber: number held by another span -> swapSpanIndices (swap); free number (riser/note row or beyond) -> moveSpanToNumber (shift). Tapping a second badge still swaps. persistSpanSegs shared by swap/move/list edit: span_order + (route mode) route_sequence rebuilt so job page order follows; optimistic setJob. Verified: 1->5 swap, 6->3 (riser row number) shift, reload persists, job page order follows.
 - Span list page filename now "Span List Page N of M (address).png" (map image unchanged: "Screenshot (address) Linear.png").
+- ASE FBT "Mounting Wall" dropdown (ASE_OPTIONS.mountingWall) now includes POLE. NTE mounting wall unchanged.
