@@ -2369,7 +2369,7 @@ const JobMap = () => {
                 style: { transform: "none", position: "static", left: "0" },
               });
               await new Promise((r) => setTimeout(r, 400));
-              save(listUrl, `${baseName} Span List Page ${pg + 1} of ${pageCount}`);
+              save(listUrl, `Span List Page ${pg + 1} of ${pageCount}${addr ? ` (${addr})` : ""}`);
             } finally {
               clone.remove();
             }
