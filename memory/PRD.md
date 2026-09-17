@@ -498,3 +498,7 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 - Tapping a span badge on the map opens the yellow banner with a "New number" input (badge-span-number-input / -save-btn, prefilled). applyBadgeNumber: number held by another span -> swapSpanIndices (swap); free number (riser/note row or beyond) -> moveSpanToNumber (shift). Tapping a second badge still swaps. persistSpanSegs shared by swap/move/list edit: span_order + (route mode) route_sequence rebuilt so job page order follows; optimistic setJob. Verified: 1->5 swap, 6->3 (riser row number) shift, reload persists, job page order follows.
 - Span list page filename now "Span List Page N of M (address).png" (map image unchanged: "Screenshot (address) Linear.png").
 - ASE FBT "Mounting Wall" dropdown (ASE_OPTIONS.mountingWall) now includes POLE. NTE mounting wall unchanged.
+
+## 2026-06 Export naming/folders
+- JobMap "Map + Span List" now downloads ONE ZIP (JSZip) = folder "Overview Linear" or "Overview Station #'s" containing "Screenshot (addr) Linear|Station numbers.png" + list pages named "LINEAR span list Page N of M (addr).png" / "STA. spans Page N of M (addr).png". Map Only still a single PNG.
+- Photos: files.py upload puts markup_*.jpg (PhotoMarkupEditor saves) under uploads/markup/. jobs.py markup_photo_paths() (files collection original_filename ^markup_) + is_markup_photo(url); build_job_photo_entries, selected-photos zip and pole photos zip place those under "Mark Ups/". Verified: job ZIP -> Poles/Pole_7/... and Mark Ups/Pole_7_OCALC_Left.jpeg.

@@ -31,7 +31,9 @@ async def upload_photo(file: UploadFile = File(...)):
     data = await file.read()
     if not data:
         raise HTTPException(status_code=400, detail="Empty file")
-    path = f"{APP_NAME}/uploads/{uuid.uuid4()}.{ext}"
+    # Photos saved from the markup editor are kept under uploads/markup so exports can group them
+    sub = "markup/" if (file.filename or "").lower().startswith("markup_") else ""
+    path = f"{APP_NAME}/uploads/{sub}{uuid.uuid4()}.{ext}"
     try:
         result = await asyncio.to_thread(put_object, path, data, content_type)
     except Exception as e:

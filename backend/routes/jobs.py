@@ -1110,8 +1110,23 @@ async def _stream_zip(entries, concurrency=8, prefetch=12):
     yield cd + eocd
 
 
-def build_job_photo_entries(job, poles, underground_items):
-    """Collect (zip_path, photo_url) entries + zip filename for a job's photo ZIP."""
+async def markup_photo_paths() -> set:
+    """Storage paths of photos saved from the markup editor (uploaded as markup_*.jpg)."""
+    docs = await _db.files.find({"original_filename": {"$regex": "^markup_", "$options": "i"}}, {"_id": 0, "storage_path": 1}).to_list(50000)
+    return {d.get("storage_path") for d in docs if d.get("storage_path")}
+
+
+def is_markup_photo(photo_url: str, markup_paths: set) -> bool:
+    url = str(photo_url or "")
+    if "/uploads/markup/" in url:
+        return True
+    return url.split("/api/files/", 1)[-1] in markup_paths if "/api/files/" in url else False
+
+
+def build_job_photo_entries(job, poles, underground_items, markup_paths=None):
+    """Collect (zip_path, photo_url) entries + zip filename for a job's photo ZIP.
+    Photos edited in the markup editor go to {JobName}/Mark Ups/."""
+    markup_paths = markup_paths or set()
     def safe_name(s, default="unknown"):
         return "".join(c for c in str(s) if c.isalnum() or c in (' ', '-', '_')).strip().replace(' ', '_') or default
 
@@ -1126,7 +1141,9 @@ def build_job_photo_entries(job, poles, underground_items):
             folder_name = f"Pole_{safe_name(pole_number)}"
         for label, photo_url in pole_photo_items(pole):
             safe_label = safe_name(label, "Photo")
-            entries.append((f"{job_name}/Poles/{folder_name}/Pole_{safe_name(pole_number)}_{safe_label}.jpeg", photo_url))
+            fname = f"Pole_{safe_name(pole_number)}_{safe_label}.jpeg"
+            folder = f"{job_name}/Mark Ups" if is_markup_photo(photo_url, markup_paths) else f"{job_name}/Poles/{folder_name}"
+            entries.append((f"{folder}/{fname}", photo_url))
     for idx, ug in enumerate(underground_items, 1):
         ug_type = ug.get("type") or "Underground"
         ug_label = ug.get("label") or ""
@@ -1137,7 +1154,8 @@ def build_job_photo_entries(job, poles, underground_items):
         for label, photo_url in underground_photo_items(ug):
             safe_label = safe_name(label, "Photo")
             fname = safe_label if safe_label.startswith(folder_name) else f"{folder_name}_{safe_label}"
-            entries.append((f"{job_name}/Underground/{folder_name}/{fname}.jpeg", photo_url))
+            folder = f"{job_name}/Mark Ups" if is_markup_photo(photo_url, markup_paths) else f"{job_name}/Underground/{folder_name}"
+            entries.append((f"{folder}/{fname}.jpeg", photo_url))
     return entries, photo_export_filename(job, "Photos")
 
 
@@ -1277,7 +1295,7 @@ async def export_job_photos_zip(job_id: str, token: Optional[str] = Query(None),
     underground_items.sort(key=lambda x: (x.get("sort_order") or 9999, x.get("created_at") or ""))
     
     # Helper to sanitize folder/file names
-    entries, zip_filename = build_job_photo_entries(job, poles, underground_items)
+    entries, zip_filename = build_job_photo_entries(job, poles, underground_items, await markup_photo_paths())
 
     if not entries:
         raise HTTPException(status_code=404, detail="No photos found for this job. Add photos to poles or underground items first.")
@@ -1319,6 +1337,7 @@ async def export_selected_photos_zip(job_id: str, request: Request, token: Optio
 
     entries = []
     seen = set()
+    markup_paths = await markup_photo_paths()
     for p in photos:
         url = str(p.get("url", ""))
         if url.startswith("http"):
@@ -1329,7 +1348,7 @@ async def export_selected_photos_zip(job_id: str, request: Request, token: Optio
             name = f"{base}_{k}"
             k += 1
         seen.add(name)
-        entries.append((f"{name}.jpeg", url))
+        entries.append((f"{'Mark Ups/' if is_markup_photo(url, markup_paths) else ''}{name}.jpeg", url))
     if not entries:
         raise HTTPException(status_code=400, detail="No valid photos selected")
 
@@ -1394,9 +1413,10 @@ async def export_pole_photos_zip(pole_id: str, token: Optional[str] = Query(None
         raise HTTPException(status_code=404, detail="No photos found for this pole")
     
     entries = []
+    markup_paths = await markup_photo_paths()
     for label, photo_url in photo_items:
         safe_label = "".join(c for c in label if c.isalnum() or c in (' ', '-', '_')).strip()
-        entries.append((f"Pole_{safe_pole_name}_{safe_label}.jpeg", photo_url))
+        entries.append((f"{'Mark Ups/' if is_markup_photo(photo_url, markup_paths) else ''}Pole_{safe_pole_name}_{safe_label}.jpeg", photo_url))
     
     filename = f"Pole_{safe_pole_name}_photos.zip"
     

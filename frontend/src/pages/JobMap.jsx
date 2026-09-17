@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useParams, useSearchParams, Link, useNavigate } from "react-router-dom";
 import axios from "axios";
+import JSZip from "jszip";
 import { toast } from "sonner";
 import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
@@ -2313,11 +2314,15 @@ const JobMap = () => {
       }
       toast.info(mode === "both" ? "Capturing map and span list..." : "Capturing map...");
       const addr = (job?.location || job?.ase_data?.address || "").trim();
-      const baseName = `Screenshot${addr ? ` (${addr})` : ""} ${showStationNumbers ? "Station numbers" : "Linear"}`;
-      const save = (dataUrl, name) => {
+      const addrTag = addr ? ` (${addr})` : "";
+      const baseName = `Screenshot${addrTag} ${showStationNumbers ? "Station numbers" : "Linear"}`;
+      const folderName = showStationNumbers ? "Overview Station #'s" : "Overview Linear";
+      const listName = (pg, count) => `${showStationNumbers ? "STA. spans" : "LINEAR span list"} Page ${pg} of ${count}${addrTag}`;
+      const safe = (name) => name.replace(/[^\w \-.,()+#']/g, "_");
+      const save = (href, name) => {
         const link = document.createElement("a");
-        link.href = dataUrl;
-        link.download = `${name}.png`.replace(/[^\w \-.,()+]/g, "_");
+        link.href = href;
+        link.download = safe(name);
         document.body.appendChild(link);
         link.click();
         link.remove();
@@ -2333,12 +2338,19 @@ const JobMap = () => {
         style: { transform: "none" },
         filter: (node) => !(node.classList && node.classList.contains("leaflet-control-zoom")) && !isList(node),
       });
-      save(mapUrl, baseName);
-      if (mode === "both") {
-        const listEl = document.querySelector('[data-testid="span-measurements-list"]');
-        if (!listEl) {
-          toast.warning("No span measurements list to capture");
-        } else {
+      if (mode !== "both") {
+        save(mapUrl, `${baseName}.png`);
+        toast.success("Map screenshot saved!");
+        return;
+      }
+      // Map + Span List: everything goes into one folder (ZIP) named for the numbering mode
+      const zip = new JSZip();
+      const folder = zip.folder(safe(folderName));
+      folder.file(safe(`${baseName}.png`), mapUrl.split(",")[1], { base64: true });
+      const listEl = document.querySelector('[data-testid="span-measurements-list"]');
+      if (!listEl) {
+        toast.warning("No span measurements list to capture");
+      } else {
           // Split the list into pages of at most LIST_PAGE_LINES rows; each page is its own image
           const lineCount = listEl.querySelectorAll("ol > li").length;
           const pageCount = Math.max(1, Math.ceil(lineCount / LIST_PAGE_LINES));
@@ -2368,15 +2380,17 @@ const JobMap = () => {
                 height: clone.scrollHeight,
                 style: { transform: "none", position: "static", left: "0" },
               });
-              await new Promise((r) => setTimeout(r, 400));
-              save(listUrl, `Span List Page ${pg + 1} of ${pageCount}${addr ? ` (${addr})` : ""}`);
+              folder.file(safe(`${listName(pg + 1, pageCount)}.png`), listUrl.split(",")[1], { base64: true });
             } finally {
               clone.remove();
             }
           }
-        }
       }
-      toast.success(mode === "both" ? "Map and span list images saved!" : "Map screenshot saved!");
+      const blob = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(blob);
+      save(url, `${folderName}.zip`);
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+      toast.success(`Saved "${folderName}" folder with the map and span list pages`);
     } catch (e) {
       console.error("Screenshot error:", e);
       toast.error("Failed to capture screenshot. Try zooming out slightly.");
@@ -2471,7 +2485,7 @@ const JobMap = () => {
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => captureMapScreenshot("both")} className="cursor-pointer" data-testid="screenshot-map-span-list">
                   <ListOrdered className="w-4 h-4 mr-2 text-purple-700" />
-                  <div><div className="font-medium">Map + Span List</div><div className="text-[11px] text-zinc-500">Two images: map, then span list</div></div>
+                  <div><div className="font-medium">Map + Span List</div><div className="text-[11px] text-zinc-500">Folder with the map + span list pages</div></div>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
