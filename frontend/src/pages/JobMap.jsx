@@ -10,7 +10,7 @@ import domtoimage from "dom-to-image-more";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ChevronDown, ChevronUp, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera, Hash, Link2, Move, Palette, Plus, Map as MapIcon, GripVertical, Upload, Trash2, RotateCcw, Home, Route as RouteIcon, ListOrdered } from "lucide-react";
 import SpanReorderList from "@/components/SpanReorderList";
-import { computeRoute, fmtFeet, feetToStation, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, downloadMapPdfPages, ugWithGps, undergroundAbbr, computeUgConnectors, computeConnectionPairs, computeStationSegFeet, UNDERGROUND_TYPES, isAerialAttr, resolvePairAerial, spanKey, routeWaypoints, routeArg, placeSpanNotes, LIST_PAGE_LINES, riserAnchor } from "@/lib/poleMapImage";
+import { computeRoute, fmtFeet, feetToStation, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, downloadMapPdfPages, ugWithGps, undergroundAbbr, computeUgConnectors, computeConnectionPairs, computeStationSegFeet, UNDERGROUND_TYPES, isAerialAttr, resolvePairAerial, spanKey, routeWaypoints, routeArg, placeSpanNotes, LIST_PAGE_LINES, riserAnchor, tieInSuffix } from "@/lib/poleMapImage";
 import { ExportDestinationDialog } from "@/components/ExportDestinationDialog";
 import { CLOUD_EXPORT_LABELS, uploadExportToCloud } from "@/lib/cloudExports";
 import {
@@ -2301,7 +2301,7 @@ const JobMap = () => {
       const addr = (job?.location || job?.ase_data?.address || "").trim();
       const addrTag = addr ? ` (${addr})` : "";
       const baseName = `Screenshot${addrTag} ${showStationNumbers ? "Station numbers" : "Linear"}`;
-      const folderName = showStationNumbers ? "Overview Station #'s" : "Overview Linear";
+      const folderName = `${showStationNumbers ? "Overview Station #'s" : "Overview Linear"}${addrTag}`;
       const listName = (pg, count) => `${showStationNumbers ? "STA. spans" : "LINEAR span list"} Page ${pg} of ${count}${addrTag}`;
       const safe = (name) => name.replace(/[^\w \-.,()+#']/g, "_");
       const save = (href, name) => {
@@ -3661,7 +3661,8 @@ const JobMap = () => {
                     ) : (
                       <button type="button" onClick={() => { spanEditLock.current = false; setEditingSpan({ segIndex: e.segIndex, value: String(e.num) }); }} className="font-bold text-orange-700 hover:bg-orange-100 rounded px-0.5 -mx-0.5 border-b border-dashed border-orange-400" title="Tap to type a new span number" data-testid={`span-num-${e.num}`}>{e.num}.</button>
                     )} {segItemName(e.seg.from)}{showStationNumbers && (stationNumbers[`${e.seg.from.id}:out`] || stationNumbers[e.seg.from.id]) ? <span className="text-indigo-700"> {stationNumbers[`${e.seg.from.id}:out`] || stationNumbers[e.seg.from.id]}</span> : null} to {segItemName(e.seg.to)}{showStationNumbers && stationNumbers[e.seg.to.id] ? <span className="text-indigo-700"> {stationNumbers[e.seg.to.id]}</span> : null} = {fmtFeet(segListDistance(e.seg))}
-                    {!e.seg.isAerial && <span className="text-emerald-700 text-xs ml-1">(UG)</span>}</span>
+                    {!e.seg.isAerial && <span className="text-emerald-700 text-xs ml-1">(UG)</span>}
+                    {tieInSuffix(e.seg.from, e.seg.to, underground) && <span className="text-sky-800 text-xs ml-1" data-testid={`span-tie-in-${e.num}`}>{tieInSuffix(e.seg.from, e.seg.to, underground)}</span>}</span>
                     {orderedSegments.length > 1 && (
                       <span className="inline-flex items-center gap-0.5 ml-1">
                         <button type="button" onClick={() => swapSpan(e.segIndex, -1)} disabled={e.segIndex === 0} className="p-0.5 rounded border border-zinc-300 bg-white text-zinc-600 hover:bg-zinc-100 disabled:opacity-30" title="Swap with previous span" data-testid={`span-swap-up-${e.num}`}>

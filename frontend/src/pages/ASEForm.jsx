@@ -125,6 +125,17 @@ const ASEForm = () => {
           updated.nearest_fiber_fid_missing = updated.nearest_fiber_fid;
         }
         
+        // Starting FH/MH/POLE tie-in: the Handhole/Manhole marked Primary FID is the source of truth.
+        // Overwrite the field when it is empty or still holds the last auto-filled value (manual edits are kept).
+        const primaryFid = ugData.find((u) => u.primary_fid && /handhole|manhole/i.test(u.type || "") && u.tie_in_measurements);
+        if (primaryFid) {
+          const tieIn = primaryFid.tie_in_measurements;
+          if (!updated.starting_tie_in_measurements || updated.starting_tie_in_measurements === updated.starting_tie_in_auto) {
+            updated.starting_tie_in_measurements = tieIn;
+          }
+          updated.starting_tie_in_auto = tieIn;
+        }
+        
         // Pole coordinates
         if (polesData.length > 0) {
           const firstPole = polesData[0];

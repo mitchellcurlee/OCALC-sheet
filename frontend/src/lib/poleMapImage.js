@@ -97,6 +97,19 @@ export const UNDERGROUND_ABBR = {
 export const undergroundAbbr = (type) => UNDERGROUND_ABBR[type] || String(type || "").slice(0, 3).toUpperCase();
 export const UNDERGROUND_TYPES = Object.keys(UNDERGROUND_ABBR);
 
+// " / HH tie in- <measurements>" for each span endpoint (underground item) that has tie-in data
+export const tieInSuffix = (from, to, underground = []) => {
+  const parts = [];
+  [from, to].forEach((it) => {
+    if (!it || it.type === "pole") return;
+    const u = (underground || []).find((x) => x.id === it.id);
+    const tie = String(u?.tie_in_measurements || "").trim();
+    if (tie) parts.push(`${undergroundAbbr(u.type)} tie in- ${tie}`);
+  });
+  return parts.length ? ` / ${parts.join(" / ")}` : "";
+};
+
+
 export const ugWithGps = (underground) =>
   (underground || [])
     .filter((u) => Number.isFinite(parseFloat(u.latitude)) && Number.isFinite(parseFloat(u.longitude)))
@@ -499,7 +512,7 @@ export const buildSpanMeasurementTexts = ({ poles, underground = [], connections
         toSo: pr.to.sort_order ?? Infinity,
         text: stationsOnly
           ? `${nameWithSta(pr.from, true)} to ${nameWithSta(pr.to)}${pairIsAerial(pr) ? "" : " (UG)"}`
-          : `${nameWithSta(pr.from, true)} to ${nameWithSta(pr.to)} = ${fmtFeet(pathFeet(segPath(pr, routes)))}${pairIsAerial(pr) ? "" : " (UG)"}`,
+          : `${nameWithSta(pr.from, true)} to ${nameWithSta(pr.to)} = ${fmtFeet(pathFeet(segPath(pr, routes)))}${pairIsAerial(pr) ? "" : " (UG)"}${tieInSuffix(pr.from, pr.to, underground)}`,
       });
     }
   });
@@ -1618,7 +1631,7 @@ const generateMeasurementListImages = ({ pairSegs, route, totalRiserFeet, job, u
   const riserDone = new Set();
   const anchoredRisers = [];
   pairSegs.forEach((sg) => {
-    if (!sg.manual) displayRows.push({ type: "segment", key: `span:${spanKey(sg.from.id, sg.to.id)}`, so: sg.from.sort_order ?? Infinity, toSo: sg.to.sort_order ?? Infinity, text: `${itemName(sg.from)} → ${itemName(sg.to)}${sg.aerial ? "" : " (UG)"}`, ft: sg.ft });
+    if (!sg.manual) displayRows.push({ type: "segment", key: `span:${spanKey(sg.from.id, sg.to.id)}`, so: sg.from.sort_order ?? Infinity, toSo: sg.to.sort_order ?? Infinity, text: `${itemName(sg.from)} → ${itemName(sg.to)}${sg.aerial ? "" : " (UG)"}${tieInSuffix(sg.from, sg.to, underground)}`, ft: sg.ft });
     const poleB = sg.to.type === "pole" ? route.find((p) => p.id === sg.to.id) : null;
     if (poleB?.risers && poleB?.riser_height && !riserDone.has(poleB.id)) {
       const riserCount = parseInt(poleB.risers) || 0;
