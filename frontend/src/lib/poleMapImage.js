@@ -264,8 +264,8 @@ export const routeArg = (job) => {
 
 export const computeConnectionPairs = (route, ug, connections = [], spanOrder = null, drawnOnly = false) => {
   const allItems = [];
-  route.forEach((p) => allItems.push({ id: p.id, type: "pole", pos: p.pos, sort_order: p.sort_order ?? Infinity, label: p.pole_number || "Pole", address: p.address || "", start_path: p.start_path === true, end_path: p.end_path === true, standalone: p.standalone === true, markerColor: p.marker_color || null }));
-  ug.forEach((u) => allItems.push({ id: u.id, type: "underground", ugType: u.type, materialType: u.material_type || "", aerialOverride: ["aerial", "underground", "neutral"].includes(u.aerial_override) ? u.aerial_override : null, pos: u.pos, sort_order: u.sort_order ?? Infinity, label: u.label || u.type, address: u.address || "", start_path: u.start_path === true, end_path: u.end_path === true, standalone: u.standalone === true, hasPath: (u.path_measurements || []).length > 0, markerColor: u.marker_color || null }));
+  route.forEach((p) => allItems.push({ id: p.id, type: "pole", pos: p.pos, sort_order: p.sort_order ?? Infinity, label: p.pole_number || "Pole", address: p.address || "", start_path: p.start_path === true, end_path: p.end_path === true, standalone: p.standalone === true, hasPath: (p.path_measurements || []).length > 0, pathTarget: pathTargetOf(p.path_measurements), markerColor: p.marker_color || null }));
+  ug.forEach((u) => allItems.push({ id: u.id, type: "underground", ugType: u.type, materialType: u.material_type || "", aerialOverride: ["aerial", "underground", "neutral"].includes(u.aerial_override) ? u.aerial_override : null, pos: u.pos, sort_order: u.sort_order ?? Infinity, label: u.label || u.type, address: u.address || "", start_path: u.start_path === true, end_path: u.end_path === true, standalone: u.standalone === true, hasPath: (u.path_measurements || []).length > 0, pathTarget: pathTargetOf(u.path_measurements), markerColor: u.marker_color || null }));
   // Stable list order: explicit sort_order first, items without one keep their incoming order at the end
   // (never subtract sort_orders — Infinity - Infinity is NaN and made the numbering random)
   allItems.forEach((it, i) => { it._in = i; });
@@ -375,7 +375,22 @@ export const pairIsAerial = (pr) => {
 };
 
 // A pair whose FROM item has manual path measurements: its auto GPS footage is replaced
-export const pairIsManual = (pr) => pr.from.type === "underground" && pr.from.hasPath === true;
+// Name an item the way the path "to/from" dropdown does, so a path target can be matched to a span endpoint
+export const pathItemName = (it) => (it.type === "pole"
+  ? (/^\d/.test(String(it.label || "")) ? `P${it.label}` : (it.label || "Pole"))
+  : `${undergroundAbbr(it.ugType)}${it.label && it.label !== it.ugType ? ` ${it.label}` : ""}`);
+// Target named on the last path row that has one (the item the path runs to/from)
+export const pathTargetOf = (rows) => { const withTarget = (rows || []).filter((m) => m.to); return withTarget.length ? withTarget[withTarget.length - 1].to : ""; };
+// A span is "manually measured" (hidden from the list, replaced by the path row) when one endpoint's path
+// measurements name the other endpoint as target; legacy paths with no target replace the UG item's outgoing span
+export const pairIsManual = (pr) => {
+  for (const [a, b] of [[pr.from, pr.to], [pr.to, pr.from]]) {
+    if (!a.hasPath) continue;
+    if (a.pathTarget) { if (a.pathTarget === pathItemName(b)) return true; }
+    else if (a === pr.from && a.type === "underground") return true;
+  }
+  return false;
+};
 
 // Waypoint-following path helpers (routes = { "fromId-toId": [{lat,lng}, ...] })
 const segPath = (pr, routes) => {
