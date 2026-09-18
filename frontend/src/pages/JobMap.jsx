@@ -1697,7 +1697,7 @@ const JobMap = () => {
 
   // Total path measurement footage (In/Over/Up/Down entries on attributes)
   const pathFeet = useMemo(
-    () => underground.reduce((sum, u) => sum + (u.standalone === true ? 0 : (u.path_measurements || []).reduce((s, m) => s + (parseFloat(m.feet) || 0), 0)), 0),
+    () => [...underground, ...poles].reduce((sum, u) => sum + (u.standalone === true ? 0 : (u.path_measurements || []).reduce((s, m) => s + (parseFloat(m.feet) || 0), 0)), 0),
     [underground]
   );
 
@@ -2042,16 +2042,18 @@ const JobMap = () => {
         else entries.push(entry);
       }
     };
-    const pathText = (u) => {
-      const t = u.path_measurements.reduce((s, m) => s + (parseFloat(m.feet) || 0), 0);
-      return `${undergroundAbbr(u.type)}${u.label ? ` ${u.label}` : ""}: ${u.path_measurements.map((m) => `${m.direction} ${m.feet}ft${m.to ? ` to ${m.to}` : ""}`).join(", ")} = ${fmtFeet(t)}`;
+    // Path measurements live on underground items and poles alike
+    const pathLabel = (src) => (src.pole_number !== undefined ? poleName(src.pole_number) : `${undergroundAbbr(src.type)}${src.label ? ` ${src.label}` : ""}`);
+    const pathText = (src) => {
+      const t = src.path_measurements.reduce((s, m) => s + (parseFloat(m.feet) || 0), 0);
+      return `${pathLabel(src)}: ${src.path_measurements.map((m) => `${m.direction} ${m.feet}ft${m.to ? ` to ${m.to}` : ""}`).join(", ")} = ${fmtFeet(t)}`;
     };
     const pushPath = (item, pos) => {
-      if (item.type === "pole" || pathAdded.has(item.id)) return;
-      const u = underground.find((x) => x.id === item.id);
-      if (!u || !(u.path_measurements || []).length) return;
+      if (pathAdded.has(item.id)) return;
+      const src = item.type === "pole" ? poles.find((x) => x.id === item.id) : underground.find((x) => x.id === item.id);
+      if (!src || !(src.path_measurements || []).length) return;
       pathAdded.add(item.id);
-      entries.push({ kind: "path", key: `path:${item.id}`, so: item.sort_order ?? Infinity, pos, itemId: item.id, text: pathText(u) });
+      entries.push({ kind: "path", key: `path:${item.id}`, so: item.sort_order ?? Infinity, pos, itemId: item.id, text: pathText(src) });
     };
     orderedSegments.forEach((seg, i) => {
       pushRiser(seg.from, seg.fromPos);
@@ -2081,7 +2083,7 @@ const JobMap = () => {
       });
     // Items with path measurements not on the route chain (standalone or no GPS) —
     // insert at their respective place in route order using sort_order
-    [...underground]
+    [...underground, ...poles]
       .sort((a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999))
       .filter((u) => u.standalone !== true && (u.path_measurements || []).length > 0 && !pathAdded.has(u.id))
       .forEach((u) => {
@@ -2121,7 +2123,7 @@ const JobMap = () => {
       if (e.kind === "span") nums[e.segIndex] = e.num;
     });
     return { measurementEntries: entries, spanNums: nums };
-  }, [orderedSegments, route, underground, job]);
+  }, [orderedSegments, route, poles, underground, job]);
 
   // Total aerial footage from ordered segments (includes Loop spans + waypoint routes)
   const aerialFeetTotal = useMemo(

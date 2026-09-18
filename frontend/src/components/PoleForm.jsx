@@ -38,6 +38,9 @@ import { MultiPhotoUpload } from "@/components/MultiPhotoUpload";
 import { PhotoStagingGallery } from "@/components/PhotoStagingGallery";
 import { getJobAddressCenter } from "@/lib/jobAddressCenter";
 import AddressField from "@/components/AddressField";
+import { undergroundAbbr } from "@/lib/poleMapImage";
+
+const PATH_DIRECTIONS = ["In", "Over", "Up", "Down", "North", "Northeast", "East", "Southeast", "South", "Southwest", "West", "Northwest"];
 
 // Fix Leaflet marker icon issue
 delete L.Icon.Default.prototype._getIconUrl;
@@ -97,7 +100,7 @@ const emptyFormData = () => ({
   span2_direction: "", span2_distance: "", span2_owner: "",
   span3_direction: "", span3_distance: "", span3_owner: "",
   span4_direction: "", span4_distance: "", span4_owner: "",
-  latitude: "", longitude: "-", address: "", notes: "", row_information: "",
+  latitude: "", longitude: "-", address: "", notes: "", row_information: "", path_measurements: [],
   hoa_markup_photos: [], // Photos for HOA markup/annotation
   tree_trimming_needed: false,
   staged_photos: [], // Unsorted photos from the top Photo Gallery
@@ -247,6 +250,7 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
       span3_direction: p.span3_direction || "", span3_distance: p.span3_distance?.toString() || "", span3_owner: p.span3_owner || "",
       span4_direction: p.span4_direction || "", span4_distance: p.span4_distance?.toString() || "", span4_owner: p.span4_owner || "",
       latitude: p.latitude?.toString() || "", longitude: p.longitude?.toString() || "-", address: p.address || "", notes: p.notes || "", row_information: p.row_information || "",
+      path_measurements: (p.path_measurements || []).map((m) => ({ direction: m.direction, feet: m.feet?.toString() || "", to: m.to || "" })),
       hoa_markup_photos: p.hoa_markup_photos || [],
       tree_trimming_needed: p.tree_trimming_needed === true,
       staged_photos: p.staged_photos || [],
@@ -570,6 +574,31 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
     }
   };
 
+  // Path of approach measurements at this pole (same box as underground attributes)
+  const [pathTargets, setPathTargets] = useState([]);
+  useEffect(() => {
+    if (!jobId) return;
+    (async () => {
+      try {
+        const [polesRes, ugRes] = await Promise.all([axios.get(`/jobs/${jobId}/poles`), axios.get(`/jobs/${jobId}/underground`)]);
+        const items = [
+          ...(polesRes.data || []).filter((p) => p.id !== initialPole?.id).map((p) => ({ so: p.sort_order ?? Infinity, name: /^\d/.test(String(p.pole_number || "")) ? `P${p.pole_number}` : (p.pole_number || "Pole") })),
+          ...(ugRes.data || []).map((u) => ({ so: u.sort_order ?? Infinity, name: `${undergroundAbbr(u.type)}${u.label && u.label !== u.type ? ` ${u.label}` : ""}` })),
+        ];
+        items.sort((a, b) => a.so - b.so);
+        setPathTargets(items.map((it) => it.name));
+      } catch (e) { /* dropdown is best-effort */ }
+    })();
+  }, [jobId, initialPole?.id]);
+  const addPathMeasurement = () => setFormData((p) => ({ ...p, path_measurements: [...p.path_measurements, { direction: "In", feet: "", to: "" }] }));
+  const updatePathMeasurement = (i, field, value) => setFormData((p) => {
+    const rows = [...p.path_measurements];
+    rows[i] = { ...rows[i], [field]: value };
+    return { ...p, path_measurements: rows };
+  });
+  const removePathMeasurement = (i) => setFormData((p) => ({ ...p, path_measurements: p.path_measurements.filter((_, idx) => idx !== i) }));
+
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -578,6 +607,9 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
       job_id: jobId || (initialPole && initialPole.job_id) || null,
       // Convert boolean field
       use_manual_spans: formData.use_manual_spans === true,
+      path_measurements: formData.path_measurements
+        .filter((m) => m.direction && m.feet !== "" && Number.isFinite(parseFloat(m.feet)))
+        .map((m) => ({ direction: m.direction, feet: parseFloat(m.feet), to: m.to || "" })),
       // Convert numeric fields
       riser_height: formData.riser_height ? parseFloat(formData.riser_height) : null,
       span1_distance: formData.span1_distance ? parseFloat(formData.span1_distance) : null,
@@ -1424,6 +1456,59 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
                   </div>
                 ))}
               </div>
+            </div>
+          </div>
+
+          {/* Path Measurements */}
+          <div className="industrial-card p-4 sm:p-5" data-testid="pole-path-measurements-card">
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
+              <h2 className="font-heading text-base sm:text-lg font-bold text-zinc-900 flex items-center gap-2">
+                <div className="w-1 h-5 bg-emerald-500"></div>
+                Path Measurements
+              </h2>
+              <Button type="button" onClick={addPathMeasurement} size="sm" variant="outline" className="h-8 bg-white border-emerald-300 hover:bg-emerald-100 text-emerald-700" data-testid="add-path-measurement-btn">
+                <Plus className="w-4 h-4 mr-1" /> Add
+              </Button>
+            </div>
+            <div className="space-y-3 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
+              {formData.path_measurements.length === 0 && (
+                <p className="text-xs text-emerald-600">Add direction + footage rows; the last row needs a "to" target (e.g. Up 2ft, Over 3ft, Down 5ft to FBT). These are added to the map's overall measurements and the ASE path of approach.</p>
+              )}
+              {formData.path_measurements.map((m, i) => (
+                <div key={i} className="flex items-center gap-2 flex-wrap" data-testid={`path-measurement-row-${i}`}>
+                  <Select value={m.direction} onValueChange={(v) => updatePathMeasurement(i, "direction", v)}>
+                    <SelectTrigger className="h-10 w-32 bg-white border-emerald-300 text-zinc-900" data-testid={`path-direction-select-${i}`}>
+                      <SelectValue placeholder="Direction" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-zinc-50 border-zinc-300 z-[1200]">
+                      {PATH_DIRECTIONS.map((d) => (<SelectItem key={d} value={d}>{d}</SelectItem>))}
+                    </SelectContent>
+                  </Select>
+                  <div className="relative w-24">
+                    <Input type="number" inputMode="decimal" min="0" step="any" value={m.feet} onChange={(e) => updatePathMeasurement(i, "feet", e.target.value)} placeholder="0" className="h-10 bg-white border-emerald-300 text-zinc-900 pr-8" data-testid={`path-feet-input-${i}`} />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-mono text-zinc-400">ft</span>
+                  </div>
+                  <span className="text-xs font-mono text-emerald-700">to</span>
+                  <Select value={m.to || "__blank__"} onValueChange={(v) => updatePathMeasurement(i, "to", v === "__blank__" ? "" : v)}>
+                    <SelectTrigger className="h-10 flex-1 min-w-[130px] bg-white border-emerald-300 text-zinc-900" data-testid={`path-to-select-${i}`}>
+                      <SelectValue placeholder="Target…" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-zinc-50 border-zinc-300 z-[1200] max-h-60">
+                      <SelectItem value="__blank__"><span className="text-zinc-400">— blank —</span></SelectItem>
+                      {pathTargets.map((t, ti) => (<SelectItem key={`${t}-${ti}`} value={t}>{t}</SelectItem>))}
+                    </SelectContent>
+                  </Select>
+                  <Button type="button" onClick={() => removePathMeasurement(i)} size="icon" variant="ghost" className="h-10 w-10 text-red-500 hover:text-red-700 hover:bg-red-50" data-testid={`remove-path-measurement-${i}`}>
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              ))}
+              {formData.path_measurements.length > 0 && (
+                <p className="text-xs font-mono text-emerald-700" data-testid="path-measurements-summary">
+                  {formData.path_measurements.filter((m) => m.direction && m.feet).map((m) => `${m.direction} ${m.feet}ft${m.to ? ` to ${m.to}` : ""}`).join(", ")}
+                  {(() => { const t = formData.path_measurements.reduce((s, m) => s + (parseFloat(m.feet) || 0), 0); return t > 0 ? ` — ${t} ft total` : ""; })()}
+                </p>
+              )}
             </div>
           </div>
 

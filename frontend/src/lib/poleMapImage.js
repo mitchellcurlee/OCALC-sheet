@@ -412,7 +412,7 @@ const insertPathRows = (displayRows, underground) => {
         type: "path",
         key: `path:${u.id}`,
         so: u.sort_order ?? Infinity,
-        text: `${undergroundAbbr(u.type)}${u.label && u.label !== u.type ? ` ${u.label}` : ""}: ${u.path_measurements.map((m) => `${m.direction} ${m.feet}ft`).join(", ")}`,
+        text: `${u.pole_number !== undefined ? (/^\d/.test(String(u.pole_number || "")) ? `P${u.pole_number}` : (u.pole_number || "Pole")) : `${undergroundAbbr(u.type)}${u.label && u.label !== u.type ? ` ${u.label}` : ""}`}: ${u.path_measurements.map((m) => `${m.direction} ${m.feet}ft`).join(", ")}`,
         ft,
       };
       const idx = displayRows.findIndex((r) => (r.so ?? Infinity) >= row.so);
@@ -474,7 +474,7 @@ export const buildSpanMeasurementTexts = ({ poles, underground = [], connections
   const pathDone = new Set();
   const pathTextOf = (u) => {
     const t = (u.path_measurements || []).reduce((s, m) => s + (parseFloat(m.feet) || 0), 0);
-    const base = `${undergroundAbbr(u.type)}${u.label && u.label !== u.type ? ` ${u.label}` : ""}: ${u.path_measurements.map((m) => `${m.direction} ${m.feet}ft${m.to ? ` to ${m.to}` : ""}`).join(", ")} = ${fmtFeet(t)}`;
+    const base = `${u.pole_number !== undefined ? (/^\d/.test(String(u.pole_number || "")) ? `P${u.pole_number}` : (u.pole_number || "Pole")) : `${undergroundAbbr(u.type)}${u.label && u.label !== u.type ? ` ${u.label}` : ""}`}: ${u.path_measurements.map((m) => `${m.direction} ${m.feet}ft${m.to ? ` to ${m.to}` : ""}`).join(", ")} = ${fmtFeet(t)}`;
     return stationsOnly && riserStations[u.id] ? `${base} (${stations[u.id]} to ${riserStations[u.id]})` : base;
   };
   const pushRiser = (it) => {
@@ -496,8 +496,8 @@ export const buildSpanMeasurementTexts = ({ poles, underground = [], connections
     }
   };
   const pushPath = (it) => {
-    if (it.type === "pole" || pathDone.has(it.id)) return;
-    const u = underground.find((x) => x.id === it.id);
+    if (pathDone.has(it.id)) return;
+    const u = it.type === "pole" ? poles.find((x) => x.id === it.id) : underground.find((x) => x.id === it.id);
     if (!u || !(u.path_measurements || []).length) return;
     pathDone.add(it.id);
     rows.push({ key: `path:${it.id}`, so: it.sort_order ?? Infinity, text: pathTextOf(u) });
@@ -521,7 +521,7 @@ export const buildSpanMeasurementTexts = ({ poles, underground = [], connections
     pushRiser(last.to);
     pushPath(last.to);
   }
-  [...underground]
+  [...(underground || []), ...(poles || [])]
     .sort((a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999))
     .filter((u) => (u.path_measurements || []).length > 0 && !pathDone.has(u.id))
     .forEach((u) => {
@@ -604,7 +604,7 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
   });
   const aerialFt = pairSegs.reduce((acc, x) => acc + (x.aerial && !x.manual ? x.ft : 0), 0);
   const ugFt = pairSegs.reduce((acc, x) => acc + (!x.aerial && !x.manual ? x.ft : 0), 0);
-  const pathFt = totalPathFeet(underground);
+  const pathFt = totalPathFeet([...(underground || []), ...(route || [])]);
   const grandFt = aerialFt + ugFt + totalRiserFeet + pathFt;
   if (route.length === 0 && ug.length === 0) {
     toast.error("No poles or underground items with GPS coordinates to map");
@@ -1066,7 +1066,7 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
         }
       }
     });
-    insertPathRows(displayRows, underground);
+    insertPathRows(displayRows, [...(underground || []), ...(route || [])]);
     riserLaterDisplay.sort((a, b) => a.so - b.so).forEach((row) => {
       let at = -1;
       displayRows.forEach((r, i) => { if (((r.toSo ?? r.so) ?? Infinity) <= row.so) at = i; });
@@ -1650,11 +1650,11 @@ const generateMeasurementListImages = ({ pairSegs, route, totalRiserFeet, job, u
       }
     }
   });
-  insertPathRows(displayRows, underground);
+  insertPathRows(displayRows, [...(underground || []), ...(route || [])]);
   placeSpanNotes(displayRows, [...anchoredRisers, ...(job?.span_notes || [])], (n) => (n._row ? n._row : { type: "note", key: `note:${n.id}`, so: n.so ?? Infinity, text: `Note: ${n.text}`, ft: null }));
   
   const pairFt = pairSegs.reduce((acc, x) => acc + (x.manual ? 0 : x.ft), 0);
-  const pathFt = totalPathFeet(underground);
+  const pathFt = totalPathFeet([...(underground || []), ...(route || [])]);
   const grandTotalFeet = pairFt + totalRiserFeet + pathFt;
   const pageCount = Math.max(1, Math.ceil(displayRows.length / LIST_PAGE_LINES));
   const images = [];

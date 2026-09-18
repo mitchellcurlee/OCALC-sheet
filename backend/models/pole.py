@@ -66,6 +66,7 @@ class PoleBase(BaseModel):
     riser_height: Optional[float] = None
     riser_sort_order: Optional[float] = None
     riser_after: Optional[str] = None  # list anchor: key of the row the riser sits under, '__top__' = top
+    path_measurements: Optional[List[dict]] = None  # [{direction, feet, to}] path of approach at this pole
     last_modified_by: Optional[str] = None
     pole_line_start: Optional[bool] = False
     pole_line_end: Optional[bool] = False
@@ -133,6 +134,7 @@ class PoleUpdate(BaseModel):
     riser_height: Optional[float] = None
     riser_sort_order: Optional[float] = None
     riser_after: Optional[str] = None  # list anchor: key of the row the riser sits under, '__top__' = top
+    path_measurements: Optional[List[dict]] = None
     pole_line_start: Optional[bool] = None
     pole_line_end: Optional[bool] = None
     start_path: Optional[bool] = None
