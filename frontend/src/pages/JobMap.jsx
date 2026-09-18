@@ -10,7 +10,7 @@ import domtoimage from "dom-to-image-more";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ChevronDown, ChevronUp, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera, Hash, Link2, Move, Palette, Plus, Map as MapIcon, GripVertical, Upload, Trash2, RotateCcw, Home, Route as RouteIcon, ListOrdered } from "lucide-react";
 import SpanReorderList from "@/components/SpanReorderList";
-import { computeRoute, fmtFeet, feetToStation, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, downloadMapPdfPages, ugWithGps, undergroundAbbr, computeUgConnectors, computeConnectionPairs, computeStationSegFeet, UNDERGROUND_TYPES, isAerialAttr, resolvePairAerial, spanKey, routeWaypoints, routeArg, placeSpanNotes, LIST_PAGE_LINES } from "@/lib/poleMapImage";
+import { computeRoute, fmtFeet, feetToStation, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, downloadMapPdfPages, ugWithGps, undergroundAbbr, computeUgConnectors, computeConnectionPairs, computeStationSegFeet, UNDERGROUND_TYPES, isAerialAttr, resolvePairAerial, spanKey, routeWaypoints, routeArg, placeSpanNotes, LIST_PAGE_LINES, riserAnchor } from "@/lib/poleMapImage";
 import { ExportDestinationDialog } from "@/components/ExportDestinationDialog";
 import { CLOUD_EXPORT_LABELS, uploadExportToCloud } from "@/lib/cloudExports";
 import {
@@ -601,6 +601,7 @@ const JobMap = () => {
   const [placingType, setPlacingType] = useState(null); // "__pole__" | "__pole_terminal__" | underground type name
   const [swapPick, setSwapPick] = useState(null); // segIndex of the span number tapped on the map (edit / swap-by-tap)
   const [badgeValue, setBadgeValue] = useState(""); // typed number for the tapped map badge
+  const [riserPick, setRiserPick] = useState(null); // list index of a riser badge tapped on the map
   const [editingSpan, setEditingSpan] = useState(null); // { segIndex, value } — manual span number edit in the list
   const spanEditLock = useRef(false);
   const orderedSegmentsRef = useRef([]); // latest orderedSegments for callbacks declared before it
@@ -1939,53 +1940,34 @@ const JobMap = () => {
     }
   };
   const handleBadgeTap = (segIndex) => {
-    if (swapPick === null) { setSwapPick(segIndex); setBadgeValue(String(spanNums[segIndex] ?? segIndex + 1)); return; }
+    if (swapPick === null) { setRiserPick(null); setSwapPick(segIndex); setBadgeValue(String(spanNums[segIndex] ?? segIndex + 1)); return; }
     if (swapPick === segIndex) { setSwapPick(null); return; }
     const a = swapPick;
     setSwapPick(null);
     swapSpanIndices(a, segIndex);
   };
 
-  const moveRiserEntry = async (idx, dir) => {
+  // Risers: pinned below the row they land under (like notes) — one row per arrow tap, or any typed number
+  const moveRiserToIndex = async (idx, targetIdx) => {
     const list = measurementEntries;
     const entry = list[idx];
     if (!entry || entry.kind !== "riser" || !entry.itemId) return;
-    const target = idx + dir;
-    if (target < 0 || target >= list.length) return;
+    const target = Math.max(0, Math.min(list.length - 1, targetIdx));
+    if (target === idx) return;
+    const others = list.filter((_, i) => i !== idx);
+    const above = others[target - 1];
+    const after = above ? above.key : "__top__";
+    const soHint = above ? ((above.toSo ?? above.so) ?? Infinity) : -1;
+    const patch = { riser_after: after, ...(Number.isFinite(soHint) ? { riser_sort_order: soHint + 0.5 } : {}) };
+    setPoles((prev) => prev.map((p) => (p.id === entry.itemId ? { ...p, ...patch } : p)));
     try {
-      // Normalize: assign sequential indices matching the CURRENT natural order (no visual change)
-      const items = combinedOrderItems();
-      const idxMap = {};
-      items.forEach((it, i) => { idxMap[it.id] = i; });
-      await axios.put(`/jobs/${jobId}/reorder-items`, items.map((it, i) => ({ id: it._type === "riser" ? it.id.split(":")[1] : it.id, type: it._type, sort_order: i })));
-      // Entry keys on the same index scale
-      const noteSoMap = {};
-      (job?.span_notes || []).forEach((n) => { noteSoMap[n.id] = n.so; });
-      const keyOf = (en) => {
-        if (en.kind === "span") return idxMap[en.seg?.to?.id] ?? 0;
-        if (en.kind === "riser") return idxMap[`riser:${en.itemId}`] ?? 0;
-        if (en.kind === "note") return Number.isFinite(noteSoMap[en.noteId]) ? noteSoMap[en.noteId] : items.length;
-        return idxMap[en.itemId] ?? 0;
-      };
-      const others = list.filter((_, i) => i !== idx);
-      const insertAt = dir < 0 ? idx - 1 : idx + 1;
-      const above = others[insertAt - 1];
-      const below = others[insertAt];
-      let newSo;
-      if (!above) newSo = keyOf(below) - 1;
-      else if (!below) newSo = keyOf(above) + 1;
-      else newSo = (keyOf(above) + keyOf(below)) / 2;
-      if (entry.kind === "riser") {
-        await axios.put(`/poles/${entry.itemId}`, { riser_sort_order: newSo });
-      } else {
-        const notes = (job?.span_notes || []).map((n) => (n.id === entry.noteId ? { ...n, so: newSo } : n));
-        await axios.put(`/jobs/${jobId}`, { span_notes: notes });
-      }
-      await fetchData();
+      await axios.put(`/poles/${entry.itemId}`, patch);
     } catch (e) {
-      toast.error("Failed to move entry");
+      toast.error("Failed to move riser");
+      fetchData();
     }
   };
+  const moveRiserEntry = (idx, dir) => moveRiserToIndex(idx, idx + dir);
 
   // Notes move exactly one row per tap and are pinned below the row they land under (null = top of list)
   const moveNoteEntry = async (idx, dir) => {
@@ -2047,6 +2029,7 @@ const JobMap = () => {
       return c > 0 && h > 0 ? { c, h } : null;
     };
     const riserLater = [];
+    const anchoredRisers = [];
     const orderKeysUsable = route.some((p) => Number.isFinite(p.sort_order)) || underground.some((u) => Number.isFinite(u.sort_order));
     const pushRiser = (item, pos) => {
       const r = riserInfo(item);
@@ -2054,7 +2037,8 @@ const JobMap = () => {
         added.add(item.id);
         const p = route.find((x) => x.id === item.id);
         const entry = { kind: "riser", key: `riser:${item.id}`, so: p?.riser_sort_order ?? item.sort_order ?? Infinity, pos, itemId: item.id, text: `${poleName(item.label)} New Riser${r.c > 1 ? ` ×${r.c}` : ""} = ${fmtFeet(r.c * r.h)}` };
-        if (p?.riser_sort_order != null && orderKeysUsable) riserLater.push(entry);
+        if (riserAnchor(p) !== undefined) anchoredRisers.push({ after: riserAnchor(p), _row: entry });
+        else if (p?.riser_sort_order != null && orderKeysUsable) riserLater.push(entry);
         else entries.push(entry);
       }
     };
@@ -2090,6 +2074,7 @@ const JobMap = () => {
         added.add(p.id);
         const so = p.riser_sort_order ?? p.sort_order ?? Infinity;
         const entry = { kind: "riser", key: `riser:${p.id}`, so, pos: p.pos, itemId: p.id, text: `${poleName(p.pole_number)} New Riser${r.c > 1 ? ` ×${r.c}` : ""} = ${fmtFeet(r.c * r.h)}` };
+        if (riserAnchor(p) !== undefined) { anchoredRisers.push({ after: riserAnchor(p), _row: entry }); return; }
         let at = -1;
         entries.forEach((e, i) => { if (((e.toSo ?? e.so) ?? Infinity) <= so) at = i; });
         entries.splice(at + 1, 0, entry);
@@ -2129,8 +2114,8 @@ const JobMap = () => {
       entries.forEach((e, i) => { if (((e.toSo ?? e.so) ?? Infinity) <= entry.so) at = i; });
       entries.splice(at + 1, 0, entry);
     });
-    // Span notes: legacy notes by saved sort key, moved notes pinned directly below their anchor row
-    placeSpanNotes(entries, job?.span_notes, (n) => ({ kind: "note", key: `note:${n.id}`, so: n.so ?? Infinity, noteId: n.id, text: `Note: ${n.text}` }));
+    // Anchored risers + span notes: pinned directly below their anchor row (legacy notes by saved sort key)
+    placeSpanNotes(entries, [...anchoredRisers, ...(job?.span_notes || [])], (n) => (n._row ? n._row : { kind: "note", key: `note:${n.id}`, so: n.so ?? Infinity, noteId: n.id, text: `Note: ${n.text}` }));
     entries.forEach((e, idx) => {
       e.num = idx + 1;
       if (e.kind === "span") nums[e.segIndex] = e.num;
@@ -2804,11 +2789,17 @@ const JobMap = () => {
             <Button size="sm" variant="outline" className="h-7 text-xs bg-white text-zinc-900 hover:bg-zinc-100 border-0 ml-auto shrink-0" onClick={() => setConnectFrom(null)} data-testid="connect-from-cancel-btn">Cancel</Button>
           </div>
         )}
-        {swapPick !== null && orderedSegments[swapPick] && (
+        {((swapPick !== null && orderedSegments[swapPick]) || (riserPick !== null && measurementEntries[riserPick]?.kind === "riser")) && (
           <div className="flex flex-wrap items-center gap-3 bg-yellow-400 text-zinc-900 rounded-lg px-4 py-2.5 text-sm font-medium shadow" data-testid="span-swap-banner">
-            <span className="font-mono font-bold">Span {spanNums[swapPick] ?? swapPick + 1}:</span>
-            <span className="font-mono">{segItemName(orderedSegments[swapPick].from)} to {segItemName(orderedSegments[swapPick].to)} = {fmtFeet(segListDistance(orderedSegments[swapPick]))}</span>
-            <form className="flex items-center gap-2" onSubmit={(ev) => { ev.preventDefault(); applyBadgeNumber(badgeValue); }}>
+            {riserPick !== null ? (
+              <span className="font-mono"><span className="font-bold">Riser {riserPick + 1}:</span> {measurementEntries[riserPick].text}</span>
+            ) : (
+              <>
+                <span className="font-mono font-bold">Span {spanNums[swapPick] ?? swapPick + 1}:</span>
+                <span className="font-mono">{segItemName(orderedSegments[swapPick].from)} to {segItemName(orderedSegments[swapPick].to)} = {fmtFeet(segListDistance(orderedSegments[swapPick]))}</span>
+              </>
+            )}
+            <form className="flex items-center gap-2" onSubmit={(ev) => { ev.preventDefault(); if (riserPick !== null) { const i = riserPick; setRiserPick(null); moveRiserToIndex(i, Math.round(Number(badgeValue)) - 1); } else applyBadgeNumber(badgeValue); }}>
               <label htmlFor="badge-span-number" className="text-zinc-800">New number:</label>
               <input
                 id="badge-span-number"
@@ -2818,14 +2809,14 @@ const JobMap = () => {
                 autoFocus
                 value={badgeValue}
                 onChange={(ev) => setBadgeValue(ev.target.value)}
-                onKeyDown={(ev) => { if (ev.key === "Escape") setSwapPick(null); }}
+                onKeyDown={(ev) => { if (ev.key === "Escape") { setSwapPick(null); setRiserPick(null); } }}
                 className="w-16 h-7 px-2 rounded border border-zinc-500 bg-white font-mono font-bold text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-700"
                 data-testid="badge-span-number-input"
               />
               <Button type="submit" size="sm" className="h-7 text-xs bg-zinc-900 hover:bg-zinc-800 text-white border-0" data-testid="badge-span-number-save-btn">Save</Button>
             </form>
-            <span className="text-zinc-800 text-xs">A number another span already has swaps the two; a free number shifts the rest. Or tap another badge to swap.</span>
-            <Button size="sm" variant="outline" className="h-7 text-xs bg-white border-zinc-400 ml-auto shrink-0" onClick={() => setSwapPick(null)} data-testid="span-swap-cancel-btn">Cancel</Button>
+            <span className="text-zinc-800 text-xs">{riserPick !== null ? "The riser moves to that number; the rows after it shift to stay in sequence." : "A number another span already has swaps the two; a free number shifts the rest. Or tap another badge to swap."}</span>
+            <Button size="sm" variant="outline" className="h-7 text-xs bg-white border-zinc-400 ml-auto shrink-0" onClick={() => { setSwapPick(null); setRiserPick(null); }} data-testid="span-swap-cancel-btn">Cancel</Button>
           </div>
         )}
         {placingType && multiPlace && (
@@ -3229,9 +3220,7 @@ const JobMap = () => {
 
               {/* Riser number badges at their pole — click to see the measurement */}
               {!showStationNumbers && measurementEntries.filter((e) => e.kind === "riser" && e.pos).map((e) => (
-                <Marker key={`riser-num-${e.num}`} position={e.pos} icon={numberBadgeIcon(e.num, "#7c3aed", [-6, 32])} zIndexOffset={800}>
-                  <Popup><div className="text-sm font-mono" data-testid={`riser-badge-popup-${e.num}`}>{e.text}</div></Popup>
-                </Marker>
+                <Marker key={`riser-num-${e.num}`} position={e.pos} icon={numberBadgeIcon(e.num, "#7c3aed", [-6, 32], riserPick === e.num - 1)} zIndexOffset={riserPick === e.num - 1 ? 1600 : 800} eventHandlers={{ click: (ev) => { L.DomEvent.stopPropagation(ev); setSwapPick(null); setRiserPick(riserPick === e.num - 1 ? null : e.num - 1); setBadgeValue(String(e.num)); } }} />
               ))}
 
               {/* Path measurement number badges at their item — click to see the measurement */}

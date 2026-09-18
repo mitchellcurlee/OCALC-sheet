@@ -455,6 +455,7 @@ export const buildSpanMeasurementTexts = ({ poles, underground = [], connections
   const rows = [];
   const riserDone = new Set();
   const riserLaterRows = [];
+  const anchoredRiserRows = [];
   const orderKeysUsable = route.some((p) => Number.isFinite(p.sort_order)) || (underground || []).some((u) => Number.isFinite(u.sort_order));
   const pathDone = new Set();
   const pathTextOf = (u) => {
@@ -475,7 +476,8 @@ export const buildSpanMeasurementTexts = ({ poles, underground = [], connections
           ? `${itemName(it)} New Riser${c > 1 ? ` x${c}` : ""} ${riserStations[it.id] || stations[it.id] || ""}`.trim()
           : `${itemName(it)} New Riser${c > 1 ? ` x${c}` : ""} = ${fmtFeet(c * h)}`,
       };
-      if (p?.riser_sort_order != null && orderKeysUsable) riserLaterRows.push(row);
+      if (riserAnchor(p) !== undefined) anchoredRiserRows.push({ after: riserAnchor(p), _row: row });
+      else if (p?.riser_sort_order != null && orderKeysUsable) riserLaterRows.push(row);
       else rows.push(row);
     }
   };
@@ -533,9 +535,12 @@ export const buildSpanMeasurementTexts = ({ poles, underground = [], connections
     rows.forEach((r, i) => { if (((r.toSo ?? r.so) ?? Infinity) <= row.so) at = i; });
     rows.splice(at + 1, 0, row);
   });
-  placeSpanNotes(rows, spanNotes, (n) => ({ key: `note:${n.id}`, so: n.so ?? Infinity, text: `Note: ${n.text}` }));
+  placeSpanNotes(rows, [...anchoredRiserRows, ...(spanNotes || [])], (n) => (n._row ? n._row : { key: `note:${n.id}`, so: n.so ?? Infinity, text: `Note: ${n.text}` }));
   return rows.map((r) => r.text);
 };
+
+// Anchor of a riser row: undefined = legacy numeric placement, null = top of list, else key of the row above
+export const riserAnchor = (pole) => (pole?.riser_after ? (pole.riser_after === "__top__" ? null : pole.riser_after) : undefined);
 
 // Span notes: legacy notes carry a numeric `so`; notes moved with the arrows carry `after`
 // (key of the row they sit directly below, null = top of list) so they stay exactly where placed
@@ -1610,6 +1615,7 @@ const generateMeasurementListImages = ({ pairSegs, route, totalRiserFeet, job, u
   // Build display rows: pair segments interleaved with riser info
   const displayRows = [];
   const riserDone = new Set();
+  const anchoredRisers = [];
   pairSegs.forEach((sg) => {
     if (!sg.manual) displayRows.push({ type: "segment", key: `span:${spanKey(sg.from.id, sg.to.id)}`, so: sg.from.sort_order ?? Infinity, toSo: sg.to.sort_order ?? Infinity, text: `${itemName(sg.from)} → ${itemName(sg.to)}${sg.aerial ? "" : " (UG)"}`, ft: sg.ft });
     const poleB = sg.to.type === "pole" ? route.find((p) => p.id === sg.to.id) : null;
@@ -1618,18 +1624,20 @@ const generateMeasurementListImages = ({ pairSegs, route, totalRiserFeet, job, u
       const riserHeight = parseFloat(poleB.riser_height) || 0;
       if (riserCount > 0 && riserHeight > 0) {
         riserDone.add(poleB.id);
-        displayRows.push({ 
+        const riserRow = { 
           type: "riser", 
           key: `riser:${poleB.id}`,
           so: sg.to.sort_order ?? Infinity,
           text: `  ↳ ${poleB.pole_number} Riser${riserCount > 1 ? ` x${riserCount}` : ""}`, 
           ft: riserCount * riserHeight 
-        });
+        };
+        if (riserAnchor(poleB) !== undefined) anchoredRisers.push({ after: riserAnchor(poleB), _row: riserRow });
+        else displayRows.push(riserRow);
       }
     }
   });
   insertPathRows(displayRows, underground);
-  placeSpanNotes(displayRows, job?.span_notes, (n) => ({ type: "note", key: `note:${n.id}`, so: n.so ?? Infinity, text: `Note: ${n.text}`, ft: null }));
+  placeSpanNotes(displayRows, [...anchoredRisers, ...(job?.span_notes || [])], (n) => (n._row ? n._row : { type: "note", key: `note:${n.id}`, so: n.so ?? Infinity, text: `Note: ${n.text}`, ft: null }));
   
   const pairFt = pairSegs.reduce((acc, x) => acc + (x.manual ? 0 : x.ft), 0);
   const pathFt = totalPathFeet(underground);

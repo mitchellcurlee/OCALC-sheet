@@ -405,7 +405,7 @@ async def reorder_job_items(job_id: str, items: List[dict], current_user: dict =
         elif item_type == "riser":
             await _db.poles.update_one(
                 {"id": item_id, "job_id": job_id},
-                {"$set": {"riser_sort_order": sort_order, "updated_at": now}}
+                {"$set": {"riser_sort_order": sort_order, "riser_after": None, "updated_at": now}}
             )
     
     return {
