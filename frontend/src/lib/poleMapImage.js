@@ -382,12 +382,12 @@ export const pathItemName = (it) => (it.type === "pole"
 // Target named on the last path row that has one (the item the path runs to/from)
 export const pathTargetOf = (rows) => { const withTarget = (rows || []).filter((m) => m.to); return withTarget.length ? withTarget[withTarget.length - 1].to : ""; };
 // A span is "manually measured" (hidden from the list, replaced by the path row) when one endpoint's path
-// measurements name the other endpoint as target; legacy paths with no target replace the UG item's outgoing span
+// measurements name the other endpoint as target; paths with no target replace the item's outgoing span
 export const pairIsManual = (pr) => {
   for (const [a, b] of [[pr.from, pr.to], [pr.to, pr.from]]) {
     if (!a.hasPath) continue;
     if (a.pathTarget) { if (a.pathTarget === pathItemName(b)) return true; }
-    else if (a === pr.from && a.type === "underground") return true;
+    else if (a === pr.from) return true;
   }
   return false;
 };
