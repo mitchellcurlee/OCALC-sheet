@@ -97,6 +97,9 @@ export const UNDERGROUND_ABBR = {
 export const undergroundAbbr = (type) => UNDERGROUND_ABBR[type] || String(type || "").slice(0, 3).toUpperCase();
 export const UNDERGROUND_TYPES = Object.keys(UNDERGROUND_ABBR);
 
+// One path measurement row as text: "Down 5ft to FBT" / "Over 3ft from HH-1"
+export const pathRowText = (m, withTarget = true) => `${m.direction} ${m.feet}ft${withTarget && m.to ? ` ${m.rel === "from" ? "from" : "to"} ${m.to}` : ""}`;
+
 // " / HH tie in- <measurements>" for each span endpoint (underground item) that has tie-in data
 export const tieInSuffix = (from, to, underground = []) => {
   const parts = [];
@@ -412,7 +415,7 @@ const insertPathRows = (displayRows, underground) => {
         type: "path",
         key: `path:${u.id}`,
         so: u.sort_order ?? Infinity,
-        text: `${u.pole_number !== undefined ? (/^\d/.test(String(u.pole_number || "")) ? `P${u.pole_number}` : (u.pole_number || "Pole")) : `${undergroundAbbr(u.type)}${u.label && u.label !== u.type ? ` ${u.label}` : ""}`}: ${u.path_measurements.map((m) => `${m.direction} ${m.feet}ft`).join(", ")}`,
+        text: `${u.pole_number !== undefined ? (/^\d/.test(String(u.pole_number || "")) ? `P${u.pole_number}` : (u.pole_number || "Pole")) : `${undergroundAbbr(u.type)}${u.label && u.label !== u.type ? ` ${u.label}` : ""}`}: ${u.path_measurements.map((m) => pathRowText(m)).join(", ")}`,
         ft,
       };
       const idx = displayRows.findIndex((r) => (r.so ?? Infinity) >= row.so);
@@ -474,7 +477,7 @@ export const buildSpanMeasurementTexts = ({ poles, underground = [], connections
   const pathDone = new Set();
   const pathTextOf = (u) => {
     const t = (u.path_measurements || []).reduce((s, m) => s + (parseFloat(m.feet) || 0), 0);
-    const base = `${u.pole_number !== undefined ? (/^\d/.test(String(u.pole_number || "")) ? `P${u.pole_number}` : (u.pole_number || "Pole")) : `${undergroundAbbr(u.type)}${u.label && u.label !== u.type ? ` ${u.label}` : ""}`}: ${u.path_measurements.map((m) => `${m.direction} ${m.feet}ft${m.to ? ` to ${m.to}` : ""}`).join(", ")} = ${fmtFeet(t)}`;
+    const base = `${u.pole_number !== undefined ? (/^\d/.test(String(u.pole_number || "")) ? `P${u.pole_number}` : (u.pole_number || "Pole")) : `${undergroundAbbr(u.type)}${u.label && u.label !== u.type ? ` ${u.label}` : ""}`}: ${u.path_measurements.map((m) => pathRowText(m)).join(", ")} = ${fmtFeet(t)}`;
     return stationsOnly && riserStations[u.id] ? `${base} (${stations[u.id]} to ${riserStations[u.id]})` : base;
   };
   const pushRiser = (it) => {

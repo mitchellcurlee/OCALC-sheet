@@ -135,7 +135,7 @@ const UndergroundForm = () => {
         tie_in_measurements: u.tie_in_measurements || "",
         fid: u.fid || "",
         primary_fid: !!u.primary_fid,
-        path_measurements: (u.path_measurements || []).map((m) => ({ direction: m.direction, feet: m.feet?.toString() || "", to: m.to || "" })),
+        path_measurements: (u.path_measurements || []).map((m) => ({ direction: m.direction, feet: m.feet?.toString() || "", rel: m.rel || "to", to: m.to || "" })),
         soc_start: !!u.soc_start,
         soc_end: !!u.soc_end,
         start_path: !!u.start_path,
@@ -256,7 +256,7 @@ const UndergroundForm = () => {
     }
   };
 
-  const addPathMeasurement = () => setFormData((p) => ({ ...p, path_measurements: [...p.path_measurements, { direction: "In", feet: "", to: "" }] }));
+  const addPathMeasurement = () => setFormData((p) => ({ ...p, path_measurements: [...p.path_measurements, { direction: "In", feet: "", rel: "to", to: "" }] }));
   const updatePathMeasurement = (i, field, value) => setFormData((p) => {
     const rows = [...p.path_measurements];
     rows[i] = { ...rows[i], [field]: value };
@@ -302,7 +302,7 @@ const UndergroundForm = () => {
     }
     const validRows = formData.path_measurements.filter((m) => m.direction && m.feet !== "" && Number.isFinite(parseFloat(m.feet)));
     if (validRows.length > 0 && !validRows[validRows.length - 1].to) {
-      toast.error("Select a \"to\" target on the last path measurement (e.g. Down 5ft to FBT)");
+      toast.error("Select a target on the last path measurement (e.g. Down 5ft to FBT, or In 10ft from HH-1)");
       return;
     }
     setSubmitting(true);
@@ -328,7 +328,7 @@ const UndergroundForm = () => {
         standalone: !!formData.standalone,
         path_measurements: formData.path_measurements
           .filter((m) => m.direction && m.feet !== "" && Number.isFinite(parseFloat(m.feet)))
-          .map((m) => ({ direction: m.direction, feet: parseFloat(m.feet), to: m.to })),
+          .map((m) => ({ direction: m.direction, feet: parseFloat(m.feet), rel: m.rel || "to", to: m.to })),
         latitude: Number.isFinite(parseFloat(formData.latitude)) ? parseFloat(formData.latitude) : null,
         longitude: Number.isFinite(parseFloat(formData.longitude)) ? parseFloat(formData.longitude) : null,
       };
@@ -559,7 +559,7 @@ const UndergroundForm = () => {
                 </Button>
               </div>
               {formData.path_measurements.length === 0 && (
-                <p className="text-xs text-emerald-600">Add direction + footage rows; the last row needs a "to" target (e.g. Up 2ft, Over 3ft, Down 5ft to FBT). These are added to the map's overall measurements and the ASE path of approach.</p>
+                <p className="text-xs text-emerald-600">Add direction + footage rows and pick whether each is measured to or from its target (e.g. Up 2ft, Over 3ft, Down 5ft to FBT — or In 10ft from HH-1). These are added to the map's overall measurements and the ASE path of approach.</p>
               )}
               {formData.path_measurements.map((m, i) => (
                 <div key={i} className="flex items-center gap-2 flex-wrap" data-testid={`path-measurement-row-${i}`}>
@@ -575,7 +575,15 @@ const UndergroundForm = () => {
                     <Input type="number" inputMode="decimal" min="0" step="any" value={m.feet} onChange={(e) => updatePathMeasurement(i, "feet", e.target.value)} placeholder="0" className="h-10 bg-white border-emerald-300 text-zinc-900 pr-8" data-testid={`path-feet-input-${i}`} />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-mono text-zinc-400">ft</span>
                   </div>
-                  <span className="text-xs font-mono text-emerald-700">to</span>
+                  <Select value={m.rel || "to"} onValueChange={(v) => updatePathMeasurement(i, "rel", v)}>
+                    <SelectTrigger className="h-10 w-24 bg-white border-emerald-300 text-emerald-800 font-mono text-xs" data-testid={`path-rel-select-${i}`} title="Measured to or from the target?">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-zinc-50 border-zinc-300 z-[1200]">
+                      <SelectItem value="to">to</SelectItem>
+                      <SelectItem value="from">from</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <Select value={m.to || "__blank__"} onValueChange={(v) => updatePathMeasurement(i, "to", v === "__blank__" ? "" : v)}>
                     <SelectTrigger className="h-10 flex-1 min-w-[130px] bg-white border-emerald-300 text-zinc-900" data-testid={`path-to-select-${i}`}>
                       <SelectValue placeholder="Target…" />
@@ -592,7 +600,7 @@ const UndergroundForm = () => {
               ))}
               {formData.path_measurements.length > 0 && (
                 <p className="text-xs font-mono text-emerald-700" data-testid="path-measurements-summary">
-                  {formData.path_measurements.filter((m) => m.direction && m.feet).map((m) => `${m.direction} ${m.feet}ft${m.to ? ` to ${m.to}` : ""}`).join(", ")}
+                  {formData.path_measurements.filter((m) => m.direction && m.feet).map((m) => `${m.direction} ${m.feet}ft${m.to ? ` ${m.rel === "from" ? "from" : "to"} ${m.to}` : ""}`).join(", ")}
                   {(() => { const t = formData.path_measurements.reduce((s, m) => s + (parseFloat(m.feet) || 0), 0); return t > 0 ? ` — ${t} ft total` : ""; })()}
                 </p>
               )}

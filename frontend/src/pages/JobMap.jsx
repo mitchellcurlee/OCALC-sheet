@@ -10,7 +10,7 @@ import domtoimage from "dom-to-image-more";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ChevronDown, ChevronUp, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera, Hash, Link2, Move, Palette, Plus, Map as MapIcon, GripVertical, Upload, Trash2, RotateCcw, Home, Route as RouteIcon, ListOrdered } from "lucide-react";
 import SpanReorderList from "@/components/SpanReorderList";
-import { computeRoute, fmtFeet, feetToStation, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, downloadMapPdfPages, ugWithGps, undergroundAbbr, computeUgConnectors, computeConnectionPairs, computeStationSegFeet, UNDERGROUND_TYPES, isAerialAttr, resolvePairAerial, spanKey, routeWaypoints, routeArg, placeSpanNotes, LIST_PAGE_LINES, riserAnchor, tieInSuffix } from "@/lib/poleMapImage";
+import { computeRoute, fmtFeet, feetToStation, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, downloadMapPdfPages, ugWithGps, undergroundAbbr, computeUgConnectors, computeConnectionPairs, computeStationSegFeet, UNDERGROUND_TYPES, isAerialAttr, resolvePairAerial, spanKey, routeWaypoints, routeArg, placeSpanNotes, LIST_PAGE_LINES, riserAnchor, tieInSuffix, pathRowText } from "@/lib/poleMapImage";
 import { ExportDestinationDialog } from "@/components/ExportDestinationDialog";
 import { CLOUD_EXPORT_LABELS, uploadExportToCloud } from "@/lib/cloudExports";
 import {
@@ -2046,7 +2046,7 @@ const JobMap = () => {
     const pathLabel = (src) => (src.pole_number !== undefined ? poleName(src.pole_number) : `${undergroundAbbr(src.type)}${src.label ? ` ${src.label}` : ""}`);
     const pathText = (src) => {
       const t = src.path_measurements.reduce((s, m) => s + (parseFloat(m.feet) || 0), 0);
-      return `${pathLabel(src)}: ${src.path_measurements.map((m) => `${m.direction} ${m.feet}ft${m.to ? ` to ${m.to}` : ""}`).join(", ")} = ${fmtFeet(t)}`;
+      return `${pathLabel(src)}: ${src.path_measurements.map((m) => pathRowText(m)).join(", ")} = ${fmtFeet(t)}`;
     };
     const pushPath = (item, pos) => {
       if (pathAdded.has(item.id)) return;
