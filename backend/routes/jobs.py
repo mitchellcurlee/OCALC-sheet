@@ -626,6 +626,13 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
             ws.cell(row=current_row, column=1, value=pole.get("notes", ""))
             current_row += 1
 
+        pole_pms = pole.get("path_measurements") or []
+        if pole_pms:
+            section("PATH MEASUREMENTS")
+            parts = [f"{m.get('direction', '')} {m.get('feet', '')}ft" + (f" {'from' if m.get('rel') == 'from' else 'to'} {m['to']}" if m.get("to") else "") for m in pole_pms]
+            ws.cell(row=current_row, column=1, value=f"{', '.join(parts)} = {sum(float(m.get('feet') or 0) for m in pole_pms):g} ft")
+            current_row += 1
+
         if pole.get("row_information"):
             section("R.O.W. INFORMATION")
             ws.cell(row=current_row, column=1, value=pole.get("row_information", ""))
@@ -676,7 +683,7 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
             "Culvert": "CULV", "Drainage Start": "DR-S", "Drainage End": "DR-E",
             "Eyebolt": "EB", "Pullbox": "PB", "Weather Head": "WH", "FDF": "FDF",
             "Gas Valve": "GV", "Gas Meter": "GM", "FST": "FST", "Water Meter/Valve": "WMV",
-            "Gas Line": "GAS", "Aerial NTE": "NTE", "Aerial PI": "PI", "Aerial FBT": "FBT", "Core": "C",
+            "Gas Line": "GAS", "Aerial NTE": "NTE", "Aerial PI": "PI", "Aerial FBT": "FBT", "Core": "C", "St. Start": "ST-S", "St. End": "ST-E",
         }
         EXPORT_AERIAL_TYPES = {"Loop", "Aerial Splice", "X-Messenger", "Eyebolt", "Pullbox", "Weather Head", "Aerial NTE", "Aerial PI", "Aerial FBT"}
         ws.cell(row=current_row, column=1, value="UNDERGROUND").fill = header_fill
@@ -698,7 +705,7 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
             pms = u.get("path_measurements") or []
             path_val = ""
             if pms:
-                parts = [f"{m.get('direction', '')} {m.get('feet', '')}ft" + (f" to {m['to']}" if m.get("to") else "") for m in pms]
+                parts = [f"{m.get('direction', '')} {m.get('feet', '')}ft" + (f" {'from' if m.get('rel') == 'from' else 'to'} {m['to']}" if m.get("to") else "") for m in pms]
                 path_total = sum(float(m.get("feet") or 0) for m in pms)
                 path_val = f"{', '.join(parts)} = {path_total:g} ft"
             ws.cell(row=current_row, column=1, value=UG_ABBR.get(u.get("type", ""), ""))

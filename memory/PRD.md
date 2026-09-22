@@ -519,3 +519,7 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 
 ## 2026-06 Voice-to-text on all text fields
 - components/VoiceMicButton.jsx: Web Speech API (SpeechRecognition/webkit) mic button; inserts final transcript at caret via native value setter + input event (React controlled fields update); one recognizer at a time; textarea = continuous. Hidden when unsupported (Firefox). ui/input.jsx + ui/textarea.jsx wrap the field in a relative div + mic (layout classes w-/flex/m- moved to wrapper via splitLayoutClasses); skipped for number/date/password/email/url/file etc., readOnly/disabled, or noVoice prop. Verified with stubbed recognizer: dictation appends to existing text, typing still works, saves; no mic on number/email/password; no layout overflow on pole/UG/ASE forms at 390px.
+
+## 2026-06 St. Start / St. End + export coverage
+- New UG types "St. Start" (ST-S) and "St. End" (ST-E): backend UNDERGROUND_TYPES + Excel UG_ABBR, lib UNDERGROUND_ABBR (map markers/legend/list), markup editor markers. MarkupTab now uses shared undergroundAbbr (was a stale copy).
+- Excel export: pole section gets "PATH MEASUREMENTS" (with to/from); UG path text includes to/from. Verified export contains pole path, ROW, ST-S/ST-E/C abbr, HH tie-in, address.

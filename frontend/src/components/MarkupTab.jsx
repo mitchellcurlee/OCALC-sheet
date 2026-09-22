@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { PhotoMarkupEditor } from "@/components/PhotoMarkupEditor";
 import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronUp, MapPin, Image as ImageIcon } from "lucide-react";
+import { undergroundAbbr as sharedUndergroundAbbr } from "@/lib/poleMapImage";
 
 /**
  * MarkupTab - Displays photo markup editor with underground attributes
@@ -146,15 +147,7 @@ const MarkupTab = ({
   };
 
   // Underground type abbreviations
-  const undergroundAbbr = (type) => {
-    const abbrs = {
-      "Handhole": "HH", "Manhole": "MH", "Brooks Enclosure": "BE", "Flowerpot": "FP",
-      "Hoffman Box": "HB", "Pedestal": "PED", "Point of Intersection": "PI", "FBT": "FBT",
-      "NTE": "NTE", "FBT/NTE": "F/N", "PFP": "PFP", "SOC Start": "SOC-S", 
-      "SOC End": "SOC-E", "Riser": "RSR", "MPOE": "MPOE", "EOP": "EOP", "ROW": "ROW",
-    };
-    return abbrs[type] || type?.substring(0, 3).toUpperCase() || "UG";
-  };
+  const undergroundAbbr = (type) => sharedUndergroundAbbr(type) || "UG";
 
   // Get all available photos to pre-load into markup if empty
   useEffect(() => {

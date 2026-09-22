@@ -25,6 +25,8 @@ export const UG_MARKERS = [
   { type: "UGP-E", label: "UG Path End", color: "#0891b2" },
   { type: "GAS", label: "Gas Line", color: "#eab308" },
   { type: "C", label: "Core", color: "#0f766e" },
+  { type: "ST-S", label: "St. Start", color: "#1d4ed8" },
+  { type: "ST-E", label: "St. End", color: "#b91c1c" },
   { type: "AS", label: "Aerial Splice", color: "#2563eb" },
   { type: "LOOP", label: "Loop", color: "#2563eb" },
   { type: "PWR", label: "Power", color: "#dc2626" },

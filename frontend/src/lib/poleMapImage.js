@@ -93,6 +93,8 @@ export const UNDERGROUND_ABBR = {
   "Aerial PI": "PI",
   "Aerial FBT": "FBT",
   Core: "C",
+  "St. Start": "ST-S",
+  "St. End": "ST-E",
 };
 export const undergroundAbbr = (type) => UNDERGROUND_ABBR[type] || String(type || "").slice(0, 3).toUpperCase();
 export const UNDERGROUND_TYPES = Object.keys(UNDERGROUND_ABBR);
