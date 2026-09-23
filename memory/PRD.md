@@ -523,3 +523,4 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 ## 2026-06 St. Start / St. End + export coverage
 - New UG types "St. Start" (ST-S) and "St. End" (ST-E): backend UNDERGROUND_TYPES + Excel UG_ABBR, lib UNDERGROUND_ABBR (map markers/legend/list), markup editor markers. MarkupTab now uses shared undergroundAbbr (was a stale copy).
 - Excel export: pole section gets "PATH MEASUREMENTS" (with to/from); UG path text includes to/from. Verified export contains pole path, ROW, ST-S/ST-E/C abbr, HH tie-in, address.
+- HOA Type dropdown (PoleForm HOA_TYPES): added "St. Light" after Power Drop. Verified.
