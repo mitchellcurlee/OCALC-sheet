@@ -44,6 +44,7 @@ import {
 import EditableRoute from "@/components/EditableRoute";
 import MapAnnotations from "@/components/MapAnnotations";
 import HomeAddressLayer from "@/components/HomeAddressLayer";
+import { CurrentLocationLayer } from "@/components/CurrentLocationLayer";
 
 const MAP_AERIAL_ADD_TYPES = ["Loop", "Aerial Splice", "Power", "X-Messenger", "Eyebolt", "Pullbox", "Weather Head"];
 
@@ -3090,6 +3091,7 @@ const JobMap = () => {
                 <TileLayer key="esri-roads" url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}" maxNativeZoom={19} maxZoom={22} crossOrigin="anonymous" />
                 </>
               )}
+              <CurrentLocationLayer />
               <FitBounds points={allPoints} disabled={editMode} />
               <MapRefSetter mapRef={mapRef} />
               <HomeAddressLayer enabled={showAddresses} onStatus={setAddrStatus} />

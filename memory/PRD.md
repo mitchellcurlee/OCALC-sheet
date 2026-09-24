@@ -524,3 +524,6 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 - New UG types "St. Start" (ST-S) and "St. End" (ST-E): backend UNDERGROUND_TYPES + Excel UG_ABBR, lib UNDERGROUND_ABBR (map markers/legend/list), markup editor markers. MarkupTab now uses shared undergroundAbbr (was a stale copy).
 - Excel export: pole section gets "PATH MEASUREMENTS" (with to/from); UG path text includes to/from. Verified export contains pole path, ROW, ST-S/ST-E/C abbr, HH tie-in, address.
 - HOA Type dropdown (PoleForm HOA_TYPES): added "St. Light" after Power Drop. Verified.
+
+## 2026-06 Current location marker
+- components/CurrentLocationLayer.jsx mounted in JobMap MapContainer: navigator.geolocation.watchPosition on load (permission prompt once), pulsing blue dot (title "Your current location", zIndex 2000, non-interactive) + accuracy circle; follows movement. Denied/unavailable -> bottom-left corner note (location-unavailable-indicator). Verified with granted (dot moves on update) and denied states.
