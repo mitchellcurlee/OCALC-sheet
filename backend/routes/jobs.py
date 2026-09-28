@@ -14,7 +14,7 @@ from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
 
 from models.job import Job, JobCreate, JobUpdate
 from models.pole import Pole
-from services.auth import get_current_user, is_admin_user, is_mastec_byers_admin
+from services.auth import get_current_user, is_admin_user, is_mastec_byers_admin, is_company_email, company_email_regex
 from services.helpers import pole_sort_key, format_height, pole_photo_items, underground_photo_items
 
 router = APIRouter(tags=["jobs"])
@@ -113,7 +113,7 @@ async def can_access_job(job_id: str, current_user: dict) -> dict:
             owner = await _db.users.find_one({"id": job.get("user_id")}, {"_id": 0, "email": 1})
             if owner:
                 email = owner.get("email", "").lower()
-                if email.endswith("@mastec.com") or email.endswith("@byers.com") or job.get("user_id") == current_user["id"]:
+                if is_company_email(email) or job.get("user_id") == current_user["id"]:
                     return job
         return None
     else:
@@ -121,11 +121,7 @@ async def can_access_job(job_id: str, current_user: dict) -> dict:
         return await _db.jobs.find_one({"id": job_id, "$or": [{"user_id": current_user["id"]}, {"shared_with": email}]}, {"_id": 0})
 
 
-_COMPANY_DOMAINS = ("@mastec.com", "@byers.com", "@mastecbyers.com")
-
-
-def _is_company_email(email: str) -> bool:
-    return (email or "").lower().endswith(_COMPANY_DOMAINS)
+_is_company_email = is_company_email
 
 
 async def can_view_job(job_id: str, current_user: dict) -> dict:
@@ -169,13 +165,7 @@ async def get_jobs(current_user: dict = Depends(get_current_user)):
     elif is_mastec_byers_admin(current_user):
         # Mastec/Byers admin sees all jobs from mastec.com and byers.com users
         # First get all mastec/byers user IDs
-        mastec_byers_users = await _db.users.find(
-            {"$or": [
-                {"email": {"$regex": "@mastec\\.com$", "$options": "i"}},
-                {"email": {"$regex": "@byers\\.com$", "$options": "i"}}
-            ]},
-            {"_id": 0, "id": 1}
-        ).to_list(10000)
+        mastec_byers_users = await _db.users.find(company_email_regex(), {"_id": 0, "id": 1}).to_list(10000)
         user_ids = [u["id"] for u in mastec_byers_users]
         # Include the admin's own jobs too
         user_ids.append(current_user["id"])
@@ -805,7 +795,7 @@ async def job_photos_gallery(job_id: str, token: Optional[str] = Query(None), re
                     user = await _db.users.find_one({"id": user_id}, {"_id": 0})
                     if user:
                         email = user.get("email", "").lower()
-                        if email.endswith("@mastec.com") or email.endswith("@byers.com"):
+                        if is_company_email(email):
                             has_access = True
             except (JWTError, Exception):
                 pass
@@ -1182,9 +1172,9 @@ async def get_transferable_users(current_user: dict = Depends(get_current_user))
     out = []
     for u in users:
         email = (u.get("email") or "").lower()
-        if u.get("id") == current_user["id"]:
+        if u.get("id") == current_user["id"] or u.get("email_verified") is False:
             continue
-        if email.endswith("@mastec.com") or email.endswith("@byers.com"):
+        if is_company_email(email):
             out.append({"id": u["id"], "email": u.get("email")})
     out.sort(key=lambda x: (x["email"] or "").lower())
     return out
@@ -1203,7 +1193,7 @@ async def transfer_job(job_id: str, request_body: dict, current_user: dict = Dep
     if not target:
         raise HTTPException(status_code=404, detail="Target user not found")
     email = (target.get("email") or "").lower()
-    if not (email.endswith("@mastec.com") or email.endswith("@byers.com")):
+    if not is_company_email(email):
         raise HTTPException(status_code=400, detail="Jobs can only be transferred to company users")
     now = datetime.now(timezone.utc).isoformat()
     history = list(job.get("transfer_history") or [])
@@ -1262,7 +1252,7 @@ async def export_job_photos_zip(job_id: str, token: Optional[str] = Query(None),
                 if user:
                     email = user.get("email", "").lower()
                     is_admin = user.get("is_admin", False)
-                    if is_admin or email.endswith("@mastec.com") or email.endswith("@byers.com") or email.endswith("@mastecbyers.com"):
+                    if is_admin or is_company_email(email):
                         has_access = True
                     else:
                         job_check = await _db.jobs.find_one({"id": job_id, "user_id": user_id}, {"_id": 0})
@@ -1286,7 +1276,7 @@ async def export_job_photos_zip(job_id: str, token: Optional[str] = Query(None),
                         email = user.get("email", "").lower()
                         is_admin = user.get("is_admin", False)
                         # Allow: admin users, mastec/byers users, or mastecbyers admin
-                        if is_admin or email.endswith("@mastec.com") or email.endswith("@byers.com") or email.endswith("@mastecbyers.com"):
+                        if is_admin or is_company_email(email):
                             has_access = True
                         else:
                             # Also allow if user owns the job
@@ -1409,7 +1399,7 @@ async def export_pole_photos_zip(pole_id: str, token: Optional[str] = Query(None
                     user = await _db.users.find_one({"id": user_id}, {"_id": 0})
                     if user:
                         email = user.get("email", "").lower()
-                        if email.endswith("@mastec.com") or email.endswith("@byers.com"):
+                        if is_company_email(email):
                             has_access = True
             except (JWTError, Exception):
                 pass
@@ -1486,7 +1476,7 @@ async def get_pole_photo(pole_id: str, photo_label: str, token: Optional[str] = 
                     user = await _db.users.find_one({"id": user_id}, {"_id": 0})
                     if user:
                         email = user.get("email", "").lower()
-                        if email.endswith("@mastec.com") or email.endswith("@byers.com"):
+                        if is_company_email(email):
                             has_access = True
             except (JWTError, Exception):
                 pass
@@ -1583,7 +1573,7 @@ async def get_underground_photo(ug_id: str, photo_label: str, token: Optional[st
                     user = await _db.users.find_one({"id": user_id}, {"_id": 0})
                     if user:
                         email = user.get("email", "").lower()
-                        if email.endswith("@mastec.com") or email.endswith("@byers.com"):
+                        if is_company_email(email):
                             has_access = True
             except (JWTError, Exception):
                 pass
@@ -1722,7 +1712,7 @@ async def export_ase_photos_zip(job_id: str, token: Optional[str] = Query(None),
                     user = await _db.users.find_one({"id": user_id}, {"_id": 0})
                     if user:
                         email = user.get("email", "").lower()
-                        if user.get("is_admin") or email.endswith("@mastec.com") or email.endswith("@byers.com") or email.endswith("@mastecbyers.com"):
+                        if user.get("is_admin") or is_company_email(email):
                             has_access = True
             except (JWTError, Exception):
                 pass

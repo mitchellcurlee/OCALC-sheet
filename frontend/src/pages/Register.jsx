@@ -1,22 +1,36 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
+import axios from 'axios';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Zap, Loader2, Mail, Lock, User } from 'lucide-react';
+import { Zap, Loader2, Mail, Lock, User, MailCheck } from 'lucide-react';
 
 const Register = () => {
-  const navigate = useNavigate();
   const { register } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [sentTo, setSentTo] = useState('');
+  const [resending, setResending] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
     confirmPassword: ''
   });
+
+  const resend = async () => {
+    setResending(true);
+    try {
+      await axios.post('/auth/resend-verification', { email: sentTo });
+      toast.success('Verification email sent again');
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Could not resend right now');
+    } finally {
+      setResending(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -43,8 +57,7 @@ const Register = () => {
     setLoading(true);
     try {
       await register(email, password, name);
-      toast.success('Account created successfully!');
-      navigate('/');
+      setSentTo(email);
     } catch (error) {
       console.error('Registration error:', error);
       const message = error.response?.data?.detail || error.message || 'Registration failed';
@@ -53,6 +66,25 @@ const Register = () => {
       setLoading(false);
     }
   };
+
+  if (sentTo) {
+    return (
+      <div className="min-h-screen bg-industrial-bg flex items-center justify-center px-4 safe-area-inset">
+        <div className="w-full max-w-md industrial-card p-6 text-center" data-testid="register-check-email">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-red-600 mb-4"><MailCheck className="w-10 h-10 text-white" /></div>
+          <h1 className="font-heading text-2xl font-bold tracking-tight uppercase text-zinc-900">Check your email</h1>
+          <p className="text-zinc-600 text-sm mt-3">We sent a verification link to <span className="font-semibold text-zinc-900" data-testid="register-sent-to">{sentTo}</span>. Click it to activate your account, then sign in.</p>
+          <p className="text-zinc-500 text-xs mt-2">The link expires in 24 hours. Check your spam folder if you don't see it.</p>
+          <div className="mt-6 flex flex-col gap-2">
+            <Button type="button" variant="outline" disabled={resending} onClick={resend} className="h-12 bg-white border-zinc-300" data-testid="register-resend-btn">
+              {resending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Resend verification email'}
+            </Button>
+            <Link to="/login" className="text-red-600 hover:text-red-700 font-medium text-sm" data-testid="register-go-login">Back to sign in</Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-industrial-bg flex items-center justify-center px-4 safe-area-inset">
@@ -66,6 +98,7 @@ const Register = () => {
             Pole Data Sheet
           </h1>
           <p className="text-zinc-500 text-sm mt-1">Create your account</p>
+          <p className="text-zinc-400 text-xs mt-1" data-testid="register-domain-hint">Company email required (mastec.com, byers.com, synapsiq.com, mastecindia.com)</p>
         </div>
 
         {/* Register Form */}

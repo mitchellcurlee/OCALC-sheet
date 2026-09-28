@@ -11,7 +11,7 @@ from openpyxl.styles import Font, PatternFill
 from models.pole import Pole, PoleCreate, PoleUpdate
 from models.options import POLE_CONDITIONS
 from services.helpers import pole_sort_key, format_height, pole_photo_items, haversine_feet, has_gps
-from services.auth import get_current_user
+from services.auth import get_current_user, is_company_email
 from routes.addresses import nearest_address
 
 router = APIRouter(tags=["poles"])
@@ -505,7 +505,7 @@ async def pole_gallery(pole_id: str, token: Optional[str] = None, request: Reque
                     user = await _db.users.find_one({"id": user_id}, {"_id": 0})
                     if user:
                         email = user.get("email", "").lower()
-                        if email.endswith("@mastec.com") or email.endswith("@byers.com"):
+                        if is_company_email(email):
                             has_access = True
             except (JWTError, Exception):
                 pass

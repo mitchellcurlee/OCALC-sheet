@@ -20,6 +20,7 @@ import Trash from "@/pages/Trash";
 import ASEPhotoGallery from "@/pages/ASEPhotoGallery";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
+import VerifyEmail from "@/pages/VerifyEmail";
 import BackupAtlas from "@/pages/BackupAtlas";
 import InstallPrompt from "@/components/InstallPrompt";
 
@@ -34,6 +35,7 @@ function App() {
             {/* Auth Routes */}
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/verify-email" element={<VerifyEmail />} />
             
             {/* Public Routes - no auth required */}
             <Route path="/ase-gallery/:jobId" element={<ASEPhotoGallery />} />

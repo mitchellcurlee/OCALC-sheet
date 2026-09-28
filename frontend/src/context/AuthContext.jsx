@@ -176,15 +176,8 @@ export const AuthProvider = ({ children }) => {
         throw new Error(errorData.detail || `Registration failed (${response.status})`);
       }
       
-      const data = await response.json();
-      const { access_token, user: userData } = data;
-      
-      safeStorage.setItem('token', access_token);
-      axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
-      setToken(access_token);
-      setUser(userData);
-      
-      return userData;
+      // Registration no longer logs in: the account is activated via the emailed link.
+      return await response.json();
     } catch (error) {
       console.error('Register error:', error);
       if (error.name === 'AbortError') {
@@ -204,6 +197,14 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   }, []);
 
+  // Used by the email-verification page: the verify endpoint returns a full session.
+  const acceptSession = useCallback((access_token, userData) => {
+    safeStorage.setItem('token', access_token);
+    axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
+    setToken(access_token);
+    setUser(userData);
+  }, []);
+
   const value = useMemo(() => ({
     user,
     token,
@@ -211,9 +212,10 @@ export const AuthProvider = ({ children }) => {
     login,
     register,
     logout,
+    acceptSession,
     isAuthenticated: !!user,
     isAdmin: user?.is_admin || false,
-  }), [user, token, loading, login, register, logout]);
+  }), [user, token, loading, login, register, logout, acceptSession]);
 
   return (
     <AuthContext.Provider value={value}>

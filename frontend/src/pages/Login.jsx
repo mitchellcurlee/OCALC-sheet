@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
+import axios from 'axios';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -13,10 +14,24 @@ const Login = () => {
   const { login } = useAuth();
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [unverified, setUnverified] = useState(false);
+  const [resending, setResending] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     password: ''
   });
+
+  const resend = async () => {
+    setResending(true);
+    try {
+      await axios.post('/auth/resend-verification', { email: formData.email.trim().toLowerCase() });
+      toast.success('Verification email sent — check your inbox');
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Could not resend right now');
+    } finally {
+      setResending(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -30,6 +45,7 @@ const Login = () => {
     }
 
     setLoading(true);
+    setUnverified(false);
     try {
       await login(email, password);
       toast.success('Login successful!');
@@ -37,7 +53,12 @@ const Login = () => {
     } catch (error) {
       console.error('Login error:', error);
       const message = error.response?.data?.detail || error.message || 'Login failed. Please check your credentials.';
-      toast.error(message);
+      if (message === 'EMAIL_NOT_VERIFIED') {
+        setUnverified(true);
+        toast.error('Please verify your email address before signing in.');
+      } else {
+        toast.error(message);
+      }
     } finally {
       setLoading(false);
     }
@@ -128,6 +149,16 @@ const Login = () => {
               )}
             </Button>
           </form>
+
+          {unverified && (
+            <div className="mt-4 p-3 bg-amber-50 border border-amber-300 rounded text-sm text-amber-900" data-testid="login-unverified-notice">
+              <p className="font-semibold">Email not verified yet</p>
+              <p className="text-xs mt-1">Click the link we emailed you to activate your account. Didn't get it?</p>
+              <Button type="button" variant="outline" size="sm" disabled={resending} onClick={resend} className="mt-2 h-9 bg-white border-amber-300 text-amber-900" data-testid="login-resend-btn">
+                {resending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Resend verification email'}
+              </Button>
+            </div>
+          )}
 
           <div className="mt-6 text-center">
             <p className="text-zinc-500 text-sm">

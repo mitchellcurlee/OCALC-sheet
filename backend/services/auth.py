@@ -1,4 +1,5 @@
 import os
+import re
 from datetime import datetime, timezone, timedelta
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -56,7 +57,31 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
     user = await _db.users.find_one({"id": user_id}, {"_id": 0, "hashed_password": 0})
     if user is None:
         raise HTTPException(status_code=401, detail="User not found")
+    if not is_admin_user(user) and not is_company_user(user):
+        raise HTTPException(status_code=403, detail=ACCESS_RESTRICTED_MSG)
+    if user.get("email_verified") is False:
+        raise HTTPException(status_code=403, detail="Please verify your email address before signing in.")
     return user
+
+
+# Company domains that may use the app. Add new companies here only.
+ALLOWED_DOMAINS = ("mastec.com", "byers.com", "mastecbyers.com", "synapsiq.com", "mastecindia.com")
+ACCESS_RESTRICTED_MSG = "This app is restricted to authorized company accounts."
+
+
+def is_company_email(email: str) -> bool:
+    e = (email or "").strip().lower()
+    return any(e.endswith("@" + d) for d in ALLOWED_DOMAINS)
+
+
+def is_company_user(user: dict) -> bool:
+    return is_company_email(user.get("email", ""))
+
+
+def company_email_regex() -> dict:
+    """Mongo filter matching any user whose email is on an allowed company domain."""
+    pattern = "@(" + "|".join(re.escape(d) for d in ALLOWED_DOMAINS) + ")$"
+    return {"email": {"$regex": pattern, "$options": "i"}}
 
 
 def is_admin_user(user: dict) -> bool:
@@ -71,6 +96,5 @@ def is_mastec_byers_admin(user: dict) -> bool:
 
 
 def is_mastec_byers_user(user: dict) -> bool:
-    """Check if user belongs to mastec.com or byers.com domain"""
-    email = user.get("email", "").lower()
-    return email.endswith("@mastec.com") or email.endswith("@byers.com")
+    """Check if user belongs to an allowed company domain"""
+    return is_company_user(user)
