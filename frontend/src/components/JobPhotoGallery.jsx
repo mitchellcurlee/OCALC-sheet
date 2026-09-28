@@ -8,6 +8,30 @@ import { JobPhotoAssignDialog, galleryItemLabel } from "@/components/JobPhotoAss
 
 const fmtDate = (s) => { try { return new Date(s).toLocaleDateString(); } catch { return s; } };
 
+export const JOB_GALLERY_PHOTO_MIME = "application/x-job-gallery-photo";
+export const JOB_GALLERY_DROP_EVENT = "job-gallery-drop";
+
+// Spread onto any pole/underground card to make it a drop target for gallery photos.
+export const galleryDropProps = (itemType, itemId, { onEnter, onLeave } = {}) => ({
+  onDragOver: (e) => {
+    if (!Array.from(e.dataTransfer?.types || []).includes(JOB_GALLERY_PHOTO_MIME)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
+    onEnter?.(itemId);
+  },
+  onDragLeave: () => onLeave?.(itemId),
+  onDrop: (e) => {
+    const raw = e.dataTransfer?.getData(JOB_GALLERY_PHOTO_MIME);
+    if (!raw) return;
+    e.preventDefault();
+    e.stopPropagation();
+    onLeave?.(itemId);
+    let photoIds = [];
+    try { photoIds = JSON.parse(raw); } catch { photoIds = [raw]; }
+    window.dispatchEvent(new CustomEvent(JOB_GALLERY_DROP_EVENT, { detail: { photoIds, item_type: itemType, item_id: itemId } }));
+  },
+});
+
 export const JobPhotoGallery = ({ jobId, poles = [], undergroundItems = [], onAssigned }) => {
   const [photos, setPhotos] = useState([]);
   const [uploading, setUploading] = useState(false);
@@ -54,21 +78,44 @@ export const JobPhotoGallery = ({ jobId, poles = [], undergroundItems = [], onAs
     try { await axios.delete(`/jobs/${jobId}/gallery/${p.id}`); setSelected((s) => s.filter((id) => id !== p.id)); await load(); } catch { toast.error("Delete failed"); }
   };
 
+  const assignTo = async (photoIds, keys) => {
+    for (const pid of photoIds) {
+      for (const key of keys) {
+        const [item_type, item_id] = key.split(":");
+        await axios.post(`/jobs/${jobId}/gallery/${pid}/assign`, { item_type, item_id });
+      }
+    }
+    toast.success(`Assigned to ${keys.map((k) => galleryItemLabel(itemById[k])).join(", ")}`);
+    setSelected([]);
+    await load();
+    onAssigned?.();
+  };
+
   const assign = async (keys) => {
     setBusy(true);
-    try {
-      for (const pid of assignTargets) {
-        for (const key of keys) {
-          const [item_type, item_id] = key.split(":");
-          await axios.post(`/jobs/${jobId}/gallery/${pid}/assign`, { item_type, item_id });
-        }
-      }
-      toast.success(`Assigned to ${keys.map((k) => galleryItemLabel(itemById[k])).join(", ")}`);
-      setSelected([]);
-      await load();
-      onAssigned?.();
-    } catch (err) { toast.error(err.response?.data?.detail || "Assign failed"); }
+    try { await assignTo(assignTargets, keys); }
+    catch (err) { toast.error(err.response?.data?.detail || "Assign failed"); }
     finally { setBusy(false); }
+  };
+
+  const assignToRef = useRef(assignTo);
+  assignToRef.current = assignTo;
+  useEffect(() => {
+    const handler = async (e) => {
+      const { photoIds, item_type, item_id } = e.detail || {};
+      if (!photoIds?.length) return;
+      try { await assignToRef.current(photoIds, [`${item_type}:${item_id}`]); }
+      catch (err) { toast.error(err.response?.data?.detail || "Assign failed"); }
+    };
+    window.addEventListener(JOB_GALLERY_DROP_EVENT, handler);
+    return () => window.removeEventListener(JOB_GALLERY_DROP_EVENT, handler);
+  }, []);
+
+  const startDrag = (e, p) => {
+    const ids = selected.includes(p.id) ? selected : [p.id];
+    e.dataTransfer.setData(JOB_GALLERY_PHOTO_MIME, JSON.stringify(ids));
+    e.dataTransfer.setData("text/plain", p.url);
+    e.dataTransfer.effectAllowed = "copy";
   };
 
   const unassign = async (p, ref) => {
@@ -105,9 +152,10 @@ export const JobPhotoGallery = ({ jobId, poles = [], undergroundItems = [], onAs
               const picked = selected.includes(p.id);
               return (
                 <div key={p.id} className="relative group w-24" data-testid={`job-gallery-photo-${i}`}>
-                  <img src={p.url} alt={p.original_filename} loading="lazy"
+                  <img src={p.url} alt={p.original_filename} loading="lazy" draggable onDragStart={(e) => startDrag(e, p)}
                     onClick={() => (selected.length ? toggleSelect(p.id) : setViewing(p))}
-                    className={`w-24 h-20 object-cover rounded border-2 cursor-pointer transition-colors ${picked ? "border-sky-600 ring-2 ring-sky-400" : "border-zinc-200 hover:border-sky-400"}`}
+                    className={`w-24 h-20 object-cover rounded border-2 cursor-pointer active:cursor-grabbing transition-colors ${picked ? "border-sky-600 ring-2 ring-sky-400" : "border-zinc-200 hover:border-sky-400"}`}
+                    title="Drag onto a pole / underground card below to assign"
                     data-testid={`job-gallery-thumb-${i}`} />
                   <button type="button" onClick={() => toggleSelect(p.id)} title={picked ? "Deselect" : "Select"}
                     className={`absolute -top-1.5 -left-1.5 rounded-full w-5 h-5 flex items-center justify-center border shadow-sm ${picked ? "bg-sky-600 border-sky-600 text-white" : "bg-white border-zinc-300 text-transparent hover:text-zinc-300"}`}
@@ -140,7 +188,7 @@ export const JobPhotoGallery = ({ jobId, poles = [], undergroundItems = [], onAs
                 <Button size="sm" variant="outline" className="h-8 text-xs bg-white border-zinc-300" onClick={() => setSelected([])} data-testid="job-gallery-clear-selection-btn">Clear</Button>
               </>
             ) : (
-              <p className="text-[11px] text-zinc-500">Tap a photo to enlarge. Use the circle to select photos, then assign them to poles / underground items.</p>
+              <p className="text-[11px] text-zinc-500">Tap a photo to enlarge. Drag a photo onto a pole / underground card below to assign it, or use the circle to select several and assign them together.</p>
             )}
           </div>
         </>

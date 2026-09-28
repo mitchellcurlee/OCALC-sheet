@@ -93,7 +93,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import MarkupTab from "@/components/MarkupTab";
 import JobFilesShare from "@/components/JobFilesShare";
-import JobPhotoGallery from "@/components/JobPhotoGallery";
+import JobPhotoGallery, { galleryDropProps } from "@/components/JobPhotoGallery";
 import JobShareDialog from "@/components/JobShareDialog";
 
 // Sortable item component for drag-and-drop (poles and underground)
@@ -189,6 +189,8 @@ const JobDetail = () => {
   const [syncingPoleId, setSyncingPoleId] = useState(null);
   const [syncingAll, setSyncingAll] = useState(false);
   const [markupPhotos, setMarkupPhotos] = useState([]);
+  const [photoDropTarget, setPhotoDropTarget] = useState(null);
+  const dropHandlers = { onEnter: setPhotoDropTarget, onLeave: (id) => setPhotoDropTarget((cur) => (cur === id ? null : cur)) };
   const [showMarkupSection, setShowMarkupSection] = useState(false);
   const [savingMarkup, setSavingMarkup] = useState(false);
 
@@ -1201,10 +1203,11 @@ const JobDetail = () => {
                 /* Pole Card */
                 <div
                   key={item._dupKey || item.id}
-                  className="industrial-card p-4 hover:border-zinc-400 hover:bg-zinc-50 transition-colors cursor-pointer"
+                  className={`industrial-card p-4 hover:border-zinc-400 hover:bg-zinc-50 transition-colors cursor-pointer ${photoDropTarget === item.id ? "ring-2 ring-sky-500 bg-sky-50 border-sky-400" : ""}`}
                   data-testid={`pole-card-${item.id}`}
                   onClick={() => navigate(`/jobs/${jobId}/edit/${item.id}`)}
                   role="button"
+                  {...galleryDropProps("pole", item.id, dropHandlers)}
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
@@ -1287,7 +1290,7 @@ const JobDetail = () => {
                 </div>
               ) : (
                 /* Underground Card */
-                <div key={item._dupKey || item.id} className="industrial-card p-4 border-l-4 border-l-green-500 hover:border-zinc-400 hover:bg-zinc-50 transition-colors cursor-pointer" data-testid={`ug-card-${item.id}`} onClick={() => navigate(`/jobs/${jobId}/underground/edit/${item.id}`)} role="button">
+                <div key={item._dupKey || item.id} className={`industrial-card p-4 border-l-4 border-l-green-500 hover:border-zinc-400 hover:bg-zinc-50 transition-colors cursor-pointer ${photoDropTarget === item.id ? "ring-2 ring-sky-500 bg-sky-50" : ""}`} data-testid={`ug-card-${item.id}`} onClick={() => navigate(`/jobs/${jobId}/underground/edit/${item.id}`)} role="button" {...galleryDropProps("underground", item.id, dropHandlers)}>
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
                       <DropdownMenu>
