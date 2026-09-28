@@ -531,3 +531,9 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 
 ## 2026-06 Reorder -> route_sequence sync fix
 - lib routePayloadFromOrder(job, items): on Draw Route jobs rebuilds route_sequence (pole/UG ids in manual order) + span_order (consecutive-pair keys first, then remaining). JobDetail saveNoteOrders(noteSos, items) merges it into PUT /jobs; saveReorder + saveAndSyncAll pass reorderedItems. JobMap saveRouteFromOrder in saveSpanOrder/saveSpanOrderSync. Non-route jobs unchanged. Testids: start-reorder-btn, save-reorder-btn, cancel-reorder-btn, sort-row-{i}. Testing agent iteration_52: all PASS. Tester flagged (unrelated) GET /api/poles?job_id= may ignore filter — investigate later.
+
+## 2026-06 Job Photo Gallery (beside Job Files)
+- JobDetail: `JobFilesShare` + new `JobPhotoGallery` in a 2-col grid (stacked on mobile).
+- Backend `routes/files.py`: `job_photos` collection; POST/GET `/jobs/{id}/gallery`, DELETE `/gallery/{pid}`, POST `/gallery/{pid}/assign` {item_type,item_id} (adds url to item `staged_photos`, tags photo), DELETE `/gallery/{pid}/assign/{type}/{item_id}` (undo).
+- Photo stays in gallery after assign with tag(s) per item (user choice). Unassigned gallery photos export in photo ZIP under `{Job}/Job Photos/` (`build_job_photo_entries` + cloud export).
+- Components: `JobPhotoGallery.jsx`, `JobPhotoAssignDialog.jsx` (`galleryItemLabel`). Tested: iteration_53 (11/11 backend, UI flows pass).

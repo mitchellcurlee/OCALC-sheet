@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Camera, Check, FolderInput, Images, Loader2, Trash2, Upload, X } from "lucide-react";
 import { JobPhotoAssignDialog, galleryItemLabel } from "@/components/JobPhotoAssignDialog";
 
@@ -150,6 +150,7 @@ export const JobPhotoGallery = ({ jobId, poles = [], undergroundItems = [], onAs
 
       <Dialog open={!!viewing} onOpenChange={(o) => { if (!o) setViewing(null); }}>
         <DialogContent className="max-w-3xl bg-white" aria-describedby={undefined} data-testid="job-gallery-viewer">
+          <DialogTitle className="sr-only">Job photo</DialogTitle>
           {viewing && (
             <div className="space-y-2">
               <img src={viewing.url} alt={viewing.original_filename} className="max-h-[70vh] w-auto max-w-full object-contain mx-auto rounded" />
