@@ -547,3 +547,8 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 - /users/transferable includes all company domains, excludes unverified. Transfer verified both directions with files + gallery preserved.
 - Tests: iteration_54 backend 13/13 (`backend/tests/test_auth_domains_and_verify.py`); UI flows self-verified after email fix.
 - KNOWN: the email proxy flags a domain "undeliverable/parked" after bounces from fake test addresses — never register fake addresses on real domains in tests; read the token from Mongo instead.
+
+## 2026-06 Admin user list + password reset
+- `GET /auth/admin/users` (admin only: is_admin_user or is_mastec_byers_admin) → users grouped by domain with verified/grandfathered/blocked status + job counts; `POST /auth/admin/users/{id}/resend-verification`; `DELETE /auth/admin/users/{id}` (unverified only). Page `/admin/users` (`pages/AdminUsers.jsx`), Users icon in JobsList header for admins.
+- Password reset: `POST /auth/forgot-password` (generic response, 1h `reset_token`), `POST /auth/reset-password` {token,password} → new hash, marks email verified, returns session. Pages `/forgot-password`, `/reset-password`; "Forgot your password?" link on Login.
+- Self-tested via curl + Playwright (admin page, remove unverified, forgot page, reset bad-token toast, reset happy path via curl).

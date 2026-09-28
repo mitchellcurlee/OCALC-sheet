@@ -44,6 +44,7 @@ import {
   Calendar,
   Trash2,
   DatabaseBackup,
+  Users,
   Pencil,
   ArrowRightLeft,
   LogOut,
@@ -519,6 +520,17 @@ const JobsList = () => {
                 {backfilling ? <Loader2 className="w-4 h-4 animate-spin" /> : <Home className="w-4 h-4" />}
               </Button>
               {isAdmin && (
+                <>
+                <Button
+                  onClick={() => navigate("/admin/users")}
+                  size="icon"
+                  variant="ghost"
+                  className="text-zinc-400 hover:text-amber-400 hover:bg-zinc-800"
+                  title="Users by company"
+                  data-testid="admin-users-btn"
+                >
+                  <Users className="w-4 h-4" />
+                </Button>
                 <Button
                   onClick={() => navigate("/backup")}
                   size="icon"
@@ -529,6 +541,7 @@ const JobsList = () => {
                 >
                   <DatabaseBackup className="w-4 h-4" />
                 </Button>
+                </>
               )}
               {user && (
                 <div className="hidden sm:flex items-center gap-2">

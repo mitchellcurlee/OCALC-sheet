@@ -34,6 +34,32 @@ class VerifyBody(BaseModel):
     token: str
 
 
+class ResetBody(BaseModel):
+    token: str
+    password: str
+
+
+RESET_TOKEN_HOURS = 1
+
+
+def _require_admin(user: dict) -> None:
+    if not (is_admin_user(user) or is_mastec_byers_admin(user)):
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+
+def _email_shell(title: str, body_html: str) -> str:
+    return (
+        '<table role="presentation" width="100%"><tr><td style="padding:24px;font-family:Arial,sans-serif;color:#18181b">'
+        f'<h2 style="margin:0 0 12px;font-size:18px">{title}</h2>{body_html}'
+        f'<p style="font-size:12px;color:#888">Sent by {escape(EMAIL_FROM_NAME)}. We never ask for your password by email.</p>'
+        '</td></tr></table>'
+    )
+
+
+def _button(link: str, label: str) -> str:
+    return f'<p style="margin:20px 0"><a href="{link}" style="background:#dc2626;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:4px;font-weight:bold;display:inline-block">{label}</a></p>'
+
+
 def _app_origin(request: Request) -> str:
     origin = request.headers.get("origin") or ""
     if not origin:
@@ -52,16 +78,28 @@ async def _send_verification(user: dict, origin: str) -> None:
     link = f"{origin}/verify-email?token={token}"
     name = escape(user.get("name") or user["email"].split("@")[0])
     subject = f"Verify your {EMAIL_FROM_NAME} account"
-    html = (
-        '<table role="presentation" width="100%"><tr><td style="padding:24px;font-family:Arial,sans-serif;color:#18181b">'
-        f'<h2 style="margin:0 0 12px;font-size:18px">Welcome to {escape(EMAIL_FROM_NAME)}</h2>'
+    html = _email_shell(
+        f"Welcome to {escape(EMAIL_FROM_NAME)}",
         f'<p>Hi {name}, confirm your email address to activate your account.</p>'
-        f'<p style="margin:20px 0"><a href="{link}" style="background:#dc2626;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:4px;font-weight:bold;display:inline-block">Verify email address</a></p>'
-        f'<p style="font-size:12px;color:#52525b">This link expires in {VERIFY_TOKEN_HOURS} hours. If you did not create an account, you can ignore this email.</p>'
-        f'<p style="font-size:12px;color:#888">Sent by {escape(EMAIL_FROM_NAME)}. We never ask for your password by email.</p>'
-        '</td></tr></table>'
+        + _button(link, "Verify email address")
+        + f'<p style="font-size:12px;color:#52525b">This link expires in {VERIFY_TOKEN_HOURS} hours. If you did not create an account, you can ignore this email.</p>',
     )
     await send_email(to=user["email"], subject=subject, html=html)
+
+
+async def _send_password_reset(user: dict, origin: str) -> None:
+    token = secrets.token_urlsafe(32)
+    expires = (datetime.now(timezone.utc) + timedelta(hours=RESET_TOKEN_HOURS)).isoformat()
+    await _db.users.update_one({"id": user["id"]}, {"$set": {"reset_token": token, "reset_expires": expires}})
+    link = f"{origin}/reset-password?token={token}"
+    name = escape(user.get("name") or user["email"].split("@")[0])
+    html = _email_shell(
+        "Reset your password",
+        f'<p>Hi {name}, we received a request to reset the password for your {escape(EMAIL_FROM_NAME)} account.</p>'
+        + _button(link, "Choose a new password")
+        + f'<p style="font-size:12px;color:#52525b">This link expires in {RESET_TOKEN_HOURS} hour. If you did not request a reset, you can ignore this email — your password will not change.</p>',
+    )
+    await send_email(to=user["email"], subject=f"Reset your {EMAIL_FROM_NAME} password", html=html)
 
 
 def _token_response(user: dict) -> dict:
@@ -126,6 +164,92 @@ async def verify_email(body: VerifyBody):
     )
     user["email_verified"] = True
     return _token_response(user)
+
+
+@router.post("/forgot-password")
+async def forgot_password(body: EmailOnly, request: Request):
+    email = body.email.strip().lower()
+    user = await _db.users.find_one({"email": email}, {"_id": 0})
+    # Same response whether or not the account exists (no enumeration)
+    if user and (is_company_email(email) or is_admin_user(user)):
+        origin = _app_origin(request)
+        try:
+            await _send_password_reset(user, origin)
+        except HTTPException:
+            raise HTTPException(status_code=424, detail="We couldn't send the reset email right now. Please try again in a few minutes.")
+    return {"message": "If an account exists for that email, a password reset link has been sent."}
+
+
+@router.post("/reset-password")
+async def reset_password(body: ResetBody):
+    if len(body.password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    user = await _db.users.find_one({"reset_token": body.token}, {"_id": 0})
+    if not user:
+        raise HTTPException(status_code=400, detail="This reset link is invalid or has already been used.")
+    if (user.get("reset_expires") or "") < datetime.now(timezone.utc).isoformat():
+        raise HTTPException(status_code=400, detail="This reset link has expired. Request a new one from the sign-in page.")
+    # Following the emailed link proves ownership of the inbox, so it also verifies the address.
+    await _db.users.update_one(
+        {"id": user["id"]},
+        {"$set": {"hashed_password": get_password_hash(body.password), "email_verified": True, "password_changed_at": datetime.now(timezone.utc).isoformat()},
+         "$unset": {"reset_token": "", "reset_expires": "", "verification_token": "", "verification_expires": ""}},
+    )
+    user["email_verified"] = True
+    return _token_response(user)
+
+
+@router.get("/admin/users")
+async def admin_list_users(current_user: dict = Depends(get_current_user)):
+    _require_admin(current_user)
+    users = await _db.users.find({}, {"_id": 0, "hashed_password": 0, "verification_token": 0, "reset_token": 0}).to_list(5000)
+    counts = {}
+    async for row in _db.jobs.aggregate([{"$match": {"is_deleted": {"$ne": True}}}, {"$group": {"_id": "$user_id", "n": {"$sum": 1}}}]):
+        counts[row["_id"]] = row["n"]
+    out = []
+    for u in users:
+        email = (u.get("email") or "").lower()
+        domain = email.split("@")[-1] if "@" in email else ""
+        out.append({
+            "id": u["id"], "email": email, "name": u.get("name", ""), "domain": domain,
+            "company_allowed": is_company_email(email) or is_admin_user(u),
+            "email_verified": u.get("email_verified") is not False,
+            "grandfathered": "email_verified" not in u,
+            "is_admin": is_admin_user(u) or is_mastec_byers_admin(u),
+            "created_at": u.get("created_at"), "verified_at": u.get("verified_at"),
+            "verification_expires": u.get("verification_expires"),
+            "job_count": counts.get(u["id"], 0),
+        })
+    out.sort(key=lambda x: (x["domain"], x["email"]))
+    return {"domains": list(ALLOWED_DOMAINS), "users": out}
+
+
+@router.post("/admin/users/{user_id}/resend-verification")
+async def admin_resend_verification(user_id: str, request: Request, current_user: dict = Depends(get_current_user)):
+    _require_admin(current_user)
+    user = await _db.users.find_one({"id": user_id}, {"_id": 0})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if user.get("email_verified") is not False:
+        raise HTTPException(status_code=400, detail="This user is already verified")
+    try:
+        await _send_verification(user, _app_origin(request))
+    except HTTPException:
+        raise HTTPException(status_code=424, detail="Email could not be sent to this address right now.")
+    return {"message": f"Verification email sent to {user['email']}"}
+
+
+@router.delete("/admin/users/{user_id}")
+async def admin_delete_unverified_user(user_id: str, current_user: dict = Depends(get_current_user)):
+    """Remove an account that never verified (e.g. a typo'd email) so the person can register again."""
+    _require_admin(current_user)
+    user = await _db.users.find_one({"id": user_id}, {"_id": 0})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if user.get("email_verified") is not False:
+        raise HTTPException(status_code=400, detail="Only unverified accounts can be removed here")
+    await _db.users.delete_one({"id": user_id})
+    return {"deleted": True}
 
 
 @router.post("/login")

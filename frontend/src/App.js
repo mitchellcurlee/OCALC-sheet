@@ -21,6 +21,9 @@ import ASEPhotoGallery from "@/pages/ASEPhotoGallery";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import VerifyEmail from "@/pages/VerifyEmail";
+import ForgotPassword from "@/pages/ForgotPassword";
+import ResetPassword from "@/pages/ResetPassword";
+import AdminUsers from "@/pages/AdminUsers";
 import BackupAtlas from "@/pages/BackupAtlas";
 import InstallPrompt from "@/components/InstallPrompt";
 
@@ -36,6 +39,8 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/verify-email" element={<VerifyEmail />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             
             {/* Public Routes - no auth required */}
             <Route path="/ase-gallery/:jobId" element={<ASEPhotoGallery />} />
@@ -53,6 +58,7 @@ function App() {
             <Route path="/recovery" element={<ProtectedRoute><DataRecovery /></ProtectedRoute>} />
             <Route path="/trash" element={<ProtectedRoute><Trash /></ProtectedRoute>} />
             <Route path="/backup" element={<ProtectedRoute><BackupAtlas /></ProtectedRoute>} />
+            <Route path="/admin/users" element={<ProtectedRoute><AdminUsers /></ProtectedRoute>} />
           </Routes>
         </BrowserRouter>
       </AuthProvider>
