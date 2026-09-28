@@ -81,7 +81,7 @@ async def upload_cloud_export(
 @router.post("/jobs/{job_id}/cloud-exports/photos-zip")
 async def cloud_save_photos_zip(job_id: str, current_user: dict = Depends(get_current_user)):
     """Server-side: build the job photos ZIP and store it in the app cloud (overwrites previous)."""
-    from routes.jobs import build_job_photo_entries, _stream_zip
+    from routes.jobs import build_job_photo_entries, _stream_zip, markup_photo_paths, job_gallery_photos
     from services.helpers import pole_sort_key
 
     job = await _get_job(job_id, current_user)
@@ -90,7 +90,7 @@ async def cloud_save_photos_zip(job_id: str, current_user: dict = Depends(get_cu
     underground_items = await _db.underground.find({"job_id": job_id}, {"_id": 0}).to_list(10000)
     underground_items.sort(key=lambda x: (x.get("sort_order") or 9999, x.get("created_at") or ""))
 
-    entries, zip_filename = build_job_photo_entries(job, poles, underground_items)
+    entries, zip_filename = build_job_photo_entries(job, poles, underground_items, await markup_photo_paths(), await job_gallery_photos(job_id))
     if not entries:
         raise HTTPException(status_code=404, detail="No photos found for this job")
 

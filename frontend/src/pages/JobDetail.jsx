@@ -93,6 +93,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import MarkupTab from "@/components/MarkupTab";
 import JobFilesShare from "@/components/JobFilesShare";
+import JobPhotoGallery from "@/components/JobPhotoGallery";
 import JobShareDialog from "@/components/JobShareDialog";
 
 // Sortable item component for drag-and-drop (poles and underground)
@@ -989,8 +990,11 @@ const JobDetail = () => {
           onCloud={() => runPendingExport("cloud")}
         />
         <JobShareDialog open={shareOpen} onOpenChange={setShareOpen} jobId={jobId} job={job} onJobUpdated={fetchJobAndPoles} />
-        {/* Job files */}
-        <JobFilesShare jobId={jobId} />
+        {/* Job files + job photo gallery */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+          <JobFilesShare jobId={jobId} />
+          <JobPhotoGallery jobId={jobId} poles={poles} undergroundItems={undergroundItems} onAssigned={fetchJobAndPoles} />
+        </div>
 
         {/* Photo Markup Section - Collapsible */}
         <div className="mb-6">

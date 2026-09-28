@@ -1130,9 +1130,10 @@ def is_markup_photo(photo_url: str, markup_paths: set) -> bool:
     return url.split("/api/files/", 1)[-1] in markup_paths if "/api/files/" in url else False
 
 
-def build_job_photo_entries(job, poles, underground_items, markup_paths=None):
+def build_job_photo_entries(job, poles, underground_items, markup_paths=None, job_photos=None):
     """Collect (zip_path, photo_url) entries + zip filename for a job's photo ZIP.
-    Photos edited in the markup editor go to {JobName}/Mark Ups/, untouched uploads to {JobName}/Blanks/."""
+    Photos edited in the markup editor go to {JobName}/Mark Ups/, untouched uploads to {JobName}/Blanks/.
+    Unassigned job-gallery photos go to {JobName}/Job Photos/."""
     markup_paths = markup_paths or set()
     def safe_name(s, default="unknown"):
         return "".join(c for c in str(s) if c.isalnum() or c in (' ', '-', '_')).strip().replace(' ', '_') or default
@@ -1163,7 +1164,15 @@ def build_job_photo_entries(job, poles, underground_items, markup_paths=None):
             fname = safe_label if safe_label.startswith(folder_name) else f"{folder_name}_{safe_label}"
             folder = f"{job_name}/Mark Ups" if is_markup_photo(photo_url, markup_paths) else f"{job_name}/Blanks"
             entries.append((f"{folder}/{fname}.jpeg", photo_url))
+    unassigned = [p for p in (job_photos or []) if not p.get("assigned_to")]
+    for idx, p in enumerate(unassigned, 1):
+        stem = safe_name((p.get("original_filename") or "").rsplit(".", 1)[0], f"Job_Photo_{idx}")
+        entries.append((f"{job_name}/Job Photos/{idx:03d}_{stem}.jpeg", f"/api/files/{p['storage_path']}"))
     return entries, photo_export_filename(job, "Photos")
+
+
+async def job_gallery_photos(job_id: str) -> list:
+    return await _db.job_photos.find({"job_id": job_id}, {"_id": 0}).sort("created_at", 1).to_list(2000)
 
 
 @router.get("/users/transferable")
@@ -1302,7 +1311,7 @@ async def export_job_photos_zip(job_id: str, token: Optional[str] = Query(None),
     underground_items.sort(key=lambda x: (x.get("sort_order") or 9999, x.get("created_at") or ""))
     
     # Helper to sanitize folder/file names
-    entries, zip_filename = build_job_photo_entries(job, poles, underground_items, await markup_photo_paths())
+    entries, zip_filename = build_job_photo_entries(job, poles, underground_items, await markup_photo_paths(), await job_gallery_photos(job_id))
 
     if not entries:
         raise HTTPException(status_code=404, detail="No photos found for this job. Add photos to poles or underground items first.")

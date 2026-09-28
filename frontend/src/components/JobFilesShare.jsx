@@ -40,7 +40,7 @@ export const JobFilesShare = ({ jobId }) => {
   };
 
   return (
-    <div className="industrial-card p-4 mb-6 bg-white" data-testid="job-files-share">
+    <div className="industrial-card p-4 bg-white h-full" data-testid="job-files-share">
       <h3 className="text-xs font-mono tracking-widest text-zinc-500 uppercase mb-2 flex items-center gap-2"><Paperclip className="w-4 h-4" />Job Files</h3>
       <input ref={inputRef} type="file" multiple className="hidden" onChange={handleUpload} data-testid="job-file-input" />
       <Button variant="outline" size="sm" onClick={() => inputRef.current?.click()} disabled={uploading} className="bg-zinc-50 border-zinc-300 mb-2" data-testid="job-file-upload-btn">

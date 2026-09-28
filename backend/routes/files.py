@@ -98,6 +98,106 @@ async def delete_job_file(job_id: str, file_id: str, current_user: dict = Depend
     return {"deleted": True}
 
 
+def _gallery_url(doc: dict) -> dict:
+    doc["url"] = f"/api/files/{doc['storage_path']}"
+    doc.setdefault("assigned_to", [])
+    return doc
+
+
+@router.post("/jobs/{job_id}/gallery")
+async def upload_job_gallery_photo(job_id: str, file: UploadFile = File(...), current_user: dict = Depends(get_current_user)):
+    """Upload a photo into the job-level photo gallery."""
+    ext = (file.filename.rsplit(".", 1)[-1].lower() if file.filename and "." in file.filename else "jpg")
+    content_type = file.content_type or MIME_TYPES.get(ext, "application/octet-stream")
+    if not content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Only image files are allowed")
+    data = await file.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="Empty file")
+    path = f"{APP_NAME}/uploads/gallery/{job_id}/{uuid.uuid4()}.{ext}"
+    try:
+        result = await asyncio.to_thread(put_object, path, data, content_type)
+    except Exception as e:
+        logger.error(f"Gallery photo upload failed: {e}")
+        raise HTTPException(status_code=502, detail="Photo upload failed")
+    stored_path = result.get("path", path)
+    now = datetime.now(timezone.utc).isoformat()
+    await _db.files.insert_one({
+        "id": str(uuid.uuid4()), "storage_path": stored_path, "original_filename": file.filename,
+        "content_type": content_type, "size": result.get("size"), "is_deleted": False, "created_at": now,
+    })
+    doc = {
+        "id": str(uuid.uuid4()),
+        "job_id": job_id,
+        "storage_path": stored_path,
+        "original_filename": file.filename or f"photo.{ext}",
+        "content_type": content_type,
+        "size": result.get("size") or len(data),
+        "uploaded_by": current_user.get("email", ""),
+        "assigned_to": [],
+        "created_at": now,
+    }
+    await _db.job_photos.insert_one(dict(doc))
+    return _gallery_url(doc)
+
+
+@router.get("/jobs/{job_id}/gallery")
+async def list_job_gallery(job_id: str, current_user: dict = Depends(get_current_user)):
+    docs = await _db.job_photos.find({"job_id": job_id}, {"_id": 0}).sort("created_at", -1).to_list(2000)
+    return [_gallery_url(d) for d in docs]
+
+
+@router.delete("/jobs/{job_id}/gallery/{photo_id}")
+async def delete_job_gallery_photo(job_id: str, photo_id: str, current_user: dict = Depends(get_current_user)):
+    """Remove a photo from the job gallery. Copies already assigned to items are kept."""
+    result = await _db.job_photos.delete_one({"id": photo_id, "job_id": job_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Photo not found")
+    return {"deleted": True}
+
+
+def _item_coll(item_type: str):
+    if item_type == "pole":
+        return _db.poles
+    if item_type == "underground":
+        return _db.underground
+    raise HTTPException(status_code=400, detail="item_type must be 'pole' or 'underground'")
+
+
+@router.post("/jobs/{job_id}/gallery/{photo_id}/assign")
+async def assign_job_gallery_photo(job_id: str, photo_id: str, body: dict, current_user: dict = Depends(get_current_user)):
+    """Assign a gallery photo to a pole/underground item: adds it to that item's unsorted photo gallery."""
+    item_type, item_id = body.get("item_type"), body.get("item_id")
+    coll = _item_coll(item_type)
+    photo = await _db.job_photos.find_one({"id": photo_id, "job_id": job_id}, {"_id": 0})
+    if not photo:
+        raise HTTPException(status_code=404, detail="Photo not found")
+    item = await coll.find_one({"id": item_id, "job_id": job_id}, {"_id": 0, "id": 1})
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    url = f"/api/files/{photo['storage_path']}"
+    await coll.update_one({"id": item_id}, {"$addToSet": {"staged_photos": url}, "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}})
+    ref = {"item_type": item_type, "item_id": item_id}
+    if ref not in (photo.get("assigned_to") or []):
+        await _db.job_photos.update_one({"id": photo_id}, {"$push": {"assigned_to": ref}})
+    doc = await _db.job_photos.find_one({"id": photo_id}, {"_id": 0})
+    return _gallery_url(doc)
+
+
+@router.delete("/jobs/{job_id}/gallery/{photo_id}/assign/{item_type}/{item_id}")
+async def unassign_job_gallery_photo(job_id: str, photo_id: str, item_type: str, item_id: str, current_user: dict = Depends(get_current_user)):
+    """Undo an assignment: removes the photo from the item's unsorted gallery and clears the tag."""
+    coll = _item_coll(item_type)
+    photo = await _db.job_photos.find_one({"id": photo_id, "job_id": job_id}, {"_id": 0})
+    if not photo:
+        raise HTTPException(status_code=404, detail="Photo not found")
+    url = f"/api/files/{photo['storage_path']}"
+    await coll.update_one({"id": item_id, "job_id": job_id}, {"$pull": {"staged_photos": url}})
+    await _db.job_photos.update_one({"id": photo_id}, {"$pull": {"assigned_to": {"item_type": item_type, "item_id": item_id}}})
+    doc = await _db.job_photos.find_one({"id": photo_id}, {"_id": 0})
+    return _gallery_url(doc)
+
+
 @router.get("/files/{path:path}")
 async def serve_file(path: str):
     """Publicly serve a stored file (no auth so <img> tags and Excel links work)."""
