@@ -1168,7 +1168,7 @@ async def job_gallery_photos(job_id: str) -> list:
 @router.get("/users/transferable")
 async def get_transferable_users(current_user: dict = Depends(get_current_user)):
     """Company users a job can be transferred to."""
-    users = await _db.users.find({}, {"_id": 0, "id": 1, "email": 1}).to_list(1000)
+    users = await _db.users.find({}, {"_id": 0, "id": 1, "email": 1, "email_verified": 1}).to_list(1000)
     out = []
     for u in users:
         email = (u.get("email") or "").lower()

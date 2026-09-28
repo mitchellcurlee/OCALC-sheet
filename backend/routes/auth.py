@@ -95,7 +95,11 @@ async def register(user_data: UserCreate, request: Request):
     doc = user.model_dump()
     doc["email_verified"] = False
     await _db.users.insert_one(doc)
-    await _send_verification(doc, origin)
+    try:
+        await _send_verification(doc, origin)
+    except HTTPException:
+        await _db.users.delete_one({"id": doc["id"]})
+        raise HTTPException(status_code=424, detail="We couldn't send a verification email to that address right now. Double-check the email and try again in a few minutes.")
     return {"verification_required": True, "email": email, "message": "Check your inbox for a verification link to activate your account."}
 
 

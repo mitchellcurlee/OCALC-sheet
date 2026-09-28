@@ -538,3 +538,12 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 - Photo stays in gallery after assign with tag(s) per item (user choice). Unassigned gallery photos export in photo ZIP under `{Job}/Job Photos/` (`build_job_photo_entries` + cloud export).
 - Components: `JobPhotoGallery.jsx`, `JobPhotoAssignDialog.jsx` (`galleryItemLabel`). Tested: iteration_53 (11/11 backend, UI flows pass).
 - 2026-06 Drag To Item: gallery thumbnails are draggable (`JOB_GALLERY_PHOTO_MIME`, drags all selected if the photo is selected); pole/UG cards in JobDetail use `galleryDropProps` (ring highlight on hover, dispatches `job-gallery-drop` event → gallery assigns + refreshes). Self-tested via Playwright drag_to.
+
+## 2026-06 Company domains + email verification + transfers
+- `services/auth.py`: `ALLOWED_DOMAINS` (mastec.com, byers.com, mastecbyers.com, synapsiq.com, mastecindia.com), `is_company_email`, `company_email_regex`; all scattered domain checks in jobs.py/poles.py replaced. `get_current_user` 403s non-company (master admin exempt) and `email_verified:false` users; users without the field are grandfathered.
+- `routes/auth.py`: register (domain gate, creates unverified user, emails link `/verify-email?token=`, rolls back user if send fails → 424), login (`EMAIL_NOT_VERIFIED` 403), verify-email (returns session), resend-verification, allowed-domains.
+- `services/email.py`: Emergent email proxy (Resend) — env `EMERGENT_EMAIL_KEY`, `EMAIL_FROM_NAME`. Use 424 not 502 for send failures (Cloudflare swallows 502 into HTML).
+- Frontend: Register "Check your email" panel + resend; Login unverified notice + resend; `pages/VerifyEmail.jsx` route `/verify-email`; `AuthContext.acceptSession`.
+- /users/transferable includes all company domains, excludes unverified. Transfer verified both directions with files + gallery preserved.
+- Tests: iteration_54 backend 13/13 (`backend/tests/test_auth_domains_and_verify.py`); UI flows self-verified after email fix.
+- KNOWN: the email proxy flags a domain "undeliverable/parked" after bounces from fake test addresses — never register fake addresses on real domains in tests; read the token from Mongo instead.

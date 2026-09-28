@@ -101,7 +101,7 @@ async def send_email(*, to: str, subject: str, html: str, reply_to: str | None =
         return resp.json().get("id")
     except httpx.HTTPStatusError as e:
         logger.error(f"Email send failed: {e.response.status_code} {e.response.text}")
-        raise HTTPException(status_code=502, detail="Failed to send verification email")
+        raise HTTPException(status_code=424, detail="Failed to send verification email")
     except Exception as e:
         logger.error(f"Email send error: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to send verification email")
+        raise HTTPException(status_code=424, detail="Failed to send verification email")
