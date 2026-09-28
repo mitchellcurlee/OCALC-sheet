@@ -65,7 +65,7 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
 
 
 # Company domains that may use the app. Add new companies here only.
-ALLOWED_DOMAINS = ("mastec.com", "byers.com", "mastecbyers.com", "synapsiq.com", "mastecindia.com")
+ALLOWED_DOMAINS = ("mastec.com", "byers.com", "mastecbyers.com", "synapsiq.com", "mastecindia.com", "att.com")
 ACCESS_RESTRICTED_MSG = "This app is restricted to authorized company accounts."
 
 

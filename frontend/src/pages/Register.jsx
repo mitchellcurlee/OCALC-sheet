@@ -98,7 +98,7 @@ const Register = () => {
             Pole Data Sheet
           </h1>
           <p className="text-zinc-500 text-sm mt-1">Create your account</p>
-          <p className="text-zinc-400 text-xs mt-1" data-testid="register-domain-hint">Company email required (mastec.com, byers.com, synapsiq.com, mastecindia.com)</p>
+          <p className="text-zinc-400 text-xs mt-1" data-testid="register-domain-hint">Company email required (mastec.com, byers.com, synapsiq.com, mastecindia.com, att.com)</p>
         </div>
 
         {/* Register Form */}

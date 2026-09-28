@@ -18,6 +18,6 @@ Notes:
 - Password: secret123
 
 ## Access rules (2026-06)
-- Allowed domains: mastec.com, byers.com, mastecbyers.com, synapsiq.com, mastecindia.com (services/auth.py ALLOWED_DOMAINS)
+- Allowed domains: mastec.com, byers.com, mastecbyers.com, synapsiq.com, mastecindia.com, att.com (services/auth.py ALLOWED_DOMAINS)
 - New registrations get `email_verified:false` + emailed link `/verify-email?token=...`; login returns 403 `EMAIL_NOT_VERIFIED` until verified. Existing users (no `email_verified` field) are grandfathered.
 - For tests, the verification token can be read from Mongo `users.verification_token`.
