@@ -3,6 +3,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
+import { routePayloadFromOrder } from "@/lib/poleMapImage";
 import { UNDERGROUND_TYPES, undergroundAbbr } from "@/lib/poleMapImage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -118,6 +119,7 @@ const SortableItem = ({ item, index, getConditionColor }) => {
     <div
       ref={setNodeRef}
       style={style}
+      data-testid={`sort-row-${index}`}
       className={`industrial-card p-3 flex items-center justify-between bg-white cursor-grab active:cursor-grabbing ${isPole ? '' : isRiser ? 'border-l-4 border-l-orange-500' : 'border-l-4 border-l-green-500'}`}
     >
       <div className="flex items-center gap-3">
@@ -235,10 +237,16 @@ const JobDetail = () => {
     return { orders, noteSos };
   };
 
-  const saveNoteOrders = async (noteSos) => {
-    if (!Object.keys(noteSos).length) return;
-    const notes = (job?.span_notes || []).map((n) => (noteSos[n.id] != null ? { id: n.id, text: n.text, so: noteSos[n.id] } : n));
-    await axios.put(`/jobs/${jobId}`, { span_notes: notes });
+  // Persist note positions and, on Draw Route jobs, make the manual order the new route so the list
+  // is not rebuilt from the old route_sequence on reload (map badges/exports follow the same order)
+  const saveNoteOrders = async (noteSos, items = []) => {
+    const patch = {};
+    if (Object.keys(noteSos).length) {
+      patch.span_notes = (job?.span_notes || []).map((n) => (noteSos[n.id] != null ? { id: n.id, text: n.text, so: noteSos[n.id] } : n));
+    }
+    Object.assign(patch, routePayloadFromOrder(job, items) || {});
+    if (!Object.keys(patch).length) return;
+    await axios.put(`/jobs/${jobId}`, patch);
   };
 
   // Drag-and-drop sensors
@@ -275,7 +283,7 @@ const JobDetail = () => {
     try {
       const { orders, noteSos } = buildOrderPayload(reorderedItems);
       await axios.put(`/jobs/${jobId}/reorder-items`, orders);
-      await saveNoteOrders(noteSos);
+      await saveNoteOrders(noteSos, reorderedItems);
       toast.success("Order updated!");
       setReorderMode(false);
       setReorderedItems([]);
@@ -292,7 +300,7 @@ const JobDetail = () => {
       // First save the new order
       const { orders, noteSos } = buildOrderPayload(reorderedItems);
       await axios.put(`/jobs/${jobId}/reorder-items`, orders);
-      await saveNoteOrders(noteSos);
+      await saveNoteOrders(noteSos, reorderedItems);
       
       // Then sync all distances based on new order
       const syncResult = await axios.post(`/jobs/${jobId}/sync-map-distances`);
@@ -1087,10 +1095,10 @@ const JobDetail = () => {
           <div className="flex items-center gap-2">
             {reorderMode ? (
               <>
-                <Button variant="outline" size="sm" onClick={cancelReorder} disabled={syncingAll} className="gap-1">
+                <Button variant="outline" size="sm" onClick={cancelReorder} disabled={syncingAll} className="gap-1" data-testid="cancel-reorder-btn">
                   <X className="w-4 h-4" /> Cancel
                 </Button>
-                <Button size="sm" onClick={saveReorder} disabled={syncingAll} className="bg-green-600 hover:bg-green-700 gap-1">
+                <Button size="sm" onClick={saveReorder} disabled={syncingAll} className="bg-green-600 hover:bg-green-700 gap-1" data-testid="save-reorder-btn">
                   <Check className="w-4 h-4" /> Save Order
                 </Button>
                 <Button 
@@ -1106,7 +1114,7 @@ const JobDetail = () => {
                 </Button>
               </>
             ) : (
-              <Button variant="outline" size="sm" onClick={startReorder} className="gap-1" disabled={combinedItems.length < 2}>
+              <Button variant="outline" size="sm" onClick={startReorder} className="gap-1" data-testid="start-reorder-btn" disabled={combinedItems.length < 2}>
                 <GripVertical className="w-4 h-4" /> Reorder
               </Button>
             )}

@@ -10,7 +10,7 @@ import domtoimage from "dom-to-image-more";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ChevronDown, ChevronUp, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera, Hash, Link2, Move, Palette, Plus, Map as MapIcon, GripVertical, Upload, Trash2, RotateCcw, Home, Route as RouteIcon, ListOrdered } from "lucide-react";
 import SpanReorderList from "@/components/SpanReorderList";
-import { computeRoute, fmtFeet, feetToStation, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, downloadMapPdfPages, ugWithGps, undergroundAbbr, computeUgConnectors, computeConnectionPairs, computeStationSegFeet, UNDERGROUND_TYPES, isAerialAttr, resolvePairAerial, spanKey, routeWaypoints, routeArg, placeSpanNotes, LIST_PAGE_LINES, riserAnchor, tieInSuffix, pathRowText, pairIsManual } from "@/lib/poleMapImage";
+import { computeRoute, fmtFeet, feetToStation, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, downloadMapPdfPages, ugWithGps, undergroundAbbr, computeUgConnectors, computeConnectionPairs, computeStationSegFeet, UNDERGROUND_TYPES, isAerialAttr, resolvePairAerial, spanKey, routeWaypoints, routeArg, placeSpanNotes, LIST_PAGE_LINES, riserAnchor, tieInSuffix, pathRowText, pairIsManual, routePayloadFromOrder } from "@/lib/poleMapImage";
 import { ExportDestinationDialog } from "@/components/ExportDestinationDialog";
 import { CLOUD_EXPORT_LABELS, uploadExportToCloud } from "@/lib/cloudExports";
 import {
@@ -811,6 +811,11 @@ const JobMap = () => {
     const notes = (job?.span_notes || []).map((n) => (noteSos[n.id] != null ? { id: n.id, text: n.text, so: noteSos[n.id] } : n));
     await axios.put(`/jobs/${jobId}`, { span_notes: notes });
   };
+  // Draw Route jobs: a manual reorder becomes the route (route_sequence + span_order) so map, list and exports agree
+  const saveRouteFromOrder = async (items) => {
+    const payload = routePayloadFromOrder(job, items);
+    if (payload) await axios.put(`/jobs/${jobId}`, payload);
+  };
 
   const saveSpanOrder = async (items) => {
     setSavingOrder(true);
@@ -818,6 +823,7 @@ const JobMap = () => {
       const { orders, noteSos } = buildOrderPayload(items);
       await axios.put(`/jobs/${jobId}/reorder-items`, orders);
       await saveNoteOrders(noteSos);
+      await saveRouteFromOrder(items);
       toast.success("Route order updated");
       setSpanReorder(false);
       await fetchData();
@@ -834,6 +840,7 @@ const JobMap = () => {
       const { orders, noteSos } = buildOrderPayload(items);
       await axios.put(`/jobs/${jobId}/reorder-items`, orders);
       await saveNoteOrders(noteSos);
+      await saveRouteFromOrder(items);
       // Rebuild default connections around the new order: keep only user-drawn custom lines
       const customs = connections
         .filter((c) => c.connection_type === "custom")

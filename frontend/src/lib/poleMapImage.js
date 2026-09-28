@@ -265,6 +265,26 @@ export const routeArg = (job) => {
   return seq.length > 0 ? seq : (job?.route_mode ? true : []);
 };
 
+// After a manual reorder on a Draw Route job, the new list order becomes the route: rebuild
+// route_sequence (pole/underground ids in list order) and span_order (spans between consecutive items
+// first, in that order, then any other existing spans). Returns null when the job has no route.
+export const routePayloadFromOrder = (job, orderedItems) => {
+  if (!(job?.route_sequence || []).length) return null;
+  const seq = [];
+  orderedItems.forEach((it) => {
+    if (it._type !== "pole" && it._type !== "underground") return;
+    if (seq[seq.length - 1] !== it.id) seq.push(it.id);
+  });
+  const known = new Set(job.span_order || []);
+  const ordered = [];
+  for (let i = 0; i + 1 < seq.length; i++) {
+    const k = spanKey(seq[i], seq[i + 1]);
+    if (known.has(k) && !ordered.includes(k)) ordered.push(k);
+  }
+  (job.span_order || []).forEach((k) => { if (!ordered.includes(k)) ordered.push(k); });
+  return { route_sequence: seq, span_order: ordered };
+};
+
 export const computeConnectionPairs = (route, ug, connections = [], spanOrder = null, drawnOnly = false) => {
   const allItems = [];
   route.forEach((p) => allItems.push({ id: p.id, type: "pole", pos: p.pos, sort_order: p.sort_order ?? Infinity, label: p.pole_number || "Pole", address: p.address || "", start_path: p.start_path === true, end_path: p.end_path === true, standalone: p.standalone === true, hasPath: (p.path_measurements || []).length > 0, pathTarget: pathTargetOf(p.path_measurements), markerColor: p.marker_color || null }));
