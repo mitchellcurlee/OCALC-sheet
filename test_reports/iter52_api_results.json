@@ -1,0 +1,81 @@
+{
+  "tests": [
+    {
+      "name": "BUG1 draw-route reorder persists in route_sequence",
+      "pass": true,
+      "expected": [
+        "e1f0281b-1f33-4b0f-9adf-d79907dcd256",
+        "1f3ceb38-c389-46e6-b187-ae602ddf4523",
+        "de7dcefe-2580-4d1c-9f15-7dc93114ad9e",
+        "fa24cbee-3df9-4c2b-8bcb-69c9d5ce11b0"
+      ],
+      "actual_route_sequence": [
+        "e1f0281b-1f33-4b0f-9adf-d79907dcd256",
+        "1f3ceb38-c389-46e6-b187-ae602ddf4523",
+        "de7dcefe-2580-4d1c-9f15-7dc93114ad9e",
+        "fa24cbee-3df9-4c2b-8bcb-69c9d5ce11b0"
+      ],
+      "actual_pole_order": [
+        "e1f0281b-1f33-4b0f-9adf-d79907dcd256",
+        "1f3ceb38-c389-46e6-b187-ae602ddf4523",
+        "de7dcefe-2580-4d1c-9f15-7dc93114ad9e",
+        "fa24cbee-3df9-4c2b-8bcb-69c9d5ce11b0"
+      ]
+    },
+    {
+      "name": "BUG1b save & sync path persists route_sequence",
+      "pass": true,
+      "expected": [
+        "39f28bfd-cf47-450c-9122-481b7e2c55d1",
+        "ba9ca9f5-5162-4808-b51b-434a698a78e2",
+        "becb0de5-f9c2-4b4f-aaf9-01cc3902149e",
+        "388080b7-4517-423e-8a55-e8c97314d07d"
+      ],
+      "actual_route_sequence": [
+        "39f28bfd-cf47-450c-9122-481b7e2c55d1",
+        "ba9ca9f5-5162-4808-b51b-434a698a78e2",
+        "becb0de5-f9c2-4b4f-aaf9-01cc3902149e",
+        "388080b7-4517-423e-8a55-e8c97314d07d"
+      ]
+    },
+    {
+      "name": "BUG3 map-side reorder writes route_sequence",
+      "pass": true,
+      "expected": [
+        "c761774e-4dbe-4bfe-a874-24920a414f30",
+        "39bf7878-2dd9-4683-afa4-0813e68497be",
+        "1d16b011-18e0-4b09-9261-87871e17dc39",
+        "96f70bb5-3f9c-4d65-965a-91640515479a"
+      ],
+      "actual_route_sequence": [
+        "c761774e-4dbe-4bfe-a874-24920a414f30",
+        "39bf7878-2dd9-4683-afa4-0813e68497be",
+        "1d16b011-18e0-4b09-9261-87871e17dc39",
+        "96f70bb5-3f9c-4d65-965a-91640515479a"
+      ],
+      "span_order": [
+        "1d16b011-18e0-4b09-9261-87871e17dc39|c761774e-4dbe-4bfe-a874-24920a414f30",
+        "96f70bb5-3f9c-4d65-965a-91640515479a|c761774e-4dbe-4bfe-a874-24920a414f30",
+        "39bf7878-2dd9-4683-afa4-0813e68497be|96f70bb5-3f9c-4d65-965a-91640515479a"
+      ]
+    },
+    {
+      "name": "REGRESSION no-route reorder keeps route_sequence empty",
+      "pass": true,
+      "actual_route_sequence": [],
+      "actual_pole_order": [
+        "1f50300d-4bd0-4a62-a786-b51bd6d3f64e",
+        "12ffb5d4-c0de-402c-80c9-46f64ffa4dbe",
+        "b6d3b80d-027a-4b34-9d64-8bc13a0b9d66",
+        "ffc3bfe2-f123-4703-b4ae-d92b784cff93"
+      ]
+    }
+  ],
+  "summary": "4/4 passed",
+  "created_jobs": [
+    "f36c16f9-4f6d-4cd6-b313-2e798079d39c",
+    "198ee543-36f3-4ab8-a97f-11237ea59d1d",
+    "cbe96ad2-450e-4e50-953d-75a0a3f55d4b",
+    "112642c4-4880-41ad-9c9a-64e6b8274c9c"
+  ]
+}

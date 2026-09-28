@@ -528,3 +528,6 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 ## 2026-06 Current location marker
 - components/CurrentLocationLayer.jsx mounted in JobMap MapContainer: navigator.geolocation.watchPosition on load (permission prompt once), pulsing blue dot (title "Your current location", zIndex 2000, non-interactive) + accuracy circle; follows movement. Denied/unavailable -> bottom-left corner note (location-unavailable-indicator). Verified with granted (dot moves on update) and denied states.
 - New UG type "Underground Path" (UGP): options.py, jobs.py UG_ABBR, lib UNDERGROUND_ABBR, markup markers (both lists). Verified map marker UGP, list row, Excel abbr + tie-in, type dropdown.
+
+## 2026-06 Reorder -> route_sequence sync fix
+- lib routePayloadFromOrder(job, items): on Draw Route jobs rebuilds route_sequence (pole/UG ids in manual order) + span_order (consecutive-pair keys first, then remaining). JobDetail saveNoteOrders(noteSos, items) merges it into PUT /jobs; saveReorder + saveAndSyncAll pass reorderedItems. JobMap saveRouteFromOrder in saveSpanOrder/saveSpanOrderSync. Non-route jobs unchanged. Testids: start-reorder-btn, save-reorder-btn, cancel-reorder-btn, sort-row-{i}. Testing agent iteration_52: all PASS. Tester flagged (unrelated) GET /api/poles?job_id= may ignore filter — investigate later.
