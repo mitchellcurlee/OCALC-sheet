@@ -553,3 +553,4 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 - Password reset: `POST /auth/forgot-password` (generic response, 1h `reset_token`), `POST /auth/reset-password` {token,password} → new hash, marks email verified, returns session. Pages `/forgot-password`, `/reset-password`; "Forgot your password?" link on Login.
 - Self-tested via curl + Playwright (admin page, remove unverified, forgot page, reset bad-token toast, reset happy path via curl).
 - 2026-06: att.com added to ALLOWED_DOMAINS.
+- 2026-06: ACB added to JOB_TYPES (JobsList.jsx + models/job.py).
