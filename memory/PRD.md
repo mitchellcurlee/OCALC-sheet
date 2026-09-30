@@ -554,3 +554,4 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 - Self-tested via curl + Playwright (admin page, remove unverified, forgot page, reset bad-token toast, reset happy path via curl).
 - 2026-06: att.com added to ALLOWED_DOMAINS.
 - 2026-06: ACB added to JOB_TYPES (JobsList.jsx + models/job.py).
+- 2026-06 ReferenceHeightMeasurer: separate scales from the single reference placement — `pixelsPerFoot` (vertical span → height) and `horizontalPixelsPerFoot` (horizontal span → down-guy lead), shared `measureValue(att)` used by canvas labels, export image, saved list, and applied measurements; lead falls back to vertical scale when reference has no horizontal span (readout under Lead tab, testid `measurer-lead-scale`). Both persisted in localStorage session.

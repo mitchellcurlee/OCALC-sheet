@@ -67,7 +67,8 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
     refTop: null,
     attachments: []
   });
-  const [pixelsPerFoot, setPixelsPerFoot] = useState(null);
+  const [pixelsPerFoot, setPixelsPerFoot] = useState(null); // vertical px/ft (height)
+  const [horizontalPixelsPerFoot, setHorizontalPixelsPerFoot] = useState(null); // horizontal px/ft (lead)
   const [uploading, setUploading] = useState(false);
   const [hasRestoredData, setHasRestoredData] = useState(false);
   // Down Guy mode: which field (height/lead) and which down guy the next marker belongs to
@@ -161,6 +162,7 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
       step,
       markers,
       pixelsPerFoot,
+      horizontalPixelsPerFoot,
       savedAt: Date.now()
     };
     
@@ -170,7 +172,7 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
     } catch (e) {
       console.warn('[HeightMeasurer] Failed to auto-save:', e);
     }
-  }, [imageBase64, markers, step, referenceHeight, pixelsPerFoot, storageKey, imagePreview]);
+  }, [imageBase64, markers, step, referenceHeight, pixelsPerFoot, horizontalPixelsPerFoot, storageKey, imagePreview]);
 
   // Restore from localStorage when dialog opens
   useEffect(() => {
@@ -188,6 +190,7 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
             setStep(data.step || 1);
             setMarkers(data.markers || { refBottom: null, refTop: null, attachments: [] });
             setPixelsPerFoot(data.pixelsPerFoot);
+            setHorizontalPixelsPerFoot(data.horizontalPixelsPerFoot ?? null);
             setHasRestoredData(true);
             toast.success("Previous session restored!", { duration: 2000 });
           }
@@ -268,12 +271,23 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
 
   useEffect(() => {
     if (markers.refBottom && markers.refTop) {
-      const pixelDistance = Math.abs(markers.refTop.y - markers.refBottom.y);
-      const refHeightFt = parseFloat(referenceHeight);
-      setPixelsPerFoot(pixelDistance / refHeightFt);
+      const refFt = parseFloat(referenceHeight);
+      const dy = Math.abs(markers.refTop.y - markers.refBottom.y);
+      const dx = Math.abs(markers.refTop.x - markers.refBottom.x);
+      setPixelsPerFoot(dy / refFt);
+      setHorizontalPixelsPerFoot(dx >= 1 ? dx / refFt : null);
       setStep(3);
     }
   }, [markers.refBottom, markers.refTop, referenceHeight]);
+
+  // Lead uses the horizontal scale; falls back to the vertical one when the reference has no horizontal span.
+  const leadPixelsPerFoot = horizontalPixelsPerFoot ?? pixelsPerFoot;
+  const measureValue = useCallback((att) => {
+    if (!markers.refBottom) return 0;
+    return att.field === "lead"
+      ? Math.abs(att.x - markers.refBottom.x) / leadPixelsPerFoot
+      : (markers.refBottom.y - att.y) / pixelsPerFoot;
+  }, [markers.refBottom, pixelsPerFoot, leadPixelsPerFoot]);
 
   // Draw markers on canvas
   const drawCanvas = useCallback(() => {
@@ -354,9 +368,7 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
       const lx = canvas.width - lw - 6;
       let ly = 6;
       markers.attachments.forEach((att, i) => {
-        const val = att.field === "lead"
-          ? Math.abs(att.x - markers.refBottom.x) / pixelsPerFoot
-          : (markers.refBottom.y - att.y) / pixelsPerFoot;
+        const val = measureValue(att);
         const valDisplay = formatFeetInches(val);
         const lbl = downGuyMode
           ? `${i + 1}: DG${(att.guy ?? 0) + 1} ${att.field === "lead" ? "Lead" : "Ht"} ${valDisplay}`
@@ -370,7 +382,7 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
         ly += lh + 3;
       });
     }
-  }, [markers, pixelsPerFoot, referenceHeight, imagePreview, downGuyMode]);
+  }, [markers, pixelsPerFoot, measureValue, referenceHeight, imagePreview, downGuyMode]);
 
   useEffect(() => {
     drawCanvas();
@@ -542,9 +554,7 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
           const lx = img.width - lw - 10 * s;
           let ly = 50 * s;
           markers.attachments.forEach((att, i) => {
-            const val = att.field === "lead"
-              ? Math.abs(att.x - markers.refBottom.x) / pixelsPerFoot
-              : (markers.refBottom.y - att.y) / pixelsPerFoot;
+            const val = measureValue(att);
             const valDisplay = formatFeetInches(val);
             const lbl = downGuyMode
               ? `${i + 1}: DG${(att.guy ?? 0) + 1} ${att.field === "lead" ? "Lead" : "Ht"} ${valDisplay}`
@@ -596,9 +606,7 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
     try {
       // Calculate heights with proper feet/inches conversion
       const heights = markers.attachments.map((att, i) => {
-        const rawVal = att.field === "lead"
-          ? Math.abs(att.x - markers.refBottom.x) / pixelsPerFoot
-          : (markers.refBottom.y - att.y) / pixelsPerFoot;
+        const rawVal = measureValue(att);
         const heightFt = toDecimalFeet(rawVal); // Rounds to nearest inch
         return {
           height_ft: heightFt,
@@ -820,6 +828,13 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
                       Lead
                     </button>
                   </div>
+                  {measureField === "lead" && (
+                    <div className="w-full text-[11px] font-mono text-orange-700" data-testid="measurer-lead-scale">
+                      {horizontalPixelsPerFoot
+                        ? <>Lead scale: {horizontalPixelsPerFoot.toFixed(1)} px/ft (horizontal) · Height scale: {pixelsPerFoot?.toFixed(1)} px/ft (vertical)</>
+                        : <>Reference has no horizontal span — lead is using the vertical scale ({pixelsPerFoot?.toFixed(1)} px/ft). Re-mark the reference with some horizontal offset for a true horizontal scale.</>}
+                    </div>
+                  )}
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="text-xs text-zinc-500 mr-1">Down Guy:</span>
                     {Array.from({ length: guyCount }, (_, i) => (
@@ -923,9 +938,7 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
                     Measured Heights
                   </div>
                   {markers.attachments.map((att, i) => {
-                    const rawVal = att.field === "lead"
-                      ? Math.abs(att.x - markers.refBottom.x) / pixelsPerFoot
-                      : (markers.refBottom.y - att.y) / pixelsPerFoot;
+                    const rawVal = measureValue(att);
                     const valDisplay = formatFeetInches(rawVal);
                     return (
                       <div key={i} className="p-2 flex justify-between items-center text-sm">
