@@ -639,6 +639,7 @@ const JobMap = () => {
   const [savingRoute, setSavingRoute] = useState(false);
   const [photoCapture, setPhotoCapture] = useState(false); // Add → Take Photo flow
   const [photoPin, setPhotoPin] = useState(null); // temporary GPS pin while the user picks a type
+  const [photoPinAdjusting, setPhotoPinAdjusting] = useState(false); // drag-to-fine-tune the pin
   const [multiPlace, setMultiPlace] = useState(false); // quick-drop mode: every tap creates an attribute immediately
   const [multiPlacedCount, setMultiPlacedCount] = useState(0);
   const [multiSaving, setMultiSaving] = useState(false);
@@ -2880,7 +2881,10 @@ const JobMap = () => {
         <MapPhotoCapture
           active={photoCapture}
           onDone={() => setPhotoCapture(false)}
+          pin={photoPin}
           onPin={setPhotoPin}
+          adjusting={photoPinAdjusting}
+          onAdjusting={setPhotoPinAdjusting}
           aerialTypes={MAP_AERIAL_ADD_TYPES}
           undergroundTypes={UNDERGROUND_TYPES.filter((t) => !MAP_AERIAL_ADD_TYPES.includes(t))}
           fallbackCenter={{ lat: center[0], lng: center[1] }}
@@ -3167,9 +3171,9 @@ const JobMap = () => {
               <ParcelLinesLayer enabled={showParcels} basemap={mapLayer === "street" ? "street" : "aerial"} />
               <HomeAddressLayer enabled={showAddresses} onStatus={setAddrStatus} />
               {photoPin && (
-                <Marker position={[photoPin.lat, photoPin.lng]} icon={L.divIcon({ className: "photo-pin-marker", html: '<div style="width:30px;height:30px;border-radius:9999px 9999px 9999px 0;transform:rotate(-45deg);background:#f59e0b;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center"><svg style="transform:rotate(45deg)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></div>', iconSize: [30, 30], iconAnchor: [15, 30] })} zIndexOffset={2000} data-testid="photo-pin-marker" />
+                <Marker position={[photoPin.lat, photoPin.lng]} icon={L.divIcon({ className: "photo-pin-marker", html: '<div style="width:30px;height:30px;border-radius:9999px 9999px 9999px 0;transform:rotate(-45deg);background:#f59e0b;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center"><svg style="transform:rotate(45deg)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></div>', iconSize: [30, 30], iconAnchor: [15, 30] })} zIndexOffset={photoPinAdjusting ? 100000 : 5000} pane="tooltipPane" draggable={photoPinAdjusting} eventHandlers={{ dragend: (e) => { const ll = e.target.getLatLng(); setPhotoPin((p) => ({ ...(p || {}), lat: ll.lat, lng: ll.lng, accuracy: null, fallback: false })); } }} data-testid="photo-pin-marker" />
               )}
-              {photoPin && <FlyTo lat={photoPin.lat} lng={photoPin.lng} />}
+              {photoPin && !photoPinAdjusting && <FlyTo lat={photoPin.lat} lng={photoPin.lng} />}
               {placingType && (
                 <PlaceAttributeHandler
                   onPlace={async (latlng) => {

@@ -3,7 +3,7 @@ import axios from "axios";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Camera, Loader2, MapPin, X } from "lucide-react";
+import { Camera, Loader2, MapPin, Move, X } from "lucide-react";
 
 export const PENDING_PHOTOS_KEY = "pendingAttributePhotos";
 
@@ -37,13 +37,13 @@ const TypeButton = ({ label, onClick, accent }) => (
  * Map "Take Photo" flow: camera → upload → pin at GPS → pick attribute type → open form with photos attached.
  * `active` starts the camera; parent gets the pin via onPin(latlng|null) and the destination via onChooseType.
  */
-export const MapPhotoCapture = ({ active, onDone, onPin, onChooseType, aerialTypes, undergroundTypes, fallbackCenter }) => {
+export const MapPhotoCapture = ({ active, onDone, pin, onPin, adjusting, onAdjusting, onChooseType, aerialTypes, undergroundTypes, fallbackCenter }) => {
   const inputRef = useRef(null);
   const [photos, setPhotos] = useState([]);
-  const [pin, setPin] = useState(null);
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(false);
   const startedRef = useRef(false);
+  const setPin = onPin;
 
   useEffect(() => {
     if (active && !startedRef.current) {
@@ -53,7 +53,7 @@ export const MapPhotoCapture = ({ active, onDone, onPin, onChooseType, aerialTyp
     if (!active) startedRef.current = false;
   }, [active]);
 
-  const reset = () => { setPhotos([]); setPin(null); setOpen(false); onPin?.(null); onDone?.(); };
+  const reset = () => { setPhotos([]); setOpen(false); onPin?.(null); onAdjusting?.(false); onDone?.(); };
 
   const handleFile = async (e) => {
     const file = e.target.files?.[0];
@@ -72,7 +72,6 @@ export const MapPhotoCapture = ({ active, onDone, onPin, onChooseType, aerialTyp
         if (!spot) { toast.error("Could not get your location"); setBusy(false); return; }
         if (spot.fallback) toast.warning("GPS unavailable — pin placed at map center; drag it in the form if needed");
         setPin(spot);
-        onPin?.(spot);
       }
       setOpen(true);
     } catch (err) {
@@ -86,7 +85,7 @@ export const MapPhotoCapture = ({ active, onDone, onPin, onChooseType, aerialTyp
     sessionStorage.setItem(PENDING_PHOTOS_KEY, JSON.stringify(photos));
     setOpen(false);
     onChooseType({ kind, type, lat: pin.lat, lng: pin.lng });
-    setPhotos([]); setPin(null); onDone?.();
+    setPhotos([]); onAdjusting?.(false); onDone?.();
   };
 
   return (
@@ -97,7 +96,14 @@ export const MapPhotoCapture = ({ active, onDone, onPin, onChooseType, aerialTyp
           <div className="bg-white rounded px-4 py-3 flex items-center gap-2 text-sm font-mono"><Loader2 className="w-4 h-4 animate-spin" />Saving photo &amp; locating…</div>
         </div>
       )}
-      <Dialog open={open} onOpenChange={(o) => { if (!o) { if (window.confirm("Discard this pin and its photos?")) reset(); } }}>
+      {adjusting && pin && (
+        <div className="fixed left-1/2 -translate-x-1/2 top-20 z-[1300] bg-amber-500 text-white shadow-lg rounded px-3 py-2 flex items-center gap-3 text-xs font-medium" data-testid="photo-pin-adjust-banner">
+          <Move className="w-4 h-4 shrink-0" />
+          <span>Drag the amber pin to the exact spot{pin.accuracy ? ` (GPS ±${Math.round(pin.accuracy)} m)` : ""}</span>
+          <Button type="button" size="sm" className="h-7 text-xs bg-white text-amber-700 hover:bg-amber-50" onClick={() => { onAdjusting?.(false); setOpen(true); }} data-testid="photo-pin-adjust-done">Done</Button>
+        </div>
+      )}
+      <Dialog open={open && !adjusting} onOpenChange={(o) => { if (!o) { if (window.confirm("Discard this pin and its photos?")) reset(); } }}>
         <DialogContent className="max-w-lg bg-white z-[1300]" aria-describedby={undefined} data-testid="photo-pin-type-dialog">
           <DialogHeader>
             <DialogTitle className="text-sm font-mono uppercase flex items-center gap-2"><MapPin className="w-4 h-4 text-amber-500" />What is this? Pick the attribute type</DialogTitle>
@@ -108,7 +114,10 @@ export const MapPhotoCapture = ({ active, onDone, onPin, onChooseType, aerialTyp
               {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}Another
             </Button>
           </div>
-          <p className="text-[11px] text-zinc-500">{photos.length} photo{photos.length !== 1 ? "s" : ""} will be attached to this record{pin?.accuracy ? ` · GPS ±${Math.round(pin.accuracy)} m` : ""}. You can add more in the form before saving.</p>
+          <div className="flex items-start gap-2">
+            <p className="text-[11px] text-zinc-500 flex-1">{photos.length} photo{photos.length !== 1 ? "s" : ""} will be attached to this record{pin?.accuracy ? ` · GPS ±${Math.round(pin.accuracy)} m` : ""}. You can add more in the form before saving.</p>
+            <Button type="button" variant="outline" size="sm" className="h-8 text-xs bg-amber-50 border-amber-300 text-amber-800 hover:bg-amber-100 shrink-0" onClick={() => { setOpen(false); onAdjusting?.(true); }} data-testid="photo-pin-adjust-btn"><Move className="w-3.5 h-3.5 mr-1" />Adjust pin</Button>
+          </div>
           <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
             <div className="grid grid-cols-2 gap-1.5">
               <TypeButton label="Pole" accent="font-semibold border-red-300" onClick={() => choose("pole", null)} />
