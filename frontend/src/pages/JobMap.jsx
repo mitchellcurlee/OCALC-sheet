@@ -428,13 +428,18 @@ const arrowIcon = (deg) =>
 // Attribute types treated as AERIAL (blue) on the map
 const AERIAL_ATTR_TYPES = new Set(["Loop", "Aerial Splice", "X-Messenger", "Eyebolt", "Pullbox", "Weather Head", "Aerial NTE", "Aerial PI", "Aerial FBT"]);
 
-const numberBadgeIcon = (num, color = "#ea580c", anchor = [13, 13], picked = false) =>
-  L.divIcon({
+// `sub` (e.g. span footage) extends the round badge into a pill: "3 | 125'"
+const numberBadgeIcon = (num, color = "#ea580c", anchor = [13, 13], picked = false, sub = null) => {
+  const subHtml = sub ? `<span style="font:600 10px/1 ui-monospace,monospace;margin-left:4px;padding-left:4px;border-left:1px solid ${picked ? "rgba(0,0,0,.35)" : "rgba(255,255,255,.55)"};white-space:nowrap;">${sub}</span>` : "";
+  const width = sub ? 26 + 8 + sub.length * 6.5 : 26;
+  return L.divIcon({
     className: "measurement-number-badge",
-    html: `<div style="background:${picked ? "#facc15" : color};color:${picked ? "#111" : "#fff"};border:2px solid ${picked ? "#111" : "#fff"};border-radius:9999px;min-width:26px;height:26px;display:flex;align-items:center;justify-content:center;font:700 13px/1 ui-monospace,monospace;box-shadow:0 ${picked ? "0 0 4px rgba(250,204,21,.9)" : "1px 4px rgba(0,0,0,.5)"};padding:0 4px;cursor:pointer;">${num}</div>`,
-    iconSize: [26, 26],
-    iconAnchor: anchor,
+    html: `<div style="background:${picked ? "#facc15" : color};color:${picked ? "#111" : "#fff"};border:2px solid ${picked ? "#111" : "#fff"};border-radius:9999px;min-width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;font:700 13px/1 ui-monospace,monospace;box-shadow:0 ${picked ? "0 0 4px rgba(250,204,21,.9)" : "1px 4px rgba(0,0,0,.5)"};padding:0 ${sub ? 7 : 4}px;cursor:pointer;">${num}${subHtml}</div>`,
+    iconSize: [width, 26],
+    iconAnchor: sub && anchor[0] === 13 ? [width / 2, 13] : anchor,
   });
+};
+const badgeFeet = (ft) => (Number.isFinite(ft) && ft > 0 ? `${Math.round(ft)}'` : null);
 
 const labelIcon = (text, ox, oy, isAfterMPOE = false) => {
   // Use orange for the arrow/connector, keep pill colors based on MPOE status
@@ -3183,7 +3188,7 @@ const JobMap = () => {
                       />
                       {/* Numbered badge — measurement is in the list below the map */}
                       {!showStationNumbers && previewSpanNum(i) != null && (
-                        <Marker position={badgePos} icon={numberBadgeIcon(previewSpanNum(i), "#ea580c", [13, 13], swapPick === i)} zIndexOffset={swapPick === i ? 1600 : 800} eventHandlers={{ click: (e) => { L.DomEvent.stopPropagation(e); handleBadgeTap(i); } }} />
+                        <Marker position={badgePos} icon={numberBadgeIcon(previewSpanNum(i), "#ea580c", [13, 13], swapPick === i, badgeFeet(segListDistance(seg)))} zIndexOffset={swapPick === i ? 1600 : 800} eventHandlers={{ click: (e) => { L.DomEvent.stopPropagation(e); handleBadgeTap(i); } }} />
                       )}
                       {/* Selection highlight */}
                       {isSelected && (
@@ -3231,7 +3236,7 @@ const JobMap = () => {
                     )}
                     {/* Numbered badge — click to see the distance */}
                     {!showStationNumbers && previewSpanNum(i) != null && (
-                      <Marker position={ugBadgePos} icon={numberBadgeIcon(previewSpanNum(i), "#ea580c", [13, 13], swapPick === i)} zIndexOffset={swapPick === i ? 1600 : 800} eventHandlers={{ click: (e) => { L.DomEvent.stopPropagation(e); handleBadgeTap(i); } }} />
+                      <Marker position={ugBadgePos} icon={numberBadgeIcon(previewSpanNum(i), "#ea580c", [13, 13], swapPick === i, badgeFeet(segListDistance(seg)))} zIndexOffset={swapPick === i ? 1600 : 800} eventHandlers={{ click: (e) => { L.DomEvent.stopPropagation(e); handleBadgeTap(i); } }} />
                     )}
                   </React.Fragment>
                 );
