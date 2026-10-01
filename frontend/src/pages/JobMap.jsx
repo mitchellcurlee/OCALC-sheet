@@ -8,7 +8,7 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import domtoimage from "dom-to-image-more";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ChevronDown, ChevronUp, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera, Hash, Link2, Move, Palette, Plus, Map as MapIcon, GripVertical, Upload, Trash2, RotateCcw, Home, Route as RouteIcon, ListOrdered } from "lucide-react";
+import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ChevronDown, ChevronUp, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera, Hash, Link2, Move, Palette, Plus, Map as MapIcon, GripVertical, Upload, Trash2, RotateCcw, Home, Route as RouteIcon, ListOrdered, LandPlot } from "lucide-react";
 import SpanReorderList from "@/components/SpanReorderList";
 import { computeRoute, fmtFeet, feetToStation, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, downloadMapPdfPages, ugWithGps, undergroundAbbr, computeUgConnectors, computeConnectionPairs, computeStationSegFeet, UNDERGROUND_TYPES, isAerialAttr, resolvePairAerial, spanKey, routeWaypoints, routeArg, placeSpanNotes, LIST_PAGE_LINES, riserAnchor, tieInSuffix, pathRowText, pairIsManual, routePayloadFromOrder } from "@/lib/poleMapImage";
 import { ExportDestinationDialog } from "@/components/ExportDestinationDialog";
@@ -44,6 +44,7 @@ import {
 import EditableRoute from "@/components/EditableRoute";
 import MapAnnotations from "@/components/MapAnnotations";
 import HomeAddressLayer from "@/components/HomeAddressLayer";
+import ParcelLinesLayer from "@/components/ParcelLinesLayer";
 import { CurrentLocationLayer } from "@/components/CurrentLocationLayer";
 
 const MAP_AERIAL_ADD_TYPES = ["Loop", "Aerial Splice", "Power", "X-Messenger", "Eyebolt", "Pullbox", "Weather Head"];
@@ -558,6 +559,8 @@ const JobMap = () => {
   const [showAddresses, setShowAddresses] = useState(() => localStorage.getItem("mapAddrToggle") === "1");
   const [addrStatus, setAddrStatus] = useState("ok");
   useEffect(() => { localStorage.setItem("mapAddrToggle", showAddresses ? "1" : "0"); }, [showAddresses]);
+  const [showParcels, setShowParcels] = useState(() => localStorage.getItem("mapParcelToggle") === "1");
+  useEffect(() => { localStorage.setItem("mapParcelToggle", showParcels ? "1" : "0"); }, [showParcels]);
   const [showStationNumbers, setShowStationNumbers] = useState(() => {
     try { return localStorage.getItem(`staToggle:${jobId}`) === '1'; } catch (e) { return false; }
   });
@@ -2455,6 +2458,10 @@ const JobMap = () => {
               <Home className="w-4 h-4 mr-2" />
               Addresses
             </Button>
+            <Button onClick={() => setShowParcels((v) => !v)} aria-pressed={showParcels} variant="outline" className={showParcels ? "bg-stone-600 border-stone-600 hover:bg-stone-700 text-white" : "bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900"} data-testid="toggle-parcels-btn" title="Texas parcel boundary lines (TxGIO / TNRIS StratMap) — visual reference only">
+              <LandPlot className="w-4 h-4 mr-2" />
+              Parcels
+            </Button>
             <Button onClick={() => setShowStationNumbers((v) => !v)} disabled={route.length === 0 && ug.length === 0} aria-pressed={showStationNumbers} variant="outline" className={showStationNumbers ? "bg-indigo-600 border-indigo-600 hover:bg-indigo-700 text-white" : "bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900"} data-testid="toggle-station-btn">
               <Hash className="w-4 h-4 mr-2" />
               Sta #{"'"}s
@@ -3101,6 +3108,7 @@ const JobMap = () => {
               <CurrentLocationLayer />
               <FitBounds points={allPoints} disabled={editMode} />
               <MapRefSetter mapRef={mapRef} />
+              <ParcelLinesLayer enabled={showParcels} basemap={mapLayer === "street" ? "street" : "aerial"} />
               <HomeAddressLayer enabled={showAddresses} onStatus={setAddrStatus} />
               {placingType && (
                 <PlaceAttributeHandler
