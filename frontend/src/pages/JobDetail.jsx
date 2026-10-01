@@ -53,6 +53,7 @@ import {
   Share2,
   FileUp,
   WifiOff,
+  Camera,
 } from "lucide-react";
 import { buildSowNotesText } from "@/components/ase/ASESOWNotesTab";
 import { ExportDestinationDialog } from "@/components/ExportDestinationDialog";
@@ -94,6 +95,7 @@ import { CSS } from "@dnd-kit/utilities";
 import MarkupTab from "@/components/MarkupTab";
 import JobFilesShare from "@/components/JobFilesShare";
 import JobPhotoGallery, { galleryDropProps } from "@/components/JobPhotoGallery";
+import MapPhotoCapture from "@/components/MapPhotoCapture";
 import JobShareDialog from "@/components/JobShareDialog";
 
 // Sortable item component for drag-and-drop (poles and underground)
@@ -190,6 +192,9 @@ const JobDetail = () => {
   const [syncingAll, setSyncingAll] = useState(false);
   const [markupPhotos, setMarkupPhotos] = useState([]);
   const [photoDropTarget, setPhotoDropTarget] = useState(null);
+  const [photoCapture, setPhotoCapture] = useState(false); // Add → Take Photo flow
+  const [photoPin, setPhotoPin] = useState(null);
+  const [photoPinAdjusting, setPhotoPinAdjusting] = useState(false);
   const dropHandlers = { onEnter: setPhotoDropTarget, onLeave: (id) => setPhotoDropTarget((cur) => (cur === id ? null : cur)) };
   const [showMarkupSection, setShowMarkupSection] = useState(false);
   const [savingMarkup, setSavingMarkup] = useState(false);
@@ -720,6 +725,10 @@ const JobDetail = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="bg-white border-zinc-200 w-56 max-h-96 overflow-auto">
+                  <DropdownMenuItem onClick={() => setPhotoCapture(true)} data-testid="add-take-photo-btn" className="cursor-pointer font-semibold text-amber-700 border-b border-zinc-200">
+                    <Camera className="w-4 h-4 mr-2" />
+                    Take Photo (pin at my location)
+                  </DropdownMenuItem>
                   <DropdownMenuItem 
                     onClick={() => navigate(`/jobs/${jobId}/add`)} 
                     data-testid="add-pole-btn" 
@@ -992,6 +1001,25 @@ const JobDetail = () => {
           onCloud={() => runPendingExport("cloud")}
         />
         <JobShareDialog open={shareOpen} onOpenChange={setShareOpen} jobId={jobId} job={job} onJobUpdated={fetchJobAndPoles} />
+        <MapPhotoCapture
+          standalone
+          active={photoCapture}
+          onDone={() => setPhotoCapture(false)}
+          pin={photoPin}
+          onPin={setPhotoPin}
+          adjusting={photoPinAdjusting}
+          onAdjusting={setPhotoPinAdjusting}
+          aerialTypes={["Aerial Splice", "Loop", "Power", "X-Messenger", "Eyebolt", "Pullbox", "Weather Head"]}
+          undergroundTypes={UNDERGROUND_TYPES.filter((t) => !["Aerial Splice", "Loop", "Power", "X-Messenger", "Eyebolt", "Pullbox", "Weather Head", "Aerial NTE", "Aerial PI", "Aerial FBT"].includes(t))}
+          fallbackCenter={(() => { const it = [...poles, ...undergroundItems].find((x) => Number.isFinite(parseFloat(x.latitude)) && Number.isFinite(parseFloat(x.longitude))); return it ? { lat: parseFloat(it.latitude), lng: parseFloat(it.longitude) } : null; })()}
+          onChooseType={({ kind, type, lat, lng }) => {
+            setPhotoPin(null);
+            const q = `lat=${lat.toFixed(6)}&lng=${lng.toFixed(6)}&photos=1`;
+            if (kind === "pole") navigate(`/jobs/${jobId}/add?${q}`);
+            else if (kind === "pole_terminal") navigate(`/jobs/${jobId}/add?terminal=true&${q}`);
+            else navigate(`/jobs/${jobId}/underground/add?type=${encodeURIComponent(type)}&${q}`);
+          }}
+        />
         {/* Job files + job photo gallery */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
           <JobFilesShare jobId={jobId} />

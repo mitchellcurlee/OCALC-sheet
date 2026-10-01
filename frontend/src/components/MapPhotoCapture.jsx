@@ -4,6 +4,31 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Camera, Loader2, MapPin, Move, X } from "lucide-react";
+import L from "leaflet";
+import { MapContainer, TileLayer, Marker } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
+
+// Amber camera pin (shared by the live map and the standalone adjust dialog)
+export const photoPinIcon = () => L.divIcon({ className: "photo-pin-marker", html: '<div style="width:30px;height:30px;border-radius:9999px 9999px 9999px 0;transform:rotate(-45deg);background:#f59e0b;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center"><svg style="transform:rotate(45deg)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></div>', iconSize: [30, 30], iconAnchor: [15, 30] });
+
+/** Mini aerial map with the draggable pin — used where there is no live map (Job Detail page). */
+const PinAdjustDialog = ({ pin, onMove, onDone }) => (
+  <Dialog open onOpenChange={(o) => { if (!o) onDone(); }}>
+    <DialogContent className="max-w-xl bg-white z-[1300] p-4" aria-describedby={undefined} data-testid="photo-pin-adjust-dialog">
+      <DialogHeader><DialogTitle className="text-sm font-mono uppercase flex items-center gap-2"><Move className="w-4 h-4 text-amber-500" />Drag the amber pin to the exact spot</DialogTitle></DialogHeader>
+      <div className="h-72 rounded overflow-hidden border border-zinc-300">
+        <MapContainer center={[pin.lat, pin.lng]} zoom={19} className="h-full w-full" scrollWheelZoom>
+          <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" attribution="&copy; Esri" maxNativeZoom={19} maxZoom={22} />
+          <Marker position={[pin.lat, pin.lng]} icon={photoPinIcon()} draggable eventHandlers={{ dragend: (e) => { const ll = e.target.getLatLng(); onMove({ lat: ll.lat, lng: ll.lng }); } }} />
+        </MapContainer>
+      </div>
+      <div className="flex items-center justify-between text-[11px] font-mono text-zinc-500">
+        <span data-testid="photo-pin-adjust-coords">{pin.lat.toFixed(6)}, {pin.lng.toFixed(6)}{pin.accuracy ? ` · GPS ±${Math.round(pin.accuracy)} m` : ""}</span>
+        <Button type="button" size="sm" className="h-8 text-xs bg-amber-500 hover:bg-amber-600 text-white" onClick={onDone} data-testid="photo-pin-adjust-done">Done</Button>
+      </div>
+    </DialogContent>
+  </Dialog>
+);
 
 export const PENDING_PHOTOS_KEY = "pendingAttributePhotos";
 
@@ -37,7 +62,7 @@ const TypeButton = ({ label, onClick, accent }) => (
  * Map "Take Photo" flow: camera → upload → pin at GPS → pick attribute type → open form with photos attached.
  * `active` starts the camera; parent gets the pin via onPin(latlng|null) and the destination via onChooseType.
  */
-export const MapPhotoCapture = ({ active, onDone, pin, onPin, adjusting, onAdjusting, onChooseType, aerialTypes, undergroundTypes, fallbackCenter }) => {
+export const MapPhotoCapture = ({ active, onDone, pin, onPin, adjusting, onAdjusting, onChooseType, aerialTypes, undergroundTypes, fallbackCenter, standalone = false }) => {
   const inputRef = useRef(null);
   const [photos, setPhotos] = useState([]);
   const [busy, setBusy] = useState(false);
@@ -69,8 +94,8 @@ export const MapPhotoCapture = ({ active, onDone, pin, onPin, adjusting, onAdjus
       if (!pin) {
         const gps = await getGps();
         const spot = gps || (fallbackCenter ? { ...fallbackCenter, fallback: true } : null);
-        if (!spot) { toast.error("Could not get your location"); setBusy(false); return; }
-        if (spot.fallback) toast.warning("GPS unavailable — pin placed at map center; drag it in the form if needed");
+        if (!spot) { toast.error("Could not get your location — allow location access and try again"); setPhotos([]); reset(); setBusy(false); return; }
+        if (spot.fallback) toast.warning("GPS unavailable — pin placed near the job; use Adjust pin to move it");
         setPin(spot);
       }
       setOpen(true);
@@ -96,7 +121,10 @@ export const MapPhotoCapture = ({ active, onDone, pin, onPin, adjusting, onAdjus
           <div className="bg-white rounded px-4 py-3 flex items-center gap-2 text-sm font-mono"><Loader2 className="w-4 h-4 animate-spin" />Saving photo &amp; locating…</div>
         </div>
       )}
-      {adjusting && pin && (
+      {adjusting && pin && standalone && (
+        <PinAdjustDialog pin={pin} onMove={(ll) => setPin({ ...pin, ...ll, accuracy: null, fallback: false })} onDone={() => { onAdjusting?.(false); setOpen(true); }} />
+      )}
+      {adjusting && pin && !standalone && (
         <div className="fixed left-1/2 -translate-x-1/2 top-20 z-[1300] bg-amber-500 text-white shadow-lg rounded px-3 py-2 flex items-center gap-3 text-xs font-medium" data-testid="photo-pin-adjust-banner">
           <Move className="w-4 h-4 shrink-0" />
           <span>Drag the amber pin to the exact spot{pin.accuracy ? ` (GPS ±${Math.round(pin.accuracy)} m)` : ""}</span>
