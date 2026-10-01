@@ -429,16 +429,21 @@ const arrowIcon = (deg) =>
 const AERIAL_ATTR_TYPES = new Set(["Loop", "Aerial Splice", "X-Messenger", "Eyebolt", "Pullbox", "Weather Head", "Aerial NTE", "Aerial PI", "Aerial FBT"]);
 
 // `sub` (e.g. span footage) extends the round badge into a pill: "3 | 125'"
-const numberBadgeIcon = (num, color = "#ea580c", anchor = [13, 13], picked = false, sub = null) => {
-  const subHtml = sub ? `<span style="font:600 10px/1 ui-monospace,monospace;margin-left:4px;padding-left:4px;border-left:1px solid ${picked ? "rgba(0,0,0,.35)" : "rgba(255,255,255,.55)"};white-space:nowrap;">${sub}</span>` : "";
-  const width = sub ? 26 + 8 + sub.length * 6.5 : 26;
+// `scale` shrinks the whole badge (user "Spans: Small" setting).
+const numberBadgeIcon = (num, color = "#ea580c", anchor = [13, 13], picked = false, sub = null, scale = 1) => {
+  const k = scale;
+  const subHtml = sub ? `<span style="font:600 ${10 * k}px/1 ui-monospace,monospace;margin-left:${4 * k}px;padding-left:${4 * k}px;border-left:1px solid ${picked ? "rgba(0,0,0,.35)" : "rgba(255,255,255,.55)"};white-space:nowrap;">${sub}</span>` : "";
+  const h = 26 * k;
+  const width = sub ? (26 + 8 + sub.length * 6.5) * k : h;
   return L.divIcon({
     className: "measurement-number-badge",
-    html: `<div style="background:${picked ? "#facc15" : color};color:${picked ? "#111" : "#fff"};border:2px solid ${picked ? "#111" : "#fff"};border-radius:9999px;min-width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;font:700 13px/1 ui-monospace,monospace;box-shadow:0 ${picked ? "0 0 4px rgba(250,204,21,.9)" : "1px 4px rgba(0,0,0,.5)"};padding:0 ${sub ? 7 : 4}px;cursor:pointer;">${num}${subHtml}</div>`,
-    iconSize: [width, 26],
-    iconAnchor: sub && anchor[0] === 13 ? [width / 2, 13] : anchor,
+    html: `<div style="background:${picked ? "#facc15" : color};color:${picked ? "#111" : "#fff"};border:${Math.max(1, 2 * k)}px solid ${picked ? "#111" : "#fff"};border-radius:9999px;min-width:${h}px;height:${h}px;display:inline-flex;align-items:center;justify-content:center;font:700 ${13 * k}px/1 ui-monospace,monospace;box-shadow:0 ${picked ? "0 0 4px rgba(250,204,21,.9)" : "1px 4px rgba(0,0,0,.5)"};padding:0 ${(sub ? 7 : 4) * k}px;cursor:pointer;">${num}${subHtml}</div>`,
+    iconSize: [width, h],
+    iconAnchor: anchor[0] === 13 && anchor[1] === 13 ? [width / 2, h / 2] : anchor,
   });
 };
+const SPAN_BADGE_MODES = ["normal", "small", "off"];
+const SPAN_BADGE_SCALE = { normal: 1, small: 0.7 };
 const badgeFeet = (ft) => (Number.isFinite(ft) && ft > 0 ? `${Math.round(ft)}'` : null);
 
 const labelIcon = (text, ox, oy, isAfterMPOE = false) => {
@@ -565,6 +570,13 @@ const JobMap = () => {
   const [addrStatus, setAddrStatus] = useState("ok");
   useEffect(() => { localStorage.setItem("mapAddrToggle", showAddresses ? "1" : "0"); }, [showAddresses]);
   const [showParcels, setShowParcels] = useState(() => localStorage.getItem("mapParcelToggle") === "1");
+  const [showAllNotes, setShowAllNotes] = useState(() => localStorage.getItem("mapNotesOpen") === "1");
+  useEffect(() => { localStorage.setItem("mapNotesOpen", showAllNotes ? "1" : "0"); }, [showAllNotes]);
+  const [spanBadgeMode, setSpanBadgeMode] = useState(() => (SPAN_BADGE_MODES.includes(localStorage.getItem("mapSpanBadgeMode")) ? localStorage.getItem("mapSpanBadgeMode") : "normal"));
+  useEffect(() => { localStorage.setItem("mapSpanBadgeMode", spanBadgeMode); }, [spanBadgeMode]);
+  const cycleSpanBadgeMode = () => setSpanBadgeMode((m) => SPAN_BADGE_MODES[(SPAN_BADGE_MODES.indexOf(m) + 1) % SPAN_BADGE_MODES.length]);
+  const showSpanBadges = spanBadgeMode !== "off";
+  const spanBadgeScale = SPAN_BADGE_SCALE[spanBadgeMode] || 1;
   useEffect(() => { localStorage.setItem("mapParcelToggle", showParcels ? "1" : "0"); }, [showParcels]);
   const [showStationNumbers, setShowStationNumbers] = useState(() => {
     try { return localStorage.getItem(`staToggle:${jobId}`) === '1'; } catch (e) { return false; }
@@ -2467,6 +2479,18 @@ const JobMap = () => {
               <LandPlot className="w-4 h-4 mr-2" />
               Parcels
             </Button>
+            {annotations.some((a) => a.type === "note") && (
+              <Button onClick={() => setShowAllNotes((v) => !v)} aria-pressed={showAllNotes} variant="outline" className={showAllNotes ? "bg-amber-500 border-amber-500 hover:bg-amber-600 text-white" : "bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900"} data-testid="toggle-all-notes-btn" title="Show every note's text open on the map">
+                <StickyNote className="w-4 h-4 mr-2" />
+                Notes: {showAllNotes ? "Open" : "Closed"}
+              </Button>
+            )}
+            {!showStationNumbers && (
+              <Button onClick={cycleSpanBadgeMode} variant="outline" className={spanBadgeMode === "off" ? "bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-500" : "bg-orange-600 border-orange-600 hover:bg-orange-700 text-white"} data-testid="span-badge-mode-btn" title="Span number markers: Normal → Small → Off">
+                <Hash className="w-4 h-4 mr-2" />
+                Spans: {spanBadgeMode === "off" ? "Off" : spanBadgeMode === "small" ? "Small" : "Normal"}
+              </Button>
+            )}
             <Button onClick={() => setShowStationNumbers((v) => !v)} disabled={route.length === 0 && ug.length === 0} aria-pressed={showStationNumbers} variant="outline" className={showStationNumbers ? "bg-indigo-600 border-indigo-600 hover:bg-indigo-700 text-white" : "bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900"} data-testid="toggle-station-btn">
               <Hash className="w-4 h-4 mr-2" />
               Sta #{"'"}s
@@ -3187,8 +3211,8 @@ const JobMap = () => {
                         onClick={() => handleSegmentClick(segmentKey)}
                       />
                       {/* Numbered badge — measurement is in the list below the map */}
-                      {!showStationNumbers && previewSpanNum(i) != null && (
-                        <Marker position={badgePos} icon={numberBadgeIcon(previewSpanNum(i), "#ea580c", [13, 13], swapPick === i, badgeFeet(segListDistance(seg)))} zIndexOffset={swapPick === i ? 1600 : 800} eventHandlers={{ click: (e) => { L.DomEvent.stopPropagation(e); handleBadgeTap(i); } }} />
+                      {!showStationNumbers && showSpanBadges && previewSpanNum(i) != null && (
+                        <Marker position={badgePos} icon={numberBadgeIcon(previewSpanNum(i), "#ea580c", [13, 13], swapPick === i, badgeFeet(segListDistance(seg)), spanBadgeScale)} zIndexOffset={swapPick === i ? 1600 : 800} eventHandlers={{ click: (e) => { L.DomEvent.stopPropagation(e); handleBadgeTap(i); } }} />
                       )}
                       {/* Selection highlight */}
                       {isSelected && (
@@ -3235,8 +3259,8 @@ const JobMap = () => {
                       />
                     )}
                     {/* Numbered badge — click to see the distance */}
-                    {!showStationNumbers && previewSpanNum(i) != null && (
-                      <Marker position={ugBadgePos} icon={numberBadgeIcon(previewSpanNum(i), "#ea580c", [13, 13], swapPick === i, badgeFeet(segListDistance(seg)))} zIndexOffset={swapPick === i ? 1600 : 800} eventHandlers={{ click: (e) => { L.DomEvent.stopPropagation(e); handleBadgeTap(i); } }} />
+                    {!showStationNumbers && showSpanBadges && previewSpanNum(i) != null && (
+                      <Marker position={ugBadgePos} icon={numberBadgeIcon(previewSpanNum(i), "#ea580c", [13, 13], swapPick === i, badgeFeet(segListDistance(seg)), spanBadgeScale)} zIndexOffset={swapPick === i ? 1600 : 800} eventHandlers={{ click: (e) => { L.DomEvent.stopPropagation(e); handleBadgeTap(i); } }} />
                     )}
                   </React.Fragment>
                 );
@@ -3394,6 +3418,7 @@ const JobMap = () => {
                 onAnnotationAdd={handleAnnotationAdd}
                 onAnnotationUpdate={handleAnnotationUpdate}
                 onAnnotationDelete={handleAnnotationDelete}
+                showAllNotes={showAllNotes}
               />
               {/* Connection edit mode - tap-to-reconnect */}
               {/* Draw Route: live line through the tapped items */}

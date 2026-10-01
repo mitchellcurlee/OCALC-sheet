@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { Marker, Polyline, Popup, useMapEvents } from "react-leaflet";
+import { Marker, Polyline, Popup, Tooltip, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,6 +54,7 @@ export const MapAnnotations = ({
   onAnnotationAdd,
   onAnnotationUpdate,
   onAnnotationDelete,
+  showAllNotes = false, // pin every note's text open beside its marker
 }) => {
   const [editingId, setEditingId] = useState(null);
   const [editText, setEditText] = useState("");
@@ -132,6 +133,11 @@ export const MapAnnotations = ({
                 dragend: (e) => handleDragEnd(ann, e),
               }}
             >
+              {showAllNotes && (
+                <Tooltip permanent direction="right" offset={[12, 0]} className="map-note-tooltip" interactive={false}>
+                  <span data-testid={`note-pinned-${ann.id}`}>{ann.text || "No text"}</span>
+                </Tooltip>
+              )}
               <Popup>
                 <div className="min-w-[150px]">
                   {editingId === ann.id ? (
