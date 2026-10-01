@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate, useParams, useSearchParams, Link } from "react-router-dom";
+import { takePendingAttributePhotos } from "@/components/MapPhotoCapture";
 import axios from "axios";
 import { toast } from "sonner";
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from "react-leaflet";
@@ -177,6 +178,17 @@ const UndergroundForm = () => {
     fetchItem();
     fetchJobItems();
   }, [fetchOptions, fetchItem, fetchJobItems]);
+
+  // Photos handed off from the map "Take Photo" flow
+  useEffect(() => {
+    if (isEdit || searchParams.get("photos") !== "1") return;
+    const pending = takePendingAttributePhotos();
+    if (pending.length) {
+      setFormData((prev) => ({ ...prev, staged_photos: [...(prev.staged_photos || []), ...pending] }));
+      toast.success(`${pending.length} photo${pending.length > 1 ? "s" : ""} attached — add more below, then save`);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const setLatLng = (lat, lng) => {
     setFormData((prev) => ({ ...prev, latitude: lat.toFixed(6), longitude: lng.toFixed(6) }));

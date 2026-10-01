@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { takePendingAttributePhotos } from "@/components/MapPhotoCapture";
 import axios from "axios";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -202,12 +203,21 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
     fetchOptions();
   }, [fetchOptions]);
 
+  const mapPhotosRef = useRef([]); // photos from the map "Take Photo" flow (survive a draft restore)
   // Prefill GPS from ?lat=&lng= query params (map tap-to-place)
   useEffect(() => {
     const qLat = searchParams.get("lat");
     const qLng = searchParams.get("lng");
     if (mode === "create" && qLat && qLng) {
       setFormData((prev) => ({ ...prev, latitude: qLat, longitude: qLng }));
+    }
+    if (mode === "create" && searchParams.get("photos") === "1") {
+      const pending = takePendingAttributePhotos();
+      if (pending.length) {
+        mapPhotosRef.current = pending;
+        setFormData((prev) => ({ ...prev, staged_photos: [...(prev.staged_photos || []), ...pending] }));
+        toast.success(`${pending.length} photo${pending.length > 1 ? "s" : ""} attached — add more below, then save`);
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -327,7 +337,11 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
     draftLoadedRef.current = true;
     const d = initialDraftRef.current;
     if (d) {
-      if (d.formData) setFormData(d.formData);
+      if (d.formData) {
+        const qLat = searchParams.get("lat"), qLng = searchParams.get("lng");
+        const extra = mapPhotosRef.current.filter((u) => !(d.formData.staged_photos || []).includes(u));
+        setFormData({ ...d.formData, ...(qLat && qLng ? { latitude: qLat, longitude: qLng } : {}), staged_photos: [...(d.formData.staged_photos || []), ...extra] });
+      }
       if (Array.isArray(d.downGuys) && d.downGuys.length) setDownGuys(d.downGuys);
       if (Array.isArray(d.knuckles) && d.knuckles.length) setKnuckles(d.knuckles);
       if (Array.isArray(d.attachments) && d.attachments.length) setAttachments(d.attachments);
