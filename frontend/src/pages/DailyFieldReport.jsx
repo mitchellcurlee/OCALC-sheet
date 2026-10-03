@@ -12,7 +12,7 @@ import { MyReportsDialog } from "@/components/dfr/MyReportsDialog";
 import { HomeAddress } from "@/components/dfr/HomeAddress";
 import { useDailyReport } from "@/components/dfr/useDailyReport";
 import { EMPLOYEE_NAMES } from "@/components/ase/ASEFormConstants";
-import { newRow, todayISO } from "@/lib/dfr";
+import { newRow, todayISO, jobLabel } from "@/lib/dfr";
 
 export default function DailyFieldReport() {
   const { jobId } = useParams();
@@ -39,7 +39,7 @@ export default function DailyFieldReport() {
     const rows = [...r.rows]; const [m] = rows.splice(from, 1); rows.splice(to, 0, m);
     return { ...r, rows };
   });
-  const pickJob = (rowId, jid) => { const job = jobs.find((j) => j.id === jid); changeRow({ ...report.rows.find((x) => x.id === rowId), job_id: jid, job: job?.name || "", sow: job?.job_type || "", job_type: job?.job_type || "", job_address: job?.location || "" }); };
+  const pickJob = (rowId, jid) => { const job = jobs.find((j) => j.id === jid); changeRow({ ...report.rows.find((x) => x.id === rowId), job_id: jid, job: jobLabel(job), sow: job?.job_type || "", job_type: job?.job_type || "", job_address: job?.location || "" }); };
   const addRow = () => { const row = { ...newRow(null), date: report.date, fielder: report.fielder || "" }; update((r) => ({ ...r, rows: [...r.rows, row] })); setActiveRowId(row.id); };
   const setFielder = (v) => update((r) => ({ ...r, fielder: v, rows: r.rows.map((x) => (x.fielder ? x : { ...x, fielder: v })) }));
   const changeDate = (d) => { if (!d) return; persist().then(() => setParams({ date: d })); };

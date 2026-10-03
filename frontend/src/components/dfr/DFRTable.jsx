@@ -4,7 +4,7 @@ import { Trash2, Radio, ChevronUp, ChevronDown, GripVertical } from "lucide-reac
 import { DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { MARKETS, HOUR_OPTIONS, MILE_OPTIONS, fmtHrs } from "@/lib/dfr";
+import { MARKETS, HOUR_OPTIONS, MILE_OPTIONS, fmtHrs, jobLabel } from "@/lib/dfr";
 import { JOB_TYPES } from "@/lib/jobTypes";
 
 export const DFR_HEADERS = [
@@ -41,7 +41,7 @@ export const DFRRow = ({ row, i, count, striped, jobs, employees, onChange, onRe
     <Txt key="date" type="date" value={row.date} onChange={set("date")} testId={`dfr-date-${i}`} className="min-w-[120px]" />,
     <select key="job" value={row.job_id || ""} onChange={(e) => onPickJob(e.target.value)} className="h-8 w-full min-w-[110px] bg-transparent text-xs border border-transparent focus:border-sky-500 focus:bg-white rounded outline-none font-semibold" data-testid={`dfr-job-${i}`}>
       <option value="">{row.job || "— pick job —"}</option>
-      {jobs.map((j) => <option key={j.id} value={j.id}>{j.name}</option>)}
+      {jobs.map((j) => <option key={j.id} value={j.id}>{jobLabel(j)}</option>)}
     </select>,
     <Sel key="market" value={row.market} options={MARKETS} onChange={set("market")} testId={`dfr-market-${i}`} />,
     <Sel key="sow" value={row.sow} options={JOB_TYPES.includes(row.sow) || !row.sow ? JOB_TYPES : [row.sow, ...JOB_TYPES]} onChange={set("sow")} testId={`dfr-sow-${i}`} />,

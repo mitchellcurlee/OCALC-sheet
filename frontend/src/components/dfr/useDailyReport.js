@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import { toast } from "sonner";
-import { newRow } from "@/lib/dfr";
+import { newRow, jobLabel } from "@/lib/dfr";
 
 const blank = (date) => ({ id: null, date, fielder: "", rows: [], track: [] });
 
@@ -34,11 +34,15 @@ export const useDailyReport = ({ jobId, date, job: givenJob = null, autoRow = tr
         let rep = list[0] ? (await axios.get(`/field-reports/${list[0].id}`)).data : null;
         if (!rep) rep = autoRow ? (await axios.post("/field-reports", blank(date))).data : blank(date);
         rep.rows = rep.rows || []; rep.track = rep.track || [];
+        // rows are labelled by Site ID — refresh labels of existing rows if the job's Site ID changed
+        let relabel = false;
+        rep.rows = rep.rows.map((r) => { const j = jobList.find((x) => x.id === r.job_id); const lbl = jobLabel(j); if (j && lbl && r.job !== lbl) { relabel = true; return { ...r, job: lbl }; } return r; });
         const job = jobList.find((j) => j.id === jobId);
         if (autoRow && job && !rep.rows.some((r) => r.job_id === jobId)) {
           rep.rows = [...rep.rows, { ...newRow(job), date, fielder: rep.fielder || "" }];
-          rep = (await axios.put(`/field-reports/${rep.id}`, rep)).data;
+          relabel = true;
         }
+        if (relabel && rep.id) rep = (await axios.put(`/field-reports/${rep.id}`, rep)).data;
         if (cancelled) return;
         setReport(rep);
         setActiveRowId((rep.rows.find((r) => r.job_id === jobId) || (autoRow ? rep.rows[rep.rows.length - 1] : null))?.id || null);

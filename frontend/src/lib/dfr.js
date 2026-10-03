@@ -23,10 +23,13 @@ export const trackMiles = (pts) => pts.reduce((sum, p, i) => (i ? sum + haversin
 export const roundQuarter = (hrs) => Math.min(16, Math.round(hrs * 4) / 4);
 export const fmtHrs = (h) => (h == null || h === "" ? "" : String(Number(h)).replace(/\.?0+$/, "") || "0");
 
+// Jobs are identified on the Daily Field Report by their Site ID (entered when the job is created)
+export const jobLabel = (job) => (job?.site_id || "").trim() || job?.name || "";
+
 export const newRow = (job) => ({
   id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random()),
   job_id: job?.id || "",
-  job: job?.name || "",
+  job: jobLabel(job),
   market: "",
   sow: job?.job_type || "",
   job_type: job?.job_type || "",
