@@ -41,14 +41,14 @@ export const RoutePlanner = ({ pins, plan, onPlan, onApply, homeSet, startHome, 
   return (
     <div className="border border-blue-300 bg-blue-50/60 rounded p-2 space-y-2" data-testid="dfr-route-planner">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs font-mono uppercase tracking-widest text-blue-900 flex items-center gap-1"><Route className="w-4 h-4" />Plan route (no driving needed)</span>
-        <span className="text-[11px] text-zinc-600">{hasHome ? "Starts at your Home address, then the job pins in row order" : "Drive legs between the job pins in row order (set a Home address to plan the first leg too)"} — estimated miles and time to each next location.</span>
-        <Button type="button" onClick={run} disabled={busy || stops.length < 2} className="ml-auto h-8 text-xs bg-blue-600 hover:bg-blue-700 text-white" data-testid="dfr-plan-route-btn">
+        <Button type="button" onClick={run} disabled={busy || stops.length < 2} className="h-8 text-xs bg-blue-600 hover:bg-blue-700 text-white" data-testid="dfr-plan-route-btn">
           {busy ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Route className="w-3.5 h-3.5 mr-1" />}{plan ? "Re-plan" : "Plan route"}
         </Button>
         {plan && onApply && (
           <Button type="button" onClick={() => onApply(plan)} className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white" data-testid="dfr-apply-route-btn"><Check className="w-3.5 h-3.5 mr-1" />Apply to report</Button>
         )}
+        <span className="text-xs font-mono uppercase tracking-widest text-blue-900 flex items-center gap-1 ml-1">No driving needed</span>
+        <span className="text-[11px] text-zinc-600">{hasHome ? "Starts at your Home address, then the job pins in row order" : "Drive legs between the job pins in row order (set a Home address to plan the first leg too)"} — estimated miles and time to each next location.</span>
       </div>
       {onStartHome && (
         <div className="flex flex-wrap items-center gap-4 text-xs text-zinc-800" data-testid="dfr-route-home-options">
