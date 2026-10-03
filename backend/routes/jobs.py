@@ -16,6 +16,7 @@ from models.job import Job, JobCreate, JobUpdate
 from models.pole import Pole
 from services.auth import get_current_user, is_admin_user, is_mastec_byers_admin, is_company_email, company_email_regex
 from services.helpers import pole_sort_key, format_height, pole_photo_items, underground_photo_items
+from services.geocode import ensure_job_geo
 
 router = APIRouter(tags=["jobs"])
 
@@ -219,7 +220,23 @@ async def get_jobs(current_user: dict = Depends(get_current_user)):
                 job["longitude"] = float(coords[1])
             except (TypeError, ValueError):
                 pass
-    
+    # Jobs with no attribute GPS yet: pin them at their geocoded address (cached per job, a few new lookups per request)
+    cands, lookups = [], 0
+    for job in jobs:
+        if job.get("latitude") is not None:
+            continue
+        fresh = (job.get("geo") or {}).get("q") == (job.get("location") or "").strip()
+        if not fresh:
+            if lookups >= 6:
+                continue
+            lookups += 1
+        cands.append(job)
+    results = await asyncio.gather(*[ensure_job_geo(_db, j) for j in cands], return_exceptions=True)
+    for job, coords in zip(cands, results):
+        if isinstance(coords, tuple):
+            job["latitude"], job["longitude"] = coords
+            job["pinned_by_address"] = True
+
     return jobs
 
 

@@ -1,11 +1,8 @@
-import asyncio
 import io
-import logging
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-import requests
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from openpyxl import Workbook
@@ -14,9 +11,9 @@ from openpyxl.utils import get_column_letter
 from pydantic import BaseModel, Field
 
 from services.auth import get_current_user, is_admin_user, is_mastec_byers_admin
+from services.geocode import geocode
 
 router = APIRouter(tags=["field-reports"])
-logger = logging.getLogger(__name__)
 _db = None
 
 
@@ -103,34 +100,12 @@ async def set_home(body: HomeIn, current_user: dict = Depends(get_current_user))
     return home
 
 
-def _geocode_sync(q: str) -> Optional[dict]:
-    # US Census geocoder first (good for Texas street addresses), OSM Nominatim as fallback
-    try:
-        r = requests.get("https://geocoding.geo.census.gov/geocoder/locations/onelineaddress",
-                         params={"address": q, "benchmark": "Public_AR_Current", "format": "json"}, timeout=12)
-        m = (r.json().get("result") or {}).get("addressMatches") or []
-        if m:
-            c = m[0]["coordinates"]
-            return {"address": m[0].get("matchedAddress") or q, "lat": float(c["y"]), "lng": float(c["x"])}
-    except Exception as e:  # noqa: BLE001
-        logger.warning(f"census geocode failed: {e}")
-    try:
-        r = requests.get("https://nominatim.openstreetmap.org/search", params={"q": q, "format": "json", "limit": 1},
-                         headers={"User-Agent": "PoleTracker-DFR/1.0"}, timeout=12)
-        hits = r.json()
-        if hits:
-            return {"address": hits[0].get("display_name") or q, "lat": float(hits[0]["lat"]), "lng": float(hits[0]["lon"])}
-    except Exception as e:  # noqa: BLE001
-        logger.warning(f"nominatim geocode failed: {e}")
-    return None
-
-
 @router.get("/field-reports/geocode")
 async def geocode_address(q: str, current_user: dict = Depends(get_current_user)):
     q = (q or "").strip()
     if len(q) < 4:
         raise HTTPException(status_code=400, detail="Enter a fuller address")
-    hit = await asyncio.to_thread(_geocode_sync, q)
+    hit = await geocode(q)
     if not hit:
         raise HTTPException(status_code=404, detail="Address not found — try adding city and state")
     return hit
