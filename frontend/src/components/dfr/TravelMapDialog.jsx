@@ -10,6 +10,7 @@ import { Camera, Loader2, Route } from "lucide-react";
 import { DFRTable } from "./DFRTable";
 import { trackMiles, roundQuarter, fmtHrs } from "@/lib/dfr";
 import { RoutePlanner, PlannedRouteLine } from "./RoutePlanner";
+import { HomeAddress } from "./HomeAddress";
 
 const pinIcon = (n) => L.divIcon({ className: "dfr-job-pin", html: `<div style="background:#dc2626;color:#fff;border:2px solid #fff;border-radius:9999px 9999px 9999px 0;transform:rotate(-45deg);width:28px;height:28px;display:flex;align-items:center;justify-content:center;font:700 12px ui-monospace,monospace;box-shadow:0 1px 4px rgba(0,0,0,.5)"><span style="transform:rotate(45deg)">${n}</span></div>`, iconSize: [28, 28], iconAnchor: [14, 28] });
 const homeIcon = L.divIcon({ className: "dfr-home-pin", html: `<div style="background:#059669;color:#fff;border:2px solid #fff;border-radius:9999px 9999px 9999px 0;transform:rotate(-45deg);width:28px;height:28px;display:flex;align-items:center;justify-content:center;font:700 12px ui-monospace,monospace;box-shadow:0 1px 4px rgba(0,0,0,.5)"><span style="transform:rotate(45deg)">H</span></div>`, iconSize: [28, 28], iconAnchor: [14, 28] });
@@ -68,11 +69,16 @@ export const TravelMapDialog = ({ open, onOpenChange, report, jobs, employees, o
   const [shooting, setShooting] = useState(false);
   const [plan, setPlan] = useState(null); // planned driving route between job pins
   const [addrAt, setAddrAt] = useState({}); // "lat,lng" → nearest address (for pins whose row has no job address)
+  const [startHome, setStartHome] = useState(true);
+  const [endHome, setEndHome] = useState(false);
   const captureRef = useRef(null);
   const rows = report.rows || [];
   const track = report.track || [];
   const pins = useRowPins(rows, track, open, jobs);
-  const homePin = useMemo(() => (Number.isFinite(home?.lat) && Number.isFinite(home?.lng) ? { row: { id: "home", job: "Home" }, pos: [home.lat, home.lng], home: true } : null), [home]);
+  const homeSet = Number.isFinite(home?.lat) && Number.isFinite(home?.lng);
+  const homePin = useMemo(() => (homeSet ? { row: { id: "home", job: "Home" }, pos: [home.lat, home.lng], home: true } : null), [home, homeSet]);
+  const plannerStops = useMemo(() => [...(homePin && startHome ? [homePin] : []), ...pins, ...(homePin && endHome ? [{ ...homePin, row: { id: "home-end", job: "Home" }, end: true }] : [])], [homePin, startHome, endHome, pins]);
+  useEffect(() => { setPlan(null); }, [startHome, endHome]);
 
   const shownRows = mode === "day" ? rows : rows.filter((r) => r.id === mode);
   const shownTrack = mode === "day" ? track : track.filter((p) => p.row_id === mode);
@@ -104,7 +110,7 @@ export const TravelMapDialog = ({ open, onOpenChange, report, jobs, employees, o
     } catch { toast.error("Could not save the new home location"); }
   };
 
-  // Home → job 1 fills job 1's Travel to site; job N → job N+1 fills job N's Return/next site; miles per row = sum of its legs
+  // Home → job 1 fills job 1's Travel to site; job N → next stop (job or Home) fills job N's Return/next site; miles per row = sum of its legs
   const applyPlan = (p) => {
     if (!onRowChange) return;
     const upd = {}, miles = {};
@@ -116,7 +122,8 @@ export const TravelMapDialog = ({ open, onOpenChange, report, jobs, employees, o
     const filled = Object.keys(upd).some((id) => { const r = rows.find((x) => x.id === id); return r && (r.return_hrs || r.miles || (upd[id].travel_hrs && r.travel_hrs)); });
     if (filled && !window.confirm("Overwrite existing Travel/Return hours and miles with the planned values?")) return;
     Object.values(upd).forEach((r) => onRowChange({ ...r, miles: String(Math.min(500, Math.round(miles[r.id]))) }));
-    toast.success(`Applied ${p.legs.length} leg${p.legs.length > 1 ? "s" : ""}${homePin ? " from Home" : ""}: Travel/Return hours and miles filled`);
+    const homeNote = [p.legs[0]?.from.home && "from Home", p.legs[p.legs.length - 1]?.to.home && "back Home"].filter(Boolean).join(" & ");
+    toast.success(`Applied ${p.legs.length} leg${p.legs.length > 1 ? "s" : ""}${homeNote ? ` (${homeNote})` : ""}: Travel/Return hours and miles filled`);
   };
 
   const screenshot = async () => {
@@ -136,7 +143,7 @@ export const TravelMapDialog = ({ open, onOpenChange, report, jobs, employees, o
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[96vw] w-[1400px] bg-white z-[1300] p-4 max-h-[95vh] overflow-y-auto" aria-describedby={undefined} data-testid="dfr-travel-map-dialog">
+      <DialogContent className="max-w-[96vw] w-[1400px] bg-white z-[1300] p-4 max-h-[95vh] overflow-y-auto overflow-x-hidden" aria-describedby={undefined} data-testid="dfr-travel-map-dialog">
         <DialogHeader><DialogTitle className="text-sm font-mono uppercase flex items-center gap-2"><Route className="w-4 h-4" />Travel Map — {report.date}</DialogTitle></DialogHeader>
         <div className="flex flex-wrap items-center gap-2">
           <select value={mode} onChange={(e) => setMode(e.target.value)} className="h-9 text-sm border border-zinc-300 rounded px-2 bg-white" data-testid="dfr-map-mode">
@@ -151,6 +158,7 @@ export const TravelMapDialog = ({ open, onOpenChange, report, jobs, employees, o
             {shooting ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Camera className="w-4 h-4 mr-1" />}Screenshot {mode === "day" ? "Full Day" : "Per Job"}
           </Button>
         </div>
+        {onHomeChange && mode === "day" && <HomeAddress home={home || { address: "", lat: null, lng: null }} onChange={onHomeChange} compact />}
         <div ref={captureRef} className="bg-white p-2 space-y-3" data-testid="dfr-map-capture">
           <div className="text-xs font-mono text-zinc-700 flex flex-wrap gap-x-4">
             <span><b>DAILY FIELD REPORT</b> · {report.date}</span><span>Fielder: {report.fielder || "—"}</span><span>{mode === "day" ? "Full day route" : `Job: ${shownRows[0]?.job || ""}`}</span>
@@ -180,7 +188,7 @@ export const TravelMapDialog = ({ open, onOpenChange, report, jobs, employees, o
               <FitAll points={fitPts} fitKey={`${mode}:${fitPts.length}:${open}:${plan ? plan.miles : 0}`} />
             </MapContainer>
           </div>
-          {mode === "day" && <RoutePlanner pins={homePin ? [homePin, ...pins] : pins} plan={plan} onPlan={setPlan} onApply={onRowChange ? applyPlan : null} />}
+          {mode === "day" && <RoutePlanner pins={plannerStops} plan={plan} onPlan={setPlan} onApply={onRowChange ? applyPlan : null} homeSet={homeSet} startHome={startHome} endHome={endHome} onStartHome={setStartHome} onEndHome={setEndHome} />}
           <DFRTable rows={shownRows} jobs={jobs} employees={employees} onChangeRow={() => {}} onRemoveRow={() => {}} onPickJob={() => {}} activeRowId={null} onActivate={() => {}} readOnly />
         </div>
       </DialogContent>

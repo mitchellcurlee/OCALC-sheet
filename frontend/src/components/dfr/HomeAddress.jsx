@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Home, LocateFixed, Loader2 } from "lucide-react";
 
 /** Fielder's saved home / start address (per user) — the planned route's first leg starts here. */
-export const HomeAddress = ({ home, onChange }) => {
+export const HomeAddress = ({ home, onChange, compact = false }) => {
   const [editing, setEditing] = useState(false);
   const [q, setQ] = useState(home?.address || "");
   const [busy, setBusy] = useState(false);
@@ -62,7 +62,7 @@ export const HomeAddress = ({ home, onChange }) => {
           {isSet && <button type="button" onClick={() => { setEditing(false); setQ(home.address || ""); }} className="text-[11px] underline text-zinc-500" data-testid="dfr-home-cancel-btn">Cancel</button>}
         </>
       )}
-      <span className="basis-full text-[11px] text-zinc-600">Saved to your profile. The Travel Map's planned route starts here, so the first job's Travel to site hours and miles are estimated too.</span>
+      {!compact && <span className="basis-full text-[11px] text-zinc-600">Saved to your profile. The Travel Map's planned route starts here, so the first job's Travel to site hours and miles are estimated too.</span>}
     </div>
   );
 };

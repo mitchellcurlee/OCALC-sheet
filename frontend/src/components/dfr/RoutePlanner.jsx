@@ -24,7 +24,7 @@ export const fetchPlannedRoute = async (stops) => {
 
 export const PlannedRouteLine = ({ plan }) => (plan ? <Polyline positions={plan.line} pathOptions={{ color: "#2563eb", weight: 4, opacity: 0.85, dashArray: "10 8" }} /> : null);
 
-export const RoutePlanner = ({ pins, plan, onPlan, onApply }) => {
+export const RoutePlanner = ({ pins, plan, onPlan, onApply, homeSet, startHome, endHome, onStartHome, onEndHome }) => {
   const [busy, setBusy] = useState(false);
   const stops = pins.filter((p) => p.pos);
   const hasHome = stops.some((p) => p.home);
@@ -50,6 +50,17 @@ export const RoutePlanner = ({ pins, plan, onPlan, onApply }) => {
           <Button type="button" onClick={() => onApply(plan)} className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white" data-testid="dfr-apply-route-btn"><Check className="w-3.5 h-3.5 mr-1" />Apply to report</Button>
         )}
       </div>
+      {onStartHome && (
+        <div className="flex flex-wrap items-center gap-4 text-xs text-zinc-800" data-testid="dfr-route-home-options">
+          <label className={`inline-flex items-center gap-1.5 ${homeSet ? "" : "opacity-50"}`} title={homeSet ? "" : "Set a Home address first"}>
+            <input type="checkbox" checked={!!startHome && homeSet} disabled={!homeSet} onChange={(e) => onStartHome(e.target.checked)} data-testid="dfr-route-start-home" />Start from Home <span className="text-zinc-500">(fills first job's Travel to site)</span>
+          </label>
+          <label className={`inline-flex items-center gap-1.5 ${homeSet ? "" : "opacity-50"}`} title={homeSet ? "" : "Set a Home address first"}>
+            <input type="checkbox" checked={!!endHome && homeSet} disabled={!homeSet} onChange={(e) => onEndHome(e.target.checked)} data-testid="dfr-route-end-home" />Return Home at end <span className="text-zinc-500">(fills last job's Return to Home)</span>
+          </label>
+          {!homeSet && <span className="text-[11px] text-amber-700">No Home address set — use the Home / start box above the map.</span>}
+        </div>
+      )}
       {plan && (
         <table className="w-full text-xs bg-white border border-zinc-300" data-testid="dfr-route-legs">
           <thead><tr className="bg-zinc-800 text-white"><th className="px-2 py-1 text-left">Leg</th><th className="px-2 py-1 text-left">From</th><th className="px-2 py-1 text-left">To</th><th className="px-2 py-1 text-right">Miles</th><th className="px-2 py-1 text-right">Drive time</th><th className="px-2 py-1 text-right">Hrs (¼)</th></tr></thead>
