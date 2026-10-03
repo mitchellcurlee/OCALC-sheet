@@ -234,7 +234,7 @@ async def get_jobs(current_user: dict = Depends(get_current_user)):
     results = await asyncio.gather(*[ensure_job_geo(_db, j) for j in cands], return_exceptions=True)
     for job, coords in zip(cands, results):
         if isinstance(coords, tuple):
-            job["latitude"], job["longitude"] = coords
+            job["latitude"], job["longitude"], job["pin_approx"], job["pin_matched_address"] = coords
             job["pinned_by_address"] = True
 
     return jobs

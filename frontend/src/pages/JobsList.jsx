@@ -67,8 +67,8 @@ import { useAuth } from "@/context/AuthContext";
 import { OfflineIndicator } from "@/components/OfflineIndicator";
 
 
-const jobPinIcon = (name, completed = false) => {
-  const color = completed ? "#16a34a" : "#dc2626";
+const jobPinIcon = (name, completed = false, approx = false) => {
+  const color = completed ? "#16a34a" : approx ? "#d97706" : "#dc2626";
   return L.divIcon({
     className: "job-pin",
     html: `<div style="display:flex;flex-direction:column;align-items:center;transform:translate(-50%,-100%);">
@@ -90,6 +90,7 @@ const JobsLocationMap = ({ jobs, onOpenJob }) => {
       <div className="px-4 py-2.5 border-b border-zinc-200 bg-zinc-50 flex flex-wrap items-center gap-2">
         <MapIcon className="w-4 h-4 text-red-600" />
         <span className="text-xs font-mono tracking-widest text-zinc-600 uppercase">Job Locations ({pins.length} of {jobs.length})</span>
+        {pins.some((j) => j.pin_approx) && <span className="text-[11px] text-amber-700" data-testid="jobs-approx-legend">Amber pin = address not found exactly, placed at closest match</span>}
         {unpinned.length > 0 && (
           <span className="text-[11px] text-amber-700 ml-auto" data-testid="jobs-unpinned-note" title={unpinned.map((j) => j.name).join(", ")}>
             {unpinned.length} job{unpinned.length > 1 ? "s" : ""} not pinned — add a job address or a GPS attribute: {unpinned.slice(0, 4).map((j) => j.name).join(", ")}{unpinned.length > 4 ? "…" : ""}
@@ -103,12 +104,13 @@ const JobsLocationMap = ({ jobs, onOpenJob }) => {
           {/* City / place names */}
           <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}" maxNativeZoom={19} maxZoom={22} crossOrigin="anonymous" />
           {pins.map((job) => (
-            <Marker key={job.id} position={[job.latitude, job.longitude]} icon={jobPinIcon(job.name, !!job.completed)}>
+            <Marker key={job.id} position={[job.latitude, job.longitude]} icon={jobPinIcon(job.name, !!job.completed, !!job.pin_approx)}>
               <Popup>
                 <div className="min-w-[160px] font-mono">
                   <div className="text-sm font-bold text-zinc-900">{job.name || job.site_id}</div>
                   {job.location && <div className="text-xs text-zinc-500">{job.location}</div>}
-                  <div className="text-xs text-zinc-600 mt-1">{job.pole_count} attribute{job.pole_count === 1 ? "" : "s"}{job.pinned_by_address ? " · pinned at job address" : ""}</div>
+                  {job.pin_approx && <div className="text-[11px] text-amber-700 mt-1" data-testid={`map-pin-approx-${job.id}`}>Address not found exactly — pinned at closest match{job.pin_matched_address ? `: ${job.pin_matched_address}` : ""}</div>}
+                  <div className="text-xs text-zinc-600 mt-1">{job.pole_count} attribute{job.pole_count === 1 ? "" : "s"}{job.pinned_by_address && !job.pin_approx ? " · pinned at job address" : ""}</div>
                   <Button size="sm" className="w-full h-7 mt-2 bg-red-600 hover:bg-red-700 text-white" onClick={() => onOpenJob(job.id)} data-testid={`map-open-job-${job.id}`}>
                     Open Job
                   </Button>

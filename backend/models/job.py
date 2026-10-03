@@ -62,6 +62,8 @@ class Job(BaseModel):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     pinned_by_address: Optional[bool] = None  # dashboard pin comes from the geocoded job address (no attribute GPS yet)
+    pin_approx: Optional[bool] = None  # address not found exactly — pinned at the closest match (street/ZIP/city)
+    pin_matched_address: Optional[str] = None
     ase_data: Optional[Dict[str, Any]] = None  # ASE Site Walk Survey data
     permission_stamp: Optional[Dict[str, Any]] = None  # Permission Stamp form data
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())

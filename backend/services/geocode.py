@@ -21,11 +21,13 @@ def geocode_sync(q: str) -> Optional[dict]:
         logger.warning(f"census geocode failed: {e}")
     try:
         r = requests.get("https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates",
-                         params={"SingleLine": q, "f": "json", "maxLocations": 1, "outFields": "Match_addr"}, timeout=12)
+                         params={"SingleLine": q, "f": "json", "maxLocations": 1, "outFields": "Match_addr,Addr_type"}, timeout=12)
         c = (r.json().get("candidates") or [])
-        if c and c[0].get("score", 0) >= 80:
+        if c:  # best available candidate — exact house, else nearest street / ZIP / city level (approx)
             loc = c[0]["location"]
-            return {"address": c[0].get("address") or q, "lat": float(loc["y"]), "lng": float(loc["x"])}
+            addr_type = (c[0].get("attributes") or {}).get("Addr_type", "")
+            exact = addr_type in ("PointAddress", "StreetAddress", "Subaddress", "StreetInt", "DistanceMarker") and c[0].get("score", 0) >= 80
+            return {"address": c[0].get("address") or q, "lat": float(loc["y"]), "lng": float(loc["x"]), "approx": not exact}
     except Exception as e:  # noqa: BLE001
         logger.warning(f"arcgis geocode failed: {e}")
     try:
@@ -33,9 +35,21 @@ def geocode_sync(q: str) -> Optional[dict]:
                          headers={"User-Agent": "PoleTracker/1.0"}, timeout=12)
         hits = r.json()
         if hits:
-            return {"address": hits[0].get("display_name") or q, "lat": float(hits[0]["lat"]), "lng": float(hits[0]["lon"])}
+            return {"address": hits[0].get("display_name") or q, "lat": float(hits[0]["lat"]), "lng": float(hits[0]["lon"]), "approx": True}
     except Exception as e:  # noqa: BLE001
         logger.warning(f"nominatim geocode failed: {e}")
+    # Last resort: pin at the city/ZIP mentioned in the address (drop the street part)
+    parts = [p.strip() for p in q.split(",") if p.strip()]
+    if len(parts) > 1:
+        try:
+            r = requests.get("https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates",
+                             params={"SingleLine": ", ".join(parts[1:]), "f": "json", "maxLocations": 1}, timeout=12)
+            c = (r.json().get("candidates") or [])
+            if c:
+                loc = c[0]["location"]
+                return {"address": c[0].get("address") or q, "lat": float(loc["y"]), "lng": float(loc["x"]), "approx": True}
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"arcgis city geocode failed: {e}")
     return None
 
 
@@ -51,11 +65,12 @@ async def ensure_job_geo(db, job: dict) -> Optional[tuple]:
     geo = job.get("geo") or {}
     if geo.get("q") == q:
         if geo.get("lat") is not None:
-            return (geo["lat"], geo["lng"])
+            return (geo["lat"], geo["lng"], bool(geo.get("approx")), geo.get("matched") or "")
         if time.time() - (geo.get("at") or 0) < 86400:  # failed lookup: retry once a day
             return None
     hit = await geocode(q)
-    geo = {"q": q, "lat": hit["lat"] if hit else None, "lng": hit["lng"] if hit else None, "at": time.time()}
+    geo = {"q": q, "lat": hit["lat"] if hit else None, "lng": hit["lng"] if hit else None,
+           "approx": bool(hit and hit.get("approx")), "matched": (hit or {}).get("address", ""), "at": time.time()}
     await db.jobs.update_one({"id": job["id"]}, {"$set": {"geo": geo}})
     job["geo"] = geo
-    return (geo["lat"], geo["lng"]) if hit else None
+    return (geo["lat"], geo["lng"], geo["approx"], geo["matched"]) if hit else None
