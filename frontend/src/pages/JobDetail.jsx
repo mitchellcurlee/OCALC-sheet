@@ -697,8 +697,8 @@ const JobDetail = () => {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="bg-white border-zinc-200 w-56 max-h-96 overflow-auto">
                   <DropdownMenuItem onClick={() => setPhotoCapture(true)} data-testid="add-take-photo-btn" className="cursor-pointer font-semibold text-amber-700 border-b border-zinc-200">
-                    <Camera className="w-4 h-4 mr-2" />
-                    Take Photo (pin at my location)
+                    <MapPin className="w-4 h-4 mr-2" />
+                    Pin My Location → Add Attribute
                   </DropdownMenuItem>
                   <DropdownMenuItem 
                     onClick={() => navigate(`/jobs/${jobId}/add`)} 
@@ -987,9 +987,9 @@ const JobDetail = () => {
           aerialTypes={["Aerial Splice", "Loop", "Power", "X-Messenger", "Eyebolt", "Pullbox", "Weather Head"]}
           undergroundTypes={UNDERGROUND_TYPES.filter((t) => !["Aerial Splice", "Loop", "Power", "X-Messenger", "Eyebolt", "Pullbox", "Weather Head", "Aerial NTE", "Aerial PI", "Aerial FBT"].includes(t))}
           fallbackCenter={(() => { const it = [...poles, ...undergroundItems].find((x) => Number.isFinite(parseFloat(x.latitude)) && Number.isFinite(parseFloat(x.longitude))); return it ? { lat: parseFloat(it.latitude), lng: parseFloat(it.longitude) } : null; })()}
-          onChooseType={({ kind, type, lat, lng }) => {
+          onChooseType={({ kind, type, lat, lng, photos }) => {
             setPhotoPin(null);
-            const q = `lat=${lat.toFixed(6)}&lng=${lng.toFixed(6)}&photos=1`;
+            const q = `lat=${lat.toFixed(6)}&lng=${lng.toFixed(6)}${photos ? "&photos=1" : ""}`;
             if (kind === "pole") navigate(`/jobs/${jobId}/add?${q}`);
             else if (kind === "pole_terminal") navigate(`/jobs/${jobId}/add?terminal=true&${q}`);
             else navigate(`/jobs/${jobId}/underground/add?type=${encodeURIComponent(type)}&${q}`);

@@ -8,7 +8,7 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import domtoimage from "dom-to-image-more";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ChevronDown, ChevronUp, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera, Hash, Link2, Move, Palette, Plus, Map as MapIcon, GripVertical, Upload, Trash2, RotateCcw, Home, Route as RouteIcon, ListOrdered, LandPlot } from "lucide-react";
+import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ChevronDown, ChevronUp, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera, Hash, Link2, Move, Palette, Plus, Map as MapIcon, MapPin, GripVertical, Upload, Trash2, RotateCcw, Home, Route as RouteIcon, ListOrdered, LandPlot } from "lucide-react";
 import SpanReorderList from "@/components/SpanReorderList";
 import { computeRoute, fmtFeet, feetToStation, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, downloadMapPdfPages, ugWithGps, undergroundAbbr, computeUgConnectors, computeConnectionPairs, computeStationSegFeet, UNDERGROUND_TYPES, isAerialAttr, resolvePairAerial, spanKey, routeWaypoints, routeArg, placeSpanNotes, LIST_PAGE_LINES, riserAnchor, tieInSuffix, pathRowText, pairIsManual, routePayloadFromOrder } from "@/lib/poleMapImage";
 import { ExportDestinationDialog } from "@/components/ExportDestinationDialog";
@@ -2551,7 +2551,7 @@ const JobMap = () => {
                     Place Multiple (quick drop)
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setPhotoCapture(true)} data-testid="map-add-take-photo" className="cursor-pointer font-semibold text-amber-700 border-b border-zinc-200">
-                    <Camera className="w-4 h-4 mr-2" />Take Photo (pin at my location)
+                    <MapPin className="w-4 h-4 mr-2" />Pin My Location → Add Attribute
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => { setAreaDraw("polygon"); setAreaDraft([]); toast.info("Tap the map corners of the area, then tap Finish"); }} data-testid="map-add-polygon" className="cursor-pointer font-medium text-blue-700">
                     <span className="inline-block w-3 h-3 mr-2 rounded-sm bg-blue-500/40 border border-blue-600" />Polygon (blue area)
@@ -2922,9 +2922,9 @@ const JobMap = () => {
           aerialTypes={MAP_AERIAL_ADD_TYPES}
           undergroundTypes={UNDERGROUND_TYPES.filter((t) => !MAP_AERIAL_ADD_TYPES.includes(t))}
           fallbackCenter={{ lat: center[0], lng: center[1] }}
-          onChooseType={({ kind, type, lat, lng }) => {
+          onChooseType={({ kind, type, lat, lng, photos }) => {
             setPhotoPin(null);
-            const q = `lat=${lat.toFixed(6)}&lng=${lng.toFixed(6)}&from=map&photos=1`;
+            const q = `lat=${lat.toFixed(6)}&lng=${lng.toFixed(6)}&from=map${photos ? "&photos=1" : ""}`;
             if (kind === "pole") navigate(`/jobs/${jobId}/add?${q}`);
             else if (kind === "pole_terminal") navigate(`/jobs/${jobId}/add?terminal=true&${q}`);
             else navigate(`/jobs/${jobId}/underground/add?type=${encodeURIComponent(type)}&${q}`);

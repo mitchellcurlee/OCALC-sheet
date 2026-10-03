@@ -59,66 +59,70 @@ const TypeButton = ({ label, onClick, accent }) => (
 );
 
 /**
- * Map "Take Photo" flow: camera → upload → pin at GPS → pick attribute type → open form with photos attached.
- * `active` starts the camera; parent gets the pin via onPin(latlng|null) and the destination via onChooseType.
+ * Map "Pin my location" flow: GPS → amber pin (drag to fine-tune) → pick attribute type → form opens at that spot.
+ * Photos are optional here (take them in the form, or snap some now and they're attached).
+ * `active` starts the flow; parent gets the pin via onPin(latlng|null) and the destination via onChooseType.
  */
 export const MapPhotoCapture = ({ active, onDone, pin, onPin, adjusting, onAdjusting, onChooseType, aerialTypes, undergroundTypes, fallbackCenter, standalone = false }) => {
   const inputRef = useRef(null);
   const [photos, setPhotos] = useState([]);
   const [busy, setBusy] = useState(false);
+  const [locating, setLocating] = useState(false);
   const [open, setOpen] = useState(false);
   const startedRef = useRef(false);
   const setPin = onPin;
 
+  const reset = () => { setPhotos([]); setOpen(false); onPin?.(null); onAdjusting?.(false); onDone?.(); };
+
+  // Step 1: drop the pin at the user's location, then let them drag it before anything else
   useEffect(() => {
     if (active && !startedRef.current) {
       startedRef.current = true;
-      setTimeout(() => inputRef.current?.click(), 50);
+      (async () => {
+        setLocating(true);
+        const gps = await getGps();
+        setLocating(false);
+        const spot = gps || (fallbackCenter ? { ...fallbackCenter, fallback: true } : null);
+        if (!spot) { toast.error("Could not get your location — allow location access and try again"); reset(); return; }
+        if (spot.fallback) toast.warning("GPS unavailable — pin placed near the job; drag it to the exact spot");
+        else toast.success(`Pin dropped at your location${gps.accuracy ? ` (±${Math.round(gps.accuracy)} m)` : ""} — drag it if needed, then tap Done`);
+        setPin(spot);
+        onAdjusting?.(true);
+      })();
     }
     if (!active) startedRef.current = false;
-  }, [active]);
+  }, [active]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const reset = () => { setPhotos([]); setOpen(false); onPin?.(null); onAdjusting?.(false); onDone?.(); };
-
+  // Optional: snap photos now (they're attached to the new record)
   const handleFile = async (e) => {
     const file = e.target.files?.[0];
     e.target.value = "";
-    if (!file) { if (!photos.length) reset(); return; }
+    if (!file) return;
     setBusy(true);
     try {
       const fd = new FormData();
       fd.append("file", file);
       const res = await axios.post("/upload-photo", fd, { headers: { "Content-Type": "multipart/form-data" } });
-      const url = res.data.url;
-      setPhotos((p) => [...p, url]);
-      if (!pin) {
-        const gps = await getGps();
-        const spot = gps || (fallbackCenter ? { ...fallbackCenter, fallback: true } : null);
-        if (!spot) { toast.error("Could not get your location — allow location access and try again"); setPhotos([]); reset(); setBusy(false); return; }
-        if (spot.fallback) toast.warning("GPS unavailable — pin placed near the job; use Adjust pin to move it");
-        setPin(spot);
-      }
-      setOpen(true);
+      setPhotos((p) => [...p, res.data.url]);
     } catch (err) {
       toast.error(err.response?.data?.detail || "Photo upload failed");
-      if (!photos.length) reset();
     } finally { setBusy(false); }
   };
 
   const choose = (kind, type) => {
     if (!pin) return;
-    sessionStorage.setItem(PENDING_PHOTOS_KEY, JSON.stringify(photos));
+    if (photos.length) sessionStorage.setItem(PENDING_PHOTOS_KEY, JSON.stringify(photos));
     setOpen(false);
-    onChooseType({ kind, type, lat: pin.lat, lng: pin.lng });
+    onChooseType({ kind, type, lat: pin.lat, lng: pin.lng, photos: photos.length });
     setPhotos([]); onAdjusting?.(false); onDone?.();
   };
 
   return (
     <>
       <input ref={inputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFile} data-testid="map-take-photo-input" />
-      {busy && !open && (
+      {locating && (
         <div className="fixed inset-0 z-[1300] bg-black/40 flex items-center justify-center" data-testid="map-take-photo-busy">
-          <div className="bg-white rounded px-4 py-3 flex items-center gap-2 text-sm font-mono"><Loader2 className="w-4 h-4 animate-spin" />Saving photo &amp; locating…</div>
+          <div className="bg-white rounded px-4 py-3 flex items-center gap-2 text-sm font-mono"><Loader2 className="w-4 h-4 animate-spin" />Locating you…</div>
         </div>
       )}
       {adjusting && pin && standalone && (
@@ -127,24 +131,26 @@ export const MapPhotoCapture = ({ active, onDone, pin, onPin, adjusting, onAdjus
       {adjusting && pin && !standalone && (
         <div className="fixed left-1/2 -translate-x-1/2 top-20 z-[1300] bg-amber-500 text-white shadow-lg rounded px-3 py-2 flex items-center gap-3 text-xs font-medium" data-testid="photo-pin-adjust-banner">
           <Move className="w-4 h-4 shrink-0" />
-          <span>Drag the amber pin to the exact spot{pin.accuracy ? ` (GPS ±${Math.round(pin.accuracy)} m)` : ""}</span>
+          <span>Step 1 · Drag the amber pin to the exact spot{pin.accuracy ? ` (GPS ±${Math.round(pin.accuracy)} m)` : ""}</span>
           <Button type="button" size="sm" className="h-7 text-xs bg-white text-amber-700 hover:bg-amber-50" onClick={() => { onAdjusting?.(false); setOpen(true); }} data-testid="photo-pin-adjust-done">Done</Button>
+          <button type="button" className="text-white/80 hover:text-white" onClick={reset} data-testid="photo-pin-adjust-cancel" aria-label="Cancel"><X className="w-4 h-4" /></button>
         </div>
       )}
-      <Dialog open={open && !adjusting} onOpenChange={(o) => { if (!o) { if (window.confirm("Discard this pin and its photos?")) reset(); } }}>
+      <Dialog open={open && !adjusting} onOpenChange={(o) => { if (!o) { if (window.confirm("Discard this pin" + (photos.length ? " and its photos" : "") + "?")) reset(); } }}>
         <DialogContent className="max-w-lg bg-white z-[1300]" aria-describedby={undefined} data-testid="photo-pin-type-dialog">
           <DialogHeader>
-            <DialogTitle className="text-sm font-mono uppercase flex items-center gap-2"><MapPin className="w-4 h-4 text-amber-500" />What is this? Pick the attribute type</DialogTitle>
+            <DialogTitle className="text-sm font-mono uppercase flex items-center gap-2"><MapPin className="w-4 h-4 text-amber-500" />Step 2 · What is at this pin? Pick the attribute type</DialogTitle>
           </DialogHeader>
+          <div className="flex items-start gap-2">
+            <p className="text-[11px] text-zinc-500 flex-1" data-testid="photo-pin-coords">Pin: {pin?.lat.toFixed(6)}, {pin?.lng.toFixed(6)}{pin?.accuracy ? ` · GPS ±${Math.round(pin.accuracy)} m` : ""}. The form opens at this spot — take the pictures there (or snap some now).</p>
+            <Button type="button" variant="outline" size="sm" className="h-8 text-xs bg-amber-50 border-amber-300 text-amber-800 hover:bg-amber-100 shrink-0" onClick={() => { setOpen(false); onAdjusting?.(true); }} data-testid="photo-pin-adjust-btn"><Move className="w-3.5 h-3.5 mr-1" />Move pin</Button>
+          </div>
           <div className="flex items-center gap-2 overflow-x-auto pb-1" data-testid="photo-pin-photos">
             {photos.map((u, i) => <img key={u} src={u} alt={`Capture ${i + 1}`} className="w-16 h-14 object-cover rounded border border-zinc-300 shrink-0" data-testid={`photo-pin-thumb-${i}`} />)}
-            <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => inputRef.current?.click()} className="h-14 w-16 shrink-0 flex-col gap-1 text-[10px] bg-zinc-50 border-dashed border-zinc-400" data-testid="photo-pin-take-another">
-              {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}Another
+            <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => inputRef.current?.click()} className="h-14 shrink-0 flex-col gap-1 text-[10px] bg-zinc-50 border-dashed border-zinc-400 px-3" data-testid="photo-pin-take-another">
+              {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}{photos.length ? "Another" : "Photo now (optional)"}
             </Button>
-          </div>
-          <div className="flex items-start gap-2">
-            <p className="text-[11px] text-zinc-500 flex-1">{photos.length} photo{photos.length !== 1 ? "s" : ""} will be attached to this record{pin?.accuracy ? ` · GPS ±${Math.round(pin.accuracy)} m` : ""}. You can add more in the form before saving.</p>
-            <Button type="button" variant="outline" size="sm" className="h-8 text-xs bg-amber-50 border-amber-300 text-amber-800 hover:bg-amber-100 shrink-0" onClick={() => { setOpen(false); onAdjusting?.(true); }} data-testid="photo-pin-adjust-btn"><Move className="w-3.5 h-3.5 mr-1" />Adjust pin</Button>
+            {photos.length > 0 && <span className="text-[11px] text-zinc-500">{photos.length} photo{photos.length !== 1 ? "s" : ""} will be attached</span>}
           </div>
           <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
             <div className="grid grid-cols-2 gap-1.5">
@@ -157,7 +163,7 @@ export const MapPhotoCapture = ({ active, onDone, pin, onPin, adjusting, onAdjus
             <div className="grid grid-cols-2 gap-1.5">{undergroundTypes.map((t) => <TypeButton key={t} label={t} onClick={() => choose("underground", t)} />)}</div>
           </div>
           <div className="flex justify-end">
-            <Button type="button" variant="ghost" size="sm" className="h-8 text-xs text-zinc-600" onClick={() => { if (window.confirm("Discard this pin and its photos?")) reset(); }} data-testid="photo-pin-cancel"><X className="w-3.5 h-3.5 mr-1" />Discard</Button>
+            <Button type="button" variant="ghost" size="sm" className="h-8 text-xs text-zinc-600" onClick={() => { if (window.confirm("Discard this pin" + (photos.length ? " and its photos" : "") + "?")) reset(); }} data-testid="photo-pin-cancel"><X className="w-3.5 h-3.5 mr-1" />Discard</Button>
           </div>
         </DialogContent>
       </Dialog>
