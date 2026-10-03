@@ -1,6 +1,9 @@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Trash2, Radio, ChevronUp, ChevronDown } from "lucide-react";
+import { Trash2, Radio, ChevronUp, ChevronDown, GripVertical } from "lucide-react";
+import { DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core";
+import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { MARKETS, HOUR_OPTIONS, MILE_OPTIONS, fmtHrs } from "@/lib/dfr";
 import { JOB_TYPES } from "@/lib/jobTypes";
 
@@ -25,6 +28,8 @@ const rowValues = (row) => [row.date, row.job, row.market, row.sow, row.job_type
 export const DFRRow = ({ row, i, count, striped, jobs, employees, onChange, onRemove, onPickJob, onMove, active, onActivate, readOnly }) => {
   const set = (k) => (v) => onChange({ ...row, [k]: v });
   const auto = row.gps?.stop ? "bg-emerald-50/60" : "";
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: row.id, disabled: !!readOnly });
+  const dragStyle = readOnly ? undefined : { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.6 : 1, position: "relative", zIndex: isDragging ? 10 : undefined };
   if (readOnly) {
     return (
       <tr className={striped ? "bg-zinc-200/70" : "bg-white"} data-testid={`dfr-ro-row-${i}`}>
@@ -54,9 +59,10 @@ export const DFRRow = ({ row, i, count, striped, jobs, employees, onChange, onRe
     <Txt key="comments" value={row.comments} onChange={set("comments")} testId={`dfr-comments-${i}`} className="min-w-[220px]" />,
   ];
   return (
-    <tr className={`${striped ? "bg-zinc-200/70" : "bg-white"} ${auto} ${active ? "outline outline-2 outline-sky-500 -outline-offset-2" : ""}`} data-testid={`dfr-row-${i}`}>
+    <tr ref={setNodeRef} style={dragStyle} className={`${striped ? "bg-zinc-200/70" : "bg-white"} ${auto} ${active ? "outline outline-2 outline-sky-500 -outline-offset-2" : ""} ${isDragging ? "shadow-lg" : ""}`} data-testid={`dfr-row-${i}`}>
       {!readOnly && (
         <td className="border border-zinc-400 px-1 text-center whitespace-nowrap">
+          <span {...attributes} {...listeners} className="inline-flex items-center justify-center w-7 h-8 align-middle text-zinc-400 hover:text-zinc-700 cursor-grab active:cursor-grabbing touch-none" title="Drag to reorder" data-testid={`dfr-drag-handle-${i}`}><GripVertical className="w-4 h-4" /></span>
           <span className="inline-flex flex-col align-middle mr-0.5">
             <button type="button" disabled={i === 0} onClick={() => onMove(row.id, -1)} title="Move up" className="h-3.5 text-zinc-400 hover:text-sky-600 disabled:opacity-20" data-testid={`dfr-move-up-${i}`}><ChevronUp className="w-3.5 h-3.5" /></button>
             <button type="button" disabled={i === count - 1} onClick={() => onMove(row.id, 1)} title="Move down" className="h-3.5 text-zinc-400 hover:text-sky-600 disabled:opacity-20" data-testid={`dfr-move-down-${i}`}><ChevronDown className="w-3.5 h-3.5" /></button>
@@ -70,25 +76,34 @@ export const DFRRow = ({ row, i, count, striped, jobs, employees, onChange, onRe
   );
 };
 
-export const DFRTable = ({ rows, jobs, employees, onChangeRow, onRemoveRow, onPickJob, onMoveRow, activeRowId, onActivate, readOnly = false }) => (
+export const DFRTable = ({ rows, jobs, employees, onChangeRow, onRemoveRow, onPickJob, onMoveRow, onReorder, activeRowId, onActivate, readOnly = false }) => {
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }), useSensor(TouchSensor, { activationConstraint: { delay: 120, tolerance: 8 } }));
+  const onDragEnd = ({ active, over }) => { if (over && active.id !== over.id) onReorder?.(active.id, over.id); };
+  const body = rows.map((row, i) => (
+    <DFRRow key={row.id} row={row} i={i} count={rows.length} striped={i % 2 === 0} jobs={jobs} employees={employees} onChange={(r) => onChangeRow(r)} onRemove={onRemoveRow} onPickJob={(jobId) => onPickJob(row.id, jobId)} onMove={onMoveRow || (() => {})} active={activeRowId === row.id} onActivate={onActivate} readOnly={readOnly} />
+  ));
+  return (
   <div className="overflow-x-auto border-2 border-dashed border-emerald-500/60 rounded" data-testid="dfr-table-wrap">
     <table className={`min-w-max border-collapse text-xs ${readOnly ? "w-full" : ""}`} data-testid="dfr-table">
       <thead>
         <tr className="bg-black text-white">
-          {!readOnly && <th className="border border-zinc-700 px-1 w-20" title="Reorder · track · remove" />}
+          {!readOnly && <th className="border border-zinc-700 px-1 w-24" title="Drag · reorder · track · remove" />}
           {DFR_HEADERS.map((h, i) => (
             <th key={h} className={`border border-zinc-700 px-2 py-3 font-bold text-[12px] leading-tight text-center align-middle whitespace-pre-line max-w-[90px] ${i === 6 || i === 9 ? "border-r-2 border-r-white/70" : ""} ${i === 15 ? "min-w-[220px]" : ""} ${i === 5 ? "min-w-[180px]" : ""}`}>{h}</th>
           ))}
         </tr>
       </thead>
       <tbody>
-        {rows.map((row, i) => (
-          <DFRRow key={row.id} row={row} i={i} count={rows.length} striped={i % 2 === 0} jobs={jobs} employees={employees} onChange={(r) => onChangeRow(r)} onRemove={onRemoveRow} onPickJob={(jobId) => onPickJob(row.id, jobId)} onMove={onMoveRow || (() => {})} active={activeRowId === row.id} onActivate={onActivate} readOnly={readOnly} />
-        ))}
+        {readOnly ? body : (
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+            <SortableContext items={rows.map((r) => r.id)} strategy={verticalListSortingStrategy}>{body}</SortableContext>
+          </DndContext>
+        )}
         {rows.length === 0 && <tr><td colSpan={17} className="text-center text-zinc-500 py-6 bg-white">No rows yet — add a job row below.</td></tr>}
       </tbody>
     </table>
   </div>
-);
+  );
+};
 
 export default DFRTable;
