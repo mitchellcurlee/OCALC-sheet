@@ -53,10 +53,11 @@ const useRowPins = (rows, track, open) => {
   }), [rows, track, fallback]);
 };
 
-export const TravelMapDialog = ({ open, onOpenChange, report, jobs, employees, onRowChange, home }) => {
+export const TravelMapDialog = ({ open, onOpenChange, report, jobs, employees, onRowChange, home, onHomeChange }) => {
   const [mode, setMode] = useState("day"); // "day" | row id
   const [shooting, setShooting] = useState(false);
   const [plan, setPlan] = useState(null); // planned driving route between job pins
+  const [addrAt, setAddrAt] = useState({}); // "lat,lng" → nearest address (for pins whose row has no job address)
   const captureRef = useRef(null);
   const rows = report.rows || [];
   const track = report.track || [];
@@ -68,6 +69,30 @@ export const TravelMapDialog = ({ open, onOpenChange, report, jobs, employees, o
   const shownPins = pins.filter((p) => p.pos && shownRows.some((r) => r.id === p.row.id));
   const line = shownTrack.map((p) => [p.lat, p.lng]);
   const fitPts = useMemo(() => [...line, ...shownPins.map((p) => p.pos), ...(mode === "day" && homePin ? [homePin.pos] : []), ...(mode === "day" && plan ? plan.line : [])], [line, shownPins, plan, mode, homePin]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Reverse-geocode pins that have no job address (re-runs when a pin is moved)
+  const posKey = (pos) => `${pos[0].toFixed(5)},${pos[1].toFixed(5)}`;
+  useEffect(() => {
+    if (!open) return;
+    shownPins.filter((p) => !p.row.job_address && addrAt[posKey(p.pos)] === undefined).forEach(async (p) => {
+      const k = posKey(p.pos);
+      setAddrAt((a) => ({ ...a, [k]: null }));
+      try { const r = await axios.get("/maps/address-at", { params: { lat: p.pos[0], lng: p.pos[1] } }); setAddrAt((a) => ({ ...a, [k]: r.data.address || "" })); }
+      catch { setAddrAt((a) => ({ ...a, [k]: "" })); }
+    });
+  }, [shownPins, open]); // eslint-disable-line react-hooks/exhaustive-deps
+  const pinAddress = (p) => p.row.job_address || addrAt[posKey(p.pos)] || "";
+
+  const moveHome = async (ll) => {
+    try {
+      let address = "";
+      try { address = (await axios.get("/maps/address-at", { params: { lat: ll.lat, lng: ll.lng } })).data.address || ""; } catch { /* keep old text */ }
+      const r = await axios.put("/field-reports/home", { address: address || `${ll.lat.toFixed(5)}, ${ll.lng.toFixed(5)}`, lat: ll.lat, lng: ll.lng });
+      onHomeChange?.(r.data);
+      setPlan(null);
+      toast.success("Home pin moved");
+    } catch { toast.error("Could not save the new home location"); }
+  };
 
   // Home → job 1 fills job 1's Travel to site; job N → job N+1 fills job N's Return/next site; miles per row = sum of its legs
   const applyPlan = (p) => {
@@ -108,7 +133,7 @@ export const TravelMapDialog = ({ open, onOpenChange, report, jobs, employees, o
             <option value="day">Full Day — all jobs</option>
             {rows.map((r, i) => <option key={r.id} value={r.id}>Per Job — {i + 1}. {r.job || "(no job)"}</option>)}
           </select>
-          <span className="text-xs text-zinc-500">{shownTrack.length} GPS points · {trackMiles(shownTrack).toFixed(1)} mi{onRowChange ? " · drag a pin to correct its spot" : ""}</span>
+          <span className="text-xs text-zinc-500">{shownTrack.length} GPS points · {trackMiles(shownTrack).toFixed(1)} mi{onRowChange ? " · drag any pin (jobs or Home) to correct its spot" : ""}</span>
           {onRowChange && shownPins.some((p) => p.manual) && (
             <button type="button" className="text-[11px] underline text-zinc-500 hover:text-red-600" onClick={() => shownPins.filter((p) => p.manual).forEach((p) => onRowChange({ ...p.row, pin_lat: null, pin_lng: null }))} data-testid="dfr-pin-reset">Reset moved pin{shownPins.filter((p) => p.manual).length > 1 ? "s" : ""}</button>
           )}
@@ -129,15 +154,16 @@ export const TravelMapDialog = ({ open, onOpenChange, report, jobs, employees, o
               {line.length > 1 && <Polyline positions={line} pathOptions={{ color: "#f97316", weight: 4, opacity: 0.9 }} />}
               {mode === "day" && <PlannedRouteLine plan={plan} />}
               {mode === "day" && homePin && (
-                <Marker position={homePin.pos} icon={homeIcon}>
-                  <Tooltip permanent direction="right" offset={[10, -14]} className="dfr-pin-label"><span data-testid="dfr-home-pin-label"><b>Home</b></span></Tooltip>
+                <Marker position={homePin.pos} icon={homeIcon} draggable={!!onHomeChange} eventHandlers={{ dragend: (e) => moveHome(e.target.getLatLng()) }}>
+                  <Tooltip permanent direction="right" offset={[10, -14]} className="dfr-pin-label"><span data-testid="dfr-home-pin-label"><b>Home</b>{home.address && <><br /><span style={{ fontSize: 10, fontWeight: 400 }}>{home.address}</span></>}</span></Tooltip>
                 </Marker>
               )}
               {shownPins.map((p) => {
                 const n = rows.findIndex((r) => r.id === p.row.id) + 1;
+                const addr = pinAddress(p);
                 return (
                   <Marker key={p.row.id} position={p.pos} icon={pinIcon(n)} draggable={!!onRowChange} eventHandlers={{ dragend: (e) => { const ll = e.target.getLatLng(); onRowChange?.({ ...p.row, pin_lat: ll.lat, pin_lng: ll.lng }); toast.success(`${p.row.job || "Job"} pin moved`); } }}>
-                    <Tooltip permanent direction="right" offset={[10, -14]} className="dfr-pin-label"><span data-testid={`dfr-pin-label-${n - 1}`}><b>{p.row.job || "Job"}</b></span></Tooltip>
+                    <Tooltip permanent direction="right" offset={[10, -14]} className="dfr-pin-label"><span data-testid={`dfr-pin-label-${n - 1}`}><b>{p.row.job || "Job"}</b>{addr && <><br /><span style={{ fontSize: 10, fontWeight: 400 }} data-testid={`dfr-pin-address-${n - 1}`}>{addr}</span></>}</span></Tooltip>
                   </Marker>
                 );
               })}
