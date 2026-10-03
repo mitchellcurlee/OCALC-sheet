@@ -1,6 +1,6 @@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Trash2, Radio } from "lucide-react";
+import { Trash2, Radio, ChevronUp, ChevronDown } from "lucide-react";
 import { MARKETS, HOUR_OPTIONS, MILE_OPTIONS, fmtHrs } from "@/lib/dfr";
 import { JOB_TYPES } from "@/lib/jobTypes";
 
@@ -22,7 +22,7 @@ const Txt = ({ value, onChange, testId, className = "", type = "text" }) => (
 
 const rowValues = (row) => [row.date, row.job, row.market, row.sow, row.job_type, row.job_address, row.fielder, fmtHrs(row.travel_hrs), fmtHrs(row.work_hrs), fmtHrs(row.return_hrs), row.miles, row.footage, row.poles, fmtHrs(row.computer_hrs), row.status, row.comments];
 
-export const DFRRow = ({ row, i, striped, jobs, employees, onChange, onRemove, onPickJob, active, onActivate, readOnly }) => {
+export const DFRRow = ({ row, i, count, striped, jobs, employees, onChange, onRemove, onPickJob, onMove, active, onActivate, readOnly }) => {
   const set = (k) => (v) => onChange({ ...row, [k]: v });
   const auto = row.gps?.stop ? "bg-emerald-50/60" : "";
   if (readOnly) {
@@ -57,6 +57,10 @@ export const DFRRow = ({ row, i, striped, jobs, employees, onChange, onRemove, o
     <tr className={`${striped ? "bg-zinc-200/70" : "bg-white"} ${auto} ${active ? "outline outline-2 outline-sky-500 -outline-offset-2" : ""}`} data-testid={`dfr-row-${i}`}>
       {!readOnly && (
         <td className="border border-zinc-400 px-1 text-center whitespace-nowrap">
+          <span className="inline-flex flex-col align-middle mr-0.5">
+            <button type="button" disabled={i === 0} onClick={() => onMove(row.id, -1)} title="Move up" className="h-3.5 text-zinc-400 hover:text-sky-600 disabled:opacity-20" data-testid={`dfr-move-up-${i}`}><ChevronUp className="w-3.5 h-3.5" /></button>
+            <button type="button" disabled={i === count - 1} onClick={() => onMove(row.id, 1)} title="Move down" className="h-3.5 text-zinc-400 hover:text-sky-600 disabled:opacity-20" data-testid={`dfr-move-down-${i}`}><ChevronDown className="w-3.5 h-3.5" /></button>
+          </span>
           <button type="button" onClick={() => onActivate(row.id)} title="Use this row for GPS tracking" className={`inline-flex items-center justify-center w-6 h-6 rounded ${active ? "bg-sky-600 text-white" : "text-zinc-400 hover:text-sky-600"}`} data-testid={`dfr-track-row-${i}`}><Radio className="w-3.5 h-3.5" /></button>
           <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-zinc-400 hover:text-red-600" onClick={() => onRemove(row.id)} data-testid={`dfr-remove-row-${i}`}><Trash2 className="w-3.5 h-3.5" /></Button>
         </td>
@@ -66,12 +70,12 @@ export const DFRRow = ({ row, i, striped, jobs, employees, onChange, onRemove, o
   );
 };
 
-export const DFRTable = ({ rows, jobs, employees, onChangeRow, onRemoveRow, onPickJob, activeRowId, onActivate, readOnly = false }) => (
+export const DFRTable = ({ rows, jobs, employees, onChangeRow, onRemoveRow, onPickJob, onMoveRow, activeRowId, onActivate, readOnly = false }) => (
   <div className="overflow-x-auto border-2 border-dashed border-emerald-500/60 rounded" data-testid="dfr-table-wrap">
     <table className={`min-w-max border-collapse text-xs ${readOnly ? "w-full" : ""}`} data-testid="dfr-table">
       <thead>
         <tr className="bg-black text-white">
-          {!readOnly && <th className="border border-zinc-700 px-1 w-14" />}
+          {!readOnly && <th className="border border-zinc-700 px-1 w-20" title="Reorder · track · remove" />}
           {DFR_HEADERS.map((h, i) => (
             <th key={h} className={`border border-zinc-700 px-2 py-3 font-bold text-[12px] leading-tight text-center align-middle whitespace-pre-line max-w-[90px] ${i === 6 || i === 9 ? "border-r-2 border-r-white/70" : ""} ${i === 15 ? "min-w-[220px]" : ""} ${i === 5 ? "min-w-[180px]" : ""}`}>{h}</th>
           ))}
@@ -79,7 +83,7 @@ export const DFRTable = ({ rows, jobs, employees, onChangeRow, onRemoveRow, onPi
       </thead>
       <tbody>
         {rows.map((row, i) => (
-          <DFRRow key={row.id} row={row} i={i} striped={i % 2 === 0} jobs={jobs} employees={employees} onChange={(r) => onChangeRow(r)} onRemove={onRemoveRow} onPickJob={(jobId) => onPickJob(row.id, jobId)} active={activeRowId === row.id} onActivate={onActivate} readOnly={readOnly} />
+          <DFRRow key={row.id} row={row} i={i} count={rows.length} striped={i % 2 === 0} jobs={jobs} employees={employees} onChange={(r) => onChangeRow(r)} onRemove={onRemoveRow} onPickJob={(jobId) => onPickJob(row.id, jobId)} onMove={onMoveRow || (() => {})} active={activeRowId === row.id} onActivate={onActivate} readOnly={readOnly} />
         ))}
         {rows.length === 0 && <tr><td colSpan={17} className="text-center text-zinc-500 py-6 bg-white">No rows yet — add a job row below.</td></tr>}
       </tbody>

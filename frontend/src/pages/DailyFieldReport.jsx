@@ -27,6 +27,12 @@ export default function DailyFieldReport() {
   useEffect(() => { axios.get("/field-reports/home").then((r) => setHome(r.data)).catch(() => setHome({ address: "", lat: null, lng: null })); }, []);
 
   const removeRow = (id) => { if (!window.confirm("Remove this row?")) return; update((r) => ({ ...r, rows: r.rows.filter((x) => x.id !== id), track: r.track.filter((p) => p.row_id !== id) })); };
+  const moveRow = (id, dir) => update((r) => {
+    const i = r.rows.findIndex((x) => x.id === id), j = i + dir;
+    if (i < 0 || j < 0 || j >= r.rows.length) return r;
+    const rows = [...r.rows]; [rows[i], rows[j]] = [rows[j], rows[i]];
+    return { ...r, rows };
+  });
   const pickJob = (rowId, jid) => { const job = jobs.find((j) => j.id === jid); changeRow({ ...report.rows.find((x) => x.id === rowId), job_id: jid, job: job?.name || "", sow: job?.job_type || "", job_type: job?.job_type || "", job_address: job?.location || "" }); };
   const addRow = () => { const row = { ...newRow(null), date: report.date, fielder: report.fielder || "" }; update((r) => ({ ...r, rows: [...r.rows, row] })); setActiveRowId(row.id); };
   const setFielder = (v) => update((r) => ({ ...r, fielder: v, rows: r.rows.map((x) => (x.fielder ? x : { ...x, fielder: v })) }));
@@ -71,7 +77,7 @@ export default function DailyFieldReport() {
       <main className="max-w-[1500px] mx-auto p-3 space-y-3">
         {home && <HomeAddress home={home} onChange={setHome} />}
         <TravelTracker report={report} activeRow={activeRow} rowIndex={rowIndex} onTrack={onTrack} onRowChange={changeRow} onStartNext={startNextRow} />
-        <DFRTable rows={report.rows} jobs={jobs} employees={EMPLOYEE_NAMES} onChangeRow={changeRow} onRemoveRow={removeRow} onPickJob={pickJob} activeRowId={activeRowId} onActivate={setActiveRowId} />
+        <DFRTable rows={report.rows} jobs={jobs} employees={EMPLOYEE_NAMES} onChangeRow={changeRow} onRemoveRow={removeRow} onPickJob={pickJob} onMoveRow={moveRow} activeRowId={activeRowId} onActivate={setActiveRowId} />
         <Button onClick={addRow} variant="outline" className="h-10 text-xs bg-white border-zinc-300" data-testid="dfr-add-row-btn"><Plus className="w-4 h-4 mr-1" />Add job row</Button>
       </main>
       <MyReportsDialog open={historyOpen} onOpenChange={setHistoryOpen} currentDate={report.date} onPick={(d) => { setHistoryOpen(false); changeDate(d); }} />

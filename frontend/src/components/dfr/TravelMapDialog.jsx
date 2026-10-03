@@ -29,28 +29,38 @@ const FitAll = ({ points, fitKey }) => {
   return null;
 };
 
-/** Pin position for a row: manual drag override → first "work" fix → last "travel" fix → first pole/UG of the job. */
-const useRowPins = (rows, track, open) => {
+/** Pin position for a row: manual drag override → job's location (address / first attribute, from the jobs list) → GPS fix → first pole/UG of the job. */
+const useRowPins = (rows, track, open, jobs) => {
   const [fallback, setFallback] = useState({});
+  const jobPos = (jobId) => { const j = jobs?.find((x) => x.id === jobId); return j && Number.isFinite(j.latitude) && Number.isFinite(j.longitude) ? [j.latitude, j.longitude] : null; };
   useEffect(() => {
     if (!open) return;
     rows.forEach(async (r) => {
-      if (!r.job_id || fallback[r.job_id] !== undefined) return;
-      try {
-        const [p, u] = await Promise.all([axios.get(`/jobs/${r.job_id}/poles`), axios.get(`/jobs/${r.job_id}/underground`)]);
-        const it = [...(p.data || []), ...(u.data || [])].find((x) => Number.isFinite(parseFloat(x.latitude)));
-        setFallback((f) => ({ ...f, [r.job_id]: it ? [parseFloat(it.latitude), parseFloat(it.longitude)] : null }));
-      } catch { setFallback((f) => ({ ...f, [r.job_id]: null })); }
+      if (r.job_id) {
+        if (jobPos(r.job_id) || fallback[r.job_id] !== undefined) return;
+        try {
+          const [p, u] = await Promise.all([axios.get(`/jobs/${r.job_id}/poles`), axios.get(`/jobs/${r.job_id}/underground`)]);
+          const it = [...(p.data || []), ...(u.data || [])].find((x) => Number.isFinite(parseFloat(x.latitude)));
+          setFallback((f) => ({ ...f, [r.job_id]: it ? [parseFloat(it.latitude), parseFloat(it.longitude)] : null }));
+        } catch { setFallback((f) => ({ ...f, [r.job_id]: null })); }
+      } else if ((r.job_address || "").trim().length >= 4) {
+        const k = `addr:${r.job_address.trim()}`;
+        if (fallback[k] !== undefined) return;
+        setFallback((f) => ({ ...f, [k]: null }));
+        try { const g = (await axios.get("/field-reports/geocode", { params: { q: r.job_address.trim() } })).data; setFallback((f) => ({ ...f, [k]: [g.lat, g.lng] })); }
+        catch { /* leave null */ }
+      }
     });
-  }, [rows, open]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [rows, open, jobs]); // eslint-disable-line react-hooks/exhaustive-deps
   return useMemo(() => rows.map((r) => {
     const pts = track.filter((p) => p.row_id === r.id);
     const work = pts.find((p) => p.phase === "work");
     const trav = [...pts].reverse().find((p) => p.phase === "travel");
     const src = work || trav;
     const manual = Number.isFinite(r.pin_lat) && Number.isFinite(r.pin_lng) ? [r.pin_lat, r.pin_lng] : null;
-    return { row: r, pos: manual || (src ? [src.lat, src.lng] : fallback[r.job_id] || null), manual: !!manual };
-  }), [rows, track, fallback]);
+    const fb = r.job_id ? fallback[r.job_id] : fallback[`addr:${(r.job_address || "").trim()}`];
+    return { row: r, pos: manual || jobPos(r.job_id) || (src ? [src.lat, src.lng] : fb || null), manual: !!manual };
+  }), [rows, track, fallback, jobs]); // eslint-disable-line react-hooks/exhaustive-deps
 };
 
 export const TravelMapDialog = ({ open, onOpenChange, report, jobs, employees, onRowChange, home, onHomeChange }) => {
@@ -61,7 +71,7 @@ export const TravelMapDialog = ({ open, onOpenChange, report, jobs, employees, o
   const captureRef = useRef(null);
   const rows = report.rows || [];
   const track = report.track || [];
-  const pins = useRowPins(rows, track, open);
+  const pins = useRowPins(rows, track, open, jobs);
   const homePin = useMemo(() => (Number.isFinite(home?.lat) && Number.isFinite(home?.lng) ? { row: { id: "home", job: "Home" }, pos: [home.lat, home.lng], home: true } : null), [home]);
 
   const shownRows = mode === "day" ? rows : rows.filter((r) => r.id === mode);
