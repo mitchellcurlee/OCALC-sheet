@@ -1,0 +1,70 @@
+import { useState } from "react";
+import { CircleMarker, Polygon, Polyline, Popup, Tooltip, useMapEvents } from "react-leaflet";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Trash2 } from "lucide-react";
+
+export const AREA_STYLE = {
+  polygon: { color: "#2563eb", fillColor: "#3b82f6", fillOpacity: 0.25, weight: 2 },
+  da: { color: "#dc2626", fillColor: "#ef4444", fillOpacity: 0.25, weight: 2 },
+};
+export const AREA_LABEL = { polygon: "Polygon", da: "DA" };
+
+/** Collects vertices while an area is being drawn (click adds a point). */
+const AreaDrawHandler = ({ onPoint }) => {
+  useMapEvents({ click: (e) => onPoint([e.latlng.lat, e.latlng.lng]) });
+  return null;
+};
+
+/**
+ * Blue "Polygon" and red "DA" areas on the interactive map (stored as annotations with `points`).
+ * Each type can be hidden/shown like a layer; DA areas show their label centred inside the boundary.
+ */
+export const MapAreas = ({ annotations, drawing, draftPoints, onDraftPoint, show, editable, onUpdate, onDelete }) => {
+  const [editId, setEditId] = useState(null);
+  const [editText, setEditText] = useState("");
+  const areas = annotations.filter((a) => (a.type === "polygon" || a.type === "da") && Array.isArray(a.points) && a.points.length >= 3 && show[a.type]);
+
+  return (
+    <>
+      {drawing && <AreaDrawHandler onPoint={onDraftPoint} />}
+      {drawing && draftPoints.length > 0 && (
+        <>
+          {draftPoints.length >= 3
+            ? <Polygon positions={draftPoints} pathOptions={{ ...AREA_STYLE[drawing], dashArray: "6 4" }} />
+            : <Polyline positions={draftPoints} pathOptions={{ ...AREA_STYLE[drawing], dashArray: "6 4" }} />}
+          {draftPoints.map((p, i) => <CircleMarker key={i} center={p} radius={5} pathOptions={{ color: "#fff", fillColor: AREA_STYLE[drawing].color, fillOpacity: 1, weight: 2 }} />)}
+        </>
+      )}
+      {areas.map((a) => (
+        <Polygon key={a.id} positions={a.points} pathOptions={AREA_STYLE[a.type]} eventHandlers={{ click: (e) => { if (drawing) return; e.originalEvent?.stopPropagation?.(); } }}>
+          {a.type === "da" && a.text && (
+            <Tooltip permanent direction="center" className="da-area-label" interactive={false}><span data-testid={`da-label-${a.id}`}>{a.text}</span></Tooltip>
+          )}
+          {!drawing && (
+            <Popup>
+              <div className="min-w-[160px] space-y-2" data-testid={`area-popup-${a.id}`}>
+                <div className="text-xs font-mono uppercase font-bold" style={{ color: AREA_STYLE[a.type].color }}>{AREA_LABEL[a.type]}{a.text ? ` · ${a.text}` : ""}</div>
+                {editable && a.type === "da" && (
+                  editId === a.id ? (
+                    <div className="flex gap-1">
+                      <Input value={editText} onChange={(e) => setEditText(e.target.value)} className="h-7 text-xs" placeholder="DA label e.g. 1234PB" data-testid={`area-label-input-${a.id}`} />
+                      <Button size="sm" className="h-7 text-xs bg-sky-600 text-white" onClick={() => { onUpdate(a.id, { text: editText.trim() }); setEditId(null); }} data-testid={`area-label-save-${a.id}`}>Save</Button>
+                    </div>
+                  ) : (
+                    <Button size="sm" variant="outline" className="h-7 text-xs w-full" onClick={() => { setEditId(a.id); setEditText(a.text || ""); }} data-testid={`area-label-edit-${a.id}`}>{a.text ? "Edit label" : "Add label"}</Button>
+                  )
+                )}
+                {editable && (
+                  <Button size="sm" variant="outline" className="h-7 text-xs w-full border-red-300 text-red-600" onClick={() => { if (window.confirm(`Delete this ${AREA_LABEL[a.type]}?`)) onDelete(a.id); }} data-testid={`area-delete-${a.id}`}><Trash2 className="w-3 h-3 mr-1" />Delete</Button>
+                )}
+              </div>
+            </Popup>
+          )}
+        </Polygon>
+      ))}
+    </>
+  );
+};
+
+export default MapAreas;

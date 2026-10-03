@@ -93,7 +93,6 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import MarkupTab from "@/components/MarkupTab";
 import JobFilesShare from "@/components/JobFilesShare";
 import JobPhotoGallery, { galleryDropProps } from "@/components/JobPhotoGallery";
 import MapPhotoCapture from "@/components/MapPhotoCapture";
@@ -191,14 +190,11 @@ const JobDetail = () => {
   const [reorderedItems, setReorderedItems] = useState([]);
   const [syncingPoleId, setSyncingPoleId] = useState(null);
   const [syncingAll, setSyncingAll] = useState(false);
-  const [markupPhotos, setMarkupPhotos] = useState([]);
   const [photoDropTarget, setPhotoDropTarget] = useState(null);
   const [photoCapture, setPhotoCapture] = useState(false); // Add → Take Photo flow
   const [photoPin, setPhotoPin] = useState(null);
   const [photoPinAdjusting, setPhotoPinAdjusting] = useState(false);
   const dropHandlers = { onEnter: setPhotoDropTarget, onLeave: (id) => setPhotoDropTarget((cur) => (cur === id ? null : cur)) };
-  const [showMarkupSection, setShowMarkupSection] = useState(false);
-  const [savingMarkup, setSavingMarkup] = useState(false);
 
   // Combine poles and underground into a single list for display/reorder
   const getCombinedItems = useCallback(() => {
@@ -356,11 +352,6 @@ const JobDetail = () => {
       setJob(jobRes.data);
       setPoles(polesRes.data);
       setUndergroundItems(ugRes.data);
-      
-      // Load markup photos from ASE data if available
-      if (aseRes.data?.ase_data?.markup_photos) {
-        setMarkupPhotos(aseRes.data.ase_data.markup_photos);
-      }
     } catch (error) {
       toast.error("Failed to fetch job data");
       navigate("/");
@@ -444,28 +435,6 @@ const JobDetail = () => {
       toast.error(e.response?.data?.detail || "Import failed");
     } finally {
       setImporting(false);
-    }
-  };
-
-  // Save markup photos to ASE data
-  const handleMarkupPhotosChange = async (newPhotos) => {
-    setMarkupPhotos(newPhotos);
-    setSavingMarkup(true);
-    try {
-      // Get current ASE data first
-      const aseRes = await axios.get(`/jobs/${jobId}/ase-data`);
-      const currentAse = aseRes.data?.ase_data || {};
-      
-      // Update with new markup photos
-      await axios.put(`/jobs/${jobId}/ase-data`, {
-        ase_data: { ...currentAse, markup_photos: newPhotos }
-      });
-      toast.success("Markup photos saved");
-    } catch (error) {
-      console.error("Failed to save markup photos:", error);
-      toast.error("Failed to save markup photos");
-    } finally {
-      setSavingMarkup(false);
     }
   };
 
@@ -1029,48 +998,6 @@ const JobDetail = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
           <JobFilesShare jobId={jobId} />
           <JobPhotoGallery jobId={jobId} poles={poles} undergroundItems={undergroundItems} onAssigned={fetchJobAndPoles} />
-        </div>
-
-        {/* Photo Markup Section - Collapsible */}
-        <div className="mb-6">
-          <button
-            onClick={() => setShowMarkupSection(!showMarkupSection)}
-            className="w-full flex items-center justify-between p-4 bg-purple-50 hover:bg-purple-100 rounded-lg border border-purple-200 transition-colors"
-            data-testid="toggle-markup-section"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-purple-600 rounded-lg flex items-center justify-center">
-                <ImageIcon className="w-5 h-5 text-white" />
-              </div>
-              <div className="text-left">
-                <h2 className="font-heading font-bold text-purple-900">PHOTO MARKUP</h2>
-                <p className="text-xs text-purple-600">
-                  {markupPhotos.length} photos · Click to {showMarkupSection ? 'collapse' : 'expand'}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              {savingMarkup && <Loader2 className="w-4 h-4 animate-spin text-purple-600" />}
-              {showMarkupSection ? (
-                <ChevronUp className="w-5 h-5 text-purple-600" />
-              ) : (
-                <ChevronDown className="w-5 h-5 text-purple-600" />
-              )}
-            </div>
-          </button>
-          
-          {showMarkupSection && (
-            <div className="mt-3 p-4 bg-white rounded-lg border border-zinc-200">
-              <MarkupTab
-                photos={markupPhotos}
-                onPhotosChange={handleMarkupPhotosChange}
-                poles={poles}
-                underground={undergroundItems}
-                label="Job Photo Markups"
-                showUnderground={true}
-              />
-            </div>
-          )}
         </div>
 
         {/* Stats */}

@@ -46,6 +46,7 @@ import MapAnnotations from "@/components/MapAnnotations";
 import HomeAddressLayer from "@/components/HomeAddressLayer";
 import ParcelLinesLayer from "@/components/ParcelLinesLayer";
 import MapPhotoCapture, { photoPinIcon } from "@/components/MapPhotoCapture";
+import MapAreas from "@/components/MapAreas";
 import { CurrentLocationLayer } from "@/components/CurrentLocationLayer";
 
 const MAP_AERIAL_ADD_TYPES = ["Loop", "Aerial Splice", "Power", "X-Messenger", "Eyebolt", "Pullbox", "Weather Head"];
@@ -637,6 +638,20 @@ const JobMap = () => {
   const [drawRouteMode, setDrawRouteMode] = useState(false); // Draw Route: tap items in order
   const [currentRoute, setCurrentRoute] = useState([]); // items tapped in the route being drawn
   const [savingRoute, setSavingRoute] = useState(false);
+  // Polygon (blue) / DA (red) areas: drawing + per-type layer visibility
+  const [areaDraw, setAreaDraw] = useState(null); // null | "polygon" | "da"
+  const [areaDraft, setAreaDraft] = useState([]);
+  const [showAreas, setShowAreas] = useState(() => ({ polygon: localStorage.getItem("mapShowPolygons") !== "0", da: localStorage.getItem("mapShowDA") !== "0" }));
+  useEffect(() => { localStorage.setItem("mapShowPolygons", showAreas.polygon ? "1" : "0"); localStorage.setItem("mapShowDA", showAreas.da ? "1" : "0"); }, [showAreas]);
+  const finishArea = async () => {
+    if (areaDraft.length < 3) { toast.error("Tap at least 3 points"); return; }
+    let text = "";
+    if (areaDraw === "da") { text = (window.prompt("DA label to show inside the boundary (e.g. 1234PB):", "") || "").trim(); }
+    const c = areaDraft.reduce((acc, p) => [acc[0] + p[0] / areaDraft.length, acc[1] + p[1] / areaDraft.length], [0, 0]);
+    await handleAnnotationAdd({ type: areaDraw, latitude: c[0], longitude: c[1], points: areaDraft, text, color: areaDraw === "da" ? "#dc2626" : "#2563eb" });
+    setShowAreas((v) => ({ ...v, [areaDraw]: true }));
+    setAreaDraw(null); setAreaDraft([]);
+  };
   const [photoCapture, setPhotoCapture] = useState(false); // Add → Take Photo flow
   const [photoPin, setPhotoPin] = useState(null); // temporary GPS pin while the user picks a type
   const [photoPinAdjusting, setPhotoPinAdjusting] = useState(false); // drag-to-fine-tune the pin
@@ -1089,7 +1104,7 @@ const JobMap = () => {
         job_id: jobId,
       });
       setAnnotations(prev => [...prev, response.data]);
-      toast.success(data.type === "note" ? "Note added" : "Measurement added");
+      toast.success(data.type === "note" ? "Note added" : data.type === "polygon" ? "Polygon added" : data.type === "da" ? "DA added" : "Measurement added");
     } catch (e) {
       toast.error("Failed to add annotation");
     }
@@ -2471,34 +2486,16 @@ const JobMap = () => {
               <Crosshair className="w-4 h-4 mr-2" />
               Fit all
             </Button>
-            <Button onClick={() => setMapLayer((v) => (v === "street" ? "aerial" : "street"))} aria-pressed={mapLayer === "street"} variant="outline" className={mapLayer === "street" ? "bg-emerald-600 border-emerald-600 hover:bg-emerald-700 text-white" : "bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900"} data-testid="toggle-street-btn" title="Switch between aerial imagery and street map">
-              <MapIcon className="w-4 h-4 mr-2" />
-              {mapLayer === "street" ? "Street" : "Aerial"}
-            </Button>
             {!drawRouteMode && !positionEditMode && !editMode && !connectionEditMode && (
               <Button onClick={startDrawRoute} disabled={allConnectableItems.length < 2} variant="outline" className="bg-indigo-600 border-indigo-600 hover:bg-indigo-700 text-white" data-testid="draw-route-btn" title="Tap items in order to draw and number a route">
                 <RouteIcon className="w-4 h-4 mr-2" />
                 Draw Route
               </Button>
             )}
-            <Button onClick={() => setShowAddresses((v) => !v)} aria-pressed={showAddresses} variant="outline" className={showAddresses ? "bg-sky-600 border-sky-600 hover:bg-sky-700 text-white" : "bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900"} data-testid="toggle-addresses-btn" title="Show home addresses (house numbers) per lot">
-              <Home className="w-4 h-4 mr-2" />
-              Addresses
-            </Button>
-            <Button onClick={() => setShowParcels((v) => !v)} aria-pressed={showParcels} variant="outline" className={showParcels ? "bg-stone-600 border-stone-600 hover:bg-stone-700 text-white" : "bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900"} data-testid="toggle-parcels-btn" title="Texas parcel boundary lines (TxGIO / TNRIS StratMap) — visual reference only">
-              <LandPlot className="w-4 h-4 mr-2" />
-              Parcels
-            </Button>
             {annotations.some((a) => a.type === "note") && (
               <Button onClick={() => setShowAllNotes((v) => !v)} aria-pressed={showAllNotes} variant="outline" className={showAllNotes ? "bg-amber-500 border-amber-500 hover:bg-amber-600 text-white" : "bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900"} data-testid="toggle-all-notes-btn" title="Show every note's text open on the map">
                 <StickyNote className="w-4 h-4 mr-2" />
                 Notes: {showAllNotes ? "Open" : "Closed"}
-              </Button>
-            )}
-            {!showStationNumbers && (
-              <Button onClick={cycleSpanBadgeMode} variant="outline" className={spanBadgeMode === "off" ? "bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-500" : "bg-orange-600 border-orange-600 hover:bg-orange-700 text-white"} data-testid="span-badge-mode-btn" title="Span number markers: Normal → Small → Off">
-                <Hash className="w-4 h-4 mr-2" />
-                Spans: {spanBadgeMode === "off" ? "Off" : spanBadgeMode === "small" ? "Small" : "Normal"}
               </Button>
             )}
             <Button onClick={() => setShowStationNumbers((v) => !v)} disabled={route.length === 0 && ug.length === 0} aria-pressed={showStationNumbers} variant="outline" className={showStationNumbers ? "bg-indigo-600 border-indigo-600 hover:bg-indigo-700 text-white" : "bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900"} data-testid="toggle-station-btn">
@@ -2540,7 +2537,7 @@ const JobMap = () => {
               Download
             </Button>
             {/* Add attribute dropdown */}
-            {!editMode && !connectionEditMode && !positionEditMode && !placingType && (
+            {!editMode && !connectionEditMode && !positionEditMode && !placingType && !areaDraw && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" data-testid="map-add-dropdown-btn">
@@ -2555,6 +2552,12 @@ const JobMap = () => {
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setPhotoCapture(true)} data-testid="map-add-take-photo" className="cursor-pointer font-semibold text-amber-700 border-b border-zinc-200">
                     <Camera className="w-4 h-4 mr-2" />Take Photo (pin at my location)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => { setAreaDraw("polygon"); setAreaDraft([]); toast.info("Tap the map corners of the area, then tap Finish"); }} data-testid="map-add-polygon" className="cursor-pointer font-medium text-blue-700">
+                    <span className="inline-block w-3 h-3 mr-2 rounded-sm bg-blue-500/40 border border-blue-600" />Polygon (blue area)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => { setAreaDraw("da"); setAreaDraft([]); toast.info("Tap the map corners of the DA, then tap Finish to label it"); }} data-testid="map-add-da" className="cursor-pointer font-medium text-red-700 border-b border-zinc-200">
+                    <span className="inline-block w-3 h-3 mr-2 rounded-sm bg-red-500/40 border border-red-600" />DA (red area)
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => { setPlacingType("__pole__"); toast.info("Tap the map where the Pole goes"); }} data-testid="map-add-pole" className="cursor-pointer font-medium">
                     Add Pole
@@ -2593,7 +2596,6 @@ const JobMap = () => {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
-                      disabled={route.length === 0 && ug.length === 0}
                       className="bg-blue-600 hover:bg-blue-700 text-white"
                       data-testid="edit-map-dropdown-btn"
                     >
@@ -2602,7 +2604,29 @@ const JobMap = () => {
                       <ChevronDown className="w-4 h-4 ml-2" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56 bg-white z-[1100]">
+                  <DropdownMenuContent align="end" className="w-64 bg-white z-[1100] max-h-[80vh] overflow-y-auto">
+                    <DropdownMenuLabel className="text-xs text-zinc-500 uppercase tracking-wider">Map Layers</DropdownMenuLabel>
+                    <DropdownMenuItem onSelect={(e) => e.preventDefault()} onClick={() => setMapLayer((v) => (v === "street" ? "aerial" : "street"))} className="cursor-pointer" data-testid="toggle-street-btn">
+                      <MapIcon className="w-4 h-4 mr-2" />Basemap: <b className="ml-1">{mapLayer === "street" ? "Street" : "Aerial"}</b>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={(e) => e.preventDefault()} onClick={() => setShowAddresses((v) => !v)} className="cursor-pointer" data-testid="toggle-addresses-btn">
+                      <Home className="w-4 h-4 mr-2" />Addresses <span className={`ml-auto text-[10px] font-mono px-1.5 rounded ${showAddresses ? "bg-sky-600 text-white" : "bg-zinc-200 text-zinc-600"}`}>{showAddresses ? "ON" : "OFF"}</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={(e) => e.preventDefault()} onClick={() => setShowParcels((v) => !v)} className="cursor-pointer" data-testid="toggle-parcels-btn">
+                      <LandPlot className="w-4 h-4 mr-2" />Parcels <span className={`ml-auto text-[10px] font-mono px-1.5 rounded ${showParcels ? "bg-stone-600 text-white" : "bg-zinc-200 text-zinc-600"}`}>{showParcels ? "ON" : "OFF"}</span>
+                    </DropdownMenuItem>
+                    {!showStationNumbers && (
+                      <DropdownMenuItem onSelect={(e) => e.preventDefault()} onClick={cycleSpanBadgeMode} className="cursor-pointer" data-testid="span-badge-mode-btn">
+                        <Hash className="w-4 h-4 mr-2" />Span markers: <b className="ml-1">{spanBadgeMode === "off" ? "Off" : spanBadgeMode === "small" ? "Small" : "Normal"}</b>
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuItem onSelect={(e) => e.preventDefault()} onClick={() => setShowAreas((v) => ({ ...v, polygon: !v.polygon }))} className="cursor-pointer" data-testid="toggle-polygons-btn">
+                      <span className="inline-block w-3 h-3 mr-3 rounded-sm bg-blue-500/40 border border-blue-600" />Polygons <span className={`ml-auto text-[10px] font-mono px-1.5 rounded ${showAreas.polygon ? "bg-blue-600 text-white" : "bg-zinc-200 text-zinc-600"}`}>{showAreas.polygon ? "ON" : "OFF"}</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={(e) => e.preventDefault()} onClick={() => setShowAreas((v) => ({ ...v, da: !v.da }))} className="cursor-pointer" data-testid="toggle-da-btn">
+                      <span className="inline-block w-3 h-3 mr-3 rounded-sm bg-red-500/40 border border-red-600" />DA <span className={`ml-auto text-[10px] font-mono px-1.5 rounded ${showAreas.da ? "bg-red-600 text-white" : "bg-zinc-200 text-zinc-600"}`}>{showAreas.da ? "ON" : "OFF"}</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
                     <DropdownMenuLabel className="text-xs text-zinc-500 uppercase tracking-wider">Path Colors</DropdownMenuLabel>
                     
                     {/* Aerial Path Color */}
@@ -2876,6 +2900,16 @@ const JobMap = () => {
             </form>
             <span className="text-zinc-800 text-xs">{riserPick !== null ? "The riser moves to that number; the rows after it shift to stay in sequence." : "A number another span already has swaps the two; a free number shifts the rest. Or tap another badge to swap."}</span>
             <Button size="sm" variant="outline" className="h-7 text-xs bg-white border-zinc-400 ml-auto shrink-0" onClick={() => { setSwapPick(null); setRiserPick(null); }} data-testid="span-swap-cancel-btn">Cancel</Button>
+          </div>
+        )}
+        {areaDraw && (
+          <div className={`mb-2 px-3 py-2 rounded flex flex-wrap items-center gap-2 text-sm text-white ${areaDraw === "da" ? "bg-red-600" : "bg-blue-600"}`} data-testid="area-draw-banner">
+            <span>Drawing {areaDraw === "da" ? "DA (red)" : "Polygon (blue)"} — tap the map to add corners ({areaDraft.length} point{areaDraft.length !== 1 ? "s" : ""})</span>
+            <span className="ml-auto flex gap-2">
+              <Button size="sm" variant="outline" className="h-8 text-xs bg-white/15 border-white/40 text-white hover:bg-white/25" disabled={!areaDraft.length} onClick={() => setAreaDraft((p) => p.slice(0, -1))} data-testid="area-undo-btn">Undo</Button>
+              <Button size="sm" className="h-8 text-xs bg-white text-zinc-900 hover:bg-zinc-100" disabled={areaDraft.length < 3} onClick={finishArea} data-testid="area-finish-btn">Finish</Button>
+              <Button size="sm" variant="ghost" className="h-8 text-xs text-white hover:bg-white/20" onClick={() => { setAreaDraw(null); setAreaDraft([]); }} data-testid="area-cancel-btn">Cancel</Button>
+            </span>
           </div>
         )}
         <MapPhotoCapture
@@ -3445,6 +3479,7 @@ const JobMap = () => {
                   )}
                 </React.Fragment>
               )})}
+              <MapAreas annotations={annotations} drawing={areaDraw} draftPoints={areaDraft} onDraftPoint={(p) => setAreaDraft((d) => [...d, p])} show={showAreas} editable={!areaDraw} onUpdate={handleAnnotationUpdate} onDelete={handleAnnotationDelete} />
               {/* Map annotations (notes and measurements) */}
               <MapAnnotations
                 annotations={annotations}
