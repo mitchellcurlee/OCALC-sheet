@@ -331,3 +331,7 @@ body {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
 }
 .leaflet-tooltip.map-note-tooltip::before { border-right-color: #f59e0b; }
+
+/* Daily Field Report travel-map pin labels */
+.leaflet-tooltip.dfr-pin-label { background: #fff; border: 1.5px solid #dc2626; color: #18181b; font: 700 11px ui-monospace, monospace; padding: 2px 6px; border-radius: 3px; box-shadow: 0 1px 4px rgba(0,0,0,.35); }
+.leaflet-tooltip.dfr-pin-label::before { border-right-color: #dc2626; }

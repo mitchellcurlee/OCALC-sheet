@@ -54,6 +54,7 @@ import {
   FileUp,
   WifiOff,
   Camera,
+  ClipboardList,
 } from "lucide-react";
 import { buildSowNotesText } from "@/components/ase/ASESOWNotesTab";
 import { ExportDestinationDialog } from "@/components/ExportDestinationDialog";
@@ -787,6 +788,10 @@ const JobDetail = () => {
                   <DropdownMenuItem onClick={() => setPendingExport("job_excel")} data-testid="export-btn" className="cursor-pointer">
                     <FileSpreadsheet className="w-4 h-4 mr-2 text-zinc-600" />
                     OCALC/JOB Export
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate(`/jobs/${jobId}/field-report`)} data-testid="daily-field-report-btn" className="cursor-pointer font-semibold text-orange-700">
+                    <ClipboardList className="w-4 h-4 mr-2" />
+                    Daily Field Report
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => navigate(`/jobs/${jobId}/ase`)} data-testid="ase-form-btn" className="cursor-pointer">
                     <FileText className="w-4 h-4 mr-2 text-blue-600" />

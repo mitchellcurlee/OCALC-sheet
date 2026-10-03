@@ -70,18 +70,26 @@ export const ASE_OPTIONS = {
   // Conduit length options
   conduitLength: ["NONE", "Under 1000ft", "Over 1000ft"],
   
-  // Employees (from SOURCE sheet Column A)
+  // Employees (name, phone, email) — single source for job menu, ASE and Daily Field Report
   employees: [
-    "MITCHELL CURLEE Mitchell.Curlee@BYERS.COM (936) 689-7042",
-    "Jared Monroe Jared.Monroe@BYERS.COM (832) 316-6907",
-    "John Sydow John.Sydow@BYERS.COM (832) 422-0577",
-    "John Maier John.Maier@BYERS.COM (281) 216-7017",
-    "Stan Duke stan.duke@byers.com 225-933-8017",
-    "Luis Ramirez luis.ramirez@byers.com 361-389-5324",
-    "Jacob Adrianson 936-235-9850 Jacob.Adrianson@byers.com",
-    "Juan Arias juan.arias@byers.com 929-641-2663",
-    "Carlos Sanchez carlos.sanchez@byers.com 281-202-8344",
-    "Steveland Horton 713-306-1975 steveland.horton@byers.com"
+    "Mitchell Curlee 936-689-7042 Mitchell.c@synapsiq.com",
+    "Jared Monroe 832-316-6907 jared.m@synapsiq.com",
+    "Stan Duke 225-933-8017 stan.d@synapsiq.com",
+    "Luis Ramirez 361-389-5324 luis.r@synapsiq.com",
+    "Juan Arias 929-641-2663 juan.g@synapsiq.com",
+    "Carlos Sanchez 281-202-8344 carlos.s@synapsiq.com",
+    "Jorge Benitez 281-409-1887 jorge.b@synapsiq.com",
+    "Kevin Buschardt 505-385-5702 kevin.b@synapsiq.com",
+    "Peter Venegas 915-253-1006 peter.v@synapsiq.com",
+    "David Leal david.l@synapsiq.com",
+    "Gary Tilory gary.t@synapsiq.com",
+    "Kearby Garza kearby.g@synapsiq.com",
+    "Noah Lopez noah.l@synapsiq.com",
+    "Cody Thomas cody.t@synapsiq.com",
+    "Devin Cox devin.c@synapsiq.com",
+    "Paul Montgomery paul.m@synapsiq.com",
+    "Allen Smith allen.d@synapsiq.com",
+    "Brandon McKinney brandon.m@synapsiq.com",
   ],
 };
 
@@ -291,3 +299,6 @@ export const INITIAL_FORM_DATA = {
   ef_conduit_length: "",
   other_requirements: "",
 };
+
+// "First Last" for each employee entry (used by Daily Field Report "Fielder at Site")
+export const EMPLOYEE_NAMES = ASE_OPTIONS.employees.map((e) => e.split(" ").slice(0, 2).join(" "));

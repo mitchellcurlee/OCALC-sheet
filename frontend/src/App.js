@@ -24,6 +24,7 @@ import VerifyEmail from "@/pages/VerifyEmail";
 import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
 import AdminUsers from "@/pages/AdminUsers";
+import DailyFieldReport from "@/pages/DailyFieldReport";
 import BackupAtlas from "@/pages/BackupAtlas";
 import InstallPrompt from "@/components/InstallPrompt";
 
@@ -59,6 +60,7 @@ function App() {
             <Route path="/trash" element={<ProtectedRoute><Trash /></ProtectedRoute>} />
             <Route path="/backup" element={<ProtectedRoute><BackupAtlas /></ProtectedRoute>} />
             <Route path="/admin/users" element={<ProtectedRoute><AdminUsers /></ProtectedRoute>} />
+            <Route path="/jobs/:jobId/field-report" element={<ProtectedRoute><DailyFieldReport /></ProtectedRoute>} />
           </Routes>
         </BrowserRouter>
       </AuthProvider>

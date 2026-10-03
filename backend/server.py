@@ -73,6 +73,7 @@ from routes import files as files_routes
 from routes import sync as sync_routes
 from routes import routes as routes_routes
 from routes import annotations as annotations_routes
+from routes import field_reports as field_reports_routes
 from routes import connections as connections_routes
 from routes import import_excel as import_excel_routes
 from routes import trash as trash_routes
@@ -88,6 +89,7 @@ files_routes.set_db(db)
 sync_routes.set_db(db)
 routes_routes.set_db(db)
 annotations_routes.set_db(db)
+field_reports_routes.set_db(db)
 connections_routes.set_db(db)
 import_excel_routes.set_db(db)
 addresses_routes.set_db(db)
@@ -97,6 +99,7 @@ cloud_exports_routes.set_db(db)
 
 # Include all routers
 api_router.include_router(auth_routes.router)
+api_router.include_router(field_reports_routes.router)
 api_router.include_router(jobs_routes.router)
 api_router.include_router(poles_routes.router)
 api_router.include_router(underground_routes.router)
