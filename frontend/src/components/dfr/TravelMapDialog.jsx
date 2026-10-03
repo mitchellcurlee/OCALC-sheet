@@ -12,6 +12,7 @@ import { trackMiles, roundQuarter, fmtHrs } from "@/lib/dfr";
 import { RoutePlanner, PlannedRouteLine } from "./RoutePlanner";
 
 const pinIcon = (n) => L.divIcon({ className: "dfr-job-pin", html: `<div style="background:#dc2626;color:#fff;border:2px solid #fff;border-radius:9999px 9999px 9999px 0;transform:rotate(-45deg);width:28px;height:28px;display:flex;align-items:center;justify-content:center;font:700 12px ui-monospace,monospace;box-shadow:0 1px 4px rgba(0,0,0,.5)"><span style="transform:rotate(45deg)">${n}</span></div>`, iconSize: [28, 28], iconAnchor: [14, 28] });
+const homeIcon = L.divIcon({ className: "dfr-home-pin", html: `<div style="background:#059669;color:#fff;border:2px solid #fff;border-radius:9999px 9999px 9999px 0;transform:rotate(-45deg);width:28px;height:28px;display:flex;align-items:center;justify-content:center;font:700 12px ui-monospace,monospace;box-shadow:0 1px 4px rgba(0,0,0,.5)"><span style="transform:rotate(45deg)">H</span></div>`, iconSize: [28, 28], iconAnchor: [14, 28] });
 
 // Fits once per view (mode / point count) so dragging a pin doesn't recenter the map
 const FitAll = ({ points, fitKey }) => {
@@ -52,7 +53,7 @@ const useRowPins = (rows, track, open) => {
   }), [rows, track, fallback]);
 };
 
-export const TravelMapDialog = ({ open, onOpenChange, report, jobs, employees, onRowChange }) => {
+export const TravelMapDialog = ({ open, onOpenChange, report, jobs, employees, onRowChange, home }) => {
   const [mode, setMode] = useState("day"); // "day" | row id
   const [shooting, setShooting] = useState(false);
   const [plan, setPlan] = useState(null); // planned driving route between job pins
@@ -60,19 +61,27 @@ export const TravelMapDialog = ({ open, onOpenChange, report, jobs, employees, o
   const rows = report.rows || [];
   const track = report.track || [];
   const pins = useRowPins(rows, track, open);
+  const homePin = useMemo(() => (Number.isFinite(home?.lat) && Number.isFinite(home?.lng) ? { row: { id: "home", job: "Home" }, pos: [home.lat, home.lng], home: true } : null), [home]);
 
   const shownRows = mode === "day" ? rows : rows.filter((r) => r.id === mode);
   const shownTrack = mode === "day" ? track : track.filter((p) => p.row_id === mode);
   const shownPins = pins.filter((p) => p.pos && shownRows.some((r) => r.id === p.row.id));
   const line = shownTrack.map((p) => [p.lat, p.lng]);
-  const fitPts = useMemo(() => [...line, ...shownPins.map((p) => p.pos), ...(mode === "day" && plan ? plan.line : [])], [line, shownPins, plan, mode]); // eslint-disable-line react-hooks/exhaustive-deps
+  const fitPts = useMemo(() => [...line, ...shownPins.map((p) => p.pos), ...(mode === "day" && homePin ? [homePin.pos] : []), ...(mode === "day" && plan ? plan.line : [])], [line, shownPins, plan, mode, homePin]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Home → job 1 fills job 1's Travel to site; job N → job N+1 fills job N's Return/next site; miles per row = sum of its legs
   const applyPlan = (p) => {
     if (!onRowChange) return;
-    const filled = rows.some((r) => p.legs.some((l) => l.from.row.id === r.id && (r.return_hrs || r.miles)));
-    if (filled && !window.confirm("Overwrite existing Return/next-site hours and miles with the planned values?")) return;
-    p.legs.forEach((l) => onRowChange({ ...l.from.row, return_hrs: fmtHrs(roundQuarter(l.hours)), miles: String(Math.min(500, Math.round(l.miles))) }));
-    toast.success(`Applied ${p.legs.length} leg${p.legs.length > 1 ? "s" : ""}: Return/next-site hours and miles filled`);
+    const upd = {}, miles = {};
+    p.legs.forEach((l) => {
+      const r = l.from.home ? l.to.row : l.from.row;
+      upd[r.id] = { ...(upd[r.id] || r), [l.from.home ? "travel_hrs" : "return_hrs"]: fmtHrs(roundQuarter(l.hours)) };
+      miles[r.id] = (miles[r.id] || 0) + l.miles;
+    });
+    const filled = Object.keys(upd).some((id) => { const r = rows.find((x) => x.id === id); return r && (r.return_hrs || r.miles || (upd[id].travel_hrs && r.travel_hrs)); });
+    if (filled && !window.confirm("Overwrite existing Travel/Return hours and miles with the planned values?")) return;
+    Object.values(upd).forEach((r) => onRowChange({ ...r, miles: String(Math.min(500, Math.round(miles[r.id]))) }));
+    toast.success(`Applied ${p.legs.length} leg${p.legs.length > 1 ? "s" : ""}${homePin ? " from Home" : ""}: Travel/Return hours and miles filled`);
   };
 
   const screenshot = async () => {
@@ -119,6 +128,11 @@ export const TravelMapDialog = ({ open, onOpenChange, report, jobs, employees, o
               <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}" maxNativeZoom={19} maxZoom={22} crossOrigin="anonymous" />
               {line.length > 1 && <Polyline positions={line} pathOptions={{ color: "#f97316", weight: 4, opacity: 0.9 }} />}
               {mode === "day" && <PlannedRouteLine plan={plan} />}
+              {mode === "day" && homePin && (
+                <Marker position={homePin.pos} icon={homeIcon}>
+                  <Tooltip permanent direction="right" offset={[10, -14]} className="dfr-pin-label"><span data-testid="dfr-home-pin-label"><b>Home</b></span></Tooltip>
+                </Marker>
+              )}
               {shownPins.map((p) => {
                 const n = rows.findIndex((r) => r.id === p.row.id) + 1;
                 return (
@@ -130,7 +144,7 @@ export const TravelMapDialog = ({ open, onOpenChange, report, jobs, employees, o
               <FitAll points={fitPts} fitKey={`${mode}:${fitPts.length}:${open}:${plan ? plan.miles : 0}`} />
             </MapContainer>
           </div>
-          {mode === "day" && <RoutePlanner pins={pins} plan={plan} onPlan={setPlan} onApply={onRowChange ? applyPlan : null} />}
+          {mode === "day" && <RoutePlanner pins={homePin ? [homePin, ...pins] : pins} plan={plan} onPlan={setPlan} onApply={onRowChange ? applyPlan : null} />}
           <DFRTable rows={shownRows} jobs={jobs} employees={employees} onChangeRow={() => {}} onRemoveRow={() => {}} onPickJob={() => {}} activeRowId={null} onActivate={() => {}} readOnly />
         </div>
       </DialogContent>

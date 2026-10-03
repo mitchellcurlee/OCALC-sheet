@@ -27,9 +27,11 @@ export const PlannedRouteLine = ({ plan }) => (plan ? <Polyline positions={plan.
 export const RoutePlanner = ({ pins, plan, onPlan, onApply }) => {
   const [busy, setBusy] = useState(false);
   const stops = pins.filter((p) => p.pos);
+  const hasHome = stops.some((p) => p.home);
+  const label = (s) => (s.home ? <span className="text-emerald-700">Home</span> : s.row.job || "Job");
 
   const run = async () => {
-    if (stops.length < 2) { toast.error("Need at least two job rows with a location to plan a route"); return; }
+    if (stops.length < 2 || !stops.some((p) => !p.home)) { toast.error("Need at least two stops with a location (Home + a job, or two job rows) to plan a route"); return; }
     setBusy(true);
     try { onPlan(await fetchPlannedRoute(stops)); }
     catch (e) { toast.error(`Route planning failed: ${e.message}`); }
@@ -40,7 +42,7 @@ export const RoutePlanner = ({ pins, plan, onPlan, onApply }) => {
     <div className="border border-blue-300 bg-blue-50/60 rounded p-2 space-y-2" data-testid="dfr-route-planner">
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-xs font-mono uppercase tracking-widest text-blue-900 flex items-center gap-1"><Route className="w-4 h-4" />Plan route (no driving needed)</span>
-        <span className="text-[11px] text-zinc-600">Drive legs between the job pins in row order — estimated miles and time to each next location.</span>
+        <span className="text-[11px] text-zinc-600">{hasHome ? "Starts at your Home address, then the job pins in row order" : "Drive legs between the job pins in row order (set a Home address to plan the first leg too)"} — estimated miles and time to each next location.</span>
         <Button type="button" onClick={run} disabled={busy || stops.length < 2} className="ml-auto h-8 text-xs bg-blue-600 hover:bg-blue-700 text-white" data-testid="dfr-plan-route-btn">
           {busy ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Route className="w-3.5 h-3.5 mr-1" />}{plan ? "Re-plan" : "Plan route"}
         </Button>
@@ -54,7 +56,7 @@ export const RoutePlanner = ({ pins, plan, onPlan, onApply }) => {
           <tbody>
             {plan.legs.map((l, i) => (
               <tr key={i} className={i % 2 ? "bg-zinc-50" : "bg-white"} data-testid={`dfr-route-leg-${i}`}>
-                <td className="px-2 py-1">{i + 1}</td><td className="px-2 py-1 font-semibold">{l.from.row.job || "Job"}</td><td className="px-2 py-1 font-semibold">{l.to.row.job || "Job"}</td>
+                <td className="px-2 py-1">{i + 1}</td><td className="px-2 py-1 font-semibold">{label(l.from)}</td><td className="px-2 py-1 font-semibold">{label(l.to)}</td>
                 <td className="px-2 py-1 text-right">{l.miles.toFixed(1)}</td><td className="px-2 py-1 text-right">{Math.round(l.hours * 60)} min</td><td className="px-2 py-1 text-right">{fmtHrs(roundQuarter(l.hours))}</td>
               </tr>
             ))}

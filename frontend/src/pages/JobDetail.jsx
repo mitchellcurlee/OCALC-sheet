@@ -95,6 +95,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import JobFilesShare from "@/components/JobFilesShare";
 import JobPhotoGallery, { galleryDropProps } from "@/components/JobPhotoGallery";
+import { JobTravelTracker } from "@/components/dfr/JobTravelTracker";
 import MapPhotoCapture from "@/components/MapPhotoCapture";
 import JobShareDialog from "@/components/JobShareDialog";
 
@@ -994,6 +995,8 @@ const JobDetail = () => {
             else navigate(`/jobs/${jobId}/underground/add?type=${encodeURIComponent(type)}&${q}`);
           }}
         />
+        {/* GPS travel tracking (today's Daily Field Report row for this job) */}
+        <JobTravelTracker job={job} />
         {/* Job files + job photo gallery */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
           <JobFilesShare jobId={jobId} />

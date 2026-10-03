@@ -133,7 +133,7 @@ export const TravelTracker = ({ report, activeRow, rowIndex, onTrack, onRowChang
           </Button>
         ))}
       </div>
-      {offerNext && phase === "done" && (
+      {offerNext && onStartNext && phase === "done" && (
         <div className="flex flex-wrap items-center gap-2 bg-emerald-50 border border-emerald-300 rounded px-3 py-2" data-testid="dfr-next-row-offer">
           <span className="text-xs text-emerald-900">Arrived at the next job? Start its row now — Work time begins immediately.</span>
           <Button type="button" onClick={startNext} className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white ml-auto" data-testid="dfr-start-next-btn"><Navigation className="w-3.5 h-3.5 mr-1" />Start next job row</Button>
