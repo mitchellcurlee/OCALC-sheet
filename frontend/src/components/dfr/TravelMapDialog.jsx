@@ -148,6 +148,9 @@ export const TravelMapDialog = ({ open, onOpenChange, report, jobs, employees, o
       <DialogContent className="max-w-[96vw] w-[1400px] bg-white z-[1300] p-4 max-h-[95vh] overflow-y-auto overflow-x-hidden" aria-describedby={undefined} data-testid="dfr-travel-map-dialog">
         <DialogHeader><DialogTitle className="text-sm font-mono uppercase flex items-center gap-2"><Route className="w-4 h-4" />Travel Map — {report.date}</DialogTitle></DialogHeader>
         <div className="flex flex-wrap items-center gap-2">
+          <Button type="button" onClick={screenshot} disabled={shooting} className="h-9 text-xs bg-zinc-900 hover:bg-zinc-800 text-white" data-testid="dfr-map-screenshot-btn">
+            {shooting ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Camera className="w-4 h-4 mr-1" />}Screenshot {mode === "day" ? "Full Day" : "Per Job"}
+          </Button>
           <select value={mode} onChange={(e) => setMode(e.target.value)} className="h-9 text-sm border border-zinc-300 rounded px-2 bg-white" data-testid="dfr-map-mode">
             <option value="day">Full Day — all jobs</option>
             {rows.map((r, i) => <option key={r.id} value={r.id}>Per Job — {i + 1}. {r.job || "(no job)"}</option>)}
@@ -156,12 +159,9 @@ export const TravelMapDialog = ({ open, onOpenChange, report, jobs, employees, o
           {onRowChange && shownPins.some((p) => p.manual) && (
             <button type="button" className="text-[11px] underline text-zinc-500 hover:text-red-600" onClick={() => shownPins.filter((p) => p.manual).forEach((p) => onRowChange({ ...p.row, pin_lat: null, pin_lng: null }))} data-testid="dfr-pin-reset">Reset moved pin{shownPins.filter((p) => p.manual).length > 1 ? "s" : ""}</button>
           )}
-          <label className="inline-flex items-center gap-1.5 text-xs text-zinc-700 cursor-pointer select-none" title="Show or hide the Site ID / address tags next to the pins">
+          <label className="inline-flex items-center gap-1.5 text-xs text-zinc-700 cursor-pointer select-none ml-auto" title="Show or hide the Site ID / address tags next to the pins">
             <input type="checkbox" checked={showTags} onChange={toggleTags} data-testid="dfr-map-tags-toggle" />Pin tags (Site ID &amp; address)
           </label>
-          <Button type="button" onClick={screenshot} disabled={shooting} className="ml-auto h-9 text-xs bg-zinc-900 hover:bg-zinc-800 text-white" data-testid="dfr-map-screenshot-btn">
-            {shooting ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Camera className="w-4 h-4 mr-1" />}Screenshot {mode === "day" ? "Full Day" : "Per Job"}
-          </Button>
         </div>
         {onHomeChange && mode === "day" && <HomeAddress home={home || { address: "", lat: null, lng: null }} onChange={onHomeChange} compact />}
         <div ref={captureRef} className="bg-white p-2 space-y-3" data-testid="dfr-map-capture">
