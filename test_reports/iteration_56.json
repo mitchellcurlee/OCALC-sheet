@@ -1,0 +1,31 @@
+{
+  "summary": "Iteration 56 testing — DFR Home address, geocode, GPS track persistence, Travel Map route planner (Home→Job1), lazy-create JobTravelTracker on Job Detail, and Export dropdown DFR entry. 15/15 backend pytest tests PASS (home GET/PUT auth-gated and per-user, geocode valid US address returns Tomball ~30.097/-95.616, geocode 400 for q<4 chars, 404 for gibberish, track persists on POST + PUT and is omitted from list projection). Frontend Playwright 10/10 critical flows PASS: Job Detail renders job-travel-tracker ABOVE the Job Files + Job Photo Gallery grid (tracker top=121 vs files/gallery top=288.5); Export dropdown still contains daily-field-report-btn → navigates to DFR page; after deleting today's DFR, merely VIEWING Job Detail does NOT auto-create a report (reports count=0, no row for job) proving lazy behavior; GPS Start Travel then creates the row with gps.travel_start and 4-phase progression (Start → Arrived → Leaving → Stop) works end-to-end; HomeAddress bar shows above the GPS tracker on the DFR page, clear → input returns, set with '100 Main St, Tomball, TX' geocodes and shows normalised address, persists through reload; Travel Map opens in Full Day mode by default, green Home pin label is rendered, Plan route produces leg 'Home → A050ABC 9.1 mi / 17 min / 0.25', Apply writes row 1 Travel to site hrs=0.25 + miles=9, and there is NO final leg back to Home (only 1 leg total for 1 job + home — matches 'NO final leg back home' spec).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_dfr_home_track_iter56.py",
+    "/app/test_reports/pytest/iter56_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "field_reports.py:92-103 — home GET/PUT and :128-136 geocode are correctly declared BEFORE /field-reports/{report_id} so FastAPI won't shadow the literal paths with the UUID path param. Verified via tests (/home 200 before any {report_id} match attempt).",
+    "useDailyReport.js:34 — on load, after listing the user's reports for the date, the hook now re-fetches by id to retrieve the full doc (including `track`). This correctly fixes the earlier bug where GPS tracks were wiped on reload (list endpoint excludes `track`).",
+    "useDailyReport.js:35 — when autoRow=false (Job Detail tracker) and no server-side report exists for the date, the hook uses a local `blank(date)` object (id=null) so the UI renders without creating anything server-side. First `changeRow`/`onTrack` triggers `persist()` which POSTs lazily. Verified: visiting Job Detail with no DFR for today yields 0 reports via API.",
+    "JobTravelTracker.jsx:12 — `if (!job || !report) return null;` is only reached if the hook returned null (initial load state); once blank-report fallback resolves it renders. No regression observed in tests."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_dfr_home_track_iter56.py (new)"
+  ],
+  "success_rate": {"backend": "100% (15/15)", "frontend": "100% (10/10 critical flows)"},
+  "test_credentials": "mitchell.curlee@byers.com / Dawson@2016 (regular user, home set to Tomball at end of tests); Admin@mastec.com / Mastecbyers12345 (used for per-user home isolation test — admin's home was set to 'ADMIN TEST ADDR, Austin, TX' then unchanged; main agent may wish to clear it).",
+  "seed_data_creation": "Backend tests created and deleted a DFR on 2030-02-20 for mitchell.curlee with 2–3 track points; admin's dfr_home was overwritten to 'ADMIN TEST ADDR, Austin, TX' for isolation check (not restored). Frontend tests created today's DFR via Start Travel click + Apply Route then deleted it. User home restored to '100 Main St, Tomball, TX' (30.097, -95.616) at the end.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend regression suite for the new routes: /app/backend/tests/test_dfr_home_track_iter56.py (15 tests, 4s runtime). TestIDs confirmed working: dfr-home-address, dfr-home-address-text, dfr-home-input, dfr-home-set-btn, dfr-home-edit-btn, dfr-home-clear-btn, dfr-home-pin-label, dfr-plan-route-btn, dfr-apply-route-btn, dfr-route-legs, dfr-route-leg-N, dfr-travel-map-btn, dfr-travel-map-dialog, dfr-map-mode (shadcn Select — do NOT call Playwright .select_option with values not in {day, job}; default is 'day' = Full Day), job-travel-tracker, job-travel-tracker-status, job-open-dfr-link, daily-field-report-btn in export-dropdown-btn menu, dfr-travel-start-btn / dfr-arrived-btn / dfr-leaving-btn / dfr-stop-btn inside the job-travel-tracker scope. Admin home dfr_home may need resetting if admin tests care about empty home — PUT /api/field-reports/home with {address:'', lat:null, lng:null}.",
+  "rca of the issue": "N/A — no issues found; feature works end to end. Note: the earlier 'lazy_no_row_on_view: FAIL' observed in the first frontend run was a false positive caused by pre-existing seed data from the main agent's smoke test (today's DFR already contained an A050ABC row). After cleaning today's DFR and re-visiting Job Detail from a fresh state, the lazy behavior was correctly verified (no report created on view)."
+}
