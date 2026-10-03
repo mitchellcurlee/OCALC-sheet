@@ -105,6 +105,8 @@ export const TravelMapDialog = ({ open, onOpenChange, report, jobs, employees, o
             <MapContainer center={fitPts[0] || [29.76, -95.37]} zoom={12} className="h-full w-full" scrollWheelZoom>
               <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" attribution="&copy; Esri" maxNativeZoom={19} maxZoom={22} crossOrigin="anonymous" />
               <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}" maxNativeZoom={19} maxZoom={22} crossOrigin="anonymous" />
+              {/* City / place names */}
+              <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}" maxNativeZoom={19} maxZoom={22} crossOrigin="anonymous" />
               {line.length > 1 && <Polyline positions={line} pathOptions={{ color: "#f97316", weight: 4, opacity: 0.9 }} />}
               {shownPins.map((p) => {
                 const n = rows.findIndex((r) => r.id === p.row.id) + 1;

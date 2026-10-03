@@ -570,3 +570,4 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 - User wanted true background GPS (not possible in a web app) — wake lock mitigation only. Tested: iteration_55 (12 backend + 15 UI pass).
 - 2026-06 DFR: Auto Next Row (after Stop → offer 'Start next job row' → next GPS-less row or new row starts at arrived; `dfr-start-next-btn`) + My Reports dialog (`components/dfr/MyReportsDialog.jsx`, lists own reports with jobs/hrs/miles, open by date → ?date=).
 - 2026-06 DFR: SOW/Job Type cells are dropdowns (shared `lib/jobTypes.js` JOB_TYPES, still auto-filled from job); travel-map pins draggable → row.pin_lat/pin_lng override (Reset moved pin link); FitAll keyed on mode/point count.
+- 2026-06 Travel Map: added Esri World_Boundaries_and_Places reference tiles (city/place names) on top of imagery + transportation.
