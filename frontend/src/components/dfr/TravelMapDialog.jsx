@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Camera, Loader2, Route } from "lucide-react";
 import { DFRTable } from "./DFRTable";
-import { trackMiles } from "@/lib/dfr";
+import { trackMiles, roundQuarter, fmtHrs } from "@/lib/dfr";
+import { RoutePlanner, PlannedRouteLine } from "./RoutePlanner";
 
 const pinIcon = (n) => L.divIcon({ className: "dfr-job-pin", html: `<div style="background:#dc2626;color:#fff;border:2px solid #fff;border-radius:9999px 9999px 9999px 0;transform:rotate(-45deg);width:28px;height:28px;display:flex;align-items:center;justify-content:center;font:700 12px ui-monospace,monospace;box-shadow:0 1px 4px rgba(0,0,0,.5)"><span style="transform:rotate(45deg)">${n}</span></div>`, iconSize: [28, 28], iconAnchor: [14, 28] });
 
@@ -54,6 +55,7 @@ const useRowPins = (rows, track, open) => {
 export const TravelMapDialog = ({ open, onOpenChange, report, jobs, employees, onRowChange }) => {
   const [mode, setMode] = useState("day"); // "day" | row id
   const [shooting, setShooting] = useState(false);
+  const [plan, setPlan] = useState(null); // planned driving route between job pins
   const captureRef = useRef(null);
   const rows = report.rows || [];
   const track = report.track || [];
@@ -63,7 +65,15 @@ export const TravelMapDialog = ({ open, onOpenChange, report, jobs, employees, o
   const shownTrack = mode === "day" ? track : track.filter((p) => p.row_id === mode);
   const shownPins = pins.filter((p) => p.pos && shownRows.some((r) => r.id === p.row.id));
   const line = shownTrack.map((p) => [p.lat, p.lng]);
-  const fitPts = useMemo(() => [...line, ...shownPins.map((p) => p.pos)], [line, shownPins]); // eslint-disable-line react-hooks/exhaustive-deps
+  const fitPts = useMemo(() => [...line, ...shownPins.map((p) => p.pos), ...(mode === "day" && plan ? plan.line : [])], [line, shownPins, plan, mode]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const applyPlan = (p) => {
+    if (!onRowChange) return;
+    const filled = rows.some((r) => p.legs.some((l) => l.from.row.id === r.id && (r.return_hrs || r.miles)));
+    if (filled && !window.confirm("Overwrite existing Return/next-site hours and miles with the planned values?")) return;
+    p.legs.forEach((l) => onRowChange({ ...l.from.row, return_hrs: fmtHrs(roundQuarter(l.hours)), miles: String(Math.min(500, Math.round(l.miles))) }));
+    toast.success(`Applied ${p.legs.length} leg${p.legs.length > 1 ? "s" : ""}: Return/next-site hours and miles filled`);
+  };
 
   const screenshot = async () => {
     const el = captureRef.current;
@@ -108,6 +118,7 @@ export const TravelMapDialog = ({ open, onOpenChange, report, jobs, employees, o
               {/* City / place names */}
               <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}" maxNativeZoom={19} maxZoom={22} crossOrigin="anonymous" />
               {line.length > 1 && <Polyline positions={line} pathOptions={{ color: "#f97316", weight: 4, opacity: 0.9 }} />}
+              {mode === "day" && <PlannedRouteLine plan={plan} />}
               {shownPins.map((p) => {
                 const n = rows.findIndex((r) => r.id === p.row.id) + 1;
                 return (
@@ -116,9 +127,10 @@ export const TravelMapDialog = ({ open, onOpenChange, report, jobs, employees, o
                   </Marker>
                 );
               })}
-              <FitAll points={fitPts} fitKey={`${mode}:${fitPts.length}:${open}`} />
+              <FitAll points={fitPts} fitKey={`${mode}:${fitPts.length}:${open}:${plan ? plan.miles : 0}`} />
             </MapContainer>
           </div>
+          {mode === "day" && <RoutePlanner pins={pins} plan={plan} onPlan={setPlan} onApply={onRowChange ? applyPlan : null} />}
           <DFRTable rows={shownRows} jobs={jobs} employees={employees} onChangeRow={() => {}} onRemoveRow={() => {}} onPickJob={() => {}} activeRowId={null} onActivate={() => {}} readOnly />
         </div>
       </DialogContent>
