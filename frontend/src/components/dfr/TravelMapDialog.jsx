@@ -71,6 +71,8 @@ export const TravelMapDialog = ({ open, onOpenChange, report, jobs, employees, o
   const [addrAt, setAddrAt] = useState({}); // "lat,lng" → nearest address (for pins whose row has no job address)
   const [startHome, setStartHome] = useState(true);
   const [endHome, setEndHome] = useState(false);
+  const [showTags, setShowTags] = useState(() => localStorage.getItem("dfrMapTags") !== "off"); // Site ID + address labels on pins
+  const toggleTags = () => setShowTags((v) => { localStorage.setItem("dfrMapTags", v ? "off" : "on"); return !v; });
   const captureRef = useRef(null);
   const rows = report.rows || [];
   const track = report.track || [];
@@ -154,6 +156,9 @@ export const TravelMapDialog = ({ open, onOpenChange, report, jobs, employees, o
           {onRowChange && shownPins.some((p) => p.manual) && (
             <button type="button" className="text-[11px] underline text-zinc-500 hover:text-red-600" onClick={() => shownPins.filter((p) => p.manual).forEach((p) => onRowChange({ ...p.row, pin_lat: null, pin_lng: null }))} data-testid="dfr-pin-reset">Reset moved pin{shownPins.filter((p) => p.manual).length > 1 ? "s" : ""}</button>
           )}
+          <label className="inline-flex items-center gap-1.5 text-xs text-zinc-700 cursor-pointer select-none" title="Show or hide the Site ID / address tags next to the pins">
+            <input type="checkbox" checked={showTags} onChange={toggleTags} data-testid="dfr-map-tags-toggle" />Pin tags (Site ID &amp; address)
+          </label>
           <Button type="button" onClick={screenshot} disabled={shooting} className="ml-auto h-9 text-xs bg-zinc-900 hover:bg-zinc-800 text-white" data-testid="dfr-map-screenshot-btn">
             {shooting ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Camera className="w-4 h-4 mr-1" />}Screenshot {mode === "day" ? "Full Day" : "Per Job"}
           </Button>
@@ -173,7 +178,7 @@ export const TravelMapDialog = ({ open, onOpenChange, report, jobs, employees, o
               {mode === "day" && <PlannedRouteLine plan={plan} />}
               {mode === "day" && homePin && (
                 <Marker position={homePin.pos} icon={homeIcon} draggable={!!onHomeChange} eventHandlers={{ dragend: (e) => moveHome(e.target.getLatLng()) }}>
-                  <Tooltip permanent direction="right" offset={[10, -14]} className="dfr-pin-label"><span data-testid="dfr-home-pin-label"><b>Home</b>{home.address && <><br /><span style={{ fontSize: 10, fontWeight: 400 }}>{home.address}</span></>}</span></Tooltip>
+                  {showTags && <Tooltip permanent direction="right" offset={[10, -14]} className="dfr-pin-label"><span data-testid="dfr-home-pin-label"><b>Home</b>{home.address && <><br /><span style={{ fontSize: 10, fontWeight: 400 }}>{home.address}</span></>}</span></Tooltip>}
                 </Marker>
               )}
               {shownPins.map((p) => {
@@ -181,7 +186,7 @@ export const TravelMapDialog = ({ open, onOpenChange, report, jobs, employees, o
                 const addr = pinAddress(p);
                 return (
                   <Marker key={p.row.id} position={p.pos} icon={pinIcon(n)} draggable={!!onRowChange} eventHandlers={{ dragend: (e) => { const ll = e.target.getLatLng(); onRowChange?.({ ...p.row, pin_lat: ll.lat, pin_lng: ll.lng }); toast.success(`${p.row.job || "Job"} pin moved`); } }}>
-                    <Tooltip permanent direction="right" offset={[10, -14]} className="dfr-pin-label"><span data-testid={`dfr-pin-label-${n - 1}`}><b>{p.row.job || "Job"}</b>{addr && <><br /><span style={{ fontSize: 10, fontWeight: 400 }} data-testid={`dfr-pin-address-${n - 1}`}>{addr}</span></>}</span></Tooltip>
+                    {showTags && <Tooltip permanent direction="right" offset={[10, -14]} className="dfr-pin-label"><span data-testid={`dfr-pin-label-${n - 1}`}><b>{p.row.job || "Job"}</b>{addr && <><br /><span style={{ fontSize: 10, fontWeight: 400 }} data-testid={`dfr-pin-address-${n - 1}`}>{addr}</span></>}</span></Tooltip>}
                   </Marker>
                 );
               })}
