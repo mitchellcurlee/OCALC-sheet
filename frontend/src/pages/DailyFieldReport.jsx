@@ -4,10 +4,11 @@ import axios from "axios";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, FileSpreadsheet, Loader2, Plus, Route, Save, ClipboardList } from "lucide-react";
+import { ArrowLeft, FileSpreadsheet, Loader2, Plus, Route, Save, ClipboardList, History } from "lucide-react";
 import { DFRTable } from "@/components/dfr/DFRTable";
 import { TravelTracker } from "@/components/dfr/TravelTracker";
 import { TravelMapDialog } from "@/components/dfr/TravelMapDialog";
+import { MyReportsDialog } from "@/components/dfr/MyReportsDialog";
 import { EMPLOYEE_NAMES } from "@/components/ase/ASEFormConstants";
 import { newRow, todayISO } from "@/lib/dfr";
 
@@ -22,6 +23,7 @@ export default function DailyFieldReport() {
   const [dirty, setDirty] = useState(false);
   const [activeRowId, setActiveRowId] = useState(null);
   const [mapOpen, setMapOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const saveTimer = useRef(null);
   const reportRef = useRef(null);
   reportRef.current = report;
@@ -74,6 +76,19 @@ export default function DailyFieldReport() {
   const pickJob = (rowId, jid) => { const job = jobs.find((j) => j.id === jid); changeRow({ ...report.rows.find((x) => x.id === rowId), job_id: jid, job: job?.name || "", sow: job?.job_type || "", job_type: job?.job_type || "", job_address: job?.location || "" }); };
   const addRow = () => { const row = { ...newRow(null), date: report.date, fielder: report.fielder || "" }; update((r) => ({ ...r, rows: [...r.rows, row] })); setActiveRowId(row.id); };
   const onTrack = (pt, clearRowId) => update((r) => ({ ...r, track: pt ? [...r.track, pt] : r.track.filter((p) => p.row_id !== clearRowId) }));
+  // Next row for one-tap continuation: first later row without GPS, else a new row; it starts at "arrived"
+  const startNextRow = (nowIso) => {
+    const rep = reportRef.current;
+    const idx = rep.rows.findIndex((r) => r.id === activeRowId);
+    let target = rep.rows.slice(idx + 1).find((r) => !r.gps?.travel_start);
+    let rows = rep.rows;
+    if (!target) { target = { ...newRow(null), date: rep.date, fielder: rep.fielder || "" }; rows = [...rows, target]; }
+    const gps = { travel_start: nowIso, arrived: nowIso };
+    rows = rows.map((r) => (r.id === target.id ? { ...r, gps } : r));
+    update((r) => ({ ...r, rows }));
+    setActiveRowId(target.id);
+    return { ...target, gps, index: rows.findIndex((r) => r.id === target.id) };
+  };
   const setFielder = (v) => update((r) => ({ ...r, fielder: v, rows: r.rows.map((x) => (x.fielder ? x : { ...x, fielder: v })) }));
   const changeDate = (d) => { if (!d) return; clearTimeout(saveTimer.current); persist().then(() => setParams({ date: d })); };
 
@@ -109,6 +124,7 @@ export default function DailyFieldReport() {
               <option value="">Select…</option>
               {EMPLOYEE_NAMES.map((n) => <option key={n} value={n}>{n}</option>)}
             </select>
+            <Button onClick={() => setHistoryOpen(true)} variant="outline" className="h-9 text-xs bg-zinc-800 border-zinc-600 text-white hover:bg-zinc-700" data-testid="dfr-my-reports-btn"><History className="w-4 h-4 mr-1" />My Reports</Button>
             <Button onClick={() => setMapOpen(true)} className="h-9 text-xs bg-orange-600 hover:bg-orange-700 text-white" data-testid="dfr-travel-map-btn"><Route className="w-4 h-4 mr-1" />Travel Map</Button>
             <Button onClick={exportXlsx} className="h-9 text-xs bg-emerald-600 hover:bg-emerald-700 text-white" data-testid="dfr-export-xlsx-btn"><FileSpreadsheet className="w-4 h-4 mr-1" />Export to Excel</Button>
             <Button onClick={persist} variant="outline" className="h-9 text-xs bg-zinc-800 border-zinc-600 text-white hover:bg-zinc-700" data-testid="dfr-save-btn">{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}</Button>
@@ -116,10 +132,11 @@ export default function DailyFieldReport() {
         </div>
       </header>
       <main className="max-w-[1500px] mx-auto p-3 space-y-3">
-        <TravelTracker report={report} activeRow={activeRow} rowIndex={rowIndex} onTrack={onTrack} onRowChange={changeRow} />
+        <TravelTracker report={report} activeRow={activeRow} rowIndex={rowIndex} onTrack={onTrack} onRowChange={changeRow} onStartNext={startNextRow} />
         <DFRTable rows={report.rows} jobs={jobs} employees={EMPLOYEE_NAMES} onChangeRow={changeRow} onRemoveRow={removeRow} onPickJob={pickJob} activeRowId={activeRowId} onActivate={setActiveRowId} />
         <Button onClick={addRow} variant="outline" className="h-10 text-xs bg-white border-zinc-300" data-testid="dfr-add-row-btn"><Plus className="w-4 h-4 mr-1" />Add job row</Button>
       </main>
+      <MyReportsDialog open={historyOpen} onOpenChange={setHistoryOpen} currentDate={report.date} onPick={(d) => { setHistoryOpen(false); changeDate(d); }} />
       <TravelMapDialog open={mapOpen} onOpenChange={setMapOpen} report={report} jobs={jobs} employees={EMPLOYEE_NAMES} />
     </div>
   );

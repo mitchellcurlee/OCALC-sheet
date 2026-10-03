@@ -10,8 +10,9 @@ const MIN_MOVE_M = 8;
  * 4-phase GPS tracker for the active DFR row: Start Travel → Arrived at Site → Leaving Site → Stop Travel.
  * Points are appended to report.track as {lat,lng,t,row_id,phase}; on Stop the row's hours/miles are auto-filled.
  */
-export const TravelTracker = ({ report, activeRow, rowIndex, onTrack, onRowChange }) => {
+export const TravelTracker = ({ report, activeRow, rowIndex, onTrack, onRowChange, onStartNext }) => {
   const [watching, setWatching] = useState(false);
+  const [offerNext, setOfferNext] = useState(false);
   const [lastFix, setLastFix] = useState(null);
   const watchRef = useRef(null);
   const wakeRef = useRef(null); // Screen Wake Lock keeps the phone awake so GPS keeps flowing
@@ -81,9 +82,22 @@ export const TravelTracker = ({ report, activeRow, rowIndex, onTrack, onRowChang
       if (s.return_hrs != null) row.return_hrs = fmtHrs(s.return_hrs);
       row.miles = String(s.miles);
       toast.success(`Auto-filled: ${first ? `travel ${fmtHrs(s.travel_hrs ?? 0)}h, ` : ""}work ${fmtHrs(s.work_hrs ?? 0)}h, return ${fmtHrs(s.return_hrs ?? 0)}h, ${s.miles} mi${first ? "" : " (travel left for manual entry)"}`);
+      setOfferNext(true);
     }
     onRowChange(row);
   };
+
+  // One tap: next job row starts at "Arrived at Site" (the drive here was the previous row's Return leg)
+  const startNext = () => {
+    const now = new Date().toISOString();
+    const row = onStartNext?.(now);
+    setOfferNext(false);
+    if (!row) return;
+    lastPtRef.current = null;
+    if (startWatch()) toast.success(`Row ${row.index + 1} started — you're at the site, recording work time`);
+  };
+
+  useEffect(() => { setOfferNext(false); }, [activeRow?.id]);
 
   const resetRow = () => {
     if (!activeRow || !window.confirm("Clear GPS phases for this row? Recorded track points for this row are removed.")) return;
@@ -119,6 +133,13 @@ export const TravelTracker = ({ report, activeRow, rowIndex, onTrack, onRowChang
           </Button>
         ))}
       </div>
+      {offerNext && phase === "done" && (
+        <div className="flex flex-wrap items-center gap-2 bg-emerald-50 border border-emerald-300 rounded px-3 py-2" data-testid="dfr-next-row-offer">
+          <span className="text-xs text-emerald-900">Arrived at the next job? Start its row now — Work time begins immediately.</span>
+          <Button type="button" onClick={startNext} className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white ml-auto" data-testid="dfr-start-next-btn"><Navigation className="w-3.5 h-3.5 mr-1" />Start next job row</Button>
+          <Button type="button" variant="ghost" onClick={() => setOfferNext(false)} className="h-8 text-xs text-zinc-600" data-testid="dfr-next-row-dismiss">Not now</Button>
+        </div>
+      )}
       <div className="flex items-center justify-between text-[11px] text-zinc-500">
         <span>Screen is kept awake while recording; keep this page open (browsers pause GPS when the app is in the background). {rowIndex === 0 ? "First row: Travel, Work and Return are auto-filled." : "Rows after the first: Work and Return auto-filled; Travel to site left for manual entry."} Any value can be edited.</span>
         {activeRow && (gps.travel_start || rowPts.length > 0) && <button type="button" onClick={resetRow} className="underline hover:text-red-600" data-testid="dfr-gps-reset">Reset row GPS</button>}
