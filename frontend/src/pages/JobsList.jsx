@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { JOB_TYPES } from "@/lib/jobTypes";
 import { ASE_OPTIONS } from "@/components/ase/ASEFormConstants";
 import {
   Dialog,
@@ -65,7 +66,6 @@ import { getOfflineSavedJobs } from "@/lib/offlineTiles";
 import { useAuth } from "@/context/AuthContext";
 import { OfflineIndicator } from "@/components/OfflineIndicator";
 
-const JOB_TYPES = ["OCALC", "DMG", "ABF", "BAU", "ASE", "PBB", "SEAL", "SV", "CELL SITE", "PFP", "F1", "F2", "ACB"];
 
 const jobPinIcon = (name, completed = false) => {
   const color = completed ? "#16a34a" : "#dc2626";

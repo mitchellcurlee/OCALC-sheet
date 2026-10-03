@@ -12,7 +12,8 @@ import { trackMiles } from "@/lib/dfr";
 
 const pinIcon = (n) => L.divIcon({ className: "dfr-job-pin", html: `<div style="background:#dc2626;color:#fff;border:2px solid #fff;border-radius:9999px 9999px 9999px 0;transform:rotate(-45deg);width:28px;height:28px;display:flex;align-items:center;justify-content:center;font:700 12px ui-monospace,monospace;box-shadow:0 1px 4px rgba(0,0,0,.5)"><span style="transform:rotate(45deg)">${n}</span></div>`, iconSize: [28, 28], iconAnchor: [14, 28] });
 
-const FitAll = ({ points }) => {
+// Fits once per view (mode / point count) so dragging a pin doesn't recenter the map
+const FitAll = ({ points, fitKey }) => {
   const map = useMap();
   useEffect(() => {
     if (!points.length) return;
@@ -22,11 +23,11 @@ const FitAll = ({ points }) => {
       else map.fitBounds(L.latLngBounds(points), { padding: [40, 40] });
     }, 350);
     return () => clearTimeout(t);
-  }, [map, points]);
+  }, [map, fitKey]); // eslint-disable-line react-hooks/exhaustive-deps
   return null;
 };
 
-/** Pin position for a row: first "work" fix → last "travel" fix → first pole/UG of the job. */
+/** Pin position for a row: manual drag override → first "work" fix → last "travel" fix → first pole/UG of the job. */
 const useRowPins = (rows, track, open) => {
   const [fallback, setFallback] = useState({});
   useEffect(() => {
@@ -45,11 +46,12 @@ const useRowPins = (rows, track, open) => {
     const work = pts.find((p) => p.phase === "work");
     const trav = [...pts].reverse().find((p) => p.phase === "travel");
     const src = work || trav;
-    return { row: r, pos: src ? [src.lat, src.lng] : fallback[r.job_id] || null };
+    const manual = Number.isFinite(r.pin_lat) && Number.isFinite(r.pin_lng) ? [r.pin_lat, r.pin_lng] : null;
+    return { row: r, pos: manual || (src ? [src.lat, src.lng] : fallback[r.job_id] || null), manual: !!manual };
   }), [rows, track, fallback]);
 };
 
-export const TravelMapDialog = ({ open, onOpenChange, report, jobs, employees }) => {
+export const TravelMapDialog = ({ open, onOpenChange, report, jobs, employees, onRowChange }) => {
   const [mode, setMode] = useState("day"); // "day" | row id
   const [shooting, setShooting] = useState(false);
   const captureRef = useRef(null);
@@ -87,7 +89,10 @@ export const TravelMapDialog = ({ open, onOpenChange, report, jobs, employees })
             <option value="day">Full Day — all jobs</option>
             {rows.map((r, i) => <option key={r.id} value={r.id}>Per Job — {i + 1}. {r.job || "(no job)"}</option>)}
           </select>
-          <span className="text-xs text-zinc-500">{shownTrack.length} GPS points · {trackMiles(shownTrack).toFixed(1)} mi</span>
+          <span className="text-xs text-zinc-500">{shownTrack.length} GPS points · {trackMiles(shownTrack).toFixed(1)} mi{onRowChange ? " · drag a pin to correct its spot" : ""}</span>
+          {onRowChange && shownPins.some((p) => p.manual) && (
+            <button type="button" className="text-[11px] underline text-zinc-500 hover:text-red-600" onClick={() => shownPins.filter((p) => p.manual).forEach((p) => onRowChange({ ...p.row, pin_lat: null, pin_lng: null }))} data-testid="dfr-pin-reset">Reset moved pin{shownPins.filter((p) => p.manual).length > 1 ? "s" : ""}</button>
+          )}
           <Button type="button" onClick={screenshot} disabled={shooting} className="ml-auto h-9 text-xs bg-zinc-900 hover:bg-zinc-800 text-white" data-testid="dfr-map-screenshot-btn">
             {shooting ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Camera className="w-4 h-4 mr-1" />}Screenshot {mode === "day" ? "Full Day" : "Per Job"}
           </Button>
@@ -104,12 +109,12 @@ export const TravelMapDialog = ({ open, onOpenChange, report, jobs, employees })
               {shownPins.map((p) => {
                 const n = rows.findIndex((r) => r.id === p.row.id) + 1;
                 return (
-                  <Marker key={p.row.id} position={p.pos} icon={pinIcon(n)}>
+                  <Marker key={p.row.id} position={p.pos} icon={pinIcon(n)} draggable={!!onRowChange} eventHandlers={{ dragend: (e) => { const ll = e.target.getLatLng(); onRowChange?.({ ...p.row, pin_lat: ll.lat, pin_lng: ll.lng }); toast.success(`${p.row.job || "Job"} pin moved`); } }}>
                     <Tooltip permanent direction="right" offset={[10, -14]} className="dfr-pin-label"><span data-testid={`dfr-pin-label-${n - 1}`}><b>{p.row.job || "Job"}</b></span></Tooltip>
                   </Marker>
                 );
               })}
-              <FitAll points={fitPts} />
+              <FitAll points={fitPts} fitKey={`${mode}:${fitPts.length}:${open}`} />
             </MapContainer>
           </div>
           <DFRTable rows={shownRows} jobs={jobs} employees={employees} onChangeRow={() => {}} onRemoveRow={() => {}} onPickJob={() => {}} activeRowId={null} onActivate={() => {}} readOnly />

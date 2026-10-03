@@ -2,6 +2,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Trash2, Radio } from "lucide-react";
 import { MARKETS, HOUR_OPTIONS, MILE_OPTIONS, fmtHrs } from "@/lib/dfr";
+import { JOB_TYPES } from "@/lib/jobTypes";
 
 export const DFR_HEADERS = [
   "Date", "Job", "Market", "SOW", "Job Type", "Job Address", "Fielder at Site", "Travel to site (hrs)", "Work @job (hrs)",
@@ -38,8 +39,8 @@ export const DFRRow = ({ row, i, striped, jobs, employees, onChange, onRemove, o
       {jobs.map((j) => <option key={j.id} value={j.id}>{j.name}</option>)}
     </select>,
     <Sel key="market" value={row.market} options={MARKETS} onChange={set("market")} testId={`dfr-market-${i}`} />,
-    <Txt key="sow" value={row.sow} onChange={set("sow")} testId={`dfr-sow-${i}`} className="text-center min-w-[70px]" />,
-    <Txt key="jt" value={row.job_type} onChange={set("job_type")} testId={`dfr-jobtype-${i}`} className="text-center min-w-[70px]" />,
+    <Sel key="sow" value={row.sow} options={JOB_TYPES.includes(row.sow) || !row.sow ? JOB_TYPES : [row.sow, ...JOB_TYPES]} onChange={set("sow")} testId={`dfr-sow-${i}`} />,
+    <Sel key="jt" value={row.job_type} options={JOB_TYPES.includes(row.job_type) || !row.job_type ? JOB_TYPES : [row.job_type, ...JOB_TYPES]} onChange={set("job_type")} testId={`dfr-jobtype-${i}`} />,
     <Txt key="addr" value={row.job_address} onChange={set("job_address")} testId={`dfr-address-${i}`} className="min-w-[180px]" />,
     <Sel key="fielder" value={row.fielder} options={employees} onChange={set("fielder")} testId={`dfr-fielder-${i}`} placeholder="Select" />,
     <Sel key="travel" value={fmtHrs(row.travel_hrs)} options={HOUR_OPTIONS} onChange={set("travel_hrs")} testId={`dfr-travel-${i}`} />,
