@@ -142,12 +142,24 @@ def _fmt(v):
         return v
 
 
-def build_dfr_workbook(report: dict) -> Workbook:
+TOTAL_KEYS = ("travel_hrs", "work_hrs", "return_hrs", "miles", "footage", "poles", "computer_hrs")
+
+
+def _num(v):
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def build_dfr_workbook(report: dict, title: str = "Daily Field Report") -> Workbook:
+    """One sheet: header, one line per used row (no padding), then a TOTALS line."""
     wb = Workbook()
     ws = wb.active
-    ws.title = "Daily Field Report"
+    ws.title = title[:31]
     header_fill = PatternFill("solid", fgColor="000000")
     grey_fill = PatternFill("solid", fgColor="D9D9D9")
+    total_fill = PatternFill("solid", fgColor="FFF2CC")
     thin = Side(style="thin", color="000000")
     thick = Side(style="medium", color="000000")
     border = Border(left=thin, right=thin, top=thin, bottom=thin)
@@ -159,10 +171,8 @@ def build_dfr_workbook(report: dict) -> Workbook:
         c.border = border
         ws.column_dimensions[get_column_letter(ci)].width = width
     ws.row_dimensions[1].height = 78
-    rows = report.get("rows") or []
-    n = max(len(rows), 6)
-    for ri in range(n):
-        row = rows[ri] if ri < len(rows) else {}
+    rows = [r for r in (report.get("rows") or []) if any(str(r.get(k) or "").strip() for k, _, _ in DFR_COLUMNS if k != "date")]
+    for ri, row in enumerate(rows):
         for ci, (key, _, _) in enumerate(DFR_COLUMNS, 1):
             val = row.get(key, "") if key != "date" else (row.get("date") or report.get("date") or "")
             c = ws.cell(row=ri + 2, column=ci, value=_fmt(val))
@@ -170,6 +180,17 @@ def build_dfr_workbook(report: dict) -> Workbook:
             c.alignment = Alignment(horizontal="center" if key not in ("job_address", "comments", "status") else "left", vertical="center", wrap_text=True)
             if ri % 2 == 0:
                 c.fill = grey_fill
+    # TOTALS line
+    tr = len(rows) + 2
+    totals = {k: sum(_num(r.get(k)) for r in rows) for k in TOTAL_KEYS}
+    for ci, (key, _, _) in enumerate(DFR_COLUMNS, 1):
+        val = "TOTALS" if key == "date" else (_fmt(round(totals[key], 2)) if key in totals else "")
+        c = ws.cell(row=tr, column=ci, value=val)
+        c.fill = total_fill
+        c.font = Font(bold=True)
+        c.alignment = Alignment(horizontal="center", vertical="center")
+        c.border = Border(left=thin, right=thin, top=thick, bottom=thick)
+    n = len(rows) + 1  # data rows + totals
     # thick separators after Fielder and after Return (as on the reference sheet)
     for ci in (7, 10):
         for ri in range(1, n + 2):
@@ -179,14 +200,38 @@ def build_dfr_workbook(report: dict) -> Workbook:
     return wb
 
 
+def _xlsx_response(wb: Workbook, fname: str) -> StreamingResponse:
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return StreamingResponse(buf, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                             headers={"Content-Disposition": f'attachment; filename="{fname}"'})
+
+
+@router.get("/field-reports/export/range")
+async def export_field_reports_range(date_from: str, date_to: str, current_user: dict = Depends(get_current_user)):
+    """One combined sheet for all of the caller's reports between two dates (inclusive), rows in date order, with totals."""
+    if date_to < date_from:
+        date_from, date_to = date_to, date_from
+    docs = await _db.field_reports.find({"user_id": current_user["id"], "date": {"$gte": date_from, "$lte": date_to}},
+                                        {"_id": 0, "track": 0}).sort("date", 1).to_list(1000)
+    rows: List[Dict[str, Any]] = []
+    fielders: List[str] = []
+    for d in docs:
+        for r in d.get("rows") or []:
+            rows.append({**r, "date": r.get("date") or d.get("date")})
+        if d.get("fielder") and d["fielder"] not in fielders:
+            fielders.append(d["fielder"])
+    if not rows:
+        raise HTTPException(status_code=404, detail="No report rows between those dates")
+    wb = build_dfr_workbook({"rows": rows, "date": date_from, "fielder": ", ".join(fielders)}, title=f"DFR {date_from} to {date_to}")
+    fielder = (fielders[0] if len(fielders) == 1 else "combined").replace(" ", "_")
+    return _xlsx_response(wb, f"Daily_Field_Report_{date_from}_to_{date_to}_{fielder}.xlsx")
+
+
 @router.get("/field-reports/{report_id}/export/xlsx")
 async def export_field_report_xlsx(report_id: str, current_user: dict = Depends(get_current_user)):
     report = await _get_report(report_id, current_user)
     wb = build_dfr_workbook(report)
-    buf = io.BytesIO()
-    wb.save(buf)
-    buf.seek(0)
     fielder = (report.get("fielder") or "").replace(" ", "_") or "fielder"
-    fname = f"Daily_Field_Report_{report.get('date', '')}_{fielder}.xlsx"
-    return StreamingResponse(buf, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                             headers={"Content-Disposition": f'attachment; filename="{fname}"'})
+    return _xlsx_response(wb, f"Daily_Field_Report_{report.get('date', '')}_{fielder}.xlsx")
