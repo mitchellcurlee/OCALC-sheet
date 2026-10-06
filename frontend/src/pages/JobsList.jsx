@@ -794,20 +794,20 @@ const JobsList = () => {
               </Select>
             </div>
             <div className="space-y-2">
+              <Label className="text-xs font-mono text-zinc-500 uppercase">Business Name</Label>
+              <Input
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                placeholder="e.g., Blue Dog Landwerks"
+                className="bg-white border-zinc-300 text-zinc-900"
+              />
+            </div>
+            <div className="space-y-2">
               <Label className="text-xs font-mono text-zinc-500 uppercase">Location</Label>
               <Input
                 value={formData.location}
                 onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                 placeholder="e.g., Dallas, TX"
-                className="bg-white border-zinc-300 text-zinc-900"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-xs font-mono text-zinc-500 uppercase">Description</Label>
-              <Input
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Optional description..."
                 className="bg-white border-zinc-300 text-zinc-900"
               />
             </div>
@@ -874,18 +874,18 @@ const JobsList = () => {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label className="text-xs font-mono text-zinc-500 uppercase">Location</Label>
+              <Label className="text-xs font-mono text-zinc-500 uppercase">Business Name</Label>
               <Input
-                value={formData.location}
-                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 className="bg-white border-zinc-300 text-zinc-900"
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-xs font-mono text-zinc-500 uppercase">Description</Label>
+              <Label className="text-xs font-mono text-zinc-500 uppercase">Location</Label>
               <Input
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                value={formData.location}
+                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                 className="bg-white border-zinc-300 text-zinc-900"
               />
             </div>

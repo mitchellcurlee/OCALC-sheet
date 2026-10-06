@@ -82,6 +82,8 @@ from routes import cloud_exports as cloud_exports_routes
 from routes import addresses as addresses_routes
 from routes import kmz as kmz_routes
 from routes import kml_import as kml_import_routes
+from routes import ase2 as ase2_routes
+from routes import spf as spf_routes
 
 auth_routes.set_db(db)
 jobs_routes.set_db(db)
@@ -97,6 +99,8 @@ import_excel_routes.set_db(db)
 addresses_routes.set_db(db)
 kmz_routes.set_db(db)
 kml_import_routes.set_db(db)
+ase2_routes.set_db(db)
+spf_routes.set_db(db)
 trash_routes.set_db(db)
 backup_routes.set_db(db)
 cloud_exports_routes.set_db(db)
@@ -119,6 +123,8 @@ api_router.include_router(cloud_exports_routes.router)
 api_router.include_router(addresses_routes.router)
 api_router.include_router(kmz_routes.router)
 api_router.include_router(kml_import_routes.router)
+api_router.include_router(ase2_routes.router)
+api_router.include_router(spf_routes.router)
 
 
 # Root endpoint

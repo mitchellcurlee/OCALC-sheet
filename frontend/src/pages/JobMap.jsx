@@ -715,6 +715,14 @@ const JobMap = () => {
   }, [mapLayer]);
   const navigate = useNavigate();
   const goBack = useGoBack(`/jobs/${jobId}`);
+  const setAllLabelSizes = async (size) => {
+    try {
+      await axios.put(`/jobs/${jobId}/label-size`, { size });
+      setPoles((prev) => prev.map((p) => ({ ...p, label_size: size })));
+      setUnderground((prev) => prev.map((u) => ({ ...u, label_size: size })));
+      toast.success(size === "off" ? "All labels hidden" : size === "small" ? "All labels shrunk" : "All labels back to normal");
+    } catch { toast.error("Could not update labels"); }
+  };
   const [connectionEditMode, setConnectionEditMode] = useState(false);
   const [selectedConn, setSelectedConn] = useState(null);
   const [reconnectSide, setReconnectSide] = useState(null);
@@ -2724,6 +2732,13 @@ const JobMap = () => {
                     </div>
                     
                     <DropdownMenuSeparator />
+                    <DropdownMenuLabel className="text-xs text-zinc-500 uppercase tracking-wider">All Labels</DropdownMenuLabel>
+                    {LABEL_SIZE_MODES.map((m) => (
+                      <DropdownMenuItem key={m} onClick={() => setAllLabelSizes(m)} className="cursor-pointer capitalize" data-testid={`map-all-labels-${m}`}>
+                        {m === "normal" ? "Normal labels (all items)" : m === "small" ? "Shrink all labels" : "Hide all labels"}
+                      </DropdownMenuItem>
+                    ))}
+                    <DropdownMenuSeparator />
                     <DropdownMenuLabel className="text-xs text-zinc-500 uppercase tracking-wider">Edit Actions</DropdownMenuLabel>
                     
                     <DropdownMenuItem
@@ -3436,11 +3451,6 @@ const JobMap = () => {
                               </Link>
                             </div>
                           )}
-                          {!positionEditMode && !connectionEditMode && (
-                            <Button size="sm" variant="outline" className="w-full h-8 mt-2 bg-emerald-50 border-emerald-300 hover:bg-emerald-100 text-emerald-800" onClick={() => startConnectFrom({ id: p.id, type: "pole", label: p.pole_number ? `Pole ${p.pole_number}` : "Pole" })} data-testid={`popup-connect-${p.id}`}>
-                              <Link2 className="w-3.5 h-3.5 mr-1" />Connect to…
-                            </Button>
-                          )}
                           {!positionEditMode && (
                             <PolePopupEditor
                               pole={p}
@@ -3501,11 +3511,6 @@ const JobMap = () => {
                             <Link to={`/jobs/${jobId}/underground/edit/${u.id}?from=map`}>
                               <Button size="sm" className="w-full h-8 mt-2 text-white" style={{ backgroundColor: isRed ? '#dc2626' : itemColor }} data-testid={`ug-edit-${u.id}`}>Edit</Button>
                             </Link>
-                            {!connectionEditMode && (
-                              <Button size="sm" variant="outline" className="w-full h-8 mt-2 bg-emerald-50 border-emerald-300 hover:bg-emerald-100 text-emerald-800" onClick={() => startConnectFrom({ id: u.id, type: "underground", label: `${u.type}${u.label ? ` · ${u.label}` : ""}` })} data-testid={`ug-popup-connect-${u.id}`}>
-                                <Link2 className="w-3.5 h-3.5 mr-1" />Connect to…
-                              </Button>
-                            )}
                             <UgPopupEditor
                               item={u}
                               defaultColor={u.aerial_override === "neutral" ? "#9333ea" : isAerialAttr(u) ? "#2563eb" : undergroundColorHex}
@@ -3719,6 +3724,7 @@ const JobMap = () => {
               {route.length > 0 && (
                 <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-red-600 border border-white inline-block flex-shrink-0"></span>Pole (Red)</div>
               )}
+              {poles.some((p) => (p.marker_color || "").toLowerCase() === "#2563eb") && <div className="flex items-center gap-2" data-testid="legend-pole-address"><span className="w-3 h-3 rounded-full bg-blue-600 border border-white inline-block flex-shrink-0"></span>Address (Blue pole)</div>}
               {(poles.some((p) => p.marker_color === "#39ff14") || underground.some((u) => u.marker_color === "#39ff14")) && (
                 <div className="flex items-center gap-2 mt-0.5" data-testid="legend-fst"><span className="w-3 h-3 rounded-full border border-white inline-block flex-shrink-0" style={{ backgroundColor: "#39ff14" }}></span>FST (Neon Green)</div>
               )}

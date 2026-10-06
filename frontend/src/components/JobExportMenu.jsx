@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
-import { FileSpreadsheet, ChevronDown, ClipboardList, FileText, FileDown, Globe, FileUp, Share2 } from "lucide-react";
+import { FileSpreadsheet, ChevronDown, ClipboardList, FileText, FileDown, Globe, FileUp, Share2, FileSignature } from "lucide-react";
 
 /** Shared Export dropdown (Job Detail + interactive map). onAction(key) handles job_excel | sow_docx | permission_stamp | kmz | import_kml | share. */
 export const JobExportMenu = ({ jobId, onAction, className = "", align = "end" }) => {
@@ -24,6 +24,12 @@ export const JobExportMenu = ({ jobId, onAction, className = "", align = "end" }
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => navigate(`/jobs/${jobId}/ase`)} data-testid="ase-form-btn" className="cursor-pointer">
           <FileText className="w-4 h-4 mr-2 text-blue-600" />ASE Form
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => navigate(`/jobs/${jobId}/ase2`)} data-testid="ase-form2-btn" className="cursor-pointer">
+          <FileText className="w-4 h-4 mr-2 text-indigo-600" />ASE Form 2
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => navigate(`/jobs/${jobId}/spf`)} data-testid="spf-form-btn" className="cursor-pointer">
+          <FileSignature className="w-4 h-4 mr-2 text-blue-700" />SPF Form (Right of Entry)
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => onAction("sow_docx")} data-testid="sow-word-export-btn" className="cursor-pointer">
           <FileDown className="w-4 h-4 mr-2 text-blue-600" />SOW Notes (Word)

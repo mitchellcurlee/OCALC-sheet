@@ -25,6 +25,8 @@ import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
 import AdminUsers from "@/pages/AdminUsers";
 import TeamReports from "@/pages/TeamReports";
+import ASEForm2 from "@/pages/ASEForm2";
+import SPFForm from "@/pages/SPFForm";
 import DailyFieldReport from "@/pages/DailyFieldReport";
 import BackupAtlas from "@/pages/BackupAtlas";
 import InstallPrompt from "@/components/InstallPrompt";
@@ -62,6 +64,8 @@ function App() {
             <Route path="/backup" element={<ProtectedRoute><BackupAtlas /></ProtectedRoute>} />
             <Route path="/admin/users" element={<ProtectedRoute><AdminUsers /></ProtectedRoute>} />
             <Route path="/admin/team-reports" element={<ProtectedRoute><TeamReports /></ProtectedRoute>} />
+            <Route path="/jobs/:jobId/ase2" element={<ProtectedRoute><ASEForm2 /></ProtectedRoute>} />
+            <Route path="/jobs/:jobId/spf" element={<ProtectedRoute><SPFForm /></ProtectedRoute>} />
             <Route path="/jobs/:jobId/field-report" element={<ProtectedRoute><DailyFieldReport /></ProtectedRoute>} />
           </Routes>
         </BrowserRouter>
