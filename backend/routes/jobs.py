@@ -17,6 +17,7 @@ from models.pole import Pole
 from services.auth import get_current_user, is_admin_user, is_mastec_byers_admin, is_company_email, company_email_regex
 from services.helpers import pole_sort_key, format_height, pole_photo_items, underground_photo_items
 from services.geocode import ensure_job_geo
+from services.address_name import street_only
 
 router = APIRouter(tags=["jobs"])
 
@@ -86,8 +87,8 @@ def verify_download_token(resource_type: str, resource_id: str, token: str) -> b
 
 
 def form_export_filename(job: dict, form: str, ext: str) -> str:
-    """Export filename: job type + address + form name"""
-    address = (job.get("location") or (job.get("ase_data") or {}).get("address") or "").strip()
+    """Export filename: job type + street address (no city/state/zip) + form name"""
+    address = street_only(job.get("location") or (job.get("ase_data") or {}).get("address") or "")
     parts = [p for p in [(job.get("job_type") or "OCALC").strip(), address, form] if p]
     raw = "_".join(parts)
     safe = "".join(c if c.isalnum() or c in " -_.," else "_" for c in raw).strip()
@@ -95,8 +96,8 @@ def form_export_filename(job: dict, form: str, ext: str) -> str:
 
 
 def photo_export_filename(job: dict, form: str, ext: str = "zip") -> str:
-    """Photo/screenshot style name: 'Job type (address) Form'"""
-    address = (job.get("location") or (job.get("ase_data") or {}).get("address") or "").strip()
+    """Photo/screenshot style name: 'Job type (street address) Form'"""
+    address = street_only(job.get("location") or (job.get("ase_data") or {}).get("address") or "")
     raw = f"{(job.get('job_type') or 'OCALC').strip()}{f' ({address})' if address else ''} {form}"
     safe = "".join(c if c.isalnum() or c in " -_.,()" else "_" for c in raw).strip()
     return f"{safe or 'export'}.{ext}"

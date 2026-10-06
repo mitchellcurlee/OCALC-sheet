@@ -15,6 +15,7 @@ import { layoutLabels, badgeBox } from "@/lib/labelLayout";
 import { ugTagText, ugTagColor, isAddressAttr, computeRoute, fmtFeet, feetToStation, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, downloadMapPdfPages, ugWithGps, undergroundAbbr, computeUgConnectors, computeConnectionPairs, computeStationSegFeet, UNDERGROUND_TYPES, isAerialAttr, resolvePairAerial, spanKey, routeWaypoints, routeArg, placeSpanNotes, LIST_PAGE_LINES, riserAnchor, tieInSuffix, pathRowText, pairIsManual, routePayloadFromOrder } from "@/lib/poleMapImage";
 import { ExportDestinationDialog } from "@/components/ExportDestinationDialog";
 import { CLOUD_EXPORT_LABELS, uploadExportToCloud } from "@/lib/cloudExports";
+import { streetOnly } from "@/lib/addressName";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -2680,7 +2681,7 @@ const JobMap = () => {
         return;
       }
       toast.info(mode === "both" ? "Capturing map and span list..." : "Capturing map...");
-      const addr = (job?.location || job?.ase_data?.address || "").trim();
+      const addr = streetOnly(job?.location || job?.ase_data?.address || "");
       const addrTag = addr ? ` (${addr})` : "";
       const baseName = `Screenshot${addrTag} ${sta ? "Station numbers" : "Linear"}`;
       const folderName = `${sta ? "Overview Station #'s" : "Overview Linear"}${addrTag}`;

@@ -1,4 +1,5 @@
 import axios from "axios";
+import { streetOnly } from "@/lib/addressName";
 
 export const CLOUD_EXPORT_LABELS = {
   job_excel: "OCALC/Job Excel",
@@ -14,7 +15,7 @@ export const CLOUD_EXPORT_LABELS = {
 export const notifyCloudExportsUpdated = () => window.dispatchEvent(new CustomEvent("cloud-exports-updated"));
 
 export const formExportFilename = (job, form, ext) => {
-  const address = (job?.location || job?.ase_data?.address || "").trim();
+  const address = streetOnly(job?.location || job?.ase_data?.address || "");
   const parts = [(job?.job_type || "OCALC").trim(), address, form].filter(Boolean);
   const safe = parts.join("_").replace(/[^\w \-.,]/g, "_").trim();
   return `${safe || "export"}.${ext}`;
