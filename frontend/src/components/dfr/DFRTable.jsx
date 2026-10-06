@@ -39,9 +39,9 @@ export const DFRRow = ({ row, i, count, striped, jobs, employees, onChange, onRe
   }
   const cells = [
     <Txt key="date" type="date" value={row.date} onChange={set("date")} testId={`dfr-date-${i}`} className="min-w-[120px]" />,
-    <select key="job" value={row.job_id || ""} onChange={(e) => onPickJob(e.target.value)} className="h-8 w-full min-w-[110px] bg-transparent text-xs border border-transparent focus:border-sky-500 focus:bg-white rounded outline-none font-semibold" data-testid={`dfr-job-${i}`}>
+    <select key="job" value={row.job_id || ""} onChange={(e) => onPickJob(e.target.value)} className="h-8 w-full min-w-[110px] max-w-[240px] bg-transparent text-xs border border-transparent focus:border-sky-500 focus:bg-white rounded outline-none font-semibold truncate" data-testid={`dfr-job-${i}`}>
       <option value="">{row.job || "— pick job —"}</option>
-      {jobs.map((j) => <option key={j.id} value={j.id}>{jobLabel(j)}</option>)}
+      {jobs.map((j) => <option key={j.id} value={j.id}>{jobLabel(j)}{j.location ? ` — ${j.location}` : ""}</option>)}
     </select>,
     <Sel key="market" value={row.market} options={MARKETS} onChange={set("market")} testId={`dfr-market-${i}`} />,
     <Sel key="sow" value={row.sow} options={JOB_TYPES.includes(row.sow) || !row.sow ? JOB_TYPES : [row.sow, ...JOB_TYPES]} onChange={set("sow")} testId={`dfr-sow-${i}`} />,

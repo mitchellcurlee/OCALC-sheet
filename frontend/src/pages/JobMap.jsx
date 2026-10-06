@@ -557,12 +557,10 @@ const ugIconOffset = (abbr, isRed, color, size, place) => {
   const h = size === "small" ? 13 : 18;
   const font = size === "small" ? "600 7px/1" : "600 9px/1";
   const d = 10, c = d / 2;
-  const lx = place.dx + place.w / 2, ly = place.dy + place.h / 2;
   return L.divIcon({
     className: "ug-marker",
     html: `<div style="position:relative;">
       <div style="background:${fill};border:1.5px solid #fff;border-radius:3px;width:${d}px;height:${d}px;box-shadow:0 1px 3px rgba(0,0,0,.4);"></div>
-      <svg style="position:absolute;left:${c}px;top:${c}px;overflow:visible;pointer-events:none;" width="1" height="1"><line x1="0" y1="0" x2="${lx}" y2="${ly}" stroke="${fill}" stroke-width="1.5" stroke-dasharray="3,2"/></svg>
       <div style="position:absolute;left:${c + place.dx}px;top:${c + place.dy}px;background:${fill};color:#fff;border:1.5px solid #fff;border-radius:3px;min-width:${h}px;height:${h}px;padding:0 ${size === "small" ? 2 : 3}px;display:flex;align-items:center;justify-content:center;font:${font} ui-monospace,monospace;box-shadow:0 1px 3px rgba(0,0,0,.4);white-space:nowrap;box-sizing:border-box;">${abbr}</div>
     </div>`,
     iconSize: [d, d],

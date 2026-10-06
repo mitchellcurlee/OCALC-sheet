@@ -91,7 +91,8 @@ export const drawSmartTags = (ctx, { poles = [], ugs = [], k = 2, obstacles = []
     if (!L || !it.text) return;
     const rx = src.x + L.dx * k, ry = src.y + L.dy * k, rw = L.w * k, rh = L.h * k;
     const nx = Math.max(L.dx, 0, -(L.dx + L.w)), ny = Math.max(L.dy, 0, -(L.dy + L.h));
-    if (Math.hypot(nx, ny) > 16 || (it._ug && !L.centered)) {
+    // Leader line for pole tags pushed away from their dot; attribute badges never get one (the square at the point marks the spot)
+    if (!it._ug && Math.hypot(nx, ny) > 16) {
       ctx.strokeStyle = src.color; ctx.lineWidth = 1.5 * (k / 2.2); ctx.setLineDash([3 * k, 2 * k]);
       ctx.beginPath(); ctx.moveTo(src.x, src.y); ctx.lineTo(rx + rw / 2, ry + rh / 2); ctx.stroke(); ctx.setLineDash([]);
     }
