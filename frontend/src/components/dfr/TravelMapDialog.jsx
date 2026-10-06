@@ -55,7 +55,7 @@ const useRowPins = (rows, track, open, jobs) => {
   }, [rows, open, jobs]); // eslint-disable-line react-hooks/exhaustive-deps
   return useMemo(() => rows.map((r) => {
     const pts = track.filter((p) => p.row_id === r.id);
-    const work = pts.find((p) => p.phase === "work");
+    const work = pts.find((p) => p.phase === "work" && p.best) || pts.find((p) => p.phase === "work");
     const trav = [...pts].reverse().find((p) => p.phase === "travel");
     const src = work || trav;
     const manual = Number.isFinite(r.pin_lat) && Number.isFinite(r.pin_lng) ? [r.pin_lat, r.pin_lng] : null;

@@ -25,6 +25,7 @@ class JobUpdate(BaseModel):
     site_id: Optional[str] = None
     employee_info: Optional[str] = None
     completed: Optional[bool] = None
+    started: Optional[bool] = None
     folder_month: Optional[str] = None
     span_notes: Optional[List[Dict[str, Any]]] = None
     span_order: Optional[List[str]] = None  # user-swapped span numbering (direction-free pair keys)
@@ -48,6 +49,7 @@ class Job(BaseModel):
     user_email: Optional[str] = None
     pole_count: int = 0
     completed: Optional[bool] = False
+    started: Optional[bool] = False  # partial / in-progress job (tile shows yellow)
     folder_month: Optional[str] = None
     span_notes: Optional[List[Dict[str, Any]]] = []
     span_order: Optional[List[str]] = []

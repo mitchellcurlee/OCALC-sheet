@@ -24,6 +24,7 @@ import { getJobAddressCenter } from "@/lib/jobAddressCenter";
 import AddressField from "@/components/AddressField";
 import { undergroundAbbr } from "@/lib/poleMapImage";
 import { ArrowLeft, Save, Loader2, MapPin, Search, Pencil, Plus, Trash2 } from "lucide-react";
+import { getBestFix, fmtAcc } from "@/lib/gps";
 
 // Types that get a FID box + Primary FID toggle
 const FID_TYPES = ["Handhole", "FBT", "NTE", "FBT/NTE", "Aerial Splice", "Loop", "PFP", "Manhole", "Brooks Enclosure", "Flowerpot", "FDF"];
@@ -195,12 +196,19 @@ const UndergroundForm = () => {
     toast.success("Location pinned");
   };
 
-  const getGPS = () => {
+  const getGPS = async () => {
     if (!navigator.geolocation) {
       toast.error("Geolocation is not supported by your browser");
       return;
     }
     setGpsLoading(true);
+    const best = await getBestFix({ maxMs: 8000, goodM: 10 });
+    if (best) {
+      setFormData((prev) => ({ ...prev, latitude: best.lat.toFixed(6), longitude: best.lng.toFixed(6) }));
+      setGpsLoading(false);
+      toast.success(`GPS location captured (${fmtAcc(best.accuracy)})`);
+      return;
+    }
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setFormData((prev) => ({ ...prev, latitude: pos.coords.latitude.toFixed(6), longitude: pos.coords.longitude.toFixed(6) }));

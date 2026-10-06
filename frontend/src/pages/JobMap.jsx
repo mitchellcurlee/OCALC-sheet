@@ -3,7 +3,7 @@ import { useParams, useSearchParams, Link, useNavigate } from "react-router-dom"
 import axios from "axios";
 import JSZip from "jszip";
 import { toast } from "sonner";
-import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap, useMapEvents } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Polyline, Popup, Circle, useMap, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import domtoimage from "dom-to-image-more";
@@ -3204,6 +3204,7 @@ const JobMap = () => {
               <MapRefSetter mapRef={mapRef} />
               <ParcelLinesLayer enabled={showParcels} basemap={mapLayer === "street" ? "street" : "aerial"} />
               <HomeAddressLayer enabled={showAddresses} onStatus={setAddrStatus} />
+              {photoPin && photoPin.accuracy > 0 && <Circle center={[photoPin.lat, photoPin.lng]} radius={photoPin.accuracy} pathOptions={{ color: "#f59e0b", weight: 1, fillOpacity: 0.12 }} pane="tooltipPane" />}
               {photoPin && (
                 <Marker position={[photoPin.lat, photoPin.lng]} icon={photoPinIcon()} zIndexOffset={photoPinAdjusting ? 100000 : 5000} pane="tooltipPane" draggable={photoPinAdjusting} eventHandlers={{ dragend: (e) => { const ll = e.target.getLatLng(); setPhotoPin((p) => ({ ...(p || {}), lat: ll.lat, lng: ll.lng, accuracy: null, fallback: false })); } }} data-testid="photo-pin-marker" />
               )}

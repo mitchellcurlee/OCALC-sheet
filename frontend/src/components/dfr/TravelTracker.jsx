@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Navigation, MapPin, LogOut, Square, Loader2 } from "lucide-react";
 import { summarizeRowTrack, trackMiles, fmtHrs } from "@/lib/dfr";
+import { getBestFix } from "@/lib/gps";
 
 const MIN_MOVE_M = 8;
 
@@ -73,6 +74,10 @@ export const TravelTracker = ({ report, activeRow, rowIndex, onTrack, onRowChang
     const nextGps = { ...gps, [key]: now };
     const row = { ...activeRow, gps: nextGps };
     if (key === "travel_start") { if (!startWatch()) return; toast.success("Travel started — recording GPS"); }
+    if (key === "arrived") {
+      // Pin the site with the best fix available over the next few seconds (the stream's first fixes are often coarse)
+      getBestFix({ maxMs: 6000, goodM: 10 }).then((fix) => { if (fix) onTrack({ lat: fix.lat, lng: fix.lng, t: new Date(fix.t).toISOString(), acc: fix.accuracy, row_id: row.id, phase: "work", best: true }); });
+    }
     if (key === "stop") {
       stopWatch();
       const s = summarizeRowTrack([...(report.track || [])], row);

@@ -40,6 +40,7 @@ import { PhotoStagingGallery } from "@/components/PhotoStagingGallery";
 import { getJobAddressCenter } from "@/lib/jobAddressCenter";
 import AddressField from "@/components/AddressField";
 import { undergroundAbbr } from "@/lib/poleMapImage";
+import { getBestFix, fmtAcc } from "@/lib/gps";
 
 const PATH_DIRECTIONS = ["In", "Over", "Up", "Down", "North", "Northeast", "East", "Southeast", "South", "Southwest", "West", "Northwest"];
 
@@ -499,7 +500,7 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
     },
   }), [handleMapClick]);
 
-  const getGPSLocation = () => {
+  const getGPSLocation = async () => {
     if (!navigator.geolocation) {
       toast.error("Geolocation is not supported by your browser");
       return;
@@ -510,14 +511,14 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
     }
     setGpsLoading(true);
 
-    const onSuccess = (position) => {
+    const onSuccess = (position, acc) => {
       setFormData((prev) => ({
         ...prev,
         latitude: position.coords.latitude.toFixed(6),
         longitude: position.coords.longitude.toFixed(6),
       }));
       setGpsLoading(false);
-      toast.success("GPS location captured!");
+      toast.success(acc ? `GPS location captured (${fmtAcc(acc)})` : "GPS location captured!");
     };
 
     const onError = (error, isRetry) => {
@@ -543,6 +544,9 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
       toast.error(msg);
     };
 
+    // Watch for the most accurate fix (first fixes are coarse Wi-Fi/cell positions), then fall back to a single request
+    const best = await getBestFix({ maxMs: 8000, goodM: 10 });
+    if (best) { onSuccess({ coords: { latitude: best.lat, longitude: best.lng } }, best.accuracy); return; }
     navigator.geolocation.getCurrentPosition(
       onSuccess,
       (e) => onError(e, false),

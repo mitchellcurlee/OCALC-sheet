@@ -61,14 +61,14 @@ import {
   Copy,
   FolderInput,
 } from "lucide-react";
-import { LifeBuoy, Home } from "lucide-react";
+import { LifeBuoy, Home, ClipboardList } from "lucide-react";
 import { getOfflineSavedJobs } from "@/lib/offlineTiles";
 import { useAuth } from "@/context/AuthContext";
 import { OfflineIndicator } from "@/components/OfflineIndicator";
 
 
-const jobPinIcon = (name, completed = false, approx = false) => {
-  const color = completed ? "#16a34a" : approx ? "#d97706" : "#dc2626";
+const jobPinIcon = (name, completed = false, approx = false, started = false) => {
+  const color = completed ? "#16a34a" : started ? "#eab308" : approx ? "#d97706" : "#dc2626";
   return L.divIcon({
     className: "job-pin",
     html: `<div style="display:flex;flex-direction:column;align-items:center;transform:translate(-50%,-100%);">
@@ -90,6 +90,7 @@ const JobsLocationMap = ({ jobs, onOpenJob }) => {
       <div className="px-4 py-2.5 border-b border-zinc-200 bg-zinc-50 flex flex-wrap items-center gap-2">
         <MapIcon className="w-4 h-4 text-red-600" />
         <span className="text-xs font-mono tracking-widest text-zinc-600 uppercase">Job Locations ({pins.length} of {jobs.length})</span>
+        <span className="text-[11px] text-zinc-500" data-testid="jobs-pin-legend">Red = open · Yellow = started · Green = complete</span>
         {pins.some((j) => j.pin_approx) && <span className="text-[11px] text-amber-700" data-testid="jobs-approx-legend">Amber pin = address not found exactly, placed at closest match</span>}
         {unpinned.length > 0 && (
           <span className="text-[11px] text-amber-700 ml-auto" data-testid="jobs-unpinned-note" title={unpinned.map((j) => j.name).join(", ")}>
@@ -104,7 +105,7 @@ const JobsLocationMap = ({ jobs, onOpenJob }) => {
           {/* City / place names */}
           <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}" maxNativeZoom={19} maxZoom={22} crossOrigin="anonymous" />
           {pins.map((job) => (
-            <Marker key={job.id} position={[job.latitude, job.longitude]} icon={jobPinIcon(job.name, !!job.completed, !!job.pin_approx)}>
+            <Marker key={job.id} position={[job.latitude, job.longitude]} icon={jobPinIcon(job.name, !!job.completed, !!job.pin_approx, !!job.started)}>
               <Popup>
                 <div className="min-w-[160px] font-mono">
                   <div className="text-sm font-bold text-zinc-900">{job.name || job.site_id}</div>
@@ -327,16 +328,41 @@ const JobsList = () => {
     }
   };
 
+  const handleToggleStarted = async (job, started) => {
+    setJobs((prev) => prev.map((j) => (j.id === job.id ? { ...j, started } : j)));
+    try {
+      await axios.put(`/jobs/${job.id}`, { started });
+      toast.success(started ? "Job marked started / partial" : "Job no longer marked started");
+    } catch {
+      setJobs((prev) => prev.map((j) => (j.id === job.id ? { ...j, started: !started } : j)));
+      toast.error("Could not update job");
+    }
+  };
+
+  const tileState = (job) => (job.completed ? "complete" : job.started ? "started" : "open");
   const renderJobCard = (job) => (
     <div
       key={job.id}
       onClick={() => navigate(`/jobs/${job.id}`)}
-      className={`industrial-card p-5 cursor-pointer transition-colors group ${job.completed ? "border-green-500/50 hover:border-green-600" : "hover:border-red-500/50"}`}
+      className={`industrial-card p-5 cursor-pointer transition-colors group ${job.completed ? "border-green-500/50 hover:border-green-600" : job.started ? "bg-yellow-50 border-yellow-500/70 hover:border-yellow-600" : "hover:border-red-500/50"}`}
       data-testid={`job-card-${job.id}`}
+      data-state={tileState(job)}
     >
-      {/* Complete checkbox */}
+      {/* Started (partial) + Complete checkboxes */}
       <div className="flex items-center justify-between mb-2" onClick={(e) => e.stopPropagation()}>
-        <label className="flex items-center gap-2 cursor-pointer select-none">
+        <div className="flex items-center gap-2 select-none">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <Checkbox
+              checked={!!job.started}
+              onCheckedChange={(v) => handleToggleStarted(job, !!v)}
+              className="data-[state=checked]:bg-yellow-500 data-[state=checked]:border-yellow-500"
+              data-testid={`job-started-checkbox-${job.id}`}
+            />
+            <span className={`text-xs font-mono uppercase mr-3 ${job.started ? "text-yellow-700 font-bold" : "text-zinc-500"}`}>
+              {job.started ? "Started" : "Started / Partial"}
+            </span>
+          </label>
+          <label className="flex items-center gap-2 cursor-pointer">
           <Checkbox
             checked={!!job.completed}
             onCheckedChange={(v) => handleToggleComplete(job, !!v)}
@@ -346,6 +372,7 @@ const JobsList = () => {
           <span className={`text-xs font-mono uppercase ${job.completed ? "text-green-600 font-bold" : "text-zinc-500"}`}>
             {job.completed ? "Complete" : "Mark Complete"}
           </span>
+          </label>
           {offlineSavedJobs[job.id] && (
             <span
               className="inline-flex items-center gap-1 text-[10px] font-mono uppercase tracking-wide bg-sky-100 text-sky-700 border border-sky-300 rounded px-1.5 py-0.5 ml-1"
@@ -356,7 +383,7 @@ const JobsList = () => {
               Saved Offline
             </span>
           )}
-        </label>
+        </div>
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <Button
             size="icon"
@@ -410,8 +437,8 @@ const JobsList = () => {
       </div>
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 flex items-center justify-center ${job.completed ? "bg-green-600/20 border border-green-500/30" : "bg-red-600/20 border border-red-500/30"}`}>
-            <Folder className={`w-5 h-5 ${job.completed ? "text-green-600" : "text-red-600"}`} />
+          <div className={`w-10 h-10 flex items-center justify-center ${job.completed ? "bg-green-600/20 border border-green-500/30" : job.started ? "bg-yellow-400/30 border border-yellow-500/50" : "bg-red-600/20 border border-red-500/30"}`}>
+            <Folder className={`w-5 h-5 ${job.completed ? "text-green-600" : job.started ? "text-yellow-600" : "text-red-600"}`} />
           </div>
           <div>
             <h3 className={`font-heading text-lg font-bold text-zinc-900 transition-colors ${job.completed ? "group-hover:text-green-600" : "group-hover:text-red-600"}`}>
@@ -531,6 +558,16 @@ const JobsList = () => {
               </Button>
               {isAdmin && (
                 <>
+                <Button
+                  onClick={() => navigate("/admin/team-reports")}
+                  size="icon"
+                  variant="ghost"
+                  className="text-zinc-400 hover:text-orange-400 hover:bg-zinc-800"
+                  title="Team Daily Field Reports"
+                  data-testid="team-reports-btn"
+                >
+                  <ClipboardList className="w-4 h-4" />
+                </Button>
                 <Button
                   onClick={() => navigate("/admin/users")}
                   size="icon"

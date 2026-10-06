@@ -111,6 +111,47 @@ async def geocode_address(q: str, current_user: dict = Depends(get_current_user)
     return hit
 
 
+def _require_admin(user: dict):
+    if not (is_admin_user(user) or is_mastec_byers_admin(user)):
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+
+async def _team_rows(date_from: str, date_to: str):
+    """All fielders' DFR rows between two dates (inclusive), each row tagged with fielder / user email / date."""
+    if date_to < date_from:
+        date_from, date_to = date_to, date_from
+    docs = await _db.field_reports.find({"date": {"$gte": date_from, "$lte": date_to}}, {"_id": 0, "track": 0}).sort([("date", 1), ("fielder", 1)]).to_list(5000)
+    users = {u["id"]: u for u in await _db.users.find({}, {"_id": 0, "id": 1, "email": 1, "name": 1, "full_name": 1}).to_list(5000)}
+    rows: List[Dict[str, Any]] = []
+    for d in docs:
+        u = users.get(d.get("user_id"), {})
+        who = d.get("fielder") or u.get("full_name") or u.get("name") or u.get("email") or ""
+        for r in d.get("rows") or []:
+            if not any(str(r.get(k) or "").strip() for k in ("job", "job_id", "job_address", "work_hrs", "travel_hrs", "miles", "comments")):
+                continue
+            rows.append({**r, "date": r.get("date") or d.get("date"), "fielder": r.get("fielder") or who, "report_fielder": who, "user_email": u.get("email", ""), "report_id": d.get("id")})
+    return rows, date_from, date_to
+
+
+@router.get("/field-reports/team")
+async def team_field_reports(date_from: str, date_to: str, current_user: dict = Depends(get_current_user)):
+    _require_admin(current_user)
+    rows, f, t = await _team_rows(date_from, date_to)
+    totals = {k: round(sum(_num(r.get(k)) for r in rows), 2) for k in TOTAL_KEYS}
+    fielders = sorted({r["report_fielder"] for r in rows if r.get("report_fielder")})
+    return {"date_from": f, "date_to": t, "rows": rows, "totals": totals, "fielders": fielders, "count": len(rows)}
+
+
+@router.get("/field-reports/team/export")
+async def team_field_reports_export(date_from: str, date_to: str, current_user: dict = Depends(get_current_user)):
+    _require_admin(current_user)
+    rows, f, t = await _team_rows(date_from, date_to)
+    if not rows:
+        raise HTTPException(status_code=404, detail="No report rows between those dates")
+    wb = build_dfr_workbook({"rows": rows, "date": f, "fielder": "Team"}, title=f"Team {f} to {t}")
+    return _xlsx_response(wb, f"Team_Field_Report_{f}_to_{t}.xlsx")
+
+
 @router.get("/field-reports/{report_id}")
 async def get_field_report(report_id: str, current_user: dict = Depends(get_current_user)):
     return await _get_report(report_id, current_user)

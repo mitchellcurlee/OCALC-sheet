@@ -81,6 +81,7 @@ from routes import backup as backup_routes
 from routes import cloud_exports as cloud_exports_routes
 from routes import addresses as addresses_routes
 from routes import kmz as kmz_routes
+from routes import kml_import as kml_import_routes
 
 auth_routes.set_db(db)
 jobs_routes.set_db(db)
@@ -95,6 +96,7 @@ connections_routes.set_db(db)
 import_excel_routes.set_db(db)
 addresses_routes.set_db(db)
 kmz_routes.set_db(db)
+kml_import_routes.set_db(db)
 trash_routes.set_db(db)
 backup_routes.set_db(db)
 cloud_exports_routes.set_db(db)
@@ -116,6 +118,7 @@ api_router.include_router(backup_routes.router)
 api_router.include_router(cloud_exports_routes.router)
 api_router.include_router(addresses_routes.router)
 api_router.include_router(kmz_routes.router)
+api_router.include_router(kml_import_routes.router)
 
 
 # Root endpoint

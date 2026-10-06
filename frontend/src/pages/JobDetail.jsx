@@ -97,6 +97,7 @@ import { CSS } from "@dnd-kit/utilities";
 import JobFilesShare from "@/components/JobFilesShare";
 import JobPhotoGallery, { galleryDropProps } from "@/components/JobPhotoGallery";
 import { JobTravelTracker } from "@/components/dfr/JobTravelTracker";
+import { KmlImportDialog } from "@/components/KmlImportDialog";
 import MapPhotoCapture from "@/components/MapPhotoCapture";
 import JobShareDialog from "@/components/JobShareDialog";
 
@@ -478,6 +479,7 @@ const JobDetail = () => {
 
   const [pendingExport, setPendingExport] = useState(null);
   const [shareOpen, setShareOpen] = useState(false);
+  const [kmlImportOpen, setKmlImportOpen] = useState(false);
   const [exportBusy, setExportBusy] = useState(false);
 
   const getExportBlob = async (type) => {
@@ -659,8 +661,13 @@ const JobDetail = () => {
                 <Folder className="w-5 h-5 sm:w-6 sm:h-6 text-zinc-900" />
               </div>
               <div>
-                <h1 className="font-heading text-lg sm:text-2xl font-black tracking-tight uppercase text-zinc-900">
+                <h1 className="font-heading text-lg sm:text-2xl font-black tracking-tight uppercase text-zinc-900 flex items-center gap-2 flex-wrap">
                   {job?.name || job?.site_id}
+                  {job?.completed ? (
+                    <span className="text-[10px] font-mono tracking-widest bg-green-100 text-green-700 border border-green-400 rounded px-1.5 py-0.5" data-testid="job-status-badge">COMPLETE</span>
+                  ) : job?.started ? (
+                    <span className="text-[10px] font-mono tracking-widest bg-yellow-100 text-yellow-800 border border-yellow-500 rounded px-1.5 py-0.5" data-testid="job-status-badge">STARTED / PARTIAL</span>
+                  ) : null}
                 </h1>
                 {job?.location && (
                   <p className="text-xs text-zinc-500 font-mono flex items-center gap-1">
@@ -783,6 +790,10 @@ const JobDetail = () => {
                   <DropdownMenuItem onClick={() => setPendingExport("kmz")} data-testid="export-kmz-btn" className="cursor-pointer">
                     <Globe className="w-4 h-4 mr-2 text-emerald-700" />
                     Export KMZ (Google Earth)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setKmlImportOpen(true)} data-testid="import-kml-btn" className="cursor-pointer">
+                    <FileUp className="w-4 h-4 mr-2 text-emerald-700" />
+                    Import KML / KMZ
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setShareOpen(true)} data-testid="share-job-menu-btn" className="cursor-pointer border-t border-zinc-200 mt-1 pt-2">
                     <Share2 className="w-4 h-4 mr-2 text-emerald-600" />
@@ -976,6 +987,7 @@ const JobDetail = () => {
 
       <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6">
         <CloudExportsSection jobId={jobId} />
+        <KmlImportDialog open={kmlImportOpen} onOpenChange={setKmlImportOpen} jobId={jobId} onImported={fetchJobAndPoles} />
         <ExportDestinationDialog
           open={!!pendingExport}
           onOpenChange={(v) => { if (!v) setPendingExport(null); }}
