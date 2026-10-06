@@ -551,6 +551,25 @@ const ugIcon = (abbr, isRed = false, color = '#16a34a', size = "normal") => {
   });
 };
 
+// Attribute badge pushed off its point (dense cluster or user-moved): small square at the point + dashed leader + badge
+const ugIconOffset = (abbr, isRed, color, size, place) => {
+  const fill = isRed ? "#dc2626" : color;
+  const h = size === "small" ? 13 : 18;
+  const font = size === "small" ? "600 7px/1" : "600 9px/1";
+  const d = 10, c = d / 2;
+  const lx = place.dx + place.w / 2, ly = place.dy + place.h / 2;
+  return L.divIcon({
+    className: "ug-marker",
+    html: `<div style="position:relative;">
+      <div style="background:${fill};border:1.5px solid #fff;border-radius:3px;width:${d}px;height:${d}px;box-shadow:0 1px 3px rgba(0,0,0,.4);"></div>
+      <svg style="position:absolute;left:${c}px;top:${c}px;overflow:visible;pointer-events:none;" width="1" height="1"><line x1="0" y1="0" x2="${lx}" y2="${ly}" stroke="${fill}" stroke-width="1.5" stroke-dasharray="3,2"/></svg>
+      <div style="position:absolute;left:${c + place.dx}px;top:${c + place.dy}px;background:${fill};color:#fff;border:1.5px solid #fff;border-radius:3px;min-width:${h}px;height:${h}px;padding:0 ${size === "small" ? 2 : 3}px;display:flex;align-items:center;justify-content:center;font:${font} ui-monospace,monospace;box-shadow:0 1px 3px rgba(0,0,0,.4);white-space:nowrap;box-sizing:border-box;">${abbr}</div>
+    </div>`,
+    iconSize: [d, d],
+    iconAnchor: [c, c],
+  });
+};
+
 // Underground connector distance label (colored or RED pill)
 const ugConnectorLabel = (text, isRed = false, color = '#16a34a') =>
   L.divIcon({
@@ -2418,40 +2437,51 @@ const JobMap = () => {
       const text = size === "off" ? "" : markerLabel(p, i, false);
       return { id: p.id, x: pt.x, y: pt.y, text, size, fixed: Array.isArray(p.label_offset) && p.label_offset.length === 2 ? p.label_offset : null };
     });
+    // Attribute badges take part too: they prefer to sit on their point and only step aside (with a leader) when they'd collide
+    ug.forEach((u) => {
+      const pt = proj(u.pos);
+      const size = u.label_size || "normal";
+      items.push({ id: u.id, x: pt.x, y: pt.y, text: size === "off" ? "" : undergroundAbbr(u.type), size, center: true, fixed: Array.isArray(u.label_offset) && u.label_offset.length === 2 ? u.label_offset : null });
+    });
     const obstacles = [
-      ...items.map((it) => ({ x: it.x - 5, y: it.y - 5, w: 10, h: 10 })),
-      ...ug.map((u) => { const pt = proj(u.pos); const s = u.label_size === "off" ? 10 : u.label_size === "small" ? 13 : 18; const w = u.label_size === "off" ? 10 : Math.max(s, undergroundAbbr(u.type).length * 5.5 + 6); return { x: pt.x - w / 2, y: pt.y - s / 2, w, h: s }; }),
+      ...poleDisplayInfo.map((p) => { const pt = proj(p.pos); return { x: pt.x - 5, y: pt.y - 5, w: 10, h: 10 }; }),
+      ...ug.filter((u) => u.label_size === "off").map((u) => { const pt = proj(u.pos); return { x: pt.x - 5, y: pt.y - 5, w: 10, h: 10 }; }),
     ];
     return layoutLabels(items, obstacles);
   }, [poleDisplayInfo, ug, showStationNumbers, zoomTick]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Move Items mode: drag a tag → store its pixel offset from the dot (zoom-independent) on the pole
-  const handleTagDragEnd = useCallback(async (pole, lat, lng) => {
+  // Move Items mode: drag a tag/badge → store its pixel offset from the point (zoom-independent) on the item
+  const handleTagDragEnd = useCallback(async (item, lat, lng, kind = "pole") => {
     const map = mapRef.current;
-    const lay = smartLabelLayout[pole.id];
+    const lay = smartLabelLayout[item.id];
     if (!map || !lay) return;
     const z = map.getZoom();
-    const a = map.project(L.latLng(pole.pos[0], pole.pos[1]), z);
+    const a = map.project(L.latLng(item.pos[0], item.pos[1]), z);
     const b = map.project(L.latLng(lat, lng), z);
     const off = [Math.round(b.x - a.x - lay.w / 2), Math.round(b.y - a.y - lay.h / 2)];
-    setPoles((prev) => prev.map((p) => (p.id === pole.id ? { ...p, label_offset: off } : p)));
-    try { await axios.put(`/poles/${pole.id}`, { label_offset: off }); }
+    const setter = kind === "pole" ? setPoles : setUnderground;
+    setter((prev) => prev.map((p) => (p.id === item.id ? { ...p, label_offset: off } : p)));
+    try { await axios.put(`/${kind === "pole" ? "poles" : "underground"}/${item.id}`, { label_offset: off }); }
     catch { toast.error("Could not save label position"); fetchData(); }
   }, [smartLabelLayout]); // eslint-disable-line react-hooks/exhaustive-deps
-  const labelHandleLatLng = (pole) => {
-    const map = mapRef.current; const lay = smartLabelLayout[pole.id];
+  const labelHandleLatLng = (item) => {
+    const map = mapRef.current; const lay = smartLabelLayout[item.id];
     if (!map || !lay) return null;
     const z = map.getZoom();
-    const a = map.project(L.latLng(pole.pos[0], pole.pos[1]), z);
+    const a = map.project(L.latLng(item.pos[0], item.pos[1]), z);
     const ll = map.unproject(L.point(a.x + lay.dx + lay.w / 2, a.y + lay.dy + lay.h / 2), z);
     return [ll.lat, ll.lng];
   };
   const resetLabelOffsets = async () => {
-    const pinned = poles.filter((p) => Array.isArray(p.label_offset));
-    if (!pinned.length) { toast.info("No moved labels to reset"); return; }
+    const pinnedP = poles.filter((p) => Array.isArray(p.label_offset));
+    const pinnedU = underground.filter((u) => Array.isArray(u.label_offset));
+    if (!pinnedP.length && !pinnedU.length) { toast.info("No moved labels to reset"); return; }
     setPoles((prev) => prev.map((p) => ({ ...p, label_offset: null })));
-    try { await Promise.all(pinned.map((p) => axios.put(`/poles/${p.id}`, { label_offset: null }))); toast.success(`${pinned.length} label(s) back to automatic placement`); }
-    catch { toast.error("Could not reset labels"); fetchData(); }
+    setUnderground((prev) => prev.map((u) => ({ ...u, label_offset: null })));
+    try {
+      await Promise.all([...pinnedP.map((p) => axios.put(`/poles/${p.id}`, { label_offset: null })), ...pinnedU.map((u) => axios.put(`/underground/${u.id}`, { label_offset: null }))]);
+      toast.success(`${pinnedP.length + pinnedU.length} label(s) back to automatic placement`);
+    } catch { toast.error("Could not reset labels"); fetchData(); }
   };
 
   // ======== END CONNECTION MANAGEMENT ========
@@ -2863,12 +2893,12 @@ const JobMap = () => {
                       <Move className="w-4 h-4 mr-2" />
                       Move Items &amp; Labels
                     </DropdownMenuItem>
-                    {poles.some((p) => Array.isArray(p.label_offset)) && (
+                    {poles.some((p) => Array.isArray(p.label_offset)) || underground.some((u) => Array.isArray(u.label_offset)) ? (
                       <DropdownMenuItem onClick={resetLabelOffsets} className="cursor-pointer" data-testid="reset-label-positions-btn">
                         <RotateCcw className="w-4 h-4 mr-2" />
                         Reset label positions (auto)
                       </DropdownMenuItem>
-                    )}
+                    ) : null}
                     
                     <DropdownMenuItem
                       onClick={() => {
@@ -3619,11 +3649,27 @@ const JobMap = () => {
                 const itemColor = u.marker_color || (u.aerial_override === "neutral" ? "#9333ea" : isAerialAttr(u) ? "#2563eb" : undergroundColorHex);
                 // Hide underground type label when station numbers are active
                 const ugDisplayLabel = showStationNumbers ? "" : undergroundAbbr(u.type);
+                const ugSize = u.label_size || "normal";
+                const ugLay = !showStationNumbers && ugSize !== "off" ? smartLabelLayout[u.id] : null;
+                const ugMoved = ugLay && !ugLay.centered;
+                const ugHandlePos = positionEditMode && ugLay ? labelHandleLatLng(u) : null;
+                const ugMarkerIcon = positionEditMode && ugLay
+                  ? ugIcon("", isRed, itemColor, "off")
+                  : ugMoved ? ugIconOffset(ugDisplayLabel, isRed, itemColor, ugSize, ugLay) : ugIcon(ugDisplayLabel, isRed, itemColor, ugSize);
                 return (
                 <React.Fragment key={u.id}>
+                  {ugHandlePos && (
+                    <DraggableMarker
+                      position={ugHandlePos}
+                      icon={labelHandleIcon(ugDisplayLabel, isRed ? "#dc2626" : itemColor, ugSize, ugLay.w, ugLay.h)}
+                      draggable
+                      onDragEnd={(lat, lng) => handleTagDragEnd(u, lat, lng, "underground")}
+                      zIndexOffset={1600}
+                    />
+                  )}
                   <DraggableMarker 
                     position={u.pos} 
-                    icon={ugIcon(ugDisplayLabel, isRed, itemColor, u.label_size || "normal")}
+                    icon={ugMarkerIcon}
                     draggable={positionEditMode}
                     onDragEnd={(lat, lng) => handleUndergroundDragEnd(u.id, lat, lng)}
                     zIndexOffset={positionEditMode ? 1500 : 0}

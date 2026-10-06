@@ -1,6 +1,7 @@
 import axios from "axios";
 import { toast } from "sonner";
 import JSZip from "jszip";
+import { drawSmartTags } from "./labelLayout";
 
 export const FEET_PER_METER = 3.28084;
 const toRad = (d) => (d * Math.PI) / 180;
@@ -288,8 +289,8 @@ export const routePayloadFromOrder = (job, orderedItems) => {
 
 export const computeConnectionPairs = (route, ug, connections = [], spanOrder = null, drawnOnly = false) => {
   const allItems = [];
-  route.forEach((p) => allItems.push({ id: p.id, type: "pole", pos: p.pos, sort_order: p.sort_order ?? Infinity, label: p.pole_number || "Pole", address: p.address || "", start_path: p.start_path === true, end_path: p.end_path === true, standalone: p.standalone === true, hasPath: (p.path_measurements || []).length > 0, pathTarget: pathTargetOf(p.path_measurements), markerColor: p.marker_color || null }));
-  ug.forEach((u) => allItems.push({ id: u.id, type: "underground", ugType: u.type, materialType: u.material_type || "", aerialOverride: ["aerial", "underground", "neutral"].includes(u.aerial_override) ? u.aerial_override : null, pos: u.pos, sort_order: u.sort_order ?? Infinity, label: u.label || u.type, address: u.address || "", start_path: u.start_path === true, end_path: u.end_path === true, standalone: u.standalone === true, hasPath: (u.path_measurements || []).length > 0, pathTarget: pathTargetOf(u.path_measurements), markerColor: u.marker_color || null }));
+  route.forEach((p) => allItems.push({ id: p.id, type: "pole", pos: p.pos, sort_order: p.sort_order ?? Infinity, label: p.pole_number || "Pole", address: p.address || "", start_path: p.start_path === true, end_path: p.end_path === true, standalone: p.standalone === true, hasPath: (p.path_measurements || []).length > 0, pathTarget: pathTargetOf(p.path_measurements), markerColor: p.marker_color || null, labelOffset: Array.isArray(p.label_offset) && p.label_offset.length === 2 ? p.label_offset : null, labelSize: p.label_size || null }));
+  ug.forEach((u) => allItems.push({ id: u.id, type: "underground", ugType: u.type, materialType: u.material_type || "", aerialOverride: ["aerial", "underground", "neutral"].includes(u.aerial_override) ? u.aerial_override : null, pos: u.pos, sort_order: u.sort_order ?? Infinity, label: u.label || u.type, address: u.address || "", start_path: u.start_path === true, end_path: u.end_path === true, standalone: u.standalone === true, hasPath: (u.path_measurements || []).length > 0, pathTarget: pathTargetOf(u.path_measurements), markerColor: u.marker_color || null, labelOffset: Array.isArray(u.label_offset) && u.label_offset.length === 2 ? u.label_offset : null }));
   // Stable list order: explicit sort_order first, items without one keep their incoming order at the end
   // (never subtract sort_orders — Infinity - Infinity is NaN and made the numbering random)
   allItems.forEach((it, i) => { it._in = i; });
@@ -753,157 +754,26 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
       ctx.fill();
     });
 
-    // Helper to detect clustered poles
-    const CLUSTER_THRESHOLD_FT = 100;
-    const poleClusterInfo = route.map((p, i) => {
-      let isCluster = false;
-      route.forEach((other, j) => {
-        if (i !== j) {
-          const dist = distanceFeet(p.pos, other.pos);
-          if (dist < CLUSTER_THRESHOLD_FT) {
-            isCluster = true;
-          }
-        }
-      });
-      const labelAngle = (i * 137.5) % 360; // golden angle distribution
-      return { ...p, isCluster, labelAngle };
+    // 3) Pole dots + smart tags and 3b) attribute badges — same non-crossing layout as the live map,
+    //    honouring user-moved tags (label_offset). k = canvas px per live-map px (export text is 10*s px vs 9px live)
+    const k = (10 * s) / 9;
+    const endBadge = (x, y) => {
+      const t = "END";
+      ctx.font = `700 ${9 * s}px ui-monospace, monospace`;
+      const tw2 = ctx.measureText(t).width;
+      const bw2 = tw2 + 8 * s, bh2 = 14 * s;
+      const bx2 = x + 9 * s, by2 = y - 24 * s;
+      ctx.fillStyle = "#dc2626"; ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 1.5 * s;
+      ctx.beginPath(); ctx.roundRect(bx2, by2, bw2, bh2, 3 * s); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = "#ffffff"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(t, bx2 + bw2 / 2, by2 + bh2 / 2);
+    };
+    drawSmartTags(ctx, {
+      k,
+      poles: route.map((p, i) => { const [x, y] = pt(p.pos); return { x, y, text: markerLabel(p, i, showStops), color: p.marker_color || "#dc2626", size: p.label_size || "normal", fixed: Array.isArray(p.label_offset) && p.label_offset.length === 2 ? p.label_offset : null }; }),
+      ugs: ug.map((u) => { const [x, y] = pt(u.pos); return { x, y, text: undergroundAbbr(u.type), color: u.marker_color || (u.aerial_override === "neutral" ? "#9333ea" : isAerialAttr(u) ? "#2563eb" : "#16a34a"), fixed: Array.isArray(u.label_offset) && u.label_offset.length === 2 ? u.label_offset : null }; }),
     });
-
-    // 3) Pole markers (small dots with side labels)
-    poleClusterInfo.forEach((p, i) => {
-      const [x, y] = pt(p.pos);
-      const label = markerLabel(p, i, showStops);
-      const dotR = 6 * s; // smaller dot radius
-      const poleColor = p.marker_color || "#dc2626";
-      
-      // Draw pole dot (custom color or red)
-      ctx.fillStyle = poleColor;
-      ctx.strokeStyle = "#ffffff";
-      ctx.lineWidth = 2 * s;
-      ctx.beginPath();
-      ctx.arc(x, y, dotR, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-      
-      // Draw label with arrow if clustered, otherwise side label
-      ctx.font = `700 ${10 * s}px ui-monospace, monospace`;
-      const tw = ctx.measureText(label).width;
-      const labelPadX = 6 * s;
-      const labelH = 18 * s;
-      const labelW = tw + labelPadX * 2;
-      
-      let labelX, labelY;
-      
-      if (p.isCluster) {
-        // Clustered: draw arrow pointing to dot
-        const arrowDist = 45 * s;
-        const rad = (p.labelAngle * Math.PI) / 180;
-        labelX = x + Math.cos(rad) * arrowDist;
-        labelY = y + Math.sin(rad) * arrowDist;
-        
-        // Draw arrow line
-        ctx.strokeStyle = poleColor;
-        ctx.lineWidth = 1.5 * s;
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-        ctx.lineTo(labelX, labelY);
-        ctx.stroke();
-        
-        // Draw arrowhead pointing to dot
-        const headLen = 6 * s;
-        const headAngle = Math.atan2(y - labelY, x - labelX);
-        ctx.fillStyle = poleColor;
-        ctx.beginPath();
-        ctx.moveTo(x - Math.cos(headAngle) * dotR, y - Math.sin(headAngle) * dotR);
-        ctx.lineTo(x - Math.cos(headAngle) * dotR - headLen * Math.cos(headAngle - 0.4), y - Math.sin(headAngle) * dotR - headLen * Math.sin(headAngle - 0.4));
-        ctx.lineTo(x - Math.cos(headAngle) * dotR - headLen * Math.cos(headAngle + 0.4), y - Math.sin(headAngle) * dotR - headLen * Math.sin(headAngle + 0.4));
-        ctx.closePath();
-        ctx.fill();
-      } else {
-        // Non-clustered: label to the side (alternating left/right)
-        const offset = 16 * s;
-        labelX = i % 2 === 0 ? x + offset + labelW / 2 : x - offset - labelW / 2;
-        labelY = y;
-      }
-      
-      // Draw label background
-      ctx.fillStyle = poleColor;
-      ctx.strokeStyle = "#ffffff";
-      ctx.lineWidth = 1.5 * s;
-      ctx.beginPath();
-      ctx.roundRect(labelX - labelW / 2, labelY - labelH / 2, labelW, labelH, 6 * s);
-      ctx.fill();
-      ctx.stroke();
-      
-      // Draw label text
-      ctx.fillStyle = "#ffffff";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(label, labelX, labelY);
-      
-      // END badge for End Path poles
-      if (p.end_path === true) {
-        const t = "END";
-        ctx.font = `700 ${9 * s}px ui-monospace, monospace`;
-        const tw2 = ctx.measureText(t).width;
-        const bw2 = tw2 + 8 * s, bh2 = 14 * s;
-        const bx2 = x + 9 * s, by2 = y - 24 * s;
-        ctx.fillStyle = "#dc2626";
-        ctx.strokeStyle = "#ffffff";
-        ctx.lineWidth = 1.5 * s;
-        ctx.beginPath();
-        ctx.roundRect(bx2, by2, bw2, bh2, 3 * s);
-        ctx.fill();
-        ctx.stroke();
-        ctx.fillStyle = "#ffffff";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(t, bx2 + bw2 / 2, by2 + bh2 / 2);
-      }
-    });
-
-    // 3b) Underground items (GREEN square markers with abbreviation)
-    ug.forEach((u) => {
-      const [x, y] = pt(u.pos);
-      const abbr = undergroundAbbr(u.type);
-      ctx.font = `700 ${11 * s}px ui-monospace, monospace`;
-      const tw = ctx.measureText(abbr).width;
-      const h = 22 * s;
-      const w = Math.max(h, tw + 12 * s);
-      const rx = x - w / 2;
-      const ry = y - h / 2;
-      ctx.fillStyle = u.marker_color || (u.aerial_override === "neutral" ? "#9333ea" : isAerialAttr(u) ? "#2563eb" : "#16a34a");
-      ctx.strokeStyle = "#ffffff";
-      ctx.lineWidth = 2 * s;
-      ctx.beginPath();
-      ctx.rect(rx, ry, w, h);
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = "#ffffff";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(abbr, x, y + 0.5 * s);
-      
-      // END badge for End Path underground items
-      if (u.end_path === true) {
-        const t = "END";
-        ctx.font = `700 ${9 * s}px ui-monospace, monospace`;
-        const tw2 = ctx.measureText(t).width;
-        const bw2 = tw2 + 8 * s, bh2 = 14 * s;
-        const bx2 = x + w / 2 + 3 * s, by2 = y - h / 2 - 14 * s;
-        ctx.fillStyle = "#dc2626";
-        ctx.strokeStyle = "#ffffff";
-        ctx.lineWidth = 1.5 * s;
-        ctx.beginPath();
-        ctx.roundRect(bx2, by2, bw2, bh2, 3 * s);
-        ctx.fill();
-        ctx.stroke();
-        ctx.fillStyle = "#ffffff";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(t, bx2 + bw2 / 2, by2 + bh2 / 2);
-      }
-    });
+    [...route, ...ug].filter((it) => it.end_path === true).forEach((it) => { const [x, y] = pt(it.pos); endBadge(x, y); });
 
     // 4) Footage labels (BLUE pills aerial / GREEN pills underground), offset perpendicular
     //    to the line, alternating sides so they don't cover markers or each other
@@ -1429,113 +1299,16 @@ const generateSegmentPage = async ({
   const pagePoles = pageItems.filter((it) => it.type === "pole");
   const pageUg = pageItems.filter((it) => it.type === "underground");
 
-  // Draw pole markers (small RED dots with side labels)
-  // Detect clustered poles
-  const CLUSTER_THRESHOLD_FT = 100;
-  const pageClusterInfo = pagePoles.map((p, i) => {
-    let isCluster = false;
-    pagePoles.forEach((other, j) => {
-      if (i !== j) {
-        const dist = distanceFeet(p.pos, other.pos);
-        if (dist < CLUSTER_THRESHOLD_FT) {
-          isCluster = true;
-        }
-      }
-    });
-    const labelAngle = (i * 137.5) % 360;
-    return { ...p, isCluster, labelAngle };
+  // Pole dots + smart tags + attribute badges: same non-crossing layout as the live map, user-moved tags honoured.
+  // Footage pills / reserved marker space already claimed above are passed as obstacles.
+  const kTag = (10 * s * labelScale) / 9;
+  const painted = drawSmartTags(ctx, {
+    k: kTag,
+    obstacles: placedRects.filter((r) => !(r.w === 32 * s && r.h === 26 * s)),
+    poles: pagePoles.map((p, i) => { const [x, y] = pt(p.pos); return { x, y, text: p.label || `${i + 1}`, color: p.markerColor || "#dc2626", size: p.labelSize || "normal", fixed: p.labelOffset }; }),
+    ugs: pageUg.map((u) => { const [x, y] = pt(u.pos); return { x, y, text: undergroundAbbr(u.ugType), color: u.markerColor || "#16a34a", fixed: u.labelOffset }; }),
   });
-
-  pageClusterInfo.forEach((p, i) => {
-    const [x, y] = pt(p.pos);
-    const label = p.label || `${i + 1}`;
-    const dotR = 6 * s;
-    const poleColor = p.markerColor || "#dc2626";
-    
-    // Draw pole dot (custom color or red)
-    ctx.fillStyle = poleColor;
-    ctx.strokeStyle = "#ffffff";
-    ctx.lineWidth = 2 * s;
-    ctx.beginPath();
-    ctx.arc(x, y, dotR, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-    
-    // Draw label
-    ctx.font = `bold ${10 * s * labelScale}px ui-monospace, monospace`;
-    const tw = ctx.measureText(label).width;
-    const labelPadX = 6 * s * labelScale;
-    const labelH = 18 * s * labelScale;
-    const labelW = tw + labelPadX * 2;
-    
-    let labelX, labelY;
-    
-    if (p.isCluster) {
-      const arrowDist = 45 * s;
-      const rad = (p.labelAngle * Math.PI) / 180;
-      labelX = x + Math.cos(rad) * arrowDist;
-      labelY = y + Math.sin(rad) * arrowDist;
-    } else {
-      const offset = 16 * s;
-      labelX = i % 2 === 0 ? x + offset + labelW / 2 : x - offset - labelW / 2;
-      labelY = y;
-    }
-    // Nudge label to a free spot so it never covers another icon
-    labelY = claimRect(labelX - labelW / 2, labelY - labelH / 2, labelW, labelH) + labelH / 2;
-    
-    if (p.isCluster) {
-      // Clustered: draw arrow from pole to label
-      ctx.strokeStyle = poleColor;
-      ctx.lineWidth = 1.5 * s;
-      ctx.beginPath();
-      ctx.moveTo(x, y);
-      ctx.lineTo(labelX, labelY);
-      ctx.stroke();
-      
-      const headLen = 6 * s;
-      const headAngle = Math.atan2(y - labelY, x - labelX);
-      ctx.fillStyle = poleColor;
-      ctx.beginPath();
-      ctx.moveTo(x - Math.cos(headAngle) * dotR, y - Math.sin(headAngle) * dotR);
-      ctx.lineTo(x - Math.cos(headAngle) * dotR - headLen * Math.cos(headAngle - 0.4), y - Math.sin(headAngle) * dotR - headLen * Math.sin(headAngle - 0.4));
-      ctx.lineTo(x - Math.cos(headAngle) * dotR - headLen * Math.cos(headAngle + 0.4), y - Math.sin(headAngle) * dotR - headLen * Math.sin(headAngle + 0.4));
-      ctx.closePath();
-      ctx.fill();
-    }
-    
-    ctx.fillStyle = poleColor;
-    ctx.strokeStyle = "#ffffff";
-    ctx.lineWidth = 1.5 * s;
-    ctx.beginPath();
-    ctx.roundRect(labelX - labelW / 2, labelY - labelH / 2, labelW, labelH, 6 * s);
-    ctx.fill();
-    ctx.stroke();
-    
-    ctx.fillStyle = "#ffffff";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(label, labelX, labelY);
-  });
-
-  // Draw underground items (GREEN squares)
-  pageUg.forEach((u) => {
-    const [x, y] = pt(u.pos);
-    const abbr = undergroundAbbr(u.ugType);
-    ctx.font = `bold ${10 * s * labelScale}px ui-monospace, monospace`;
-    const tw = ctx.measureText(abbr).width;
-    const sz = Math.max(24 * s * labelScale, tw + 10 * s * labelScale);
-    ctx.fillStyle = u.markerColor || "#16a34a";
-    ctx.strokeStyle = "#ffffff";
-    ctx.lineWidth = 2.5 * s;
-    ctx.beginPath();
-    ctx.rect(x - sz / 2, y - sz / 2, sz, sz);
-    ctx.fill();
-    ctx.stroke();
-    ctx.fillStyle = "#ffffff";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(abbr, x, y + 1 * s);
-  });
+  painted.forEach((r) => placedRects.push(r));
 
   // North arrow (top-right, below header)
   const nax = mapW - 34 * s;

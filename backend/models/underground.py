@@ -28,6 +28,7 @@ class UndergroundBase(BaseModel):
     standalone: Optional[bool] = False
     marker_color: Optional[str] = None
     label_size: Optional[str] = None  # map smart label: normal | small | off
+    label_offset: Optional[List[float]] = None  # user-placed badge [dx, dy] px from the point
     aerial_override: Optional[str] = None  # "aerial" | "underground" | None (default by type)
 
 
@@ -59,6 +60,7 @@ class UndergroundUpdate(BaseModel):
     standalone: Optional[bool] = None
     marker_color: Optional[str] = None
     label_size: Optional[str] = None  # map smart label: normal | small | off
+    label_offset: Optional[List[float]] = None  # user-placed badge [dx, dy] px from the point
     aerial_override: Optional[str] = None
 
 
