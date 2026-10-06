@@ -129,7 +129,10 @@ async def export_job_kmz(job_id: str, current_user: dict = Depends(get_current_u
         if lat is None or lon is None:
             continue
         by_id[p["id"]] = (lat, lon, f"Pole {p.get('pole_number') or ''}".strip(), "pole")
-        pname = f"Pole {p.get('pole_number') or ''}".strip()
+        is_addr = (p.get("marker_color") or "").lower() == "#2563eb"
+        pname = (p.get("pole_number") or "Address").strip() if is_addr else f"Pole {p.get('pole_number') or ''}".strip()
+        if is_addr and (p.get("pole_number") or "").strip():
+            p = {**p, "address": p.get("pole_number")}  # the assigned address text is the address
         off = _label_offset(p)
         pole_pm.append(_placemark(pname, _pole_rows(p), lat, lon, "poleNoLabel" if off else "pole"))
         if off:
@@ -139,6 +142,8 @@ async def export_job_kmz(job_id: str, current_user: dict = Depends(get_current_u
         if lat is None or lon is None:
             continue
         name = f"{u.get('type') or 'Item'}" + (f" · {u['label']}" if u.get("label") and u.get("label") != u.get("type") else "")
+        if u.get("type") == "Suite" and (u.get("label") or "").strip():
+            u = {**u, "address": u.get("label")}  # the assigned suite address is the address
         is_aerial = (u.get("aerial_override") == "aerial") or (u.get("aerial_override") != "underground" and u.get("type") in {"Aerial Splice", "Loop", "Power", "X-Messenger", "Eyebolt", "Pullbox", "Weather Head", "Aerial NTE", "Aerial PI", "Aerial FBT"})
         by_id[u["id"]] = (lat, lon, name, "aerial" if is_aerial else "ug")
         off = _label_offset(u)

@@ -2858,6 +2858,9 @@ const JobMap = () => {
                   <DropdownMenuItem onClick={() => { setPlacingType("__pole__"); toast.info("Tap the map where the Pole goes"); }} data-testid="map-add-pole" className="cursor-pointer font-medium">
                     Add Pole
                   </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => { setPlacingType("__address__"); toast.info("Tap the map where the Address pin goes"); }} data-testid="map-add-address" className="cursor-pointer font-medium">
+                    <span className="inline-block w-3 h-3 mr-2 rounded-full bg-blue-600 border border-white" />Add Address (blue pin)
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => { setPlacingType("__pole_terminal__"); toast.info("Tap the map where the Pole Terminal goes"); }} data-testid="map-add-pole-terminal" className="cursor-pointer font-medium">
                     Add Pole Terminal
                   </DropdownMenuItem>
@@ -3247,6 +3250,7 @@ const JobMap = () => {
               <SelectContent className="z-[1200] max-h-80">
                 <SelectItem value="__pole__">Pole</SelectItem>
                 <SelectItem value="__pole_terminal__">Pole Terminal</SelectItem>
+                <SelectItem value="__address__">Address (blue pin)</SelectItem>
                 {UNDERGROUND_TYPES.map((t) => (<SelectItem key={t} value={t}>{t}</SelectItem>))}
               </SelectContent>
             </Select>
@@ -3257,7 +3261,7 @@ const JobMap = () => {
         )}
         {placingType && !multiPlace && (
           <div className="flex items-center justify-between gap-3 bg-emerald-600 text-white rounded-lg px-4 py-2.5 text-sm font-medium shadow" data-testid="placing-banner">
-            <span>Tap the map where the {placingType === "__pole__" ? "Pole" : placingType === "__pole_terminal__" ? "Pole Terminal" : placingType} goes — the form will open with that location filled in</span>
+            <span>Tap the map where the {placingType === "__pole__" ? "Pole" : placingType === "__pole_terminal__" ? "Pole Terminal" : placingType === "__address__" ? "Address pin" : placingType} goes — {placingType === "__address__" ? "you'll be asked for the address text" : "the form will open with that location filled in"}</span>
             <Button size="sm" variant="outline" className="h-7 text-xs bg-white text-zinc-900 hover:bg-zinc-100 border-0 shrink-0" onClick={() => setPlacingType(null)} data-testid="placing-cancel-btn">Cancel</Button>
           </div>
         )}
@@ -3538,13 +3542,17 @@ const JobMap = () => {
                       if (multiSaving) return;
                       setMultiSaving(true);
                       try {
-                        if (t === "__pole__" || t === "__pole_terminal__") {
+                        if (t === "__address__") {
+                          const addr = window.prompt("Address for this pin:");
+                          if (!addr || !addr.trim()) return;
+                          await axios.post("/poles", { job_id: jobId, pole_number: addr.trim().slice(0, 40), address: addr.trim(), latitude: parseFloat(lat), longitude: parseFloat(lng), marker_color: "#2563eb", standalone: true });
+                        } else if (t === "__pole__" || t === "__pole_terminal__") {
                           await axios.post("/poles", { job_id: jobId, pole_number: `P-${poles.length + 1}`, latitude: parseFloat(lat), longitude: parseFloat(lng), pole_terminal: t === "__pole_terminal__" ? "Yes" : "", standalone: true });
                         } else {
                           await axios.post("/underground", { job_id: jobId, type: t, latitude: parseFloat(lat), longitude: parseFloat(lng), standalone: true });
                         }
                         setMultiPlacedCount((c) => c + 1);
-                        toast.success(`${t === "__pole__" ? "Pole" : t === "__pole_terminal__" ? "Pole Terminal" : t} placed`, { duration: 1200 });
+                        toast.success(`${t === "__pole__" ? "Pole" : t === "__pole_terminal__" ? "Pole Terminal" : t === "__address__" ? "Address" : t} placed`, { duration: 1200 });
                         await fetchData();
                       } catch (e) {
                         toast.error("Failed to place attribute");
@@ -3554,6 +3562,17 @@ const JobMap = () => {
                       return;
                     }
                     setPlacingType(null);
+                    if (t === "__address__") {
+                      // Address pin = blue pole whose number is the address text; saved straight to the job
+                      const addr = window.prompt("Address for this pin:");
+                      if (!addr || !addr.trim()) return;
+                      try {
+                        await axios.post("/poles", { job_id: jobId, pole_number: addr.trim().slice(0, 40), address: addr.trim(), latitude: parseFloat(lat), longitude: parseFloat(lng), marker_color: "#2563eb", standalone: true });
+                        toast.success("Address pin added");
+                        await fetchData();
+                      } catch (e) { toast.error("Failed to add address"); }
+                      return;
+                    }
                     if (t === "__pole__") {
                       navigate(`/jobs/${jobId}/add?lat=${lat}&lng=${lng}&from=map`);
                     } else if (t === "__pole_terminal__") {

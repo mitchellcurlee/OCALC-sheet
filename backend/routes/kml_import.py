@@ -40,6 +40,7 @@ _TYPE_LOWER = {t.lower(): t for t in UNDERGROUND_TYPES}
 
 _SUITE_RE = re.compile(r"\b(suite|ste\.?|unit|apt\.?|apartment|bldg\.?|building|rm\.?|room|flr\.?|floor)\s*#?\s*[\w-]+|#\s*\d+[a-z]?\b", re.I)
 _ADDRESS_RE = re.compile(r"^\s*\d{1,6}[a-z]?\s+[a-z0-9'.\-]+(\s+[a-z0-9'.\-]+)*", re.I)
+_FID_RE = re.compile(r"\bFID\b\s*[:#=-]?\s*([A-Za-z0-9_./-]+)", re.I)
 _POLE_RE = re.compile(r"^\s*(pole|p)\s*[-#_. ]?\s*\d+[a-z]?\b", re.I)
 
 
@@ -139,9 +140,10 @@ def parse_kml(data: bytes) -> List[Dict[str, Any]]:
                                 pass
                 for lat, lng in pts[:1]:
                     g = guess_type(name, folder, desc[:200])
-                    # addresses / suites keep their text as the label; everything else imports with a blank label
-                    label = (name or "") if g["kind"] == "address" or g.get("type") == "Suite" else ""
-                    out.append({"name": name or f"Placemark {len(out) + 1}", "description": desc[:1000], "lat": lat, "lng": lng, "folder": folder, "label": label, **g})
+                    # addresses / suites keep their text as the label; poles named P1 / P-2 / Pole 3 keep that as the pole number
+                    label = (name or "") if g["kind"] == "address" or g.get("type") == "Suite" or (g["kind"] == "pole" and _POLE_RE.match(name or "")) else ""
+                    fm = _FID_RE.search(f"{name}\n{desc}")
+                    out.append({"name": name or f"Placemark {len(out) + 1}", "description": desc[:1000], "lat": lat, "lng": lng, "folder": folder, "label": label.strip(), "fid": fm.group(1) if fm else None, **g})
     walk(root, "")
     return out
 
@@ -166,6 +168,7 @@ class ImportItem(BaseModel):
     lat: float
     lng: float
     kind: str = "pole"  # pole | underground | address (blue pole)
+    fid: Optional[str] = None
     type: str = "Pole"
     label: Optional[str] = None
 
@@ -197,6 +200,6 @@ async def create_from_kml(job_id: str, body: ImportBody, current_user: dict = De
             created["poles"] += 1
         else:
             t = it.type if it.type in UNDERGROUND_TYPES else "Handhole"
-            await create_underground(UndergroundCreate(job_id=job_id, type=t, label=(it.label or "")[:60], latitude=it.lat, longitude=it.lng, notes=notes, standalone=True, last_modified_by=who))
+            await create_underground(UndergroundCreate(job_id=job_id, type=t, label=(it.label or "")[:60], fid=(it.fid or None), latitude=it.lat, longitude=it.lng, notes=notes, standalone=True, last_modified_by=who))
             created["underground"] += 1
     return created
