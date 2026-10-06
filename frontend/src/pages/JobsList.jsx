@@ -69,7 +69,8 @@ import { OfflineIndicator } from "@/components/OfflineIndicator";
 import { JobsLocationMap } from "@/components/JobsLocationMap";
 
 
-const JobsList = () => {
+const JobsList = ({ mode = "folders" }) => {
+  const isHome = mode === "home";
   const navigate = useNavigate();
   const { user, logout, isAdmin, isSupervisor } = useAuth();
   const [jobs, setJobs] = useState([]);
@@ -442,7 +443,7 @@ const JobsList = () => {
   }
 
   return (
-    <div className="min-h-screen bg-industrial-bg" data-testid="jobs-list">
+    <div className="min-h-screen bg-industrial-bg" data-testid={isHome ? "home-page" : "jobs-list"}>
       {/* Header */}
       <header className="border-b border-zinc-200 bg-white backdrop-blur-sm sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-4">
@@ -462,6 +463,10 @@ const JobsList = () => {
             </div>
             <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
               <OfflineIndicator />
+              <Button onClick={() => navigate(isHome ? "/jobs" : "/")} variant="outline" size="sm" className="bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900 gap-1.5" title={isHome ? "Jobs list by month folders" : "Home — job map & monthly tiles"} data-testid={isHome ? "jobs-folders-btn" : "home-nav-btn"}>
+                {isHome ? <Folder className="w-4 h-4" /> : <Home className="w-4 h-4" />}
+                <span className="hidden md:inline">{isHome ? "Month Folders" : "Home"}</span>
+              </Button>
               {(isAdmin || isSupervisor) && (
                 <Button onClick={() => navigate("/admin/team-reports")} variant="outline" size="sm" className="bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900 gap-1.5" title="Team Daily Field Reports" data-testid="team-reports-btn">
                   <ClipboardList className="w-4 h-4" />
@@ -614,6 +619,22 @@ const JobsList = () => {
                   </div>
                 )}
               </>
+            ) : isHome ? (
+              /* Home: every month expanded, full job tiles with status boxes + actions */
+              <div className="space-y-6" data-testid="home-months">
+                {monthGroups.map((group) => (
+                  <section key={group.key} data-testid={`home-month-${group.key}`}>
+                    <div className="flex items-center gap-2 mb-3">
+                      <FolderOpen className="w-5 h-5 text-red-600" />
+                      <h2 className="font-heading text-base md:text-lg font-bold text-zinc-900 uppercase">{group.label}</h2>
+                      <span className="text-xs text-zinc-500 font-mono">({group.jobs.length} job{group.jobs.length === 1 ? "" : "s"})</span>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {group.jobs.map((job) => renderJobCard(job))}
+                    </div>
+                  </section>
+                ))}
+              </div>
             ) : activeGroup === null ? (
               /* Month folders view */
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" data-testid="month-folders-grid">
