@@ -1,4 +1,3 @@
-import asyncio
 import io
 import math
 import zipfile
@@ -39,14 +38,14 @@ def _row(k, v):
     return f"<tr><td><b>{escape(str(k))}</b></td><td>{escape(str(v))}</td></tr>" if v not in (None, "", [], {}) else ""
 
 
-def _table(rows, extra_html=""):
+def _table(rows):
     body = "".join(_row(k, v) for k, v in rows)
-    return f"<![CDATA[<table border='1' cellpadding='3' style='border-collapse:collapse;font-family:monospace;font-size:12px'>{body}</table>{extra_html}]]>"
+    return f"<![CDATA[<table border='1' cellpadding='3' style='border-collapse:collapse;font-family:monospace;font-size:12px'>{body}</table>]]>"
 
 
-def _placemark(name, desc_rows, lat, lon, style, gallery=""):
+def _placemark(name, desc_rows, lat, lon, style):
     return (f"<Placemark><name>{escape(str(name))}</name><styleUrl>#{style}</styleUrl>"
-            f"<description>{_table(desc_rows, gallery)}</description>"
+            f"<description>{_table(desc_rows)}</description>"
             f"<Point><coordinates>{lon:.7f},{lat:.7f},0</coordinates></Point></Placemark>")
 
 
@@ -81,60 +80,11 @@ def _ug_rows(u):
     ]
 
 
-async def _fetch_photo(url: str):
-    """Photo bytes from object storage / data URL (same resolution rules as the photo ZIP export)."""
-    import base64
-    from services.storage import get_object
-    try:
-        if url.startswith("data:"):
-            return base64.b64decode(url.split(",", 1)[1])
-        if url.startswith("/api/files/"):
-            return (await asyncio.to_thread(get_object, url.replace("/api/files/", "")))[0]
-        if not url.startswith("http"):
-            return (await asyncio.to_thread(get_object, url))[0]
-    except Exception:  # noqa: BLE001
-        return None
-    return None
-
-
-def _shrink_jpeg(data: bytes, max_px: int = 1200) -> bytes | None:
-    try:
-        from PIL import Image, ImageOps
-        im = ImageOps.exif_transpose(Image.open(io.BytesIO(data)))
-        im = im.convert("RGB")
-        im.thumbnail((max_px, max_px))
-        out = io.BytesIO()
-        im.save(out, "JPEG", quality=80, optimize=True)
-        return out.getvalue()
-    except Exception:  # noqa: BLE001
-        return None
-
-
-async def _embed_photos(items, label_fn, photo_fn, prefix, zip_files, sem):
-    """For each item: fetch+shrink its photos, add to the KMZ under files/, return {item_id: html_gallery}."""
-    async def one(it):
-        urls = [(lbl, u) for lbl, u in photo_fn(it) if u]
-        html = []
-        for n, (lbl, u) in enumerate(urls, 1):
-            async with sem:
-                raw = await _fetch_photo(u)
-            jpg = _shrink_jpeg(raw) if raw else None
-            if not jpg:
-                continue
-            fname = f"files/{prefix}_{it['id'][:8]}_{n}.jpg"
-            zip_files[fname] = jpg
-            html.append(f"<div style='display:inline-block;margin:3px;text-align:center'><img src='{fname}' width='320' style='display:block'/><small>{escape(str(lbl))}</small></div>")
-        return it["id"], "".join(html)
-    res = await asyncio.gather(*[one(it) for it in items])
-    return dict(res)
-
-
 @router.get("/jobs/{job_id}/export/kmz")
-async def export_job_kmz(job_id: str, photos: bool = True, current_user: dict = Depends(get_current_user)):
-    """Google Earth KMZ: every pole, underground/aerial attribute, map line, measurement, note and area for the job (photos embedded)."""
+async def export_job_kmz(job_id: str, current_user: dict = Depends(get_current_user)):
+    """Google Earth KMZ: GPS, labels, attribute types, measurements and notes for every pole / underground item, plus map lines and areas. No photos."""
     from routes.jobs import can_view_job
     from routes.poles import _compute_map_pairs, _route_waypoints_lookup
-    from services.helpers import pole_photo_items, underground_photo_items
     job = await can_view_job(job_id, current_user)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -144,13 +94,6 @@ async def export_job_kmz(job_id: str, photos: bool = True, current_user: dict = 
     pairs = await _compute_map_pairs(job_id)
     wps = await _route_waypoints_lookup(job_id)
 
-    zip_files: dict = {}
-    gal_p, gal_u = {}, {}
-    if photos:
-        sem = asyncio.Semaphore(8)
-        gal_p, gal_u = await asyncio.gather(_embed_photos(poles, None, pole_photo_items, "pole", zip_files, sem),
-                                            _embed_photos(ugs, None, underground_photo_items, "ug", zip_files, sem))
-
     by_id = {}
     pole_pm, aerial_pm, ug_pm = [], [], []
     for p in poles:
@@ -158,7 +101,7 @@ async def export_job_kmz(job_id: str, photos: bool = True, current_user: dict = 
         if lat is None or lon is None:
             continue
         by_id[p["id"]] = (lat, lon, f"Pole {p.get('pole_number') or ''}".strip(), "pole")
-        pole_pm.append(_placemark(f"Pole {p.get('pole_number') or ''}".strip(), _pole_rows(p), lat, lon, "pole", gal_p.get(p["id"], "")))
+        pole_pm.append(_placemark(f"Pole {p.get('pole_number') or ''}".strip(), _pole_rows(p), lat, lon, "pole"))
     for u in ugs:
         lat, lon = _f(u.get("latitude")), _f(u.get("longitude"))
         if lat is None or lon is None:
@@ -166,7 +109,7 @@ async def export_job_kmz(job_id: str, photos: bool = True, current_user: dict = 
         name = f"{u.get('type') or 'Item'}" + (f" · {u['label']}" if u.get("label") and u.get("label") != u.get("type") else "")
         is_aerial = (u.get("aerial_override") == "aerial") or (u.get("aerial_override") != "underground" and u.get("type") in {"Aerial Splice", "Loop", "Power", "X-Messenger", "Eyebolt", "Pullbox", "Weather Head", "Aerial NTE", "Aerial PI", "Aerial FBT"})
         by_id[u["id"]] = (lat, lon, name, "aerial" if is_aerial else "ug")
-        (aerial_pm if is_aerial else ug_pm).append(_placemark(name, _ug_rows(u), lat, lon, "aerial" if is_aerial else "ug", gal_u.get(u["id"], "")))
+        (aerial_pm if is_aerial else ug_pm).append(_placemark(name, _ug_rows(u), lat, lon, "aerial" if is_aerial else "ug"))
 
     # Map lines (same pairs as the interactive map; waypoints honored)
     lines = []
@@ -218,7 +161,7 @@ async def export_job_kmz(job_id: str, photos: bool = True, current_user: dict = 
               + line_style("aerialLine", "#2563eb") + line_style("ugLine", "#16a34a") + line_style("measLine", "#f59e0b", "2") + area_style("polyArea", "#2563eb") + area_style("daArea", "#dc2626"))
     name = job.get("name") or job.get("site_id") or "Job"
     desc = _table([("Job", job.get("name")), ("Site ID", job.get("site_id")), ("Job type", job.get("job_type")), ("Address", job.get("location")), ("Description", job.get("description")),
-                   ("Poles", len(pole_pm)), ("Aerial attributes", len(aerial_pm)), ("Underground attributes", len(ug_pm)), ("Map lines", len(lines)), ("Photos embedded", len(zip_files))])
+                   ("Poles", len(pole_pm)), ("Aerial attributes", len(aerial_pm)), ("Underground attributes", len(ug_pm)), ("Map lines", len(lines)), ("Measurements", len(meas)), ("Notes", len(notes))])
     kml = ("<?xml version='1.0' encoding='UTF-8'?><kml xmlns='http://www.opengis.net/kml/2.2'><Document>"
            f"<name>{escape(name)}</name><description>{desc}</description>{styles}"
            + folder("Poles", pole_pm) + folder("Aerial attributes", aerial_pm) + folder("Underground attributes", ug_pm)
@@ -227,8 +170,6 @@ async def export_job_kmz(job_id: str, photos: bool = True, current_user: dict = 
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
         z.writestr("doc.kml", kml.encode("utf-8"))
-        for fname, data in zip_files.items():
-            z.writestr(fname, data)
     buf.seek(0)
     safe = "".join(c if c.isalnum() or c in "-_" else "_" for c in name) or "Job"
     return StreamingResponse(buf, media_type="application/vnd.google-earth.kmz", headers={"Content-Disposition": f'attachment; filename="{safe}.kmz"'})

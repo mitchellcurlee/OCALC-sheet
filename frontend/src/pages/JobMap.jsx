@@ -2678,9 +2678,10 @@ const JobMap = () => {
 
   return (
     <div className="min-h-screen bg-industrial-bg" data-testid="job-map-page">
-      <header className={`border-b border-zinc-200 bg-white sticky top-0 z-[1000] ${isFullscreen ? "hidden" : ""}`}>
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 py-3 sm:py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="flex items-center gap-2 sm:gap-3">
+      {/* In fullscreen the header turns into a compact floating toolbar pinned to the bottom of the map */}
+      <header className={isFullscreen ? "fixed bottom-2 left-2 right-2 z-50 bg-white/95 backdrop-blur border border-zinc-300 rounded-lg shadow-2xl" : "border-b border-zinc-200 bg-white sticky top-0 z-[1000]"} data-testid="map-header" data-floating={isFullscreen ? "true" : "false"}>
+        <div className={isFullscreen ? "px-2 py-2 flex items-center justify-center" : "max-w-7xl mx-auto px-3 sm:px-6 py-3 sm:py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"}>
+          <div className={`flex items-center gap-2 sm:gap-3 ${isFullscreen ? "hidden" : ""}`}>
             <Button variant="ghost" size="icon" className="text-zinc-600 hover:text-zinc-900 h-9 w-9" onClick={goBack} data-testid="map-back-btn">
               <ArrowLeft className="w-5 h-5" />
             </Button>
@@ -2700,7 +2701,7 @@ const JobMap = () => {
               </p>
             </div>
           </div>
-          <div className="flex flex-wrap items-center justify-end gap-2">
+          <div className={`flex flex-wrap items-center gap-2 ${isFullscreen ? "justify-center max-h-[40vh] overflow-y-auto" : "justify-end"}`} data-testid="map-actions">
             {!drawRouteMode && !positionEditMode && !editMode && !connectionEditMode && (
               <JobExportMenu jobId={jobId} onAction={(key) => navigate(`/jobs/${jobId}?action=${key}`)} />
             )}
