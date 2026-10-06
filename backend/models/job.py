@@ -28,6 +28,7 @@ class JobUpdate(BaseModel):
     started: Optional[bool] = None
     folder_month: Optional[str] = None
     span_notes: Optional[List[Dict[str, Any]]] = None
+    span_badge_offsets: Optional[Dict[str, Any]] = None  # { spanKey: [dLat, dLng] } moved measurement badges
     span_order: Optional[List[str]] = None  # user-swapped span numbering (direction-free pair keys)
     route_sequence: Optional[List[str]] = None  # Draw Route: item ids in tapped order (overall job sequence)
     draw_routes: Optional[List[List[str]]] = None  # Draw Route: each separately drawn route
@@ -52,6 +53,7 @@ class Job(BaseModel):
     started: Optional[bool] = False  # partial / in-progress job (tile shows yellow)
     folder_month: Optional[str] = None
     span_notes: Optional[List[Dict[str, Any]]] = []
+    span_badge_offsets: Optional[Dict[str, Any]] = {}
     span_order: Optional[List[str]] = []
     route_sequence: Optional[List[str]] = []
     draw_routes: Optional[List[List[str]]] = []

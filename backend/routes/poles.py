@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Request, Depends
 from fastapi.responses import StreamingResponse, HTMLResponse
 from typing import List, Optional
+from pydantic import BaseModel
 from datetime import datetime, timezone
 import json
 import io
@@ -468,6 +469,38 @@ async def delete_pole(pole_id: str, current_user: dict = Depends(get_current_use
     await archive_entity(_db, "pole", existing, current_user)
     await _db.poles.delete_one({"id": pole_id})
     return {"message": "Pole moved to Deleted Items"}
+
+
+class ConvertBody(BaseModel):
+    type: str
+
+
+@router.post("/poles/{pole_id}/convert")
+async def convert_pole_to_attribute(pole_id: str, body: ConvertBody, current_user: dict = Depends(get_current_user)):
+    """Turn a pole into an underground / aerial attribute of the given type. Keeps the same id, GPS, label, notes,
+    photos, color, label size/offset, order and standalone flag so spans, routes and connections stay attached."""
+    from models.options import UNDERGROUND_TYPES
+    from routes.trash import archive_entity
+    if body.type not in UNDERGROUND_TYPES:
+        raise HTTPException(status_code=400, detail="Unknown attribute type")
+    pole = await _db.poles.find_one({"id": pole_id}, {"_id": 0})
+    if not pole:
+        raise HTTPException(status_code=404, detail="Pole not found")
+    now = datetime.now(timezone.utc).isoformat()
+    item = {
+        "id": pole["id"], "job_id": pole.get("job_id"), "type": body.type,
+        "label": (pole.get("pole_number") or "")[:60], "address": pole.get("address"),
+        "latitude": pole.get("latitude"), "longitude": pole.get("longitude"), "gps_accuracy": pole.get("gps_accuracy"),
+        "notes": ((pole.get("notes") or "") + f"\nConverted from pole {pole.get('pole_number') or ''}".rstrip()).strip()[:2000],
+        "photos": pole.get("photos") or [], "marker_color": pole.get("marker_color"), "label_size": pole.get("label_size"),
+        "label_offset": pole.get("label_offset"), "sort_order": pole.get("sort_order"), "standalone": pole.get("standalone", False),
+        "created_at": pole.get("created_at") or now, "updated_at": now, "last_modified_by": current_user.get("email", ""),
+    }
+    await _db.underground.insert_one(dict(item))
+    await archive_entity(_db, "pole", pole, current_user)
+    await _db.poles.delete_one({"id": pole_id})
+    item.pop("_id", None)
+    return item
 
 
 @router.get("/poles/{pole_id}/gallery", response_class=HTMLResponse)

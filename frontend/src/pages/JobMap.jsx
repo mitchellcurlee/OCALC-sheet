@@ -4,15 +4,15 @@ import { useGoBack } from "@/lib/useGoBack";
 import axios from "axios";
 import JSZip from "jszip";
 import { toast } from "sonner";
-import { MapContainer, TileLayer, Marker, Polyline, Popup, Circle, useMap, useMapEvents } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Polyline, Popup, Circle, CircleMarker, useMap, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import domtoimage from "dom-to-image-more";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ChevronDown, ChevronUp, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera, Hash, Link2, Move, Palette, Plus, Map as MapIcon, MapPin, GripVertical, Upload, Trash2, RotateCcw, Home, Route as RouteIcon, ListOrdered, LandPlot, Maximize2, Minimize2 } from "lucide-react";
 import SpanReorderList from "@/components/SpanReorderList";
-import { layoutLabels } from "@/lib/labelLayout";
-import { computeRoute, fmtFeet, feetToStation, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, downloadMapPdfPages, ugWithGps, undergroundAbbr, computeUgConnectors, computeConnectionPairs, computeStationSegFeet, UNDERGROUND_TYPES, isAerialAttr, resolvePairAerial, spanKey, routeWaypoints, routeArg, placeSpanNotes, LIST_PAGE_LINES, riserAnchor, tieInSuffix, pathRowText, pairIsManual, routePayloadFromOrder } from "@/lib/poleMapImage";
+import { layoutLabels, badgeBox } from "@/lib/labelLayout";
+import { ugTagText, ugTagColor, isAddressAttr, computeRoute, fmtFeet, feetToStation, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, downloadMapPdfPages, ugWithGps, undergroundAbbr, computeUgConnectors, computeConnectionPairs, computeStationSegFeet, UNDERGROUND_TYPES, isAerialAttr, resolvePairAerial, spanKey, routeWaypoints, routeArg, placeSpanNotes, LIST_PAGE_LINES, riserAnchor, tieInSuffix, pathRowText, pairIsManual, routePayloadFromOrder } from "@/lib/poleMapImage";
 import { ExportDestinationDialog } from "@/components/ExportDestinationDialog";
 import { CLOUD_EXPORT_LABELS, uploadExportToCloud } from "@/lib/cloudExports";
 import {
@@ -263,7 +263,7 @@ const UgPopupEditor = ({ item, defaultColor, onSaved, onDeleted }) => {
 };
 
 // Inline quick-edit + marker color picker shown inside the pole popup
-const PolePopupEditor = ({ pole, onSaved, onDeleted }) => {
+const PolePopupEditor = ({ pole, onSaved, onDeleted, onConverted }) => {
   const [editing, setEditing] = useState(false);
   const [num, setNum] = useState(pole.pole_number || "");
   const [cls, setCls] = useState(pole.pole_class || "");
@@ -305,6 +305,17 @@ const PolePopupEditor = ({ pole, onSaved, onDeleted }) => {
       toast.success("Marker color updated");
     } catch (e) {
       toast.error("Failed to update color");
+    }
+  };
+  const convertTo = async (type) => {
+    if (!type) return;
+    if (!window.confirm(`Change pole ${pole.pole_number || ""} into a ${type}? Spans and connections stay attached; the pole record moves to Deleted Items.`)) return;
+    try {
+      await axios.post(`/poles/${pole.id}/convert`, { type });
+      toast.success(`Pole is now a ${type}`);
+      onConverted?.(pole.id);
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Could not change type");
     }
   };
   const setLabelSize = async (val) => {
@@ -350,6 +361,11 @@ const PolePopupEditor = ({ pole, onSaved, onDeleted }) => {
             <Button key={m} size="sm" onClick={() => setLabelSize(m)} className={`flex-1 h-7 text-xs capitalize ${(pole.label_size || "normal") === m ? "bg-zinc-800 hover:bg-zinc-900 text-white" : "bg-zinc-100 border border-zinc-300 text-zinc-900 hover:bg-zinc-200"}`} data-testid={`pole-label-size-${m}-${pole.id}`}>{m}</Button>
           ))}
         </div>
+        <div className="text-[10px] text-zinc-400 uppercase mb-1">Change to attribute</div>
+        <select value="" onChange={(e) => convertTo(e.target.value)} className="w-full h-7 mb-2 text-xs border border-zinc-300 rounded px-1 bg-white" data-testid={`pole-convert-select-${pole.id}`}>
+          <option value="">Pole → choose a type…</option>
+          {UNDERGROUND_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+        </select>
         <div className="text-[10px] text-zinc-400 uppercase mb-1">Marker Color</div>
         <div className="flex gap-1.5" data-testid={`pole-color-row-${pole.id}`}>
           {MARKER_COLOR_CHOICES.map((hex) => (
@@ -543,12 +559,13 @@ const ugIcon = (abbr, isRed = false, color = '#16a34a', size = "normal") => {
     return L.divIcon({ className: "ug-marker", html: `<div style="background:${isRed ? '#dc2626' : color};border:1.5px solid #fff;border-radius:3px;width:10px;height:10px;box-shadow:0 1px 3px rgba(0,0,0,.4);"></div>`, iconSize: [10, 10], iconAnchor: [5, 5] });
   }
   const h = size === "small" ? 13 : 18;
+  const { w } = badgeBox(abbr, size); // badge grows with its text (e.g. suite address) and stays centred on the point
   const font = size === "small" ? "600 7px/1" : "600 9px/1";
   return L.divIcon({
     className: "ug-marker",
-    html: `<div style="background:${isRed ? '#dc2626' : color};color:#fff;border:1.5px solid #fff;border-radius:3px;min-width:${h}px;height:${h}px;padding:0 ${size === "small" ? 2 : 3}px;display:flex;align-items:center;justify-content:center;font:${font} ui-monospace,monospace;box-shadow:0 1px 3px rgba(0,0,0,.4);white-space:nowrap;">${abbr}</div>`,
-    iconSize: [h, h],
-    iconAnchor: [h / 2, h / 2],
+    html: `<div style="background:${isRed ? '#dc2626' : color};color:#fff;border:1.5px solid #fff;border-radius:3px;min-width:${h}px;width:${w}px;height:${h}px;padding:0 ${size === "small" ? 2 : 3}px;display:flex;align-items:center;justify-content:center;font:${font} ui-monospace,monospace;box-shadow:0 1px 3px rgba(0,0,0,.4);white-space:nowrap;">${abbr}</div>`,
+    iconSize: [w, h],
+    iconAnchor: [w / 2, h / 2],
   });
 };
 
@@ -2468,7 +2485,7 @@ const JobMap = () => {
     ug.forEach((u) => {
       const pt = proj(u.pos);
       const size = u.label_size || "normal";
-      items.push({ id: u.id, x: pt.x, y: pt.y, text: size === "off" ? "" : undergroundAbbr(u.type), size, center: true, fixed: Array.isArray(u.label_offset) && u.label_offset.length === 2 ? u.label_offset : null });
+      items.push({ id: u.id, x: pt.x, y: pt.y, text: size === "off" ? "" : ugTagText(u), size, center: true, fixed: Array.isArray(u.label_offset) && u.label_offset.length === 2 ? u.label_offset : null });
     });
     const obstacles = [
       ...poleDisplayInfo.map((p) => { const pt = proj(p.pos); return { x: pt.x - 5, y: pt.y - 5, w: 10, h: 10 }; }),
@@ -2502,13 +2519,41 @@ const JobMap = () => {
   const resetLabelOffsets = async () => {
     const pinnedP = poles.filter((p) => Array.isArray(p.label_offset));
     const pinnedU = underground.filter((u) => Array.isArray(u.label_offset));
-    if (!pinnedP.length && !pinnedU.length) { toast.info("No moved labels to reset"); return; }
+    const badgeCount = Object.keys(job?.span_badge_offsets || {}).length;
+    if (badgeCount) { setJob((prev) => ({ ...(prev || {}), span_badge_offsets: {} })); axios.put(`/jobs/${jobId}`, { span_badge_offsets: {} }).catch(() => {}); }
+    if (!pinnedP.length && !pinnedU.length) { toast.info(badgeCount ? `${badgeCount} span badge(s) back in place` : "No moved labels to reset"); return; }
     setPoles((prev) => prev.map((p) => ({ ...p, label_offset: null })));
     setUnderground((prev) => prev.map((u) => ({ ...u, label_offset: null })));
     try {
       await Promise.all([...pinnedP.map((p) => axios.put(`/poles/${p.id}`, { label_offset: null })), ...pinnedU.map((u) => axios.put(`/underground/${u.id}`, { label_offset: null }))]);
       toast.success(`${pinnedP.length + pinnedU.length} label(s) back to automatic placement`);
     } catch { toast.error("Could not reset labels"); fetchData(); }
+  };
+
+  // Span measurement badge: draggable in Move Items mode; offset stored on the job per span key, leader drawn to the span midpoint
+  const spanBadgeOffsets = job?.span_badge_offsets || {};
+  const saveSpanBadgeOffset = async (segmentKey, off) => {
+    const next = { ...(job?.span_badge_offsets || {}) };
+    if (off) next[segmentKey] = off; else delete next[segmentKey];
+    setJob((prev) => ({ ...(prev || {}), span_badge_offsets: next }));
+    try { await axios.put(`/jobs/${jobId}`, { span_badge_offsets: next }); }
+    catch { toast.error("Could not save badge position"); fetchData(); }
+  };
+  const renderSpanBadge = (i, segmentKey, midPos, seg) => {
+    const off = spanBadgeOffsets[segmentKey];
+    const pos = Array.isArray(off) && off.length === 2 ? [midPos[0] + off[0], midPos[1] + off[1]] : midPos;
+    const icon = numberBadgeIcon(previewSpanNum(i), "#ea580c", [13, 13], swapPick === i, badgeFeet(segListDistance(seg)), spanBadgeScale);
+    return (
+      <>
+        {pos !== midPos && <Polyline positions={[midPos, pos]} pathOptions={{ color: "#ea580c", weight: 2, dashArray: "4,3", opacity: 0.9 }} interactive={false} />}
+        {pos !== midPos && <CircleMarker center={midPos} radius={3} pathOptions={{ color: "#fff", weight: 1, fillColor: "#ea580c", fillOpacity: 1 }} interactive={false} />}
+        {positionEditMode ? (
+          <DraggableMarker position={pos} icon={icon} draggable zIndexOffset={1500} onDragEnd={(lat, lng) => saveSpanBadgeOffset(segmentKey, [lat - midPos[0], lng - midPos[1]])} />
+        ) : (
+          <Marker position={pos} icon={icon} zIndexOffset={swapPick === i ? 1600 : 800} eventHandlers={{ click: (e) => { L.DomEvent.stopPropagation(e); handleBadgeTap(i); } }} />
+        )}
+      </>
+    );
   };
 
   // ======== END CONNECTION MANAGEMENT ========
@@ -2930,7 +2975,7 @@ const JobMap = () => {
                       <Move className="w-4 h-4 mr-2" />
                       Move Items &amp; Labels
                     </DropdownMenuItem>
-                    {poles.some((p) => Array.isArray(p.label_offset)) || underground.some((u) => Array.isArray(u.label_offset)) ? (
+                    {poles.some((p) => Array.isArray(p.label_offset)) || underground.some((u) => Array.isArray(u.label_offset)) || Object.keys(job?.span_badge_offsets || {}).length ? (
                       <DropdownMenuItem onClick={resetLabelOffsets} className="cursor-pointer" data-testid="reset-label-positions-btn">
                         <RotateCcw className="w-4 h-4 mr-2" />
                         Reset label positions (auto)
@@ -3539,7 +3584,7 @@ const JobMap = () => {
                       />
                       {/* Numbered badge — measurement is in the list below the map */}
                       {!showStationNumbers && showSpanBadges && previewSpanNum(i) != null && (
-                        <Marker position={badgePos} icon={numberBadgeIcon(previewSpanNum(i), "#ea580c", [13, 13], swapPick === i, badgeFeet(segListDistance(seg)), spanBadgeScale)} zIndexOffset={swapPick === i ? 1600 : 800} eventHandlers={{ click: (e) => { L.DomEvent.stopPropagation(e); handleBadgeTap(i); } }} />
+                        renderSpanBadge(i, segmentKey, badgePos, seg)
                       )}
                       {/* Selection highlight */}
                       {isSelected && (
@@ -3587,7 +3632,7 @@ const JobMap = () => {
                     )}
                     {/* Numbered badge — click to see the distance */}
                     {!showStationNumbers && showSpanBadges && previewSpanNum(i) != null && (
-                      <Marker position={ugBadgePos} icon={numberBadgeIcon(previewSpanNum(i), "#ea580c", [13, 13], swapPick === i, badgeFeet(segListDistance(seg)), spanBadgeScale)} zIndexOffset={swapPick === i ? 1600 : 800} eventHandlers={{ click: (e) => { L.DomEvent.stopPropagation(e); handleBadgeTap(i); } }} />
+                      renderSpanBadge(i, segmentKey, ugBadgePos, seg)
                     )}
                   </React.Fragment>
                 );
@@ -3657,6 +3702,7 @@ const JobMap = () => {
                                 setPoles((prev) => prev.filter((x) => x.id !== id));
                                 axios.post(`/jobs/${jobId}/sync-map-distances`).catch(() => {});
                               }}
+                              onConverted={() => fetchData()}
                             />
                           )}
                           {positionEditMode && (
@@ -3693,9 +3739,9 @@ const JobMap = () => {
                 const isRed = isMPOE || ugIsAfterMPOE;
                 const stationLabel = showStationNumbers && stationNumbers[u.id] ? stationNumbers[u.id] : null;
                 // Loop / Aerial Splice are aerial attributes — render them blue
-                const itemColor = u.marker_color || (u.aerial_override === "neutral" ? "#9333ea" : isAerialAttr(u) ? "#2563eb" : undergroundColorHex);
+                const itemColor = ugTagColor(u, undergroundColorHex);
                 // Hide underground type label when station numbers are active
-                const ugDisplayLabel = showStationNumbers ? "" : undergroundAbbr(u.type);
+                const ugDisplayLabel = showStationNumbers ? "" : ugTagText(u);
                 const ugSize = u.label_size || "normal";
                 const ugLay = !showStationNumbers && ugSize !== "off" ? smartLabelLayout[u.id] : null;
                 const ugMoved = ugLay && !ugLay.centered;
@@ -3948,7 +3994,7 @@ const JobMap = () => {
               {route.length > 0 && (
                 <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-red-600 border border-white inline-block flex-shrink-0"></span>Pole (Red)</div>
               )}
-              {poles.some((p) => (p.marker_color || "").toLowerCase() === "#2563eb") && <div className="flex items-center gap-2" data-testid="legend-pole-address"><span className="w-3 h-3 rounded-full bg-blue-600 border border-white inline-block flex-shrink-0"></span>Address (Blue pole)</div>}
+              {(poles.some((p) => (p.marker_color || "").toLowerCase() === "#2563eb") || underground.some((u) => isAddressAttr(u))) && <div className="flex items-center gap-2" data-testid="legend-pole-address"><span className="w-3 h-3 rounded-full bg-blue-600 border border-white inline-block flex-shrink-0"></span>Address{underground.some((u) => u.type === "Suite") ? " / Suite" : ""} (Blue)</div>}
               {(poles.some((p) => p.marker_color === "#39ff14") || underground.some((u) => u.marker_color === "#39ff14")) && (
                 <div className="flex items-center gap-2 mt-0.5" data-testid="legend-fst"><span className="w-3 h-3 rounded-full border border-white inline-block flex-shrink-0" style={{ backgroundColor: "#39ff14" }}></span>FST (Neon Green)</div>
               )}

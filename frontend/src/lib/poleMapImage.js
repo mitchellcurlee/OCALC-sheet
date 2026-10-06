@@ -225,6 +225,12 @@ export const computeUgConnectors = (route, ug) => {
 export const AERIAL_ATTR_TYPES = new Set(["Loop", "Aerial Splice", "X-Messenger", "Eyebolt", "Pullbox", "Weather Head", "Aerial NTE", "Aerial PI", "Aerial FBT"]);
 
 // Per-item aerial/underground classification: explicit override wins, else by type
+// Suite / address attributes: the tag shows the address text (not just "SU") and renders blue like Address poles
+export const ADDRESS_BLUE = "#2563eb";
+export const isAddressAttr = (u) => u.type === "Suite" || (u.marker_color || "").toLowerCase() === ADDRESS_BLUE;
+export const ugTagText = (u) => (isAddressAttr(u) && (u.label || "").trim() ? `${undergroundAbbr(u.type)} ${u.label.trim()}` : undergroundAbbr(u.type));
+export const ugTagColor = (u, fallback = "#16a34a") => u.marker_color || (u.type === "Suite" ? ADDRESS_BLUE : u.aerial_override === "neutral" ? "#9333ea" : isAerialAttr(u) ? ADDRESS_BLUE : fallback);
+
 export const isAerialAttr = (u) =>
   (u.aerial_override === "aerial" || u.aerial_override === "underground")
     ? u.aerial_override === "aerial"
@@ -290,7 +296,7 @@ export const routePayloadFromOrder = (job, orderedItems) => {
 export const computeConnectionPairs = (route, ug, connections = [], spanOrder = null, drawnOnly = false) => {
   const allItems = [];
   route.forEach((p) => allItems.push({ id: p.id, type: "pole", pos: p.pos, sort_order: p.sort_order ?? Infinity, label: p.pole_number || "Pole", address: p.address || "", start_path: p.start_path === true, end_path: p.end_path === true, standalone: p.standalone === true, hasPath: (p.path_measurements || []).length > 0, pathTarget: pathTargetOf(p.path_measurements), markerColor: p.marker_color || null, labelOffset: Array.isArray(p.label_offset) && p.label_offset.length === 2 ? p.label_offset : null, labelSize: p.label_size || null }));
-  ug.forEach((u) => allItems.push({ id: u.id, type: "underground", ugType: u.type, materialType: u.material_type || "", aerialOverride: ["aerial", "underground", "neutral"].includes(u.aerial_override) ? u.aerial_override : null, pos: u.pos, sort_order: u.sort_order ?? Infinity, label: u.label || u.type, address: u.address || "", start_path: u.start_path === true, end_path: u.end_path === true, standalone: u.standalone === true, hasPath: (u.path_measurements || []).length > 0, pathTarget: pathTargetOf(u.path_measurements), markerColor: u.marker_color || null, labelOffset: Array.isArray(u.label_offset) && u.label_offset.length === 2 ? u.label_offset : null }));
+  ug.forEach((u) => allItems.push({ id: u.id, type: "underground", ugType: u.type, materialType: u.material_type || "", aerialOverride: ["aerial", "underground", "neutral"].includes(u.aerial_override) ? u.aerial_override : null, pos: u.pos, sort_order: u.sort_order ?? Infinity, label: u.label || u.type, address: u.address || "", start_path: u.start_path === true, end_path: u.end_path === true, standalone: u.standalone === true, hasPath: (u.path_measurements || []).length > 0, pathTarget: pathTargetOf(u.path_measurements), markerColor: u.marker_color || null, tagText: ugTagText(u), labelOffset: Array.isArray(u.label_offset) && u.label_offset.length === 2 ? u.label_offset : null }));
   // Stable list order: explicit sort_order first, items without one keep their incoming order at the end
   // (never subtract sort_orders — Infinity - Infinity is NaN and made the numbering random)
   allItems.forEach((it, i) => { it._in = i; });
@@ -771,7 +777,7 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
     drawSmartTags(ctx, {
       k,
       poles: route.map((p, i) => { const [x, y] = pt(p.pos); return { x, y, text: markerLabel(p, i, showStops), color: p.marker_color || "#dc2626", size: p.label_size || "normal", fixed: Array.isArray(p.label_offset) && p.label_offset.length === 2 ? p.label_offset : null }; }),
-      ugs: ug.map((u) => { const [x, y] = pt(u.pos); return { x, y, text: undergroundAbbr(u.type), color: u.marker_color || (u.aerial_override === "neutral" ? "#9333ea" : isAerialAttr(u) ? "#2563eb" : "#16a34a"), fixed: Array.isArray(u.label_offset) && u.label_offset.length === 2 ? u.label_offset : null }; }),
+      ugs: ug.map((u) => { const [x, y] = pt(u.pos); return { x, y, text: ugTagText(u), color: ugTagColor(u), fixed: Array.isArray(u.label_offset) && u.label_offset.length === 2 ? u.label_offset : null }; }),
     });
     [...route, ...ug].filter((it) => it.end_path === true).forEach((it) => { const [x, y] = pt(it.pos); endBadge(x, y); });
 
@@ -1306,7 +1312,7 @@ const generateSegmentPage = async ({
     k: kTag,
     obstacles: placedRects.filter((r) => !(r.w === 32 * s && r.h === 26 * s)),
     poles: pagePoles.map((p, i) => { const [x, y] = pt(p.pos); return { x, y, text: p.label || `${i + 1}`, color: p.markerColor || "#dc2626", size: p.labelSize || "normal", fixed: p.labelOffset }; }),
-    ugs: pageUg.map((u) => { const [x, y] = pt(u.pos); return { x, y, text: undergroundAbbr(u.ugType), color: u.markerColor || "#16a34a", fixed: u.labelOffset }; }),
+    ugs: pageUg.map((u) => { const [x, y] = pt(u.pos); return { x, y, text: u.tagText || undergroundAbbr(u.ugType), color: u.markerColor || (u.ugType === "Suite" ? ADDRESS_BLUE : "#16a34a"), fixed: u.labelOffset }; }),
   });
   painted.forEach((r) => placedRects.push(r));
 
