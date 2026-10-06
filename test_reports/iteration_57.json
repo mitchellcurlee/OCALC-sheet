@@ -1,0 +1,39 @@
+{
+  "summary": "Iter 57 full-stack testing: Started/Partial flag, KMZ photos, KML/KMZ import, Team Reports, and GPS pin-drop. Backend: 17/17 pytest tests PASS (test_iter57_features.py — Started PUT/GET persistence; KMZ embeds files/*.jpg + <img src='files/...'> + ?photos=false returns only doc.kml; KML parse of hand-written KML returns exactly 3 points with line ignored, HTML stripped from description, HH-12 guessed as underground/Handhole; KMZ re-parse works; invalid file 400; no-point KML 400; create on temp job yields pole_number='118' from 'P 118' and notes starting 'Imported from KML' plus 2 UG; team JSON+export admin OK with TOTALS last row, 403 for non-admin, 404 for empty range). Frontend: all critical flows PASS — team-reports-btn absent for mitchell / present for admin; /admin/team-reports page loads with totals cards (travel/work/return/miles/footage/poles/computer), 8 rows + team-totals-row (bg-yellow-100 bold), fielder filter narrows 8→2 rows, team-export-btn downloads Team_Field_Report_2020-01-01_to_2030-12-31.xlsx; non-admin accessing /admin/team-reports is redirected back to /. Job tiles: job-started-checkbox-{id} is LEFT of job-complete-checkbox-{id} (x=373 < x=470); clicking started → tile data-state='started' + bg rgb(254,252,232) (bg-yellow-50) + persists after reload; clicking complete while started → data-state='complete' (green wins); map pin for A050ABC is yellow when started (#eab308 ✓, legend 'Red = open · Yellow = started · Green = complete' present). Job Detail header job-status-badge reads 'STARTED / PARTIAL' when started. KML import UI (on TEMP job): export-dropdown-btn → import-kml-btn opens kml-import-dialog, hidden file input accepts .kml, parsed 3 rows into kml-import-table, skip removed one row leaving 2, label edit to 'RENAMED' worked, create produced 1 pole + 1 UG shown in Poles & Underground list; temp job deleted via API. GPS pin-drop: granted geolocation (30.1006,-95.7352, acc 8) → JobDetail photo-pin-adjust-dialog shows '30.100600, -95.735200 · GPS ±8 m / 26 ft' with photo-pin-relocate + photo-pin-adjust-done; on JobMap /jobs/{id}/map, photo-pin-adjust-banner renders with Re-locate button, 46 leaflet SVG paths (accuracy Circle present), Done opens photo-pin-type-dialog; discarded without creating attributes.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Non-admin /admin/team-reports", "issues": ["Redirect to / works correctly, but the spec's expected error toast ('admin only' / 'not authorized') was not visible/detected. Only silent redirect. Low priority — the 403 server-side + client redirect still protects the route."]},
+      {"screen": "JobMap photo-pin-adjust-banner (map variant)", "issues": ["Banner occasionally shows '(no GPS fix)' instead of 'GPS ±8 m / 26 ft' depending on timing of watchPosition after navigation, even though context.set_geolocation was granted. Accuracy ring is still drawn and Re-locate works. Minor timing/UX, not blocking (JobDetail PinAdjustDialog variant correctly showed accuracy)."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter57_features.py",
+    "/app/test_reports/pytest/iter57_results.xml"
+  ],
+  "action_items": [
+    "Optional: show an error toast when a non-admin lands on /admin/team-reports (currently silent redirect).",
+    "Optional: on JobMap pin-drop banner, consider showing a short 'Locating…' placeholder while watchPosition is pending so users don't briefly see '(no GPS fix)'."
+  ],
+  "critical_code_review_comments": [
+    "backend/routes/kml_import.py:71-128 — parse endpoint correctly ignores LineString/Polygon placemarks (point check before coordinate parsing). HTML in <description> is stripped via regex before storage (verified in tests). KMZ parsing picks doc.kml preferentially, else first .kml.",
+    "backend/routes/kml_import.py:160 — pole_number regex 'P 118' → '118' only applied when item.label is empty (uses it.name). Frontend KmlImportDialog passes a `label` text input; if the user leaves the label as the auto-filled name, pole_number may contain the 'P ' prefix. Consider stripping 'P ' / 'Pole ' prefix from label too, or using the regex on label as well. Low priority.",
+    "backend/routes/kmz.py — photos param default True; files/ embedded as JPEG via Pillow resize. Well-formed KML. No security concerns on description HTML (goes inside CDATA).",
+    "frontend/src/pages/JobsList.jsx:342-358 — tileState priority (completed → started → open) correctly implements 'green wins' rule. data-state attribute on .industrial-card + bg-yellow-50 verified at runtime.",
+    "frontend/src/pages/TeamReports.jsx — redirect for non-admin happens but no user-visible error toast. Add toast.error('Admins only') on 403 before navigate('/').",
+    "frontend/src/components/MapPhotoCapture.jsx:138-142 — banner Re-locate reuses locate(false); when accuracy state is null early in watch cycle, banner shows '(no GPS fix)'. Consider rendering `locating ? 'Locating…' : accText` instead of blank/no-fix placeholder."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter57_features.py (new)"
+  ],
+  "success_rate": {"backend": "100% (17/17)", "frontend": "~95% (all critical flows verified; 2 minor UX observations)"},
+  "test_credentials": "mitchell.curlee@byers.com / Dawson@2016 (regular); Admin@mastec.com / Mastecbyers12345 (admin)",
+  "seed_data_creation": "Created & deleted temp jobs (TEST_KMLIMP via API in backend tests, TEST_KMLUI via frontend playwright). Both deleted. A050ABC (e5dc0bae-96bb-4cef-8001-7baf4e41d80a) started flag was toggled during testing and RESET to started=false at the end. Verified via API: started=False, completed=False, no TEST_ jobs remain in active list. Deleted temp jobs still live in Deleted Items (purge endpoint /api/trash/jobs/{id} returned 404 — no public purge route available for that path).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Regression suite: /app/backend/tests/test_iter57_features.py (17 tests, ~7s). testids confirmed working: team-reports-btn, team-reports-page, team-load-btn, team-fielder-filter, team-export-btn, team-table, team-totals-row, team-total-{travel|work|return|miles|footage|poles|computer}, job-started-checkbox-{id}, job-complete-checkbox-{id}, job-status-badge, jobs-pin-legend, export-dropdown-btn, import-kml-btn, kml-import-dialog, kml-import-file (hidden input — use set_input_files), kml-import-table, kml-import-type-{i}, kml-import-label-{i}, kml-import-skip-{i}, kml-import-create-btn, photo-pin-adjust-dialog, photo-pin-adjust-banner, photo-pin-relocate, photo-pin-adjust-done, photo-pin-type-dialog, add-take-photo-btn (JobDetail), map-add-take-photo (JobMap). Note: seed job A050ABC is in dashboard folder 'January 2026' (not 'October 2026' as spec stated); use the search input to find it instead of clicking folder tiles. GPS permissions must be granted via context.grant_permissions(['geolocation'], origin=...) + context.set_geolocation BEFORE navigation, and context persists across page.goto on same origin.",
+  "rca of the issue": "N/A — all features verified end-to-end. Two low-priority UX nits documented in design_issues (silent non-admin redirect without toast; map banner '(no GPS fix)' flash while watchPosition pending)."
+}
