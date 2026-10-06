@@ -2098,20 +2098,32 @@ const JobMap = () => {
     }
   };
 
-  const addSpanNote = async (text) => {
+  // New notes are pinned directly below the row they are added from (afterKey); header button appends after the last row.
+  // No sort orders are re-stamped, so surrounding items never shift.
+  const addSpanNote = async (text, afterKey) => {
     const clean = (text || "").trim();
     if (!clean) return;
+    const list = measurementEntries;
+    const above = afterKey !== undefined ? list.find((e) => e.key === afterKey) : list[list.length - 1];
+    const after = above ? above.key : null;
+    const soHint = above ? ((above.toSo ?? above.so) ?? Infinity) : -1;
+    const newNote = { id: (window.crypto?.randomUUID ? window.crypto.randomUUID() : `note-${Date.now()}`), text: clean, after, so: Number.isFinite(soHint) ? soHint + 0.5 : undefined };
+    const notes = [...(job?.span_notes || []), newNote];
+    setJob((prev) => ({ ...(prev || {}), span_notes: notes }));
     try {
-      const items = combinedOrderItems();
-      await axios.put(`/jobs/${jobId}/reorder-items`, items.map((it, i) => ({ id: it._type === "riser" ? it.id.split(":")[1] : it.id, type: it._type, sort_order: i })));
-      const newNote = { id: (window.crypto?.randomUUID ? window.crypto.randomUUID() : `note-${Date.now()}`), text: clean, so: items.length + 1 };
-      await axios.put(`/jobs/${jobId}`, { span_notes: [...(job?.span_notes || []), newNote] });
-      await fetchData();
-      toast.success("Note added to the bottom — use the arrows to place it");
+      await axios.put(`/jobs/${jobId}`, { span_notes: notes });
+      toast.success(above ? `Note added below row ${above.num}` : "Note added");
     } catch (e) {
       toast.error("Failed to add note");
+      fetchData();
     }
   };
+  const promptNote = (afterKey) => { const t = window.prompt("Note text (e.g. Address 12345 Jones Rd):"); if (t) addSpanNote(t, afterKey); };
+  const noteBelowBtn = (e) => (
+    <button type="button" onClick={() => promptNote(e.key)} className="p-0.5 rounded border border-amber-200 bg-white text-amber-600 hover:bg-amber-50" title="Add a note directly below this row" data-testid={`note-add-below-${e.num}`}>
+      <StickyNote className="w-3.5 h-3.5" />
+    </button>
+  );
 
   const deleteSpanNote = async (noteId) => {
     try {
@@ -2520,6 +2532,9 @@ const JobMap = () => {
           <div className="flex items-center gap-2 sm:gap-3">
             <Button variant="ghost" size="icon" className="text-zinc-600 hover:text-zinc-900 h-9 w-9" onClick={goBack} data-testid="map-back-btn">
               <ArrowLeft className="w-5 h-5" />
+            </Button>
+            <Button variant="ghost" size="icon" className="text-zinc-600 hover:text-zinc-900 h-9 w-9" onClick={() => navigate(`/jobs/${jobId}`)} title="Job home — poles & underground list" data-testid="map-home-btn">
+              <Home className="w-5 h-5" />
             </Button>
             <div className="w-9 h-9 bg-red-600 flex items-center justify-center flex-shrink-0">
               <Zap className="w-5 h-5 text-white" />
@@ -3793,7 +3808,7 @@ const JobMap = () => {
                 SPAN MEASUREMENTS
               </h2>
               <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={() => { const t = window.prompt("Note text (e.g. Address 12345 Jones Rd):"); if (t) addSpanNote(t); }} className="gap-1 bg-amber-50 border-amber-300 hover:bg-amber-100 text-amber-800" data-testid="span-add-note-btn">
+                <Button variant="outline" size="sm" onClick={() => promptNote()} className="gap-1 bg-amber-50 border-amber-300 hover:bg-amber-100 text-amber-800" title="Add a note at the end of the list (use the note icon on a row to insert below it)" data-testid="span-add-note-btn">
                   <StickyNote className="w-4 h-4" /> Note
                 </Button>
                 {!spanReorder && routeMode && orderedSegments.length > 0 && (
@@ -3848,6 +3863,7 @@ const JobMap = () => {
                         </button>
                       </span>
                     )}
+                    {noteBelowBtn(e)}
                   </li>
                 ) : e.kind === "note" ? (
                   <li key={`entry-${e.num}`} data-testid={`note-measurement-${e.num}`} className="flex items-center gap-1">
@@ -3862,6 +3878,7 @@ const JobMap = () => {
                       <button type="button" onClick={() => deleteSpanNote(e.noteId)} className="p-0.5 rounded border border-red-200 bg-white text-red-500 hover:bg-red-50" title="Delete note" data-testid={`note-delete-${e.num}`}>
                         <X className="w-3.5 h-3.5" />
                       </button>
+                      {noteBelowBtn(e)}
                     </span>
                   </li>
                 ) : e.kind === "riser" ? (
@@ -3874,11 +3891,13 @@ const JobMap = () => {
                       <button type="button" onClick={() => moveRiserEntry(e.num - 1, 1)} className="p-0.5 rounded border border-zinc-300 bg-white text-zinc-600 hover:bg-zinc-100" title="Move down" data-testid={`riser-move-down-${e.num}`}>
                         <ChevronDown className="w-3.5 h-3.5" />
                       </button>
+                      {noteBelowBtn(e)}
                     </span>
                   </li>
                 ) : (
-                  <li key={`entry-${e.num}`} data-testid={`path-measurement-${e.num}`}>
-                    <span className="font-bold text-emerald-700">{e.num}.</span> {e.text}{showStationNumbers && e.itemId && stationNumbers[`${e.itemId}:out`] ? <span className="text-indigo-700"> ({stationNumbers[e.itemId]} to {stationNumbers[`${e.itemId}:out`]})</span> : null}
+                  <li key={`entry-${e.num}`} data-testid={`${e.kind === "item" ? "item" : "path"}-measurement-${e.num}`} className="flex items-center gap-1">
+                    <span><span className="font-bold text-emerald-700">{e.num}.</span> {e.text}{showStationNumbers && e.itemId && stationNumbers[`${e.itemId}:out`] ? <span className="text-indigo-700"> ({stationNumbers[e.itemId]} to {stationNumbers[`${e.itemId}:out`]})</span> : null}</span>
+                    {noteBelowBtn(e)}
                   </li>
                 )
               ))}
