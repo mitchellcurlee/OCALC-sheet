@@ -170,6 +170,16 @@ const UgPopupEditor = ({ item, defaultColor, onSaved, onDeleted }) => {
     }
   };
 
+  const setLabelSize = async (val) => {
+    try {
+      const res = await axios.put(`/underground/${item.id}`, { label_size: val });
+      onSaved(res.data);
+      toast.success(val === "off" ? "Marker label hidden" : `Marker label: ${val}`);
+    } catch (e) {
+      toast.error("Failed to update label");
+    }
+  };
+
   const setClass = async (val) => {
     try {
       const res = await axios.put(`/underground/${item.id}`, { aerial_override: val });
@@ -211,6 +221,14 @@ const UgPopupEditor = ({ item, defaultColor, onSaved, onDeleted }) => {
           {neutralAllowed && (
             <Button size="sm" onClick={() => setClass("neutral")} title="Pass-through: connected spans take their type from the other end" className={`flex-1 h-7 text-xs ${isNeutral ? "bg-zinc-600 hover:bg-zinc-700 text-white" : "bg-zinc-100 border border-zinc-300 text-zinc-900 hover:bg-zinc-200"}`} data-testid={`ug-class-neutral-${item.id}`}>Neutral</Button>
           )}
+        </div>
+      </div>
+      <div>
+        <div className="text-[10px] text-zinc-400 uppercase mb-1">Marker label</div>
+        <div className="flex gap-1" data-testid={`ug-label-size-row-${item.id}`}>
+          {LABEL_SIZE_MODES.map((m) => (
+            <Button key={m} size="sm" onClick={() => setLabelSize(m)} className={`flex-1 h-7 text-xs capitalize ${(item.label_size || "normal") === m ? "bg-zinc-800 hover:bg-zinc-900 text-white" : "bg-zinc-100 border border-zinc-300 text-zinc-900 hover:bg-zinc-200"}`} data-testid={`ug-label-size-${m}-${item.id}`}>{m}</Button>
+          ))}
         </div>
       </div>
       <div>
@@ -287,6 +305,15 @@ const PolePopupEditor = ({ pole, onSaved, onDeleted }) => {
       toast.error("Failed to update color");
     }
   };
+  const setLabelSize = async (val) => {
+    try {
+      const res = await axios.put(`/poles/${pole.id}`, { label_size: val });
+      onSaved(res.data);
+      toast.success(val === "off" ? "Smart label hidden" : `Smart label: ${val}`);
+    } catch (e) {
+      toast.error("Failed to update label");
+    }
+  };
 
   const inputCls = "w-full h-7 px-2 text-xs border border-zinc-300 rounded bg-white text-zinc-900";
   // Button and form both stay mounted (CSS toggle) — see UgPopupEditor note
@@ -315,6 +342,12 @@ const PolePopupEditor = ({ pole, onSaved, onDeleted }) => {
       </div>
       <Button size="sm" variant="outline" className={`w-full h-7 text-xs bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900 ${editing ? "hidden" : ""}`} onClick={() => setEditing(true)} data-testid={`pole-quickedit-btn-${pole.id}`}>Quick Edit #/Class/Size</Button>
       <div>
+        <div className="text-[10px] text-zinc-400 uppercase mb-1">Smart label</div>
+        <div className="flex gap-1 mb-2" data-testid={`pole-label-size-row-${pole.id}`}>
+          {LABEL_SIZE_MODES.map((m) => (
+            <Button key={m} size="sm" onClick={() => setLabelSize(m)} className={`flex-1 h-7 text-xs capitalize ${(pole.label_size || "normal") === m ? "bg-zinc-800 hover:bg-zinc-900 text-white" : "bg-zinc-100 border border-zinc-300 text-zinc-900 hover:bg-zinc-200"}`} data-testid={`pole-label-size-${m}-${pole.id}`}>{m}</Button>
+          ))}
+        </div>
         <div className="text-[10px] text-zinc-400 uppercase mb-1">Marker Color</div>
         <div className="flex gap-1.5" data-testid={`pole-color-row-${pole.id}`}>
           {MARKER_COLOR_CHOICES.map((hex) => (
@@ -375,9 +408,12 @@ const formatRiserHeight = (value) => {
 };
 
 // Small red dot for pole marker with label on the side
-const poleIcon = (label, offsetDir = "right", color = "#dc2626") => {
-  // offsetDir: "right", "left", "top", "bottom" for label placement
+const poleIcon = (label, offsetDir = "right", color = "#dc2626", size = "normal") => {
+  // offsetDir: "right", "left", "top", "bottom" for label placement; size: normal | small | off (per-item smart label)
   const dotSize = 8; // Smaller dot
+  if (size === "off") label = "";
+  const font = size === "small" ? "600 7px/1.1" : "600 9px/1.2";
+  const pad = size === "small" ? "1px 3px" : "2px 5px";
   const labelOffset = offsetDir === "right" ? "left: 18px;" : 
                       offsetDir === "left" ? "right: 18px;" :
                       offsetDir === "top" ? "bottom: 16px; left: 50%; transform: translateX(-50%);" :
@@ -388,7 +424,7 @@ const poleIcon = (label, offsetDir = "right", color = "#dc2626") => {
     html: `
       <div style="position:relative;">
         <div style="background:${color};border:1.5px solid #fff;border-radius:50%;width:${dotSize}px;height:${dotSize}px;box-shadow:0 1px 3px rgba(0,0,0,.4);"></div>
-        <div style="position:absolute;${labelOffset}top:50%;transform:translateY(-50%);background:${color};color:#fff;border:1px solid #fff;border-radius:5px;padding:2px 5px;font:600 9px/1.2 ui-monospace,monospace;white-space:nowrap;box-shadow:0 1px 2px rgba(0,0,0,.3);">${label}</div>
+        ${label ? `<div style="position:absolute;${labelOffset}top:50%;transform:translateY(-50%);background:${color};color:#fff;border:1px solid #fff;border-radius:5px;padding:${pad};font:${font} ui-monospace,monospace;white-space:nowrap;box-shadow:0 1px 2px rgba(0,0,0,.3);">${label}</div>` : ""}
       </div>
     `,
     iconSize: [dotSize, dotSize],
@@ -447,6 +483,7 @@ const numberBadgeIcon = (num, color = "#ea580c", anchor = [13, 13], picked = fal
   });
 };
 const SPAN_BADGE_MODES = ["normal", "small", "off"];
+const LABEL_SIZE_MODES = ["normal", "small", "off"]; // per-item smart label / attribute marker size
 const SPAN_BADGE_SCALE = { normal: 1, small: 0.7 };
 const badgeFeet = (ft) => (Number.isFinite(ft) && ft > 0 ? `${Math.round(ft)}'` : null);
 
@@ -473,13 +510,20 @@ const labelIcon = (text, ox, oy, isAfterMPOE = false) => {
 };
 
 // Underground item marker (colored square with abbreviation, RED for MPOE) - smaller
-const ugIcon = (abbr, isRed = false, color = '#16a34a') =>
-  L.divIcon({
+const ugIcon = (abbr, isRed = false, color = '#16a34a', size = "normal") => {
+  // size: normal | small (compact badge) | off (plain dot, no text)
+  if (size === "off") {
+    return L.divIcon({ className: "ug-marker", html: `<div style="background:${isRed ? '#dc2626' : color};border:1.5px solid #fff;border-radius:3px;width:10px;height:10px;box-shadow:0 1px 3px rgba(0,0,0,.4);"></div>`, iconSize: [10, 10], iconAnchor: [5, 5] });
+  }
+  const h = size === "small" ? 13 : 18;
+  const font = size === "small" ? "600 7px/1" : "600 9px/1";
+  return L.divIcon({
     className: "ug-marker",
-    html: `<div style="background:${isRed ? '#dc2626' : color};color:#fff;border:1.5px solid #fff;border-radius:3px;min-width:18px;height:18px;padding:0 3px;display:flex;align-items:center;justify-content:center;font:600 9px/1 ui-monospace,monospace;box-shadow:0 1px 3px rgba(0,0,0,.4);white-space:nowrap;">${abbr}</div>`,
-    iconSize: [18, 18],
-    iconAnchor: [9, 9],
+    html: `<div style="background:${isRed ? '#dc2626' : color};color:#fff;border:1.5px solid #fff;border-radius:3px;min-width:${h}px;height:${h}px;padding:0 ${size === "small" ? 2 : 3}px;display:flex;align-items:center;justify-content:center;font:${font} ui-monospace,monospace;box-shadow:0 1px 3px rgba(0,0,0,.4);white-space:nowrap;">${abbr}</div>`,
+    iconSize: [h, h],
+    iconAnchor: [h / 2, h / 2],
   });
+};
 
 // Underground connector distance label (colored or RED pill)
 const ugConnectorLabel = (text, isRed = false, color = '#16a34a') =>
@@ -3358,9 +3402,10 @@ const JobMap = () => {
                 const stationLabel = showStationNumbers && stationNumbers[p.id] ? stationNumbers[p.id] : null;
                 // Hide pole number label when station numbers are active
                 const displayLabel = showStationNumbers ? "" : poleLabel;
+                const labelSize = p.label_size || "normal";
                 const icon = p.isCluster 
-                  ? poleIconWithArrow(displayLabel, p.labelAngle, 45, p.marker_color || "#dc2626")
-                  : poleIcon(displayLabel, p.labelDir, p.marker_color || "#dc2626");
+                  ? poleIconWithArrow(labelSize === "off" ? "" : displayLabel, p.labelAngle, 45, p.marker_color || "#dc2626")
+                  : poleIcon(displayLabel, p.labelDir, p.marker_color || "#dc2626", labelSize);
                 return (
                   <React.Fragment key={p.id}>
                     <DraggableMarker 
@@ -3437,7 +3482,7 @@ const JobMap = () => {
                 <React.Fragment key={u.id}>
                   <DraggableMarker 
                     position={u.pos} 
-                    icon={ugIcon(ugDisplayLabel, isRed, itemColor)}
+                    icon={ugIcon(ugDisplayLabel, isRed, itemColor, u.label_size || "normal")}
                     draggable={positionEditMode}
                     onDragEnd={(lat, lng) => handleUndergroundDragEnd(u.id, lat, lng)}
                     zIndexOffset={positionEditMode ? 1500 : 0}

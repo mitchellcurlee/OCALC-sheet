@@ -359,7 +359,7 @@ const JobsList = () => {
               data-testid={`job-started-checkbox-${job.id}`}
             />
             <span className={`text-xs font-mono uppercase mr-3 ${job.started ? "text-yellow-700 font-bold" : "text-zinc-500"}`}>
-              {job.started ? "Started" : "Started / Partial"}
+              {"Started"}
             </span>
           </label>
           <label className="flex items-center gap-2 cursor-pointer">

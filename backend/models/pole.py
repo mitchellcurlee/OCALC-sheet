@@ -41,6 +41,7 @@ class PoleBase(BaseModel):
     job_number: Optional[str] = None
     pole_number: Optional[str] = None
     marker_color: Optional[str] = None
+    label_size: Optional[str] = None  # map smart label: normal | small | off
     pole_size: Optional[str] = None
     pole_size_type: Optional[str] = None
     pole_class: Optional[str] = None
@@ -110,6 +111,7 @@ class PoleUpdate(BaseModel):
     job_number: Optional[str] = None
     pole_number: Optional[str] = None
     marker_color: Optional[str] = None
+    label_size: Optional[str] = None  # map smart label: normal | small | off
     pole_owner: Optional[str] = None
     access: Optional[str] = None
     pole_size: Optional[str] = None

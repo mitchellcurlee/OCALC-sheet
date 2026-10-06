@@ -156,12 +156,12 @@ async def create_from_kml(job_id: str, body: ImportBody, current_user: dict = De
     who = current_user.get("email", "")
     for it in body.items:
         notes = ("Imported from KML" + (f": {it.name}" if it.name else "") + (f"\n{it.description}" if it.description else ""))[:2000]
+        # standalone=True: imported items are placed on the map but NOT auto-connected into spans
         if it.kind == "pole":
-            num = it.label or re.sub(r"^(pole|p)\s*[-#:]?\s*", "", it.name, flags=re.I).strip() or f"P-{created['poles'] + 1}"
-            await create_pole(PoleCreate(job_id=job_id, pole_number=num[:40], latitude=it.lat, longitude=it.lng, notes=notes, last_modified_by=who))
+            await create_pole(PoleCreate(job_id=job_id, pole_number=(it.label or "")[:40], latitude=it.lat, longitude=it.lng, notes=notes, standalone=True, last_modified_by=who))
             created["poles"] += 1
         else:
             t = it.type if it.type in UNDERGROUND_TYPES else "Handhole"
-            await create_underground(UndergroundCreate(job_id=job_id, type=t, label=(it.label or it.name or t)[:60], latitude=it.lat, longitude=it.lng, notes=notes, last_modified_by=who))
+            await create_underground(UndergroundCreate(job_id=job_id, type=t, label=(it.label or "")[:60], latitude=it.lat, longitude=it.lng, notes=notes, standalone=True, last_modified_by=who))
             created["underground"] += 1
     return created

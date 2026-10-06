@@ -26,7 +26,7 @@ export const KmlImportDialog = ({ open, onOpenChange, jobId, onImported }) => {
       const fd = new FormData();
       fd.append("file", f);
       const r = await axios.post(`/jobs/${jobId}/import/kml/parse`, fd, { headers: { "Content-Type": "multipart/form-data" } });
-      setItems(r.data.items.map((it, i) => ({ ...it, _i: i, label: it.kind === "pole" ? it.name.replace(/^(pole|p)\s*[-#:]?\s*/i, "") : it.name })));
+      setItems(r.data.items.map((it, i) => ({ ...it, _i: i, label: "" })));
       setFilename(r.data.filename || f.name);
       toast.success(`${r.data.count} placemark${r.data.count === 1 ? "" : "s"} found — review the types, then import`);
     } catch (err) { toast.error(err.response?.data?.detail || "Could not read that file"); }
@@ -55,7 +55,7 @@ export const KmlImportDialog = ({ open, onOpenChange, jobId, onImported }) => {
         <input ref={inputRef} type="file" accept=".kml,.kmz,application/vnd.google-earth.kml+xml,application/vnd.google-earth.kmz" className="hidden" onChange={onFile} data-testid="kml-import-file" />
         {!items ? (
           <div className="border-2 border-dashed border-zinc-300 rounded p-8 text-center space-y-3" data-testid="kml-import-drop">
-            <p className="text-sm text-zinc-600">Pick a Google Earth KML or KMZ. Each point placemark becomes a pole or an underground / aerial attribute at its GPS coordinates. Lines and polygons are skipped — spans connect per the job's normal rules.</p>
+            <p className="text-sm text-zinc-600">Pick a Google Earth KML or KMZ. Each point placemark becomes a pole or an underground / aerial attribute at its GPS coordinates. Lines and polygons are skipped, and imported items are placed as standalone (not auto-connected) — connect them on the map when ready.</p>
             <Button type="button" onClick={() => inputRef.current?.click()} disabled={busy} className="bg-emerald-600 hover:bg-emerald-700 text-white" data-testid="kml-import-choose-btn">
               {busy ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}Choose file
             </Button>
@@ -83,7 +83,7 @@ export const KmlImportDialog = ({ open, onOpenChange, jobId, onImported }) => {
                           {UNDERGROUND_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
                         </select>
                       </td>
-                      <td className="px-2 py-1"><Input value={it.label || ""} onChange={(e) => setItem(it._i, { label: e.target.value })} className="h-7 text-xs w-32" data-testid={`kml-import-label-${it._i}`} /></td>
+                      <td className="px-2 py-1"><Input value={it.label || ""} onChange={(e) => setItem(it._i, { label: e.target.value })} placeholder="(blank)" className="h-7 text-xs w-32" data-testid={`kml-import-label-${it._i}`} /></td>
                       <td className="px-2 py-1 font-mono text-zinc-500">{it.lat.toFixed(6)}, {it.lng.toFixed(6)}</td>
                       <td className="px-1 py-1"><button type="button" onClick={() => setItems((l) => l.filter((x) => x._i !== it._i))} className="text-zinc-400 hover:text-red-600" title="Skip this placemark" data-testid={`kml-import-skip-${it._i}`}><Trash2 className="w-3.5 h-3.5" /></button></td>
                     </tr>

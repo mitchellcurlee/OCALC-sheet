@@ -682,7 +682,7 @@ const JobDetail = () => {
                   {job?.completed ? (
                     <span className="text-[10px] font-mono tracking-widest bg-green-100 text-green-700 border border-green-400 rounded px-1.5 py-0.5" data-testid="job-status-badge">COMPLETE</span>
                   ) : job?.started ? (
-                    <span className="text-[10px] font-mono tracking-widest bg-yellow-100 text-yellow-800 border border-yellow-500 rounded px-1.5 py-0.5" data-testid="job-status-badge">STARTED / PARTIAL</span>
+                    <span className="text-[10px] font-mono tracking-widest bg-yellow-100 text-yellow-800 border border-yellow-500 rounded px-1.5 py-0.5" data-testid="job-status-badge">STARTED</span>
                   ) : null}
                 </h1>
                 {job?.location && (
