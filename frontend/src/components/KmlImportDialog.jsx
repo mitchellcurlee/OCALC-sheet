@@ -34,14 +34,15 @@ export const KmlImportDialog = ({ open, onOpenChange, jobId, onImported }) => {
   };
 
   const setItem = (i, patch) => setItems((list) => list.map((it) => (it._i === i ? { ...it, ...patch } : it)));
-  const setKind = (i, v) => setItem(i, v === "pole" ? { kind: "pole", type: "Pole" } : { kind: "underground", type: v });
+  const setKind = (i, v) => setItem(i, v === "pole" ? { kind: "pole", type: "Pole" } : v === "address" ? { kind: "address", type: "Address" } : { kind: "underground", type: v });
+  const kindValue = (it) => (it.kind === "pole" ? "pole" : it.kind === "address" ? "address" : it.type);
 
   const doImport = async () => {
     if (!items?.length) return;
     setBusy(true);
     try {
       const r = await axios.post(`/jobs/${jobId}/import/kml/create`, { items: items.map(({ _i, ...it }) => it) });
-      toast.success(`Imported ${r.data.poles} pole${r.data.poles === 1 ? "" : "s"} and ${r.data.underground} attribute${r.data.underground === 1 ? "" : "s"}`);
+      toast.success(`Imported ${r.data.poles} pole${r.data.poles === 1 ? "" : "s"}, ${r.data.addresses || 0} address${(r.data.addresses || 0) === 1 ? "" : "es"} and ${r.data.underground} attribute${r.data.underground === 1 ? "" : "s"}`);
       onImported?.();
       close(false);
     } catch (err) { toast.error(err.response?.data?.detail || "Import failed"); }
@@ -55,7 +56,7 @@ export const KmlImportDialog = ({ open, onOpenChange, jobId, onImported }) => {
         <input ref={inputRef} type="file" accept=".kml,.kmz,application/vnd.google-earth.kml+xml,application/vnd.google-earth.kmz" className="hidden" onChange={onFile} data-testid="kml-import-file" />
         {!items ? (
           <div className="border-2 border-dashed border-zinc-300 rounded p-8 text-center space-y-3" data-testid="kml-import-drop">
-            <p className="text-sm text-zinc-600">Pick a Google Earth KML or KMZ. Each point placemark becomes a pole or an underground / aerial attribute at its GPS coordinates. Lines and polygons are skipped, and imported items are placed as standalone (not auto-connected) — connect them on the map when ready.</p>
+            <p className="text-sm text-zinc-600">Pick a Google Earth KML or KMZ. Each point placemark becomes a pole, an address (blue pin), a suite or an underground / aerial attribute at its GPS coordinates — guessed from its name (P + number = pole, HH/FH = handhole, MH = manhole, marker acronyms, street address = address, address + suite/unit = suite). Lines and polygons are skipped, and imported items are placed as standalone (not auto-connected) — connect them on the map when ready.</p>
             <Button type="button" onClick={() => inputRef.current?.click()} disabled={busy} className="bg-emerald-600 hover:bg-emerald-700 text-white" data-testid="kml-import-choose-btn">
               {busy ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}Choose file
             </Button>
@@ -64,7 +65,7 @@ export const KmlImportDialog = ({ open, onOpenChange, jobId, onImported }) => {
           <>
             <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-600">
               <span className="font-mono" data-testid="kml-import-filename">{filename}</span>
-              <span>· {items.length} placemark{items.length === 1 ? "" : "s"} · {items.filter((i) => i.kind === "pole").length} poles, {items.filter((i) => i.kind !== "pole").length} attributes</span>
+              <span>· {items.length} placemark{items.length === 1 ? "" : "s"} · {items.filter((i) => i.kind === "pole").length} poles, {items.filter((i) => i.kind === "address").length} addresses, {items.filter((i) => i.kind === "underground").length} attributes</span>
               <button type="button" className="underline ml-auto" onClick={() => inputRef.current?.click()} data-testid="kml-import-change-file">Different file</button>
             </div>
             <div className="border border-zinc-300 rounded overflow-x-auto">
@@ -78,8 +79,9 @@ export const KmlImportDialog = ({ open, onOpenChange, jobId, onImported }) => {
                       <td className="px-2 py-1 font-semibold" title={it.description}>{it.name}</td>
                       <td className="px-2 py-1 text-zinc-500">{it.folder}</td>
                       <td className="px-2 py-1">
-                        <select value={it.kind === "pole" ? "pole" : it.type} onChange={(e) => setKind(it._i, e.target.value)} className="h-7 border border-zinc-300 rounded px-1 bg-white" data-testid={`kml-import-type-${it._i}`}>
+                        <select value={kindValue(it)} onChange={(e) => setKind(it._i, e.target.value)} className="h-7 border border-zinc-300 rounded px-1 bg-white" data-testid={`kml-import-type-${it._i}`}>
                           <option value="pole">Pole</option>
+                          <option value="address">Address (blue pin)</option>
                           {UNDERGROUND_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
                         </select>
                       </td>

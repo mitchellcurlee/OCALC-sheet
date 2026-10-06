@@ -23,35 +23,64 @@ def set_db(db):
 
 _ALIASES = {
     "hh": "Handhole", "handhole": "Handhole", "hand hole": "Handhole", "mh": "Manhole", "manhole": "Manhole", "ped": "Pedestal", "pedestal": "Pedestal",
-    "fp": "Flowerpot", "flowerpot": "Flowerpot", "flower pot": "Flowerpot", "be": "Brooks Enclosure", "brooks": "Brooks Enclosure", "hoffman": "Hoffman Box",
+    "fh": "Handhole", "fp": "Flowerpot", "flowerpot": "Flowerpot", "flower pot": "Flowerpot", "be": "Brooks Enclosure", "brooks": "Brooks Enclosure", "hoffman": "Hoffman Box",
     "pi": "Point of Intersection", "poi": "Point of Intersection", "fbt": "FBT", "nte": "NTE", "pfp": "PFP", "riser": "Riser", "mpoe": "MPOE", "eop": "EOP", "row": "ROW",
     "splice": "Aerial Splice", "aerial splice": "Aerial Splice", "loop": "Loop", "power": "Power", "pullbox": "Pullbox", "pull box": "Pullbox", "culvert": "Culvert",
     "gas": "Gas Line", "fdf": "FDF", "fst": "FST", "core": "Core", "pole": "pole", "utility pole": "pole", "telephone pole": "pole", "p": "pole",
 }
+# Marker acronyms exactly as shown on the map badges (frontend UNDERGROUND_ABBR)
+_ABBR = {
+    "hh": "Handhole", "mh": "Manhole", "be": "Brooks Enclosure", "fp": "Flowerpot", "hb": "Hoffman Box", "ped": "Pedestal", "pi": "Point of Intersection",
+    "fbt": "FBT", "nte": "NTE", "fbt/nte": "FBT/NTE", "pfp": "PFP", "soc-s": "SOC Start", "soc-e": "SOC End", "rsr": "Riser", "mpoe": "MPOE", "eop": "EOP", "row": "ROW",
+    "dw-s": "DW Start", "dw-e": "DW End", "ugp-s": "UG Path Start", "ugp-e": "UG Path End", "as": "Aerial Splice", "loop": "Loop", "pwr": "Power", "culv": "Culvert",
+    "dr-s": "Drainage Start", "dr-e": "Drainage End", "eb": "Eyebolt", "pb": "Pullbox", "wh": "Weather Head", "su": "Suite",
+}
 _TYPE_LOWER = {t.lower(): t for t in UNDERGROUND_TYPES}
 
 
+_SUITE_RE = re.compile(r"\b(suite|ste\.?|unit|apt\.?|apartment|bldg\.?|building|rm\.?|room|flr\.?|floor)\s*#?\s*[\w-]+|#\s*\d+[a-z]?\b", re.I)
+_ADDRESS_RE = re.compile(r"^\s*\d{1,6}[a-z]?\s+[a-z0-9'.\-]+(\s+[a-z0-9'.\-]+)*", re.I)
+_POLE_RE = re.compile(r"^\s*(pole|p)\s*[-#_. ]?\s*\d+[a-z]?\b", re.I)
+
+
 def _guess_one(blob: str) -> Optional[Dict[str, str]]:
-    blob = (blob or "").lower()
-    if not blob.strip():
+    """Name rules: 'P' + number → pole · marker acronym (HH/FH/MH/PED/FBT…) or full type name → that attribute ·
+    address + suite/unit → Suite · plain street address → Address (blue pole)."""
+    blob = (blob or "").strip()
+    low = blob.lower()
+    if not low:
         return None
-    if re.match(r"^\s*(poles?|p)\b", blob):
+    if _POLE_RE.match(low) or re.match(r"^\s*poles?\b", low):
         return {"kind": "pole", "type": "Pole"}
+    # name IS a marker acronym, optionally followed by a number ("SOC-S", "HH", "FBT/NTE 2", "DW-E")
+    m = re.match(r"^([a-z]+(?:[-/][a-z]+)?)\s*[-#_. ]?\s*\d*[a-z]?\s*$", low)
+    if m and m.group(1) in _ABBR and _ABBR[m.group(1)] in UNDERGROUND_TYPES:
+        return {"kind": "underground", "type": _ABBR[m.group(1)]}
+    if low in _TYPE_LOWER:
+        return {"kind": "underground", "type": _TYPE_LOWER[low]}
+    toks = re.split(r"[^a-z]+", low)
+    # whole name is an acronym / alias (e.g. "HH", "FH-3", "MH 12", "PED")
+    first = next((t for t in toks if t), "")
+    if first in _ALIASES and len([t for t in toks if t]) <= 2:
+        v = _ALIASES[first]
+        return {"kind": "pole", "type": "Pole"} if v == "pole" else {"kind": "underground", "type": v}
+    if _ADDRESS_RE.match(low):
+        return {"kind": "underground", "type": "Suite"} if _SUITE_RE.search(low) else {"kind": "address", "type": "Address"}
     for key in sorted(_TYPE_LOWER, key=len, reverse=True):
-        if key in blob:
+        if key in low:
             return {"kind": "underground", "type": _TYPE_LOWER[key]}
-    for tok in re.split(r"[^a-z]+", blob):
+    for tok in toks:
         if tok in _ALIASES:
             v = _ALIASES[tok]
             return {"kind": "pole", "type": "Pole"} if v == "pole" else {"kind": "underground", "type": v}
     for key, v in _ALIASES.items():
-        if " " in key and key in blob:
+        if " " in key and key in low:
             return {"kind": "pole", "type": "Pole"} if v == "pole" else {"kind": "underground", "type": v}
     return None
 
 
 def guess_type(*texts: str) -> Dict[str, str]:
-    """Map placemark name → folder → description to {kind: pole|underground, type}. Defaults to pole."""
+    """Map placemark name → folder → description to {kind: pole|underground|address, type}. Defaults to pole."""
     for t in texts:
         g = _guess_one(t)
         if g:
@@ -109,7 +138,10 @@ def parse_kml(data: bytes) -> List[Dict[str, Any]]:
                             except ValueError:
                                 pass
                 for lat, lng in pts[:1]:
-                    out.append({"name": name or f"Placemark {len(out) + 1}", "description": desc[:1000], "lat": lat, "lng": lng, "folder": folder, **guess_type(name, folder, desc[:200])})
+                    g = guess_type(name, folder, desc[:200])
+                    # addresses / suites keep their text as the label; everything else imports with a blank label
+                    label = (name or "") if g["kind"] == "address" or g.get("type") == "Suite" else ""
+                    out.append({"name": name or f"Placemark {len(out) + 1}", "description": desc[:1000], "lat": lat, "lng": lng, "folder": folder, "label": label, **g})
     walk(root, "")
     return out
 
@@ -133,7 +165,7 @@ class ImportItem(BaseModel):
     description: str = ""
     lat: float
     lng: float
-    kind: str = "pole"  # pole | underground
+    kind: str = "pole"  # pole | underground | address (blue pole)
     type: str = "Pole"
     label: Optional[str] = None
 
@@ -157,7 +189,10 @@ async def create_from_kml(job_id: str, body: ImportBody, current_user: dict = De
     for it in body.items:
         notes = ("Imported from KML" + (f": {it.name}" if it.name else "") + (f"\n{it.description}" if it.description else ""))[:2000]
         # standalone=True: imported items are placed on the map but NOT auto-connected into spans
-        if it.kind == "pole":
+        if it.kind == "address":
+            await create_pole(PoleCreate(job_id=job_id, pole_number=(it.label or it.name or "")[:40], latitude=it.lat, longitude=it.lng, notes=notes, standalone=True, marker_color="#2563eb", last_modified_by=who))
+            created["addresses"] = created.get("addresses", 0) + 1
+        elif it.kind == "pole":
             await create_pole(PoleCreate(job_id=job_id, pole_number=(it.label or "")[:40], latitude=it.lat, longitude=it.lng, notes=notes, standalone=True, last_modified_by=who))
             created["poles"] += 1
         else:
