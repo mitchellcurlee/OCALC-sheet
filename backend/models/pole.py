@@ -42,6 +42,7 @@ class PoleBase(BaseModel):
     pole_number: Optional[str] = None
     marker_color: Optional[str] = None
     label_size: Optional[str] = None  # map smart label: normal | small | off
+    label_offset: Optional[List[float]] = None  # user-placed smart label [dx, dy] px from the dot
     pole_size: Optional[str] = None
     pole_size_type: Optional[str] = None
     pole_class: Optional[str] = None
@@ -112,6 +113,7 @@ class PoleUpdate(BaseModel):
     pole_number: Optional[str] = None
     marker_color: Optional[str] = None
     label_size: Optional[str] = None  # map smart label: normal | small | off
+    label_offset: Optional[List[float]] = None  # user-placed smart label [dx, dy] px from the dot
     pole_owner: Optional[str] = None
     access: Optional[str] = None
     pole_size: Optional[str] = None

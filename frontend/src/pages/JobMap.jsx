@@ -11,6 +11,7 @@ import domtoimage from "dom-to-image-more";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ChevronDown, ChevronUp, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera, Hash, Link2, Move, Palette, Plus, Map as MapIcon, MapPin, GripVertical, Upload, Trash2, RotateCcw, Home, Route as RouteIcon, ListOrdered, LandPlot } from "lucide-react";
 import SpanReorderList from "@/components/SpanReorderList";
+import { layoutLabels } from "@/lib/labelLayout";
 import { computeRoute, fmtFeet, feetToStation, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, downloadMapPdfPages, ugWithGps, undergroundAbbr, computeUgConnectors, computeConnectionPairs, computeStationSegFeet, UNDERGROUND_TYPES, isAerialAttr, resolvePairAerial, spanKey, routeWaypoints, routeArg, placeSpanNotes, LIST_PAGE_LINES, riserAnchor, tieInSuffix, pathRowText, pairIsManual, routePayloadFromOrder } from "@/lib/poleMapImage";
 import { ExportDestinationDialog } from "@/components/ExportDestinationDialog";
 import { CLOUD_EXPORT_LABELS, uploadExportToCloud } from "@/lib/cloudExports";
@@ -407,28 +408,53 @@ const formatRiserHeight = (value) => {
   return `${feet}' ${inches}"`;
 };
 
-// Small red dot for pole marker with label on the side
-const poleIcon = (label, offsetDir = "right", color = "#dc2626", size = "normal") => {
-  // offsetDir: "right", "left", "top", "bottom" for label placement; size: normal | small | off (per-item smart label)
+// Small red dot for pole marker with label on the side.
+// `place` is either a legacy direction string or a pixel placement { dx, dy, w, h } (top-left of label relative to dot centre)
+const poleIcon = (label, place = "right", color = "#dc2626", size = "normal") => {
   const dotSize = 8; // Smaller dot
   if (size === "off") label = "";
   const font = size === "small" ? "600 7px/1.1" : "600 9px/1.2";
   const pad = size === "small" ? "1px 3px" : "2px 5px";
-  const labelOffset = offsetDir === "right" ? "left: 18px;" : 
-                      offsetDir === "left" ? "right: 18px;" :
-                      offsetDir === "top" ? "bottom: 16px; left: 50%; transform: translateX(-50%);" :
-                      "top: 16px; left: 50%; transform: translateX(-50%);";
-  
+  const c = dotSize / 2;
+  let labelCss;
+  let leader = "";
+  if (place && typeof place === "object") {
+    labelCss = `left:${c + place.dx}px;top:${c + place.dy}px;`;
+    const lx = place.dx + place.w / 2, ly = place.dy + place.h / 2;
+    // Leader line only when the tag sits away from its dot (nearest edge > 16px)
+    const nx = Math.max(place.dx, 0, -(place.dx + place.w)), ny = Math.max(place.dy, 0, -(place.dy + place.h));
+    if (Math.hypot(nx, ny) > 16) {
+      leader = `<svg style="position:absolute;left:${c}px;top:${c}px;overflow:visible;pointer-events:none;" width="1" height="1"><line x1="0" y1="0" x2="${lx}" y2="${ly}" stroke="${color}" stroke-width="1.5" stroke-dasharray="3,2"/></svg>`;
+    }
+  } else {
+    labelCss = place === "right" ? "left: 18px;top:50%;transform:translateY(-50%);" :
+               place === "left" ? "right: 18px;top:50%;transform:translateY(-50%);" :
+               place === "top" ? "bottom: 16px; left: 50%; transform: translateX(-50%);" :
+               "top: 16px; left: 50%; transform: translateX(-50%);";
+  }
   return L.divIcon({
     className: "pole-route-marker",
     html: `
       <div style="position:relative;">
         <div style="background:${color};border:1.5px solid #fff;border-radius:50%;width:${dotSize}px;height:${dotSize}px;box-shadow:0 1px 3px rgba(0,0,0,.4);"></div>
-        ${label ? `<div style="position:absolute;${labelOffset}top:50%;transform:translateY(-50%);background:${color};color:#fff;border:1px solid #fff;border-radius:5px;padding:${pad};font:${font} ui-monospace,monospace;white-space:nowrap;box-shadow:0 1px 2px rgba(0,0,0,.3);">${label}</div>` : ""}
+        ${label ? leader : ""}
+        ${label ? `<div style="position:absolute;${labelCss}background:${color};color:#fff;border:1px solid #fff;border-radius:5px;padding:${pad};font:${font} ui-monospace,monospace;white-space:nowrap;box-shadow:0 1px 2px rgba(0,0,0,.3);">${label}</div>` : ""}
       </div>
     `,
     iconSize: [dotSize, dotSize],
     iconAnchor: [dotSize / 2, dotSize / 2],
+  });
+};
+
+// Draggable stand-alone tag used in Move Items mode to reposition a smart label
+const labelHandleIcon = (label, color, size, w, h) => {
+  const font = size === "small" ? "600 7px/1.1" : "600 9px/1.2";
+  const pad = size === "small" ? "1px 3px" : "2px 5px";
+  return L.divIcon({
+    className: "pole-label-handle",
+    html: `<div style="background:${color};color:#fff;border:1.5px dashed #fde047;outline:1px solid ${color};border-radius:5px;padding:${pad};font:${font} ui-monospace,monospace;white-space:nowrap;box-shadow:0 0 0 2px rgba(250,204,21,.45),0 1px 3px rgba(0,0,0,.4);cursor:move;">${label}</div>`,
+    iconSize: [w, h],
+    iconAnchor: [w / 2, h / 2],
   });
 };
 
@@ -553,11 +579,13 @@ const FlyTo = ({ lat, lng }) => {
   return null;
 };
 
-const MapRefSetter = ({ mapRef }) => {
+const MapRefSetter = ({ mapRef, onZoom }) => {
   const map = useMap();
   useEffect(() => {
     mapRef.current = map;
-  }, [map, mapRef]);
+    onZoom?.();
+  }, [map, mapRef]); // eslint-disable-line react-hooks/exhaustive-deps
+  useMapEvents({ zoomend: () => onZoom?.() });
   return null;
 };
 
@@ -731,6 +759,7 @@ const JobMap = () => {
   const [confirmDeleteConn, setConfirmDeleteConn] = useState(null);
   const [confirmResetLines, setConfirmResetLines] = useState(false);
   const [positionEditMode, setPositionEditMode] = useState(false);
+  const [zoomTick, setZoomTick] = useState(0); // bumps on zoom so pixel-space label layout re-runs
   const [connections, setConnections] = useState([]);
   const [addingType, setAddingType] = useState(null); // "note" or "measurement"
   const [saving, setSaving] = useState(false);
@@ -2376,6 +2405,55 @@ const JobMap = () => {
     return positions;
   }, [orderedSegments, route, ug, showStationNumbers, measurementOffsets, labelOffsets]);
 
+  // Smart tags: pixel-space layout so pole labels never cross each other, a dot or an attribute badge.
+  // Re-runs on zoom; user-pinned labels (pole.label_offset) are kept and the rest flow around them.
+  const smartLabelLayout = useMemo(() => {
+    const map = mapRef.current;
+    if (!map || showStationNumbers) return {};
+    const z = map.getZoom();
+    const proj = (pos) => map.project(L.latLng(pos[0], pos[1]), z);
+    const items = poleDisplayInfo.map((p, i) => {
+      const pt = proj(p.pos);
+      const size = p.label_size || "normal";
+      const text = size === "off" ? "" : markerLabel(p, i, false);
+      return { id: p.id, x: pt.x, y: pt.y, text, size, fixed: Array.isArray(p.label_offset) && p.label_offset.length === 2 ? p.label_offset : null };
+    });
+    const obstacles = [
+      ...items.map((it) => ({ x: it.x - 5, y: it.y - 5, w: 10, h: 10 })),
+      ...ug.map((u) => { const pt = proj(u.pos); const s = u.label_size === "off" ? 10 : u.label_size === "small" ? 13 : 18; const w = u.label_size === "off" ? 10 : Math.max(s, undergroundAbbr(u.type).length * 5.5 + 6); return { x: pt.x - w / 2, y: pt.y - s / 2, w, h: s }; }),
+    ];
+    return layoutLabels(items, obstacles);
+  }, [poleDisplayInfo, ug, showStationNumbers, zoomTick]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Move Items mode: drag a tag → store its pixel offset from the dot (zoom-independent) on the pole
+  const handleTagDragEnd = useCallback(async (pole, lat, lng) => {
+    const map = mapRef.current;
+    const lay = smartLabelLayout[pole.id];
+    if (!map || !lay) return;
+    const z = map.getZoom();
+    const a = map.project(L.latLng(pole.pos[0], pole.pos[1]), z);
+    const b = map.project(L.latLng(lat, lng), z);
+    const off = [Math.round(b.x - a.x - lay.w / 2), Math.round(b.y - a.y - lay.h / 2)];
+    setPoles((prev) => prev.map((p) => (p.id === pole.id ? { ...p, label_offset: off } : p)));
+    try { await axios.put(`/poles/${pole.id}`, { label_offset: off }); }
+    catch { toast.error("Could not save label position"); fetchData(); }
+  }, [smartLabelLayout]); // eslint-disable-line react-hooks/exhaustive-deps
+  const labelHandleLatLng = (pole) => {
+    const map = mapRef.current; const lay = smartLabelLayout[pole.id];
+    if (!map || !lay) return null;
+    const z = map.getZoom();
+    const a = map.project(L.latLng(pole.pos[0], pole.pos[1]), z);
+    const ll = map.unproject(L.point(a.x + lay.dx + lay.w / 2, a.y + lay.dy + lay.h / 2), z);
+    return [ll.lat, ll.lng];
+  };
+  const resetLabelOffsets = async () => {
+    const pinned = poles.filter((p) => Array.isArray(p.label_offset));
+    if (!pinned.length) { toast.info("No moved labels to reset"); return; }
+    setPoles((prev) => prev.map((p) => ({ ...p, label_offset: null })));
+    try { await Promise.all(pinned.map((p) => axios.put(`/poles/${p.id}`, { label_offset: null }))); toast.success(`${pinned.length} label(s) back to automatic placement`); }
+    catch { toast.error("Could not reset labels"); fetchData(); }
+  };
+
   // ======== END CONNECTION MANAGEMENT ========
 
   const downloadImage = useCallback(async () => {
@@ -2777,14 +2855,20 @@ const JobMap = () => {
                     <DropdownMenuItem
                       onClick={() => {
                         setPositionEditMode(true);
-                        toast.info("Move Mode: drag any marker or text box to reposition it");
+                        toast.info("Move Mode: drag any marker, smart tag or text box to reposition it");
                       }}
                       className="cursor-pointer"
                       data-testid="edit-all-btn"
                     >
                       <Move className="w-4 h-4 mr-2" />
-                      Move Items
+                      Move Items &amp; Labels
                     </DropdownMenuItem>
+                    {poles.some((p) => Array.isArray(p.label_offset)) && (
+                      <DropdownMenuItem onClick={resetLabelOffsets} className="cursor-pointer" data-testid="reset-label-positions-btn">
+                        <RotateCcw className="w-4 h-4 mr-2" />
+                        Reset label positions (auto)
+                      </DropdownMenuItem>
+                    )}
                     
                     <DropdownMenuItem
                       onClick={() => {
@@ -3297,7 +3381,7 @@ const JobMap = () => {
               )}
               <CurrentLocationLayer />
               <FitBounds points={allPoints} disabled={editMode} />
-              <MapRefSetter mapRef={mapRef} />
+              <MapRefSetter mapRef={mapRef} onZoom={() => setZoomTick((t) => t + 1)} />
               <ParcelLinesLayer enabled={showParcels} basemap={mapLayer === "street" ? "street" : "aerial"} />
               <HomeAddressLayer enabled={showAddresses} onStatus={setAddrStatus} />
               {photoPin && photoPin.accuracy > 0 && <Circle center={[photoPin.lat, photoPin.lng]} radius={photoPin.accuracy} pathOptions={{ color: "#f59e0b", weight: 1, fillOpacity: 0.12 }} pane="tooltipPane" />}
@@ -3451,9 +3535,13 @@ const JobMap = () => {
                 // Hide pole number label when station numbers are active
                 const displayLabel = showStationNumbers ? "" : poleLabel;
                 const labelSize = p.label_size || "normal";
-                const icon = p.isCluster 
-                  ? poleIconWithArrow(labelSize === "off" ? "" : displayLabel, p.labelAngle, 45, p.marker_color || "#dc2626")
-                  : poleIcon(displayLabel, p.labelDir, p.marker_color || "#dc2626", labelSize);
+                const lay = smartLabelLayout[p.id];
+                const icon = lay
+                  ? poleIcon(positionEditMode ? "" : displayLabel, lay, p.marker_color || "#dc2626", labelSize)
+                  : p.isCluster 
+                    ? poleIconWithArrow(labelSize === "off" ? "" : displayLabel, p.labelAngle, 45, p.marker_color || "#dc2626")
+                    : poleIcon(displayLabel, p.labelDir, p.marker_color || "#dc2626", labelSize);
+                const handlePos = positionEditMode && lay && displayLabel && labelSize !== "off" ? labelHandleLatLng(p) : null;
                 return (
                   <React.Fragment key={p.id}>
                     <DraggableMarker 
@@ -3503,6 +3591,16 @@ const JobMap = () => {
                     {/* Station number badge — station value is in the list below the map */}
                     {stationLabel && (
                       <Marker position={p.pos} icon={numberBadgeIcon(stationNumById[p.id], "#4f46e5", [-6, 32])} interactive={false} zIndexOffset={850} />
+                    )}
+                    {/* Move Items mode: the smart tag itself is draggable */}
+                    {handlePos && (
+                      <DraggableMarker
+                        position={handlePos}
+                        icon={labelHandleIcon(displayLabel, p.marker_color || "#dc2626", labelSize, lay.w, lay.h)}
+                        draggable
+                        onDragEnd={(lat, lng) => handleTagDragEnd(p, lat, lng)}
+                        zIndexOffset={1600}
+                      />
                     )}
                   </React.Fragment>
                 );

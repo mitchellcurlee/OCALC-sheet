@@ -432,6 +432,8 @@ async def update_pole(pole_id: str, pole_data: PoleUpdate, current_user: dict = 
         raise HTTPException(status_code=404, detail="Pole not found")
     
     update_data = {k: v for k, v in pole_data.model_dump().items() if v is not None}
+    if "label_offset" in pole_data.model_fields_set and pole_data.label_offset is None:
+        update_data["label_offset"] = None  # explicit reset → back to automatic placement
     # GPS moved (or first set) without an explicit address -> refresh the nearest home address
     if ("latitude" in update_data or "longitude" in update_data) and not update_data.get("address"):
         lat = update_data.get("latitude", existing.get("latitude"))
