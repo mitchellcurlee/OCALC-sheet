@@ -644,6 +644,16 @@ const MapRefSetter = ({ mapRef, onZoom }) => {
 };
 
 // Draggable marker component for position edit mode
+const selectOverlayIcon = (selected) =>
+  L.divIcon({
+    className: "",
+    iconSize: [34, 34],
+    iconAnchor: [17, 17],
+    html: selected
+      ? `<div style="width:34px;height:34px;border-radius:50%;border:3px solid #dc2626;background:rgba(220,38,38,.45);box-shadow:0 0 0 3px rgba(255,255,255,.9);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:18px;line-height:1">✓</div>`
+      : `<div style="width:34px;height:34px;border-radius:50%;border:2px dashed rgba(255,255,255,.95);background:rgba(0,0,0,.18);box-shadow:0 0 0 2px rgba(0,0,0,.35)"></div>`,
+  });
+
 const DraggableMarker = ({ position, icon, children, draggable, onDragEnd, onDoubleClick, zIndexOffset = 0, autoOpen = false }) => {
   const markerRef = useRef(null);
 
@@ -811,6 +821,10 @@ const JobMap = () => {
   const [reconnectSide, setReconnectSide] = useState(null);
   const [addingConn, setAddingConn] = useState(null);
   const [confirmDeleteConn, setConfirmDeleteConn] = useState(null);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [bulkConfirm, setBulkConfirm] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const [confirmResetLines, setConfirmResetLines] = useState(false);
   const [positionEditMode, setPositionEditMode] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -2575,6 +2589,34 @@ const JobMap = () => {
 
   // ======== END CONNECTION MANAGEMENT ========
 
+  // ======== MULTI-SELECT DELETE ========
+  const toggleSelected = (id) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+  const exitSelectMode = () => { setSelectMode(false); setSelectedIds(new Set()); };
+  const handleBulkDelete = async () => {
+    const poleIds = poles.filter((p) => selectedIds.has(p.id)).map((p) => p.id);
+    const ugIds = underground.filter((u) => selectedIds.has(u.id)).map((u) => u.id);
+    setBulkDeleting(true);
+    try {
+      const res = await axios.post(`/jobs/${jobId}/items/bulk-delete`, { pole_ids: poleIds, underground_ids: ugIds });
+      setPoles((prev) => prev.filter((p) => !selectedIds.has(p.id)));
+      setUnderground((prev) => prev.filter((u) => !selectedIds.has(u.id)));
+      toast.success(`${res.data?.total ?? poleIds.length + ugIds.length} item(s) moved to Deleted Items`);
+      setBulkConfirm(false);
+      exitSelectMode();
+    } catch (e) {
+      toast.error("Failed to delete selected items");
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
+  // ======== END MULTI-SELECT DELETE ========
+
   const downloadImage = useCallback(async () => {
     setDownloading(true);
     try {
@@ -2833,7 +2875,7 @@ const JobMap = () => {
               Download
             </Button>
             {/* Add attribute dropdown */}
-            {!editMode && !connectionEditMode && !positionEditMode && !placingType && !areaDraw && (
+            {!editMode && !connectionEditMode && !positionEditMode && !selectMode && !placingType && !areaDraw && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" data-testid="map-add-dropdown-btn">
@@ -2889,7 +2931,21 @@ const JobMap = () => {
               </DropdownMenu>
             )}
             {/* Edit mode toggle */}
-            {!editMode && !connectionEditMode && !positionEditMode ? (
+            {selectMode ? (
+              <div className="flex flex-wrap items-center gap-2" data-testid="map-select-toolbar">
+                <span className="px-3 py-1 bg-red-100 text-red-800 rounded text-sm font-semibold whitespace-nowrap" data-testid="map-select-count">{selectedIds.size} selected</span>
+                <Button variant="outline" onClick={() => setSelectedIds(new Set([...poleDisplayInfo.map((p) => p.id), ...ug.map((u) => u.id)]))} className="bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900" data-testid="map-select-all-btn">Select all</Button>
+                <Button variant="outline" onClick={() => setSelectedIds(new Set())} disabled={selectedIds.size === 0} className="bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900" data-testid="map-select-clear-btn">Clear</Button>
+                <Button onClick={() => setBulkConfirm(true)} disabled={selectedIds.size === 0} className="bg-red-600 hover:bg-red-700 text-white" data-testid="map-bulk-delete-btn">
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete selected{selectedIds.size ? ` (${selectedIds.size})` : ""}
+                </Button>
+                <Button variant="outline" onClick={exitSelectMode} className="bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900" data-testid="map-select-done-btn">
+                  <X className="w-4 h-4 mr-2" />
+                  Done
+                </Button>
+              </div>
+            ) : !editMode && !connectionEditMode && !positionEditMode ? (
               <div className="flex gap-2">
                 {/* Edit Map Dropdown Menu */}
                 <DropdownMenu>
@@ -3001,6 +3057,19 @@ const JobMap = () => {
                         Reset label positions (auto)
                       </DropdownMenuItem>
                     ) : null}
+                    
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setSelectMode(true);
+                        setSelectedIds(new Set());
+                        toast.info("Select Mode: tap pins to select them, then tap Delete selected");
+                      }}
+                      className="cursor-pointer text-red-700 focus:text-red-800"
+                      data-testid="select-items-btn"
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Select &amp; Delete Items
+                    </DropdownMenuItem>
                     
                     <DropdownMenuItem
                       onClick={() => {
@@ -3292,6 +3361,12 @@ const JobMap = () => {
               {isFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
             </button>
             {/* Universal edit mode indicator */}
+            {selectMode && (
+              <div className="absolute top-2 left-2 z-[1000] bg-red-600 text-white px-3 py-1.5 rounded text-sm font-medium shadow-lg max-w-md" data-testid="map-select-banner">
+                <div className="font-semibold">Select Mode Active · {selectedIds.size} selected</div>
+                <div className="text-xs opacity-90 mt-0.5">• Tap a pin to select / unselect it • Tap "Delete selected" when ready • Remaining items keep their numbers</div>
+              </div>
+            )}
             {(editMode || positionEditMode || connectionEditMode) && !selectedSegment && (
               <div className="absolute top-2 left-2 z-[1000] bg-blue-600 text-white px-3 py-1.5 rounded text-sm font-medium shadow-lg max-w-md">
                 <div className="font-semibold">{positionEditMode && !editMode && !connectionEditMode ? "Move Mode Active" : "Edit Mode Active"}</div>
@@ -3841,6 +3916,16 @@ const JobMap = () => {
                   )}
                 </React.Fragment>
               )})}
+              {/* Select mode: tap-to-select overlays sit on top of every pin */}
+              {selectMode && [...poleDisplayInfo.map((p) => ({ id: p.id, pos: p.pos })), ...ug.map((u) => ({ id: u.id, pos: u.pos }))].map((it) => (
+                <Marker
+                  key={`sel-${it.id}`}
+                  position={it.pos}
+                  icon={selectOverlayIcon(selectedIds.has(it.id))}
+                  zIndexOffset={2500}
+                  eventHandlers={{ click: (e) => { L.DomEvent.stopPropagation(e); toggleSelected(it.id); } }}
+                />
+              ))}
               <MapAreas annotations={annotations} drawing={areaDraw} draftPoints={areaDraft} onDraftPoint={(p) => setAreaDraft((d) => [...d, p])} show={showAreas} editable={!areaDraw} onUpdate={handleAnnotationUpdate} onDelete={handleAnnotationDelete} />
               {/* Map annotations (notes and measurements) */}
               <MapAnnotations
@@ -4223,6 +4308,24 @@ const JobMap = () => {
         onDevice={() => runMapExport("device")}
         onCloud={() => runMapExport("cloud")}
       />
+
+      <AlertDialog open={bulkConfirm} onOpenChange={(o) => { if (!bulkDeleting) setBulkConfirm(o); }}>
+        <AlertDialogContent className="bg-zinc-50 border-zinc-200 z-[1300]" data-testid="map-bulk-delete-dialog">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-zinc-900">Delete {selectedIds.size} selected item{selectedIds.size === 1 ? "" : "s"}?</AlertDialogTitle>
+            <AlertDialogDescription className="text-zinc-600">
+              The selected poles and attributes will be moved to Deleted Items (restorable from the trash folder). Remaining items keep their current numbering.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-zinc-100 border-zinc-300 text-zinc-900" disabled={bulkDeleting} data-testid="map-bulk-delete-cancel">Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={(e) => { e.preventDefault(); handleBulkDelete(); }} disabled={bulkDeleting} className="bg-red-600 hover:bg-red-700 text-white" data-testid="map-bulk-delete-confirm">
+              {bulkDeleting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Trash2 className="w-4 h-4 mr-2" />}
+              Delete {selectedIds.size}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={!!confirmDeleteConn} onOpenChange={(o) => { if (!o) setConfirmDeleteConn(null); }}>
         <AlertDialogContent className="bg-zinc-50 border-zinc-200">

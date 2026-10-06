@@ -471,6 +471,27 @@ async def delete_pole(pole_id: str, current_user: dict = Depends(get_current_use
     return {"message": "Pole moved to Deleted Items"}
 
 
+class BulkDeleteBody(BaseModel):
+    pole_ids: List[str] = []
+    underground_ids: List[str] = []
+
+
+@router.post("/jobs/{job_id}/items/bulk-delete")
+async def bulk_delete_items(job_id: str, body: BulkDeleteBody, current_user: dict = Depends(get_current_user)):
+    """Move several poles / underground items of a job to Deleted Items in one call (no renumbering or re-chaining)."""
+    from routes.trash import archive_entity
+    deleted = {"poles": 0, "underground": 0}
+    for coll, key, ids in (("poles", "poles", body.pole_ids), ("underground", "underground", body.underground_ids)):
+        for item_id in dict.fromkeys(ids):
+            doc = await _db[coll].find_one({"id": item_id, "job_id": job_id}, {"_id": 0})
+            if not doc:
+                continue
+            await archive_entity(_db, "pole" if coll == "poles" else "underground", doc, current_user)
+            await _db[coll].delete_one({"id": item_id})
+            deleted[key] += 1
+    return {"deleted": deleted, "total": deleted["poles"] + deleted["underground"]}
+
+
 class ConvertBody(BaseModel):
     type: str
 

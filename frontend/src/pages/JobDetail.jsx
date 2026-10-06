@@ -57,7 +57,10 @@ import {
   WifiOff,
   Camera,
   ClipboardList,
+  CheckSquare,
+  Square,
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { buildSowNotesText } from "@/components/ase/ASESOWNotesTab";
 import { ExportDestinationDialog } from "@/components/ExportDestinationDialog";
 import { CloudExportsSection } from "@/components/CloudExportsSection";
@@ -195,6 +198,10 @@ const JobDetail = () => {
   const [reorderedItems, setReorderedItems] = useState([]);
   const [syncingPoleId, setSyncingPoleId] = useState(null);
   const [syncingAll, setSyncingAll] = useState(false);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [bulkConfirm, setBulkConfirm] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const [photoDropTarget, setPhotoDropTarget] = useState(null);
   const [photoCapture, setPhotoCapture] = useState(false); // Add → Take Photo flow
   const [photoPin, setPhotoPin] = useState(null);
@@ -594,6 +601,36 @@ const JobDetail = () => {
   const confirmDelete = (id, type = "pole") => {
     setDeleteId(id);
     setDeleteType(type);
+  };
+
+  const toggleSelected = (id) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const exitSelectMode = () => {
+    setSelectMode(false);
+    setSelectedIds(new Set());
+  };
+
+  const handleBulkDelete = async () => {
+    const poleIds = poles.filter((p) => selectedIds.has(p.id)).map((p) => p.id);
+    const ugIds = undergroundItems.filter((u) => selectedIds.has(u.id)).map((u) => u.id);
+    setBulkDeleting(true);
+    try {
+      const res = await axios.post(`/jobs/${jobId}/items/bulk-delete`, { pole_ids: poleIds, underground_ids: ugIds });
+      toast.success(`${res.data?.total ?? poleIds.length + ugIds.length} item(s) moved to Deleted Items — restore anytime from the trash folder`);
+      setBulkConfirm(false);
+      exitSelectMode();
+      fetchJobAndPoles();
+    } catch (error) {
+      toast.error("Failed to delete selected items");
+    } finally {
+      setBulkDeleting(false);
+    }
   };
 
   const handleDuplicateUg = async (ugId) => {
@@ -1073,10 +1110,31 @@ const JobDetail = () => {
                   Save & Sync All
                 </Button>
               </>
+            ) : selectMode ? (
+              <>
+                <span className="text-sm font-semibold text-zinc-700 mr-1" data-testid="select-count">{selectedIds.size} selected</span>
+                <Button variant="outline" size="sm" onClick={() => setSelectedIds(new Set(filteredItems.filter((it) => it._type === "pole" || it._type === "underground").map((it) => it.id)))} className="gap-1" data-testid="select-all-btn">
+                  <CheckSquare className="w-4 h-4" /> Select all
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setSelectedIds(new Set())} className="gap-1" disabled={selectedIds.size === 0} data-testid="select-clear-btn">
+                  <Square className="w-4 h-4" /> Clear
+                </Button>
+                <Button size="sm" onClick={() => setBulkConfirm(true)} disabled={selectedIds.size === 0} className="bg-red-600 hover:bg-red-700 text-white gap-1" data-testid="bulk-delete-btn">
+                  <Trash2 className="w-4 h-4" /> Delete selected{selectedIds.size ? ` (${selectedIds.size})` : ""}
+                </Button>
+                <Button variant="outline" size="sm" onClick={exitSelectMode} className="gap-1" data-testid="select-done-btn">
+                  <X className="w-4 h-4" /> Done
+                </Button>
+              </>
             ) : (
-              <Button variant="outline" size="sm" onClick={startReorder} className="gap-1" data-testid="start-reorder-btn" disabled={combinedItems.length < 2}>
-                <GripVertical className="w-4 h-4" /> Reorder
-              </Button>
+              <>
+                <Button variant="outline" size="sm" onClick={() => setSelectMode(true)} className="gap-1" data-testid="start-select-btn" disabled={combinedItems.length === 0}>
+                  <CheckSquare className="w-4 h-4" /> Select
+                </Button>
+                <Button variant="outline" size="sm" onClick={startReorder} className="gap-1" data-testid="start-reorder-btn" disabled={combinedItems.length < 2}>
+                  <GripVertical className="w-4 h-4" /> Reorder
+                </Button>
+              </>
             )}
           </div>
         </div>
@@ -1157,14 +1215,17 @@ const JobDetail = () => {
                 /* Pole Card */
                 <div
                   key={item._dupKey || item.id}
-                  className={`industrial-card p-4 hover:border-zinc-400 hover:bg-zinc-50 transition-colors cursor-pointer ${photoDropTarget === item.id ? "ring-2 ring-sky-500 bg-sky-50 border-sky-400" : ""}`}
+                  className={`industrial-card p-4 hover:border-zinc-400 hover:bg-zinc-50 transition-colors cursor-pointer ${photoDropTarget === item.id ? "ring-2 ring-sky-500 bg-sky-50 border-sky-400" : ""} ${selectMode && selectedIds.has(item.id) ? "ring-2 ring-red-500 bg-red-50" : ""}`}
                   data-testid={`pole-card-${item.id}`}
-                  onClick={() => navigate(`/jobs/${jobId}/edit/${item.id}`)}
+                  onClick={() => (selectMode ? toggleSelected(item.id) : navigate(`/jobs/${jobId}/edit/${item.id}`))}
                   role="button"
                   {...galleryDropProps("pole", item.id, dropHandlers)}
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
+                      {selectMode && (
+                        <Checkbox checked={selectedIds.has(item.id)} onCheckedChange={() => toggleSelected(item.id)} onClick={(e) => e.stopPropagation()} className="h-5 w-5 border-zinc-400 data-[state=checked]:bg-red-600 data-[state=checked]:border-red-600" data-testid={`select-item-${item.id}`} />
+                      )}
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button size="sm" variant="ghost" className="h-9 w-9 p-0 text-zinc-500 hover:text-zinc-900 hover:bg-zinc-200" onClick={(e) => e.stopPropagation()} title="Item options" data-testid={`pole-menu-${item.id}`}>
@@ -1244,9 +1305,12 @@ const JobDetail = () => {
                 </div>
               ) : (
                 /* Underground Card */
-                <div key={item._dupKey || item.id} className={`industrial-card p-4 border-l-4 border-l-green-500 hover:border-zinc-400 hover:bg-zinc-50 transition-colors cursor-pointer ${photoDropTarget === item.id ? "ring-2 ring-sky-500 bg-sky-50" : ""}`} data-testid={`ug-card-${item.id}`} onClick={() => navigate(`/jobs/${jobId}/underground/edit/${item.id}`)} role="button" {...galleryDropProps("underground", item.id, dropHandlers)}>
+                <div key={item._dupKey || item.id} className={`industrial-card p-4 border-l-4 border-l-green-500 hover:border-zinc-400 hover:bg-zinc-50 transition-colors cursor-pointer ${photoDropTarget === item.id ? "ring-2 ring-sky-500 bg-sky-50" : ""} ${selectMode && selectedIds.has(item.id) ? "ring-2 ring-red-500 bg-red-50" : ""}`} data-testid={`ug-card-${item.id}`} onClick={() => (selectMode ? toggleSelected(item.id) : navigate(`/jobs/${jobId}/underground/edit/${item.id}`))} role="button" {...galleryDropProps("underground", item.id, dropHandlers)}>
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
+                      {selectMode && (
+                        <Checkbox checked={selectedIds.has(item.id)} onCheckedChange={() => toggleSelected(item.id)} onClick={(e) => e.stopPropagation()} className="h-5 w-5 border-zinc-400 data-[state=checked]:bg-red-600 data-[state=checked]:border-red-600" data-testid={`select-item-${item.id}`} />
+                      )}
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button size="sm" variant="ghost" className="h-9 w-9 p-0 text-zinc-500 hover:text-zinc-900 hover:bg-zinc-200" onClick={(e) => e.stopPropagation()} title="Item options" data-testid={`ug-menu-${item.id}`}>
@@ -1314,6 +1378,25 @@ const JobDetail = () => {
             <AlertDialogCancel className="bg-zinc-100 border-zinc-300 text-zinc-900">Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700 text-white">
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Delete Confirmation */}
+      <AlertDialog open={bulkConfirm} onOpenChange={(o) => { if (!bulkDeleting) setBulkConfirm(o); }}>
+        <AlertDialogContent className="bg-zinc-50 border-zinc-200" data-testid="bulk-delete-dialog">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-zinc-900">Delete {selectedIds.size} selected item{selectedIds.size === 1 ? "" : "s"}?</AlertDialogTitle>
+            <AlertDialogDescription className="text-zinc-600">
+              The selected poles and underground attributes will be moved to Deleted Items (restorable from the trash folder). Remaining items keep their current numbering.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-zinc-100 border-zinc-300 text-zinc-900" disabled={bulkDeleting} data-testid="bulk-delete-cancel">Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={(e) => { e.preventDefault(); handleBulkDelete(); }} disabled={bulkDeleting} className="bg-red-600 hover:bg-red-700 text-white" data-testid="bulk-delete-confirm">
+              {bulkDeleting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Trash2 className="w-4 h-4 mr-2" />}
+              Delete {selectedIds.size}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
