@@ -1,5 +1,5 @@
 import "@/App.css";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/context/AuthContext";
 import { OfflineProvider } from "@/lib/OfflineContext";
@@ -25,6 +25,7 @@ import ResetPassword from "@/pages/ResetPassword";
 import AdminUsers from "@/pages/AdminUsers";
 import TeamReports from "@/pages/TeamReports";
 import JobTiles from "@/pages/JobTiles";
+import Home from "@/pages/Home";
 import ASEForm2 from "@/pages/ASEForm2";
 import SPFForm from "@/pages/SPFForm";
 import DailyFieldReport from "@/pages/DailyFieldReport";
@@ -50,7 +51,8 @@ function App() {
             <Route path="/ase-gallery/:jobId" element={<ASEPhotoGallery />} />
             
             {/* Protected Routes */}
-            <Route path="/" element={<ProtectedRoute><JobsList /></ProtectedRoute>} />
+            <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+            <Route path="/jobs" element={<ProtectedRoute><JobsList /></ProtectedRoute>} />
             <Route path="/jobs/:jobId" element={<ProtectedRoute><JobDetail /></ProtectedRoute>} />
             <Route path="/jobs/:jobId/add" element={<ProtectedRoute><PoleEditor /></ProtectedRoute>} />
             <Route path="/jobs/:jobId/edit/:id" element={<ProtectedRoute><PoleEditor /></ProtectedRoute>} />
@@ -68,6 +70,8 @@ function App() {
             <Route path="/jobs/:jobId/ase2" element={<ProtectedRoute><ASEForm2 /></ProtectedRoute>} />
             <Route path="/jobs/:jobId/spf" element={<ProtectedRoute><SPFForm /></ProtectedRoute>} />
             <Route path="/jobs/:jobId/field-report" element={<ProtectedRoute><DailyFieldReport /></ProtectedRoute>} />
+            {/* Unknown paths land on the true Home page */}
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </BrowserRouter>
       </AuthProvider>

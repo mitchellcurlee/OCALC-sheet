@@ -25,6 +25,7 @@ import {
   DropdownMenuSub,
   DropdownMenuSubTrigger,
   DropdownMenuSubContent,
+  DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu";
 import {
   Select,
@@ -808,6 +809,7 @@ const JobMap = () => {
   const [addingType, setAddingType] = useState(null); // "note" or "measurement"
   const [saving, setSaving] = useState(false);
   const [screenshotting, setScreenshotting] = useState(false);
+  const [shotStations, setShotStations] = useState(false); // Screenshot menu: include station numbers in the captured image
   const [labelOffsets, setLabelOffsets] = useState({}); // Custom offsets for station labels { [itemId]: [latOffset, lngOffset] }
   const [measurementOffsets, setMeasurementOffsets] = useState({}); // Custom offsets for measurement labels { [segmentKey]: [latOffset, lngOffset] }
   const [aerialColor, setAerialColor] = useState(() => {
@@ -2563,7 +2565,10 @@ const JobMap = () => {
   // Screenshot: "map" = header measurements + map frame (no lists); "both" = that image plus a second image of the span list
   const captureMapScreenshot = useCallback(async (mode = "map") => {
     setScreenshotting(true);
+    const prevSta = showStationNumbers;
+    const sta = shotStations;
     try {
+      if (sta !== prevSta) { setShowStationNumbers(sta); await new Promise((r) => setTimeout(r, 700)); }
       const pageContainer = document.querySelector('[data-testid="job-map-page"]');
       const mapFrame = document.querySelector('[data-testid="map-frame"]');
       if (!pageContainer || !mapFrame) {
@@ -2573,9 +2578,9 @@ const JobMap = () => {
       toast.info(mode === "both" ? "Capturing map and span list..." : "Capturing map...");
       const addr = (job?.location || job?.ase_data?.address || "").trim();
       const addrTag = addr ? ` (${addr})` : "";
-      const baseName = `Screenshot${addrTag} ${showStationNumbers ? "Station numbers" : "Linear"}`;
-      const folderName = `${showStationNumbers ? "Overview Station #'s" : "Overview Linear"}${addrTag}`;
-      const listName = (pg, count) => `${showStationNumbers ? "STA. spans" : "LINEAR span list"} Page ${pg} of ${count}${addrTag}`;
+      const baseName = `Screenshot${addrTag} ${sta ? "Station numbers" : "Linear"}`;
+      const folderName = `${sta ? "Overview Station #'s" : "Overview Linear"}${addrTag}`;
+      const listName = (pg, count) => `${sta ? "STA. spans" : "LINEAR span list"} Page ${pg} of ${count}${addrTag}`;
       const safe = (name) => name.replace(/[^\w \-.,()+#']/g, "_");
       const save = (href, name) => {
         const link = document.createElement("a");
@@ -2653,9 +2658,10 @@ const JobMap = () => {
       console.error("Screenshot error:", e);
       toast.error("Failed to capture screenshot. Try zooming out slightly.");
     } finally {
+      if (sta !== prevSta) setShowStationNumbers(prevSta);
       setScreenshotting(false);
     }
-  }, [job, showStationNumbers]);
+  }, [job, showStationNumbers, shotStations]);
 
   // Auto-download when opened with ?download=1 (e.g. from the Excel "Map Image" link)
   useEffect(() => {
@@ -2685,8 +2691,9 @@ const JobMap = () => {
             <Button variant="ghost" size="icon" className="text-zinc-600 hover:text-zinc-900 h-9 w-9" onClick={goBack} data-testid="map-back-btn">
               <ArrowLeft className="w-5 h-5" />
             </Button>
-            <Button variant="ghost" size="icon" className="text-zinc-600 hover:text-zinc-900 h-9 w-9" onClick={() => navigate(`/jobs/${jobId}`)} title="Job home — poles & underground list" data-testid="map-home-btn">
+            <Button variant="ghost" size="sm" className="text-zinc-600 hover:text-zinc-900 h-9 px-2 gap-1.5" onClick={() => navigate(`/jobs/${jobId}`)} title="Job Home — poles & underground list" aria-label="Job Home" data-testid="map-home-btn">
               <Home className="w-5 h-5" />
+              <span className="hidden sm:inline text-xs font-semibold">Job Home</span>
             </Button>
             <div className="w-9 h-9 bg-red-600 flex items-center justify-center flex-shrink-0">
               <Zap className="w-5 h-5 text-white" />
@@ -2739,7 +2746,11 @@ const JobMap = () => {
                   <ChevronDown className="w-3.5 h-3.5 ml-1.5 opacity-70" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="bg-white border-zinc-200 w-56">
+              <DropdownMenuContent align="end" className="bg-white border-zinc-200 w-60 z-[1100]">
+                <DropdownMenuCheckboxItem checked={shotStations} onCheckedChange={(v) => setShotStations(!!v)} onSelect={(e) => e.preventDefault()} className="cursor-pointer" data-testid="screenshot-station-toggle">
+                  <div><div className="font-medium">Station #s</div><div className="text-[11px] text-zinc-500">{shotStations ? "Included in the screenshot" : "Left out of the screenshot"}</div></div>
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => captureMapScreenshot("map")} className="cursor-pointer" data-testid="screenshot-map-only">
                   <Camera className="w-4 h-4 mr-2 text-purple-700" />
                   <div><div className="font-medium">Map Only</div><div className="text-[11px] text-zinc-500">Header totals + map, one image</div></div>

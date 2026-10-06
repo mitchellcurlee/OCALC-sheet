@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 
 const statusOf = (j) => (j.completed ? { label: "Complete", cls: "bg-emerald-600 text-white" } : j.started ? { label: "Started", cls: "bg-yellow-400 text-zinc-900" } : { label: "Open", cls: "bg-red-600 text-white" });
 
-const JobTile = ({ job, onOpen }) => {
+export const JobTile = ({ job, onOpen, cta = "Open map" }) => {
   const st = statusOf(job);
   return (
     <button type="button" onClick={() => onOpen(job)} className="group text-left bg-white border border-zinc-300 rounded-lg p-4 shadow-sm hover:shadow-lg hover:border-red-500 hover:-translate-y-0.5 transition-[transform,box-shadow,border-color] duration-150 flex flex-col gap-2" data-testid={`job-tile-${job.id}`}>
@@ -21,7 +21,7 @@ const JobTile = ({ job, onOpen }) => {
       <div className="flex items-start gap-1.5 text-sm text-zinc-700 min-h-[2.5rem]"><MapPin className="w-4 h-4 mt-0.5 text-red-600 shrink-0" /><span className="line-clamp-2" data-testid={`job-tile-address-${job.id}`}>{job.location || "No address"}</span></div>
       <div className="flex items-center justify-between gap-2 pt-1 border-t border-zinc-100">
         <span className="text-xs font-mono text-zinc-600" data-testid={`job-tile-type-${job.id}`}>{job.job_type || "—"}{job.name && job.site_id && job.name !== job.site_id ? ` · ${job.name}` : ""}</span>
-        <span className="inline-flex items-center gap-1 text-xs font-semibold text-red-600 group-hover:text-red-700"><MapIcon className="w-3.5 h-3.5" />Open map</span>
+        <span className="inline-flex items-center gap-1 text-xs font-semibold text-red-600 group-hover:text-red-700"><MapIcon className="w-3.5 h-3.5" />{cta}</span>
       </div>
     </button>
   );
