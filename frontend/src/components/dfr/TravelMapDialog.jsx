@@ -145,7 +145,7 @@ export const TravelMapDialog = ({ open, onOpenChange, report, jobs, employees, o
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[96vw] w-[1400px] bg-white z-[1300] p-4 max-h-[95vh] overflow-y-auto overflow-x-hidden" aria-describedby={undefined} data-testid="dfr-travel-map-dialog">
+      <DialogContent className="fixed inset-0 left-0 top-0 translate-x-0 translate-y-0 w-screen h-[100dvh] max-w-none max-h-none grid-cols-[minmax(0,1fr)] content-start rounded-none border-0 bg-white z-[1300] p-3 sm:p-4 gap-3 overflow-y-auto overflow-x-hidden data-[state=open]:slide-in-from-left-0 data-[state=open]:slide-in-from-top-0 data-[state=closed]:slide-out-to-left-0 data-[state=closed]:slide-out-to-top-0 data-[state=open]:zoom-in-100 data-[state=closed]:zoom-out-100" aria-describedby={undefined} data-testid="dfr-travel-map-dialog">
         <DialogHeader><DialogTitle className="text-sm font-mono uppercase flex items-center gap-2"><Route className="w-4 h-4" />Travel Map — {report.date}</DialogTitle></DialogHeader>
         <div className="flex flex-wrap items-center gap-2">
           <Button type="button" onClick={screenshot} disabled={shooting} className="h-9 text-xs bg-zinc-900 hover:bg-zinc-800 text-white" data-testid="dfr-map-screenshot-btn">
@@ -168,7 +168,7 @@ export const TravelMapDialog = ({ open, onOpenChange, report, jobs, employees, o
           <div className="text-xs font-mono text-zinc-700 flex flex-wrap gap-x-4">
             <span><b>DAILY FIELD REPORT</b> · {report.date}</span><span>Fielder: {report.fielder || "—"}</span><span>{mode === "day" ? "Full day route" : `Job: ${shownRows[0]?.job || ""}`}</span>
           </div>
-          <div className="h-[420px] rounded border border-zinc-300 overflow-hidden">
+          <div className="h-[calc(100dvh-230px)] min-h-[320px] rounded border border-zinc-300 overflow-hidden" data-testid="dfr-travel-map-frame">
             <MapContainer center={fitPts[0] || [29.76, -95.37]} zoom={12} className="h-full w-full" scrollWheelZoom>
               <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" attribution="&copy; Esri" maxNativeZoom={19} maxZoom={22} crossOrigin="anonymous" />
               <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}" maxNativeZoom={19} maxZoom={22} crossOrigin="anonymous" />
