@@ -128,7 +128,7 @@ const PopupPhotoAdder = ({ endpoint, item, onSaved }) => {
 };
 
 // Inline quick-edit + marker color picker shown inside underground attribute popups
-const UgPopupEditor = ({ item, defaultColor, onSaved, onDeleted }) => {
+const UgPopupEditor = ({ item, defaultColor, onSaved, onDeleted, onConverted }) => {
   const [editing, setEditing] = useState(false);
   const [label, setLabel] = useState(item.label || "");
   const [fid, setFid] = useState(item.fid || "");
@@ -162,6 +162,18 @@ const UgPopupEditor = ({ item, defaultColor, onSaved, onDeleted }) => {
     }
   };
 
+  const convertTo = async (type) => {
+    if (!type || type === item.type) return;
+    const toPole = type === "Pole";
+    if (!window.confirm(`Change this ${item.type} into a ${type}? Spans and connections stay attached${toPole ? "; the attribute record moves to Deleted Items" : ""}.`)) return;
+    try {
+      await axios.post(`/underground/${item.id}/convert`, { type });
+      toast.success(`${item.type} is now a ${type}`);
+      onConverted?.(item.id);
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Could not change type");
+    }
+  };
   const setColor = async (hex) => {
     try {
       const res = await axios.put(`/underground/${item.id}`, { marker_color: hex });
@@ -234,6 +246,11 @@ const UgPopupEditor = ({ item, defaultColor, onSaved, onDeleted }) => {
         </div>
       </div>
       <div>
+        <div className="text-[10px] text-zinc-400 uppercase mb-1">Change type</div>
+        <select value={item.type} onChange={(e) => convertTo(e.target.value)} className="w-full h-7 mb-2 text-xs border border-zinc-300 rounded px-1 bg-white" data-testid={`ug-convert-select-${item.id}`}>
+          <option value="Pole">Pole</option>
+          {UNDERGROUND_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+        </select>
         <div className="text-[10px] text-zinc-400 uppercase mb-1">Marker Color</div>
         <div className="flex gap-1.5" data-testid={`ug-color-row-${item.id}`}>
           {MARKER_COLOR_CHOICES.map((hex) => (
@@ -3789,6 +3806,7 @@ const JobMap = () => {
                                 setUnderground((prev) => prev.filter((x) => x.id !== id));
                                 axios.post(`/jobs/${jobId}/sync-map-distances`).catch(() => {});
                               }}
+                              onConverted={() => fetchData()}
                             />
                           </>
                         )}

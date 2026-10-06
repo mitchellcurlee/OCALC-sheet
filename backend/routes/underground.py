@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends
 from typing import List
+from pydantic import BaseModel
 from datetime import datetime, timezone
 
 from models.underground import Underground, UndergroundCreate, UndergroundUpdate
@@ -163,3 +164,39 @@ async def delete_underground(item_id: str, current_user: dict = Depends(get_curr
     await archive_entity(_db, "underground", existing, current_user)
     await _db.underground.delete_one({"id": item_id})
     return {"message": "Underground item moved to Deleted Items"}
+
+
+class ConvertBody(BaseModel):
+    type: str  # "Pole" or any attribute type
+
+
+@router.post("/underground/{item_id}/convert")
+async def convert_attribute(item_id: str, body: ConvertBody, current_user: dict = Depends(get_current_user)):
+    """Change an attribute into a pole (type "Pole") or another attribute type. Same id, GPS, label, notes, photos,
+    color, label size/offset, order and standalone flag, so spans, routes and connections stay attached."""
+    from models.options import UNDERGROUND_TYPES
+    from routes.trash import archive_entity
+    item = await _db.underground.find_one({"id": item_id}, {"_id": 0})
+    if not item:
+        raise HTTPException(status_code=404, detail="Attribute not found")
+    now = datetime.now(timezone.utc).isoformat()
+    who = current_user.get("email", "")
+    if body.type == "Pole":
+        pole = {
+            "id": item["id"], "job_id": item.get("job_id"), "pole_number": (item.get("label") or "")[:40], "address": item.get("address"),
+            "latitude": item.get("latitude"), "longitude": item.get("longitude"), "gps_accuracy": item.get("gps_accuracy"),
+            "notes": ((item.get("notes") or "") + f"\nConverted from {item.get('type')}").strip()[:2000],
+            "photos": item.get("photos") or [], "marker_color": item.get("marker_color"), "label_size": item.get("label_size"),
+            "label_offset": item.get("label_offset"), "sort_order": item.get("sort_order"), "standalone": item.get("standalone", False),
+            "created_at": item.get("created_at") or now, "updated_at": now, "last_modified_by": who,
+        }
+        await _db.poles.insert_one(dict(pole))
+        await archive_entity(_db, "underground", item, current_user)
+        await _db.underground.delete_one({"id": item_id})
+        pole.pop("_id", None)
+        return {"kind": "pole", **pole}
+    if body.type not in UNDERGROUND_TYPES:
+        raise HTTPException(status_code=400, detail="Unknown attribute type")
+    await _db.underground.update_one({"id": item_id}, {"$set": {"type": body.type, "updated_at": now, "last_modified_by": who}})
+    updated = await _db.underground.find_one({"id": item_id}, {"_id": 0})
+    return {"kind": "underground", **updated}
