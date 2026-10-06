@@ -3177,7 +3177,7 @@ const JobMap = () => {
             No poles or underground items with GPS coordinates yet. Add coordinates to see them on the map.
           </div>
         ) : (
-          <div className="h-[70vh] border border-zinc-300 overflow-hidden rounded relative" data-testid="map-frame">
+          <div className="h-[calc(70vh+192px)] max-h-[92vh] border border-zinc-300 overflow-hidden rounded relative" data-testid="map-frame">
             {/* Universal edit mode indicator */}
             {(editMode || positionEditMode || connectionEditMode) && !selectedSegment && (
               <div className="absolute top-2 left-2 z-[1000] bg-blue-600 text-white px-3 py-1.5 rounded text-sm font-medium shadow-lg max-w-md">
@@ -3394,9 +3394,9 @@ const JobMap = () => {
               zoom={18} 
               minZoom={3} 
               maxZoom={22} 
-              zoomDelta={0.25}
-              zoomSnap={0.25}
-              wheelPxPerZoomLevel={120}
+              zoomDelta={0.2}
+              zoomSnap={0.1}
+              wheelPxPerZoomLevel={220}
               scrollWheelZoom={true} 
               style={{ height: "100%", width: "100%" }} 
               className="z-0"
