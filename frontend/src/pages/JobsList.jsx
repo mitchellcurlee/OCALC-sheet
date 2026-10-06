@@ -61,7 +61,7 @@ import {
   Copy,
   FolderInput,
 } from "lucide-react";
-import { LifeBuoy, Home, ClipboardList } from "lucide-react";
+import { LifeBuoy, Home, ClipboardList, LayoutGrid } from "lucide-react";
 import { getOfflineSavedJobs } from "@/lib/offlineTiles";
 import { useAuth } from "@/context/AuthContext";
 import { OfflineIndicator } from "@/components/OfflineIndicator";
@@ -516,6 +516,16 @@ const JobsList = () => {
             </div>
             <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
               <OfflineIndicator />
+              <Button
+                onClick={() => navigate("/tiles")}
+                size="icon"
+                variant="ghost"
+                className="text-zinc-400 hover:text-red-500 hover:bg-zinc-800"
+                title="Job Tiles — tap a job to open its map"
+                data-testid="job-tiles-nav-btn"
+              >
+                <LayoutGrid className="w-4 h-4" />
+              </Button>
               <Button
                 onClick={() => navigate("/recovery")}
                 size="icon"

@@ -49,6 +49,34 @@ def _placemark(name, desc_rows, lat, lon, style):
             f"<Point><coordinates>{lon:.7f},{lat:.7f},0</coordinates></Point></Placemark>")
 
 
+# Moved smart tags: label_offset is [dx, dy] CSS px (label top-left from the dot) on the live map.
+# Google Earth can't offset a label from its icon, so the item is drawn label-less and the tag becomes its own
+# icon-less placemark at the same relative spot (scaled as at map zoom 19) with a dashed leader back to the item.
+_M_PER_PX_Z19 = 156543.03392 / (2 ** 19)
+
+
+def _label_offset(it):
+    off = it.get("label_offset")
+    if isinstance(off, (list, tuple)) and len(off) == 2 and _f(off[0]) is not None and _f(off[1]) is not None:
+        return float(off[0]), float(off[1])
+    return None
+
+
+def _moved_label(name, lat, lon, off, badge=False):
+    dx, dy = off
+    w = max(18.0, len(name) * 5.4 + 6) if badge else len(name) * 5.4 + 13
+    h = 18.0 if badge else 17.0
+    cx, cy = dx + w / 2, dy + h / 2  # label centre in px from the dot
+    mpp = _M_PER_PX_Z19 * math.cos(math.radians(lat))
+    lat2 = lat - (cy * mpp) / 111320.0
+    lon2 = lon + (cx * mpp) / (111320.0 * max(math.cos(math.radians(lat)), 1e-6))
+    return (f"<Placemark><name>{escape(str(name))}</name><styleUrl>#movedTag</styleUrl>"
+            f"<description><![CDATA[Smart tag moved on the map: {int(dx)}px, {int(dy)}px from its point]]></description>"
+            f"<Point><coordinates>{lon2:.7f},{lat2:.7f},0</coordinates></Point></Placemark>"
+            f"<Placemark><name>{escape(str(name))} leader</name><styleUrl>#tagLeader</styleUrl>"
+            f"<LineString><tessellate>1</tessellate><coordinates>{lon:.7f},{lat:.7f},0 {lon2:.7f},{lat2:.7f},0</coordinates></LineString></Placemark>")
+
+
 def _pole_rows(p):
     hoa = "; ".join(f"{a.get('owner') or ''} {a.get('hoa_type') or ''} @ {format_height(a.get('height'))}".strip() for a in (p.get("attachments") or []) if a)
     dg = "; ".join(f"{format_height(d.get('height'))} {d.get('lead') or ''}".strip() for d in (p.get("down_guys") or []) if d)
@@ -101,7 +129,11 @@ async def export_job_kmz(job_id: str, current_user: dict = Depends(get_current_u
         if lat is None or lon is None:
             continue
         by_id[p["id"]] = (lat, lon, f"Pole {p.get('pole_number') or ''}".strip(), "pole")
-        pole_pm.append(_placemark(f"Pole {p.get('pole_number') or ''}".strip(), _pole_rows(p), lat, lon, "pole"))
+        pname = f"Pole {p.get('pole_number') or ''}".strip()
+        off = _label_offset(p)
+        pole_pm.append(_placemark(pname, _pole_rows(p), lat, lon, "poleNoLabel" if off else "pole"))
+        if off:
+            pole_pm.append(_moved_label(str(p.get("pole_number") or pname), lat, lon, off))
     for u in ugs:
         lat, lon = _f(u.get("latitude")), _f(u.get("longitude"))
         if lat is None or lon is None:
@@ -109,7 +141,12 @@ async def export_job_kmz(job_id: str, current_user: dict = Depends(get_current_u
         name = f"{u.get('type') or 'Item'}" + (f" · {u['label']}" if u.get("label") and u.get("label") != u.get("type") else "")
         is_aerial = (u.get("aerial_override") == "aerial") or (u.get("aerial_override") != "underground" and u.get("type") in {"Aerial Splice", "Loop", "Power", "X-Messenger", "Eyebolt", "Pullbox", "Weather Head", "Aerial NTE", "Aerial PI", "Aerial FBT"})
         by_id[u["id"]] = (lat, lon, name, "aerial" if is_aerial else "ug")
-        (aerial_pm if is_aerial else ug_pm).append(_placemark(name, _ug_rows(u), lat, lon, "aerial" if is_aerial else "ug"))
+        off = _label_offset(u)
+        sid = "aerial" if is_aerial else "ug"
+        bucket = aerial_pm if is_aerial else ug_pm
+        bucket.append(_placemark(name, _ug_rows(u), lat, lon, f"{sid}NoLabel" if off else sid))
+        if off:
+            bucket.append(_moved_label(name, lat, lon, off, badge=True))
 
     # Map lines (same pairs as the interactive map; waypoints honored)
     lines = []
@@ -147,9 +184,9 @@ async def export_job_kmz(job_id: str, current_user: dict = Depends(get_current_u
     def folder(name, items):
         return f"<Folder><name>{escape(name)} ({len(items)})</name>{''.join(items)}</Folder>" if items else ""
 
-    def icon_style(sid, color, icon="http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png", scale="1.1"):
+    def icon_style(sid, color, icon="http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png", scale="1.1", label_scale="0.9"):
         return (f"<Style id='{sid}'><IconStyle><color>{_kml_color(color)}</color><scale>{scale}</scale><Icon><href>{icon}</href></Icon></IconStyle>"
-                f"<LabelStyle><scale>0.9</scale></LabelStyle></Style>")
+                f"<LabelStyle><scale>{label_scale}</scale></LabelStyle></Style>")
 
     def line_style(sid, color, width="3"):
         return f"<Style id='{sid}'><LineStyle><color>{_kml_color(color)}</color><width>{width}</width></LineStyle></Style>"
@@ -158,6 +195,10 @@ async def export_job_kmz(job_id: str, current_user: dict = Depends(get_current_u
         return f"<Style id='{sid}'><LineStyle><color>{_kml_color(color)}</color><width>2</width></LineStyle><PolyStyle><color>{_kml_color(color, '55')}</color></PolyStyle></Style>"
 
     styles = (icon_style("pole", "#dc2626") + icon_style("aerial", "#2563eb") + icon_style("ug", "#16a34a") + icon_style("note", "#f59e0b", "http://maps.google.com/mapfiles/kml/shapes/info-i.png", "1.0")
+              # label-less variants for items whose smart tag was moved on the map; the tag itself is an icon-less placemark
+              + icon_style("poleNoLabel", "#dc2626", label_scale="0") + icon_style("aerialNoLabel", "#2563eb", label_scale="0") + icon_style("ugNoLabel", "#16a34a", label_scale="0")
+              + "<Style id='movedTag'><IconStyle><scale>0</scale><Icon><href>http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png</href></Icon></IconStyle><LabelStyle><scale>0.9</scale></LabelStyle></Style>"
+              + line_style("tagLeader", "#ffffff", "1")
               + line_style("aerialLine", "#2563eb") + line_style("ugLine", "#16a34a") + line_style("measLine", "#f59e0b", "2") + area_style("polyArea", "#2563eb") + area_style("daArea", "#dc2626"))
     name = job.get("name") or job.get("site_id") or "Job"
     desc = _table([("Job", job.get("name")), ("Site ID", job.get("site_id")), ("Job type", job.get("job_type")), ("Address", job.get("location")), ("Description", job.get("description")),
