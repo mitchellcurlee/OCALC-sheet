@@ -2911,8 +2911,8 @@ const JobMap = () => {
                   <DropdownMenuItem onClick={() => { setPlacingType("__pole__"); toast.info("Tap the map where the Pole goes"); }} data-testid="map-add-pole" className="cursor-pointer font-medium">
                     Add Pole
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => { setPlacingType("__address__"); toast.info("Tap the map where the Address pin goes"); }} data-testid="map-add-address" className="cursor-pointer font-medium">
-                    <span className="inline-block w-3 h-3 mr-2 rounded-full bg-blue-600 border border-white" />Add Address (blue pin)
+                  <DropdownMenuItem onClick={() => { setPlacingType("__address__"); toast.info("Tap the map where the Address goes"); }} data-testid="map-add-address" className="cursor-pointer font-medium">
+                    <span className="inline-block w-3 h-3 mr-2 rounded-sm bg-blue-600 border border-white" />Add Address (blue box)
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => { setPlacingType("__pole_terminal__"); toast.info("Tap the map where the Pole Terminal goes"); }} data-testid="map-add-pole-terminal" className="cursor-pointer font-medium">
                     Add Pole Terminal
@@ -2931,7 +2931,7 @@ const JobMap = () => {
                   <DropdownMenuSub>
                     <DropdownMenuSubTrigger className="cursor-pointer" data-testid="map-add-underground-sub">Underground Attribute</DropdownMenuSubTrigger>
                     <DropdownMenuSubContent className="w-52 max-h-72 overflow-y-auto bg-white z-[1100]">
-                      {UNDERGROUND_TYPES.filter((t) => !MAP_AERIAL_ADD_TYPES.includes(t)).map((t) => (
+                      {UNDERGROUND_TYPES.filter((t) => !MAP_AERIAL_ADD_TYPES.includes(t) && t !== "Address").map((t) => (
                         <DropdownMenuItem key={t} onClick={() => { setPlacingType(t); toast.info(`Tap the map where the ${t} goes`); }} data-testid={`map-add-${t}`} className="cursor-pointer">
                           {t}
                         </DropdownMenuItem>
@@ -3631,7 +3631,7 @@ const JobMap = () => {
                         if (t === "__address__") {
                           const addr = window.prompt("Address for this pin:");
                           if (!addr || !addr.trim()) return;
-                          await axios.post("/poles", { job_id: jobId, pole_number: addr.trim().slice(0, 40), address: addr.trim(), latitude: parseFloat(lat), longitude: parseFloat(lng), marker_color: "#2563eb", standalone: true });
+                          await axios.post("/underground", { job_id: jobId, type: "Address", label: addr.trim().slice(0, 60), address: addr.trim(), latitude: parseFloat(lat), longitude: parseFloat(lng), standalone: true });
                         } else if (t === "__pole__" || t === "__pole_terminal__") {
                           await axios.post("/poles", { job_id: jobId, pole_number: `P-${poles.length + 1}`, latitude: parseFloat(lat), longitude: parseFloat(lng), pole_terminal: t === "__pole_terminal__" ? "Yes" : "", standalone: true });
                         } else {
@@ -3649,11 +3649,11 @@ const JobMap = () => {
                     }
                     setPlacingType(null);
                     if (t === "__address__") {
-                      // Address pin = blue pole whose number is the address text; saved straight to the job
+                      // Address = its own attribute type (box marker like Suite) whose label is the address text
                       const addr = window.prompt("Address for this pin:");
                       if (!addr || !addr.trim()) return;
                       try {
-                        await axios.post("/poles", { job_id: jobId, pole_number: addr.trim().slice(0, 40), address: addr.trim(), latitude: parseFloat(lat), longitude: parseFloat(lng), marker_color: "#2563eb", standalone: true });
+                        await axios.post("/underground", { job_id: jobId, type: "Address", label: addr.trim().slice(0, 60), address: addr.trim(), latitude: parseFloat(lat), longitude: parseFloat(lng), standalone: true });
                         toast.success("Address pin added");
                         await fetchData();
                       } catch (e) { toast.error("Failed to add address"); }
@@ -3833,9 +3833,9 @@ const JobMap = () => {
                         </div>
                       </Popup>
                     </DraggableMarker>
-                    {/* Station number badge — station value is in the list below the map */}
+                    {/* Station badge — "n | 0+00" matches the span list */}
                     {stationLabel && (
-                      <Marker position={p.pos} icon={numberBadgeIcon(stationNumById[p.id], "#4f46e5", [-6, 32])} interactive={false} zIndexOffset={850} />
+                      <Marker position={p.pos} icon={numberBadgeIcon(stationNumById[p.id], "#4f46e5", [-6, 32], false, stationLabel)} interactive={false} zIndexOffset={850} />
                     )}
                     {/* Move Items mode: the smart tag itself is draggable */}
                     {handlePos && (
@@ -3921,9 +3921,9 @@ const JobMap = () => {
                       </div>
                     </Popup>
                   </DraggableMarker>
-                  {/* Station number badge — station value is in the list below the map */}
+                  {/* Station badge — "n | 0+00" matches the span list */}
                   {stationLabel && (
-                    <Marker position={u.pos} icon={numberBadgeIcon(stationNumById[u.id], isRed ? "#dc2626" : "#4f46e5", [-6, 32])} interactive={false} zIndexOffset={850} />
+                    <Marker position={u.pos} icon={numberBadgeIcon(stationNumById[u.id], isRed ? "#dc2626" : "#4f46e5", [-6, 32], false, stationLabel)} interactive={false} zIndexOffset={850} />
                   )}
                 </React.Fragment>
               )})}
@@ -4127,7 +4127,7 @@ const JobMap = () => {
               {route.length > 0 && (
                 <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-red-600 border border-white inline-block flex-shrink-0"></span>Pole (Red)</div>
               )}
-              {(poles.some((p) => (p.marker_color || "").toLowerCase() === "#2563eb") || underground.some((u) => isAddressAttr(u))) && <div className="flex items-center gap-2" data-testid="legend-pole-address"><span className="w-3 h-3 rounded-full bg-blue-600 border border-white inline-block flex-shrink-0"></span>Address{underground.some((u) => u.type === "Suite") ? " / Suite" : ""} (Blue)</div>}
+              {underground.some((u) => isAddressAttr(u)) && <div className="flex items-center gap-2" data-testid="legend-pole-address"><span className="w-3 h-3 rounded-sm bg-blue-600 border border-white inline-block flex-shrink-0"></span>Address{underground.some((u) => u.type === "Suite") ? " / Suite" : ""} (Blue)</div>}
               {(poles.some((p) => p.marker_color === "#39ff14") || underground.some((u) => u.marker_color === "#39ff14")) && (
                 <div className="flex items-center gap-2 mt-0.5" data-testid="legend-fst"><span className="w-3 h-3 rounded-full border border-white inline-block flex-shrink-0" style={{ backgroundColor: "#39ff14" }}></span>FST (Neon Green)</div>
               )}

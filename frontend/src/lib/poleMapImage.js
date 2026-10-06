@@ -98,6 +98,7 @@ export const UNDERGROUND_ABBR = {
   "St. End": "ST-E",
   "Underground Path": "UGP",
   Suite: "SU",
+  Address: "ADDR",
 };
 export const undergroundAbbr = (type) => UNDERGROUND_ABBR[type] || String(type || "").slice(0, 3).toUpperCase();
 export const UNDERGROUND_TYPES = Object.keys(UNDERGROUND_ABBR);
@@ -225,11 +226,16 @@ export const computeUgConnectors = (route, ug) => {
 export const AERIAL_ATTR_TYPES = new Set(["Loop", "Aerial Splice", "X-Messenger", "Eyebolt", "Pullbox", "Weather Head", "Aerial NTE", "Aerial PI", "Aerial FBT"]);
 
 // Per-item aerial/underground classification: explicit override wins, else by type
-// Suite / address attributes: the tag shows the address text (not just "SU") and renders blue like Address poles
+// Suite / Address attributes: the tag shows the address text (not just "SU") and renders blue
 export const ADDRESS_BLUE = "#2563eb";
-export const isAddressAttr = (u) => u.type === "Suite" || (u.marker_color || "").toLowerCase() === ADDRESS_BLUE;
-export const ugTagText = (u) => (isAddressAttr(u) && (u.label || "").trim() ? `${undergroundAbbr(u.type)} ${u.label.trim()}` : undergroundAbbr(u.type));
-export const ugTagColor = (u, fallback = "#16a34a") => u.marker_color || (u.type === "Suite" ? ADDRESS_BLUE : u.aerial_override === "neutral" ? "#9333ea" : isAerialAttr(u) ? ADDRESS_BLUE : fallback);
+export const ADDRESS_TYPES = new Set(["Suite", "Address"]);
+export const isAddressAttr = (u) => ADDRESS_TYPES.has(u.type) || (u.marker_color || "").toLowerCase() === ADDRESS_BLUE;
+export const ugTagText = (u) => {
+  const label = (u.label || "").trim();
+  if (u.type === "Address") return label || undergroundAbbr(u.type);
+  return isAddressAttr(u) && label ? `${undergroundAbbr(u.type)} ${label}` : undergroundAbbr(u.type);
+};
+export const ugTagColor = (u, fallback = "#16a34a") => u.marker_color || (ADDRESS_TYPES.has(u.type) ? ADDRESS_BLUE : u.aerial_override === "neutral" ? "#9333ea" : isAerialAttr(u) ? ADDRESS_BLUE : fallback);
 
 export const isAerialAttr = (u) =>
   (u.aerial_override === "aerial" || u.aerial_override === "underground")
@@ -1312,7 +1318,7 @@ const generateSegmentPage = async ({
     k: kTag,
     obstacles: placedRects.filter((r) => !(r.w === 32 * s && r.h === 26 * s)),
     poles: pagePoles.map((p, i) => { const [x, y] = pt(p.pos); return { x, y, text: p.label || `${i + 1}`, color: p.markerColor || "#dc2626", size: p.labelSize || "normal", fixed: p.labelOffset }; }),
-    ugs: pageUg.map((u) => { const [x, y] = pt(u.pos); return { x, y, text: u.tagText || undergroundAbbr(u.ugType), color: u.markerColor || (u.ugType === "Suite" ? ADDRESS_BLUE : "#16a34a"), fixed: u.labelOffset }; }),
+    ugs: pageUg.map((u) => { const [x, y] = pt(u.pos); return { x, y, text: u.tagText || undergroundAbbr(u.ugType), color: u.markerColor || (ADDRESS_TYPES.has(u.ugType) ? ADDRESS_BLUE : "#16a34a"), fixed: u.labelOffset }; }),
   });
   painted.forEach((r) => placedRects.push(r));
 

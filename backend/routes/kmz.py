@@ -141,9 +141,14 @@ async def export_job_kmz(job_id: str, current_user: dict = Depends(get_current_u
         lat, lon = _f(u.get("latitude")), _f(u.get("longitude"))
         if lat is None or lon is None:
             continue
-        name = f"{u.get('type') or 'Item'}" + (f" · {u['label']}" if u.get("label") and u.get("label") != u.get("type") else "")
-        if u.get("type") == "Suite" and (u.get("label") or "").strip():
-            u = {**u, "address": u.get("label")}  # the assigned suite address is the address
+        is_addr_type = u.get("type") in ("Suite", "Address")
+        label = (u.get("label") or "").strip()
+        if u.get("type") == "Address" and label:
+            name = label  # Address placemark is titled with the address itself
+        else:
+            name = f"{u.get('type') or 'Item'}" + (f" · {u['label']}" if u.get("label") and u.get("label") != u.get("type") else "")
+        if is_addr_type and label:
+            u = {**u, "address": label}  # the assigned address text is the address
         is_aerial = (u.get("aerial_override") == "aerial") or (u.get("aerial_override") != "underground" and u.get("type") in {"Aerial Splice", "Loop", "Power", "X-Messenger", "Eyebolt", "Pullbox", "Weather Head", "Aerial NTE", "Aerial PI", "Aerial FBT"})
         by_id[u["id"]] = (lat, lon, name, "aerial" if is_aerial else "ug")
         off = _label_offset(u)

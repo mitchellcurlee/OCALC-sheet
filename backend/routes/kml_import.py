@@ -193,7 +193,8 @@ async def create_from_kml(job_id: str, body: ImportBody, current_user: dict = De
         notes = ("Imported from KML" + (f": {it.name}" if it.name else "") + (f"\n{it.description}" if it.description else ""))[:2000]
         # standalone=True: imported items are placed on the map but NOT auto-connected into spans
         if it.kind == "address":
-            await create_pole(PoleCreate(job_id=job_id, pole_number=(it.label or it.name or "")[:40], latitude=it.lat, longitude=it.lng, notes=notes, standalone=True, marker_color="#2563eb", last_modified_by=who))
+            addr = (it.label or it.name or "").strip()
+            await create_underground(UndergroundCreate(job_id=job_id, type="Address", label=addr[:60], address=addr or None, fid=(it.fid or None), latitude=it.lat, longitude=it.lng, notes=notes, standalone=True, last_modified_by=who))
             created["addresses"] = created.get("addresses", 0) + 1
         elif it.kind == "pole":
             await create_pole(PoleCreate(job_id=job_id, pole_number=(it.label or "")[:40], latitude=it.lat, longitude=it.lng, notes=notes, standalone=True, last_modified_by=who))

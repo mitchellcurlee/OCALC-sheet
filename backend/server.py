@@ -190,6 +190,15 @@ async def startup_storage():
     app.state.backup_scheduler = asyncio.create_task(backup_routes.scheduler_loop())
     logger.info("Atlas backup scheduler started")
 
+    # One-time data fix: legacy "Address pins" were stored as blue poles → convert to the Address attribute type
+    try:
+        from services.address_migration import migrate_address_poles
+        n = await migrate_address_poles(db)
+        if n:
+            logger.info(f"Converted {n} legacy address pole(s) to Address attributes")
+    except Exception as e:
+        logger.error(f"Address pole migration failed: {e}")
+
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
