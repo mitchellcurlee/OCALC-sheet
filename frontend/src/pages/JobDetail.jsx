@@ -47,6 +47,7 @@ import {
   Check,
   X,
   FileText,
+  Globe,
   FileDown,
   Image as ImageIcon,
   Download,
@@ -497,6 +498,10 @@ const JobDetail = () => {
       const response = await axios.get(`/jobs/${jobId}/export/permission-stamp-docx`, { responseType: "blob" });
       return { blob: new Blob([response.data]), filename: formExportFilename(job, "Permission Stamp", "docx") };
     }
+    if (type === "kmz") {
+      const response = await axios.get(`/jobs/${jobId}/export/kmz`, { responseType: "blob" });
+      return { blob: new Blob([response.data], { type: "application/vnd.google-earth.kmz" }), filename: formExportFilename(job, "Map", "kmz") };
+    }
     return null;
   };
 
@@ -774,6 +779,10 @@ const JobDetail = () => {
                   <DropdownMenuItem onClick={openPermissionStamp} data-testid="permission-stamp-export-btn" className="cursor-pointer">
                     <FileDown className="w-4 h-4 mr-2 text-green-600" />
                     Permission Stamp (Word)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setPendingExport("kmz")} data-testid="export-kmz-btn" className="cursor-pointer">
+                    <Globe className="w-4 h-4 mr-2 text-emerald-700" />
+                    Export KMZ (Google Earth)
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setShareOpen(true)} data-testid="share-job-menu-btn" className="cursor-pointer border-t border-zinc-200 mt-1 pt-2">
                     <Share2 className="w-4 h-4 mr-2 text-emerald-600" />
