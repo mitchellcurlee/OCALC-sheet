@@ -9,8 +9,7 @@ import "@/lib/offlinePhotos";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import JobsList from "@/pages/JobsList";
 import JobDetail from "@/pages/JobDetail";
-import AddPole from "@/pages/AddPole";
-import EditPole from "@/pages/EditPole";
+import PoleEditor from "@/pages/PoleEditor";
 import ViewPole from "@/pages/ViewPole";
 import JobMap from "@/pages/JobMap";
 import UndergroundForm from "@/pages/UndergroundForm";
@@ -53,8 +52,8 @@ function App() {
             {/* Protected Routes */}
             <Route path="/" element={<ProtectedRoute><JobsList /></ProtectedRoute>} />
             <Route path="/jobs/:jobId" element={<ProtectedRoute><JobDetail /></ProtectedRoute>} />
-            <Route path="/jobs/:jobId/add" element={<ProtectedRoute><AddPole /></ProtectedRoute>} />
-            <Route path="/jobs/:jobId/edit/:id" element={<ProtectedRoute><EditPole /></ProtectedRoute>} />
+            <Route path="/jobs/:jobId/add" element={<ProtectedRoute><PoleEditor /></ProtectedRoute>} />
+            <Route path="/jobs/:jobId/edit/:id" element={<ProtectedRoute><PoleEditor /></ProtectedRoute>} />
             <Route path="/jobs/:jobId/view/:id" element={<ProtectedRoute><ViewPole /></ProtectedRoute>} />
             <Route path="/jobs/:jobId/map" element={<ProtectedRoute><JobMap /></ProtectedRoute>} />
             <Route path="/jobs/:jobId/underground/add" element={<ProtectedRoute><UndergroundForm /></ProtectedRoute>} />

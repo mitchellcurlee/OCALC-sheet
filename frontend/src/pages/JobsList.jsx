@@ -61,7 +61,8 @@ import {
   Copy,
   FolderInput,
 } from "lucide-react";
-import { LifeBuoy, Home, ClipboardList, LayoutGrid } from "lucide-react";
+import { LifeBuoy, Home, ClipboardList, LayoutGrid, Settings } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { getOfflineSavedJobs } from "@/lib/offlineTiles";
 import { useAuth } from "@/context/AuthContext";
 import { OfflineIndicator } from "@/components/OfflineIndicator";
@@ -516,92 +517,67 @@ const JobsList = () => {
             </div>
             <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
               <OfflineIndicator />
-              <Button
-                onClick={() => navigate("/tiles")}
-                size="icon"
-                variant="ghost"
-                className="text-zinc-400 hover:text-red-500 hover:bg-zinc-800"
-                title="Job Tiles — tap a job to open its map"
-                data-testid="job-tiles-nav-btn"
-              >
+              <Button onClick={() => navigate("/tiles")} variant="outline" size="sm" className="bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900 gap-1.5" title="Job Tiles — tap a job to open its map" data-testid="job-tiles-nav-btn">
                 <LayoutGrid className="w-4 h-4" />
-              </Button>
-              <Button
-                onClick={() => navigate("/recovery")}
-                size="icon"
-                variant="ghost"
-                className="text-zinc-400 hover:text-amber-400 hover:bg-zinc-800"
-                title="Device data recovery"
-                data-testid="device-recovery-btn"
-              >
-                <LifeBuoy className="w-4 h-4" />
-              </Button>
-              <Button
-                onClick={() => navigate("/trash")}
-                size="icon"
-                variant="ghost"
-                className="text-zinc-400 hover:text-red-400 hover:bg-zinc-800"
-                title="Deleted items"
-                data-testid="deleted-items-btn"
-              >
-                <Trash2 className="w-4 h-4" />
-              </Button>
-              <Button
-                onClick={async () => {
-                  if (!window.confirm("Fill in the lot address (building # + street) for every GPS'd pole and attribute that has none yet?")) return;
-                  setBackfilling(true);
-                  try {
-                    const r = await axios.post("/maps/backfill-addresses");
-                    toast.success(`Addresses filled: ${r.data.filled} (${r.data.no_match} without a nearby home) across ${r.data.jobs} job${r.data.jobs === 1 ? "" : "s"}`);
-                  } catch (e) {
-                    toast.error("Address backfill failed");
-                  } finally { setBackfilling(false); }
-                }}
-                disabled={backfilling}
-                size="icon"
-                variant="ghost"
-                className="text-zinc-400 hover:text-sky-400 hover:bg-zinc-800"
-                title="Fill in missing item addresses on all my jobs"
-                data-testid="backfill-addresses-btn"
-              >
-                {backfilling ? <Loader2 className="w-4 h-4 animate-spin" /> : <Home className="w-4 h-4" />}
+                <span className="hidden md:inline">Job Tiles</span>
               </Button>
               {(isAdmin || isSupervisor) && (
-                <Button
-                  onClick={() => navigate("/admin/team-reports")}
-                  size="icon"
-                  variant="ghost"
-                  className="text-zinc-400 hover:text-orange-400 hover:bg-zinc-800"
-                  title="Team Daily Field Reports"
-                  data-testid="team-reports-btn"
-                >
+                <Button onClick={() => navigate("/admin/team-reports")} variant="outline" size="sm" className="bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900 gap-1.5" title="Team Daily Field Reports" data-testid="team-reports-btn">
                   <ClipboardList className="w-4 h-4" />
+                  <span className="hidden md:inline">Team Reports</span>
                 </Button>
               )}
-              {isAdmin && (
-                <>
-                <Button
-                  onClick={() => navigate("/admin/users")}
-                  size="icon"
-                  variant="ghost"
-                  className="text-zinc-400 hover:text-amber-400 hover:bg-zinc-800"
-                  title="Users by company"
-                  data-testid="admin-users-btn"
-                >
-                  <Users className="w-4 h-4" />
-                </Button>
-                <Button
-                  onClick={() => navigate("/backup")}
-                  size="icon"
-                  variant="ghost"
-                  className="text-zinc-400 hover:text-emerald-400 hover:bg-zinc-800"
-                  title="Backup to Atlas"
-                  data-testid="backup-atlas-btn"
-                >
-                  <DatabaseBackup className="w-4 h-4" />
-                </Button>
-                </>
-              )}
+              {/* Settings overflow: tools that are rarely needed day-to-day */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="text-zinc-500 hover:text-zinc-900" title="Settings & tools" data-testid="header-settings-btn">
+                    <Settings className="w-5 h-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-60 bg-white z-[1100]" data-testid="header-settings-menu">
+                  <DropdownMenuLabel className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase">Tools</DropdownMenuLabel>
+                  <DropdownMenuItem
+                    onClick={async () => {
+                      if (!window.confirm("Fill in the lot address (building # + street) for every GPS'd pole and attribute that has none yet?")) return;
+                      setBackfilling(true);
+                      try {
+                        const r = await axios.post("/maps/backfill-addresses");
+                        toast.success(`Addresses filled: ${r.data.filled} (${r.data.no_match} without a nearby home) across ${r.data.jobs} job${r.data.jobs === 1 ? "" : "s"}`);
+                      } catch (e) {
+                        toast.error("Address backfill failed");
+                      } finally { setBackfilling(false); }
+                    }}
+                    disabled={backfilling}
+                    className="cursor-pointer"
+                    data-testid="backfill-addresses-btn"
+                  >
+                    {backfilling ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Home className="w-4 h-4 mr-2" />}
+                    Fill missing item addresses
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/recovery")} className="cursor-pointer" data-testid="device-recovery-btn">
+                    <LifeBuoy className="w-4 h-4 mr-2" />
+                    Device data recovery
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/trash")} className="cursor-pointer" data-testid="deleted-items-btn">
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Deleted items (Trash)
+                  </DropdownMenuItem>
+                  {isAdmin && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuLabel className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase">Admin</DropdownMenuLabel>
+                      <DropdownMenuItem onClick={() => navigate("/admin/users")} className="cursor-pointer" data-testid="admin-users-btn">
+                        <Users className="w-4 h-4 mr-2" />
+                        Users by company
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate("/backup")} className="cursor-pointer" data-testid="backup-atlas-btn">
+                        <DatabaseBackup className="w-4 h-4 mr-2" />
+                        Backup to Atlas
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
               {user && (
                 <div className="hidden sm:flex items-center gap-2">
                   {isAdmin && (
