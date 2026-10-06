@@ -678,6 +678,7 @@ const JobMap = () => {
   const [badgeValue, setBadgeValue] = useState(""); // typed number for the tapped map badge
   const [riserPick, setRiserPick] = useState(null); // list index of a riser badge tapped on the map
   const [editingSpan, setEditingSpan] = useState(null); // { segIndex, value } — manual span number edit in the list
+  const [editingNote, setEditingNote] = useState(null); // { noteId, value } — in-place note text edit
   const spanEditLock = useRef(false);
   const orderedSegmentsRef = useRef([]); // latest orderedSegments for callbacks declared before it
   const [connectFrom, setConnectFrom] = useState(null); // "Connect to…" from a popup: {id,type,label}
@@ -2124,6 +2125,23 @@ const JobMap = () => {
       <StickyNote className="w-3.5 h-3.5" />
     </button>
   );
+
+  const saveNoteText = async () => {
+    if (!editingNote) return;
+    const { noteId, value } = editingNote;
+    setEditingNote(null);
+    const clean = (value || "").trim();
+    const cur = (job?.span_notes || []).find((n) => n.id === noteId);
+    if (!cur || !clean || clean === cur.text) return;
+    const notes = (job?.span_notes || []).map((n) => (n.id === noteId ? { ...n, text: clean } : n));
+    setJob((prev) => ({ ...(prev || {}), span_notes: notes }));
+    try {
+      await axios.put(`/jobs/${jobId}`, { span_notes: notes });
+    } catch (e) {
+      toast.error("Failed to update note");
+      fetchData();
+    }
+  };
 
   const deleteSpanNote = async (noteId) => {
     try {
@@ -3867,7 +3885,20 @@ const JobMap = () => {
                   </li>
                 ) : e.kind === "note" ? (
                   <li key={`entry-${e.num}`} data-testid={`note-measurement-${e.num}`} className="flex items-center gap-1">
-                    <span><span className="font-bold text-amber-700">{e.num}.</span> <span className="text-amber-800">{e.text}</span></span>
+                    <span className="flex items-center gap-1 min-w-0"><span className="font-bold text-amber-700">{e.num}.</span>{editingNote?.noteId === e.noteId ? (
+                      <input
+                        type="text"
+                        autoFocus
+                        value={editingNote.value}
+                        onChange={(ev) => setEditingNote({ noteId: e.noteId, value: ev.target.value })}
+                        onBlur={saveNoteText}
+                        onKeyDown={(ev) => { if (ev.key === "Enter") { ev.preventDefault(); saveNoteText(); } else if (ev.key === "Escape") setEditingNote(null); }}
+                        className="h-6 px-1 min-w-[200px] flex-1 rounded border border-amber-400 bg-amber-50 text-amber-900 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                        data-testid={`note-text-input-${e.num}`}
+                      />
+                    ) : (
+                      <button type="button" onClick={() => setEditingNote({ noteId: e.noteId, value: e.text.replace(/^Note: /, "") })} className="text-amber-800 text-left hover:bg-amber-100 rounded px-0.5 -mx-0.5 border-b border-dashed border-amber-400" title="Tap to edit this note" data-testid={`note-text-${e.num}`}>{e.text}</button>
+                    )}</span>
                     <span className="inline-flex items-center gap-0.5 ml-1">
                       <button type="button" onClick={() => moveNoteEntry(e.num - 1, -1)} disabled={e.num === 1} className="p-0.5 rounded border border-zinc-300 bg-white text-zinc-600 hover:bg-zinc-100 disabled:opacity-30" title="Move up one row" data-testid={`note-move-up-${e.num}`}>
                         <ChevronUp className="w-3.5 h-3.5" />

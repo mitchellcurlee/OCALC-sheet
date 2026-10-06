@@ -432,9 +432,19 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
     
-    poles = await _db.poles.find({"job_id": job_id}, {"_id": 0}).sort("created_at", -1).to_list(10000)
-    poles.sort(key=pole_sort_key)
-    underground = await _db.underground.find({"job_id": job_id}, {"_id": 0}).sort("created_at", 1).to_list(10000)
+    poles = await _db.poles.find({"job_id": job_id}, {"_id": 0}).to_list(10000)
+    underground = await _db.underground.find({"job_id": job_id}, {"_id": 0}).to_list(10000)
+    # Same order as the Poles & Underground list on the job page: drawn route first, then sort_order, then created
+    route_pos = {}
+    for i, rid in enumerate(job.get("route_sequence") or []):
+        route_pos.setdefault(rid, i)
+
+    def list_order_key(it):
+        rp = route_pos.get(it.get("id"))
+        so = it.get("sort_order")
+        return (0, rp, "") if rp is not None else (1, so if so is not None else float("inf"), str(it.get("created_at") or ""))
+    poles.sort(key=list_order_key)
+    underground.sort(key=list_order_key)
 
     # Determine the public base URL for links
     # Priority: explicit base_url param > X-Forwarded headers > request.base_url

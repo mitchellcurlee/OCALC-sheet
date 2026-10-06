@@ -466,6 +466,23 @@ const insertPathRows = (displayRows, underground) => {
 const totalPathFeet = (underground) =>
   (underground || []).reduce((acc, u) => acc + (u.standalone === true ? 0 : (u.path_measurements || []).reduce((s, m) => s + (parseFloat(m.feet) || 0), 0)), 0);
 
+// Map items not covered by any span/path/riser get their own "— no span" line (same keys as the interactive list),
+// so notes anchored below them land in the same place on exports
+const insertNoSpanRows = (rows, poles, underground, pairs, riserDone, pathDone) => {
+  const mentionedIds = new Set();
+  (pairs || []).forEach((pr) => { mentionedIds.add(pr.from.id); mentionedIds.add(pr.to.id); });
+  const extraItems = [
+    ...(poles || []).filter((p) => p.standalone !== true && !mentionedIds.has(p.id) && !riserDone.has(p.id)).map((p) => ({ type: "item", key: `item:${p.id}`, so: p.sort_order ?? Infinity, toSo: p.sort_order ?? Infinity, text: `${/^\d/.test(String(p.pole_number || "")) ? `P${p.pole_number}` : (p.pole_number || "Pole")} — no span`, ft: null })),
+    ...(underground || []).filter((u) => u.standalone !== true && !mentionedIds.has(u.id) && !pathDone.has(u.id)).map((u) => ({ type: "item", key: `item:${u.id}`, so: u.sort_order ?? Infinity, toSo: u.sort_order ?? Infinity, text: `${undergroundAbbr(u.type)}${u.label ? `-${u.label}` : ""} — no span`, ft: null })),
+  ];
+  extraItems.sort((a, b) => a.so - b.so).forEach((row) => {
+    let at = -1;
+    rows.forEach((r, i) => { if (((r.toSo ?? r.so) ?? Infinity) <= row.so) at = i; });
+    rows.splice(at + 1, 0, row);
+  });
+};
+const pathDoneSet = (items) => new Set((items || []).filter((u) => u.standalone !== true && (u.path_measurements || []).length > 0).map((u) => u.id));
+
 // Build the exact text lines shown in the interactive map's Span Measurements list.
 // Used by the ASE checklist "path of approach" so both always match.
 export const buildSpanMeasurementTexts = ({ poles, underground = [], connections = [], includeStations = false, stationsOnly = false, routes = {}, spanNotes = [], spanOrder = null, drawnOnly = false }) => {
@@ -580,17 +597,7 @@ export const buildSpanMeasurementTexts = ({ poles, underground = [], connections
     rows.splice(at + 1, 0, row);
   });
   // Items on the map not covered by any span/path/riser get their own line (matches interactive map list)
-  const mentionedIds = new Set();
-  pairs.forEach((pr) => { mentionedIds.add(pr.from.id); mentionedIds.add(pr.to.id); });
-  const extraItems = [
-    ...poles.filter((p) => p.standalone !== true && !mentionedIds.has(p.id) && !riserDone.has(p.id)).map((p) => ({ key: `item:${p.id}`, so: p.sort_order ?? Infinity, text: `${/^\d/.test(String(p.pole_number || "")) ? `P${p.pole_number}` : (p.pole_number || "Pole")} — no span` })),
-    ...(underground || []).filter((u) => u.standalone !== true && !mentionedIds.has(u.id) && !pathDone.has(u.id)).map((u) => ({ key: `item:${u.id}`, so: u.sort_order ?? Infinity, text: `${undergroundAbbr(u.type)}${u.label ? `-${u.label}` : ""} — no span` })),
-  ];
-  extraItems.sort((a, b) => a.so - b.so).forEach((row) => {
-    let at = -1;
-    rows.forEach((r, i) => { if (((r.toSo ?? r.so) ?? Infinity) <= row.so) at = i; });
-    rows.splice(at + 1, 0, row);
-  });
+  insertNoSpanRows(rows, poles, underground, pairs, riserDone, pathDone);
   placeSpanNotes(rows, [...anchoredRiserRows, ...(spanNotes || [])], (n) => (n._row ? n._row : { key: `note:${n.id}`, so: n.so ?? Infinity, text: `Note: ${n.text}` }));
   return rows.map((r) => r.text);
 };
@@ -602,12 +609,13 @@ export const riserAnchor = (pole) => (pole?.riser_after ? (pole.riser_after === 
 // (key of the row they sit directly below, null = top of list) so they stay exactly where placed
 export const placeSpanNotes = (rows, spanNotes, makeRow) => {
   const notes = (spanNotes || []).slice();
-  notes.filter((n) => n.after === undefined).sort((a, b) => (a.so ?? Infinity) - (b.so ?? Infinity)).forEach((n) => {
+  const bySo = (n) => {
     const so = n.so ?? Infinity;
     let at = -1;
     rows.forEach((r, i) => { if (((r.toSo ?? r.so) ?? Infinity) <= so) at = i; });
     rows.splice(at + 1, 0, makeRow(n));
-  });
+  };
+  notes.filter((n) => n.after === undefined).sort((a, b) => (a.so ?? Infinity) - (b.so ?? Infinity)).forEach(bySo);
   let pending = notes.filter((n) => n.after !== undefined);
   let top = 0;
   let progress = true;
@@ -622,7 +630,8 @@ export const placeSpanNotes = (rows, spanNotes, makeRow) => {
       return false;
     });
   }
-  pending.forEach((n) => rows.push(makeRow(n)));
+  // Anchor row missing from this list (e.g. export without that row): fall back to the saved numeric position
+  pending.forEach(bySo);
 };
 
 // Fetch a single satellite image (via backend proxy) and draw the annotated
@@ -1088,9 +1097,10 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
     const displayRows = [];
     const riserDone = new Set();
     const riserLaterDisplay = [];
+    const anchoredRisers = [];
     const orderKeysUsable = route.some((p) => Number.isFinite(p.sort_order)) || (underground || []).some((u) => Number.isFinite(u.sort_order));
     pairSegs.forEach((sg) => {
-      if (!sg.manual) displayRows.push({ type: "segment", so: sg.from.sort_order ?? Infinity, toSo: sg.to.sort_order ?? Infinity, text: `${itemName(sg.from)} -> ${itemName(sg.to)}${sg.aerial ? "" : " (UG)"}`, ft: sg.ft });
+      if (!sg.manual) displayRows.push({ type: "segment", key: `span:${spanKey(sg.from.id, sg.to.id)}`, so: sg.from.sort_order ?? Infinity, toSo: sg.to.sort_order ?? Infinity, text: `${itemName(sg.from)} -> ${itemName(sg.to)}${sg.aerial ? "" : " (UG)"}`, ft: sg.ft });
       const poleB = sg.to.type === "pole" ? route.find((p) => p.id === sg.to.id) : null;
       if (poleB?.risers && poleB?.riser_height && !riserDone.has(poleB.id)) {
         const riserCount = parseInt(poleB.risers) || 0;
@@ -1099,11 +1109,13 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
           riserDone.add(poleB.id);
           const row = { 
             type: "riser", 
+            key: `riser:${poleB.id}`,
             so: poleB.riser_sort_order ?? sg.to.sort_order ?? Infinity,
             text: `  ↳ ${poleB.pole_number} Riser${riserCount > 1 ? ` x${riserCount}` : ""}`, 
             ft: riserCount * riserHeight 
           };
-          if (poleB.riser_sort_order != null && orderKeysUsable) riserLaterDisplay.push(row);
+          if (riserAnchor(poleB) !== undefined) anchoredRisers.push({ after: riserAnchor(poleB), _row: row });
+          else if (poleB.riser_sort_order != null && orderKeysUsable) riserLaterDisplay.push(row);
           else displayRows.push(row);
         }
       }
@@ -1114,12 +1126,9 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
       displayRows.forEach((r, i) => { if (((r.toSo ?? r.so) ?? Infinity) <= row.so) at = i; });
       displayRows.splice(at + 1, 0, row);
     });
-    (job?.span_notes || []).slice().sort((a, b) => (a.so ?? Infinity) - (b.so ?? Infinity)).forEach((n) => {
-      const row = { type: "note", so: n.so ?? Infinity, text: `Note: ${n.text}`, ft: null };
-      let at = -1;
-      displayRows.forEach((r, i) => { if (((r.toSo ?? r.so) ?? Infinity) <= row.so) at = i; });
-      displayRows.splice(at + 1, 0, row);
-    });
+    insertNoSpanRows(displayRows, route, underground, pairSegs, riserDone, pathDoneSet([...(underground || []), ...(route || [])]));
+    // Notes pinned exactly where they sit in the interactive list (anchored rows), legacy notes by numeric position
+    placeSpanNotes(displayRows, [...anchoredRisers, ...(job?.span_notes || [])], (n) => (n._row ? n._row : { type: "note", key: `note:${n.id}`, so: n.so ?? Infinity, text: `Note: ${n.text}`, ft: null }));
     
     // Calculate required height to show all measurements
     const requiredPanelHeight = headerH + (displayRows.length * rowH) + bottomSection + 20 * s;
@@ -1154,8 +1163,8 @@ export const downloadPoleMapImage = async ({ poles, job, showStops = false, unde
     };
     for (let i = 0; i < displayRows.length; i++) {
       const row = displayRows[i];
-      fctx.fillStyle = row.type === "riser" ? "#f97316" : row.type === "path" ? "#059669" : row.type === "note" ? "#b45309" : "#18181b";
-      const valText = row.type === "note" ? "" : row.type === "riser" ? `+${fmtFeet(row.ft)}` : fmtFeet(row.ft);
+      fctx.fillStyle = row.type === "riser" ? "#f97316" : row.type === "path" ? "#059669" : row.type === "note" ? "#b45309" : row.type === "item" ? "#52525b" : "#18181b";
+      const valText = row.type === "note" || row.type === "item" ? "" : row.type === "riser" ? `+${fmtFeet(row.ft)}` : fmtFeet(row.ft);
       const maxTextW = panelW - 28 * s - fctx.measureText(valText).width - 6 * s;
       fctx.textAlign = "left";
       fctx.fillText(fitText(row.text, maxTextW), mapW + 14 * s, yy);
@@ -1693,6 +1702,7 @@ const generateMeasurementListImages = ({ pairSegs, route, totalRiserFeet, job, u
     }
   });
   insertPathRows(displayRows, [...(underground || []), ...(route || [])]);
+  insertNoSpanRows(displayRows, route, underground, pairSegs, riserDone, pathDoneSet([...(underground || []), ...(route || [])]));
   placeSpanNotes(displayRows, [...anchoredRisers, ...(job?.span_notes || [])], (n) => (n._row ? n._row : { type: "note", key: `note:${n.id}`, so: n.so ?? Infinity, text: `Note: ${n.text}`, ft: null }));
   
   const pairFt = pairSegs.reduce((acc, x) => acc + (x.manual ? 0 : x.ft), 0);
@@ -1741,8 +1751,8 @@ const generateMeasurementListImages = ({ pairSegs, route, totalRiserFeet, job, u
     return s2 + "…";
   };
   for (const row of rows) {
-    ctx.fillStyle = row.type === "riser" ? "#f97316" : row.type === "path" ? "#059669" : row.type === "note" ? "#b45309" : "#18181b";
-    const valText = row.type === "note" ? "" : row.type === "riser" ? `+${fmtFeet(row.ft)}` : fmtFeet(row.ft);
+    ctx.fillStyle = row.type === "riser" ? "#f97316" : row.type === "path" ? "#059669" : row.type === "note" ? "#b45309" : row.type === "item" ? "#52525b" : "#18181b";
+    const valText = row.type === "note" || row.type === "item" ? "" : row.type === "riser" ? `+${fmtFeet(row.ft)}` : fmtFeet(row.ft);
     const maxTextW = panelW - 32 * s - ctx.measureText(valText).width - 6 * s;
     ctx.textAlign = "left";
     ctx.fillText(fitText(row.text, maxTextW), 16 * s, yy);
