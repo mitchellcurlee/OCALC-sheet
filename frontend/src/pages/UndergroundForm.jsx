@@ -26,6 +26,7 @@ import AddressField from "@/components/AddressField";
 import { undergroundAbbr } from "@/lib/poleMapImage";
 import { ArrowLeft, Save, Loader2, MapPin, Search, Pencil, Plus, Trash2 } from "lucide-react";
 import { getBestFix, fmtAcc } from "@/lib/gps";
+import { HomeButton } from "@/components/HomeButton";
 
 // Types that get a FID box + Primary FID toggle
 const FID_TYPES = ["Handhole", "FBT", "NTE", "FBT/NTE", "Aerial Splice", "Loop", "PFP", "Manhole", "Brooks Enclosure", "Flowerpot", "FDF"];
@@ -381,6 +382,7 @@ const UndergroundForm = () => {
             <Button variant="ghost" size="icon" className="text-zinc-600 hover:text-zinc-900 h-9 w-9" onClick={goBack} data-testid="back-btn">
               <ArrowLeft className="w-5 h-5" />
             </Button>
+            <HomeButton />
             <h1 className="font-heading text-sm sm:text-lg font-bold tracking-tight uppercase text-zinc-900">
               {isEdit ? "Edit" : "Add"} Underground
             </h1>

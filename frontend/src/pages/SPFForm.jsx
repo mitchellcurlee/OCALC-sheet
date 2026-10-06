@@ -10,6 +10,7 @@ import { SignaturePad } from "@/components/SignaturePad";
 import { SpfDateLine, toDisplayDate } from "@/components/spf/SpfDateLine";
 import { OperatorNameSelect } from "@/components/spf/OperatorNameSelect";
 import { format } from "date-fns";
+import { HomeButton } from "@/components/HomeButton";
 
 const Line = ({ label, k, data, set, wide }) => (
   <div className="flex flex-wrap items-end gap-2" data-testid={`spf-line-${k}`}>
@@ -74,6 +75,7 @@ export default function SPFForm() {
     <div className="min-h-screen bg-zinc-100" data-testid="spf-page">
       <header className="bg-white border-b border-zinc-300 sticky top-0 z-20 px-3 py-2 flex flex-wrap items-center gap-2">
         <Button variant="ghost" size="icon" onClick={goBack} className="text-zinc-600" data-testid="spf-back-btn"><ArrowLeft className="w-5 h-5" /></Button>
+        <HomeButton />
         <div className="basis-full sm:basis-0 sm:flex-1 min-w-0 order-last sm:order-none">
           <h1 className="font-heading text-base sm:text-lg font-black uppercase tracking-tight flex items-center gap-2"><FileSignature className="w-5 h-5 text-blue-600" />SPF Form — Right of Entry Agreement</h1>
           <p className="text-[11px] text-zinc-500 font-mono truncate">{job?.name}{job?.site_id ? ` • ${job.site_id}` : ""} · {saving ? "Saving…" : "Saved"}</p>

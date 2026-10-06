@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/AuthContext";
 import { ArrowLeft, Loader2, MailWarning, ShieldCheck, ShieldAlert, Trash2, Users, BadgeCheck, Clock } from "lucide-react";
+import { HomeButton } from "@/components/HomeButton";
 
 const fmt = (s) => (s ? new Date(s).toLocaleDateString() : "—");
 
@@ -103,6 +104,7 @@ const AdminUsers = () => {
     <div className="min-h-screen bg-industrial-bg" data-testid="admin-users-page">
       <header className="bg-zinc-900 text-white px-4 py-3 flex items-center gap-3">
         <Button size="icon" variant="ghost" className="text-zinc-300 hover:text-white hover:bg-zinc-800" onClick={goBack} data-testid="admin-users-back"><ArrowLeft className="w-5 h-5" /></Button>
+        <HomeButton className="text-zinc-300 hover:text-white hover:bg-zinc-800" />
         <div>
           <h1 className="font-heading text-lg font-bold uppercase tracking-tight flex items-center gap-2"><Users className="w-5 h-5" />Users by company</h1>
           <p className="text-[11px] font-mono text-zinc-400">{total} accounts · {unverified} awaiting verification</p>

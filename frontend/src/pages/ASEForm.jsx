@@ -21,6 +21,7 @@ import ASEChecklistTab from "@/components/ase/ASEChecklistTab";
 import ASECoordinatorTab from "@/components/ase/ASECoordinatorTab";
 import ASESVCLOutputTab from "@/components/ase/ASESVCLOutputTab";
 import ASESOWNotesTab, { buildSowNotesText } from "@/components/ase/ASESOWNotesTab";
+import { HomeButton } from "@/components/HomeButton";
 
 const ASEForm = () => {
   const { jobId } = useParams();
@@ -503,6 +504,7 @@ const ASEForm = () => {
             <button type="button" onClick={goBack} className="p-2 hover:bg-zinc-100 rounded-lg" data-testid="ase-back-btn">
               <ArrowLeft className="w-5 h-5" />
             </button>
+            <HomeButton />
             <div>
               <h1 className="font-heading text-lg sm:text-xl font-bold">ASE SITE WALK SURVEY</h1>
               <p className="text-xs text-zinc-500 font-mono" data-testid="ase-header-job-type">{job?.job_type || "OCALC"}{job?.site_id ? ` • ${job.site_id}` : ""}</p>

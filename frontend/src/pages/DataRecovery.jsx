@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, LifeBuoy, Loader2, UploadCloud, CheckCircle2, MapPin, Camera, Layers } from "lucide-react";
 import { getAllJobs, getAllPoles, getAllUnderground, getAllPhotoBlobs, saveJob } from "@/lib/offlineDb";
 import { syncOfflinePhotos, OFFLINE_PHOTO_PREFIX } from "@/lib/offlinePhotos";
+import { HomeButton } from "@/components/HomeButton";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -95,6 +96,7 @@ export default function DataRecovery() {
           <Button onClick={() => navigate("/")} size="icon" variant="ghost" className="text-white hover:bg-zinc-700" data-testid="recovery-back-btn">
             <ArrowLeft className="w-5 h-5" />
           </Button>
+          <HomeButton className="text-white hover:bg-zinc-700" />
           <LifeBuoy className="w-5 h-5 text-amber-400" />
           <div>
             <h1 className="text-lg font-bold tracking-wide">DEVICE DATA RECOVERY</h1>

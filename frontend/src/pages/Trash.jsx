@@ -1,3 +1,4 @@
+import { HomeButton } from "@/components/HomeButton";
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useGoBack } from "@/lib/useGoBack";
@@ -92,6 +93,7 @@ export default function Trash() {
             <Button size="icon" variant="ghost" className="text-zinc-400 hover:text-white hover:bg-zinc-800" onClick={goBack} data-testid="trash-back-btn">
               <ArrowLeft className="w-5 h-5" />
             </Button>
+            <HomeButton className="text-zinc-400 hover:text-white hover:bg-zinc-800" />
             <div>
               <h1 className="text-white font-bold tracking-wide uppercase text-sm sm:text-base flex items-center gap-2">
                 <Trash2 className="w-4 h-4 text-red-500" /> Deleted Items

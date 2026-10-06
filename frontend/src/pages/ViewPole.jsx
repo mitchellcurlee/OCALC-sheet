@@ -39,6 +39,7 @@ import { MapContainer, TileLayer, Marker } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { formatHeight } from "@/components/HeightInput";
+import { HomeButton } from "@/components/HomeButton";
 
 // Fix Leaflet marker icon
 delete L.Icon.Default.prototype._getIconUrl;
@@ -279,6 +280,7 @@ const ViewPole = () => {
               <Button variant="ghost" size="icon" className="text-zinc-600 hover:text-zinc-900" onClick={goBack} data-testid="back-btn">
                 <ArrowLeft className="w-5 h-5" />
               </Button>
+              <HomeButton />
               <div className="flex items-center gap-3">
                 <div className={`w-10 h-10 flex items-center justify-center ${pole.pole_owner === "Foreign Owned" ? "bg-red-600" : "bg-orange-600"}`}>
                   <Zap className="w-6 h-6 text-white" />

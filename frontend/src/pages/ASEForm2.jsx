@@ -13,6 +13,7 @@ import { todayISO } from "@/lib/dfr";
 import { parseHandoff, checklistFromHandoff } from "@/lib/handoffParse";
 import { HandoffTab } from "@/components/ase2/HandoffTab";
 import { CallScriptTab } from "@/components/ase2/CallScriptTab";
+import { HomeButton } from "@/components/HomeButton";
 
 const TABS = [["checklist", "Fielding Checklist"], ["handoff", "Handoff Site Details"], ["script", "Customer Call Script & Response"]];
 
@@ -130,6 +131,7 @@ export default function ASEForm2() {
     <div className="min-h-screen bg-zinc-100" data-testid="ase2-page">
       <header className="bg-white border-b border-zinc-300 sticky top-0 z-20 px-3 py-2 flex flex-wrap items-center gap-2">
         <Button variant="ghost" size="icon" onClick={goBack} className="text-zinc-600" data-testid="ase2-back-btn"><ArrowLeft className="w-5 h-5" /></Button>
+        <HomeButton />
         <div className="basis-full sm:basis-0 sm:flex-1 min-w-0 order-last sm:order-none">
           <h1 className="font-heading text-base sm:text-lg font-black uppercase tracking-tight flex items-center gap-2"><ClipboardCheck className="w-5 h-5 text-blue-600" />ASE Form 2 — Site Visit</h1>
           <p className="text-[11px] text-zinc-500 font-mono truncate">{job?.name}{job?.site_id ? ` • ${job.site_id}` : ""} · {saving ? "Saving…" : "Saved"}</p>

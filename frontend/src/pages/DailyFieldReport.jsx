@@ -14,6 +14,7 @@ import { HomeAddress } from "@/components/dfr/HomeAddress";
 import { useDailyReport } from "@/components/dfr/useDailyReport";
 import { EMPLOYEE_NAMES } from "@/components/ase/ASEFormConstants";
 import { newRow, todayISO, jobLabel } from "@/lib/dfr";
+import { HomeButton } from "@/components/HomeButton";
 
 export default function DailyFieldReport() {
   const { jobId } = useParams();
@@ -63,6 +64,7 @@ export default function DailyFieldReport() {
       <header className="bg-zinc-900 text-white px-4 py-3">
         <div className="max-w-[1500px] mx-auto flex flex-wrap items-center gap-3">
           <Button size="icon" variant="ghost" className="text-zinc-300 hover:text-white hover:bg-zinc-800" onClick={goBack} data-testid="dfr-back"><ArrowLeft className="w-5 h-5" /></Button>
+          <HomeButton className="text-zinc-300 hover:text-white hover:bg-zinc-800" />
           <div>
             <h1 className="font-heading text-lg font-bold uppercase tracking-tight flex items-center gap-2"><ClipboardList className="w-5 h-5" />Daily Field Report</h1>
             <p className="text-[11px] font-mono text-zinc-400">{report.rows.length} job row{report.rows.length !== 1 ? "s" : ""} · {saving ? "Saving…" : dirty ? "Unsaved changes" : "Saved"}</p>

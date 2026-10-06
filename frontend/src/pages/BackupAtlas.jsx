@@ -9,6 +9,7 @@ import { Switch } from "../components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { ArrowLeft, DatabaseBackup, Loader2, CheckCircle2, ShieldAlert, Clock } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { HomeButton } from "@/components/HomeButton";
 
 export default function BackupAtlas() {
   const navigate = useNavigate();
@@ -97,6 +98,7 @@ export default function BackupAtlas() {
           <Button size="icon" variant="ghost" onClick={goBack} className="text-zinc-400 hover:text-white" data-testid="backup-back-btn">
             <ArrowLeft className="w-5 h-5" />
           </Button>
+          <HomeButton className="text-zinc-400 hover:text-white" />
           <div className="w-9 h-9 bg-emerald-600 flex items-center justify-center">
             <DatabaseBackup className="w-5 h-5 text-white" />
           </div>

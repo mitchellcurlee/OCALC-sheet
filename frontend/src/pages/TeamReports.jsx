@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { ArrowLeft, FileSpreadsheet, Loader2, Users, Search } from "lucide-react";
 import { fmtHrs, todayISO } from "@/lib/dfr";
 import { DFR_HEADERS } from "@/components/dfr/DFRTable";
+import { HomeButton } from "@/components/HomeButton";
 
 const COLS = ["date", "job", "market", "sow", "job_type", "job_address", "fielder", "travel_hrs", "work_hrs", "return_hrs", "miles", "footage", "poles", "computer_hrs", "status", "comments"];
 const TOTAL_KEYS = ["travel_hrs", "work_hrs", "return_hrs", "miles", "footage", "poles", "computer_hrs"];
@@ -50,6 +51,7 @@ export default function TeamReports() {
     <div className="min-h-screen bg-zinc-100" data-testid="team-reports-page">
       <header className="bg-zinc-900 text-white px-3 py-2 flex flex-wrap items-center gap-2">
         <Button variant="ghost" size="icon" onClick={goBack} className="text-zinc-300 hover:text-white hover:bg-zinc-800" data-testid="team-reports-back"><ArrowLeft className="w-5 h-5" /></Button>
+        <HomeButton className="text-zinc-300 hover:text-white hover:bg-zinc-800" />
         <h1 className="font-heading text-base sm:text-lg font-black uppercase tracking-tight flex items-center gap-2"><Users className="w-5 h-5 text-orange-400" />Team Daily Field Reports</h1>
         <span className="text-[11px] text-zinc-400 font-mono">admins &amp; supervisors · all fielders</span>
       </header>
