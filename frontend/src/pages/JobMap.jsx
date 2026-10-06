@@ -16,6 +16,7 @@ import { ugTagText, ugTagColor, isAddressAttr, computeRoute, fmtFeet, feetToStat
 import { ExportDestinationDialog } from "@/components/ExportDestinationDialog";
 import { CLOUD_EXPORT_LABELS, uploadExportToCloud } from "@/lib/cloudExports";
 import { streetOnly } from "@/lib/addressName";
+import { HomeButton } from "@/components/HomeButton";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -2796,6 +2797,7 @@ const JobMap = () => {
             <Button variant="ghost" size="icon" className="text-zinc-600 hover:text-zinc-900 h-9 w-9" onClick={goBack} data-testid="map-back-btn">
               <ArrowLeft className="w-5 h-5" />
             </Button>
+            <HomeButton />
             <Button variant="ghost" size="sm" className="text-zinc-600 hover:text-zinc-900 h-9 px-2 gap-1.5" onClick={() => navigate(`/jobs/${jobId}`)} title="Job Home — poles & underground list" aria-label="Job Home" data-testid="map-home-btn">
               <Home className="w-5 h-5" />
               <span className="hidden sm:inline text-xs font-semibold">Job Home</span>

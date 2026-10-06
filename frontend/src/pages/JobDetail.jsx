@@ -61,6 +61,7 @@ import {
   Square,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { HomeButton } from "@/components/HomeButton";
 import { buildSowNotesText } from "@/components/ase/ASESOWNotesTab";
 import { ExportDestinationDialog } from "@/components/ExportDestinationDialog";
 import { CloudExportsSection } from "@/components/CloudExportsSection";
@@ -710,6 +711,7 @@ const JobDetail = () => {
               <Button variant="ghost" size="icon" className="text-zinc-600 hover:text-zinc-900" onClick={goBack} data-testid="job-detail-back-btn">
                 <ArrowLeft className="w-5 h-5" />
               </Button>
+              <HomeButton />
               <div className="w-9 h-9 sm:w-10 sm:h-10 bg-red-600 flex items-center justify-center flex-shrink-0">
                 <Folder className="w-5 h-5 sm:w-6 sm:h-6 text-zinc-900" />
               </div>

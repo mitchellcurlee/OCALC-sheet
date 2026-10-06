@@ -690,7 +690,7 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
               <Button variant="ghost" size="icon" className="text-zinc-600 hover:text-zinc-900 h-10 w-10 sm:h-9 sm:w-9" onClick={goBack} data-testid="back-btn">
                 <ArrowLeft className="w-5 h-5" />
               </Button>
-              <HomeButton jobId={jobId} />
+              <HomeButton />
               <div className="flex items-center gap-2 sm:gap-3">
                 <div className="w-8 h-8 sm:w-10 sm:h-10 bg-red-600 flex items-center justify-center flex-shrink-0">
                   <Zap className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
