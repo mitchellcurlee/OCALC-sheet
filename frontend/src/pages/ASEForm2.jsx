@@ -5,10 +5,16 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, FileDown, Loader2, Save, ClipboardCheck } from "lucide-react";
 import { useGoBack } from "@/lib/useGoBack";
 import { useAuth } from "@/context/AuthContext";
 import { todayISO } from "@/lib/dfr";
+import { parseHandoff, checklistFromHandoff } from "@/lib/handoffParse";
+import { HandoffTab } from "@/components/ase2/HandoffTab";
+import { CallScriptTab } from "@/components/ase2/CallScriptTab";
+
+const TABS = [["checklist", "Fielding Checklist"], ["handoff", "Handoff Site Details"], ["script", "Customer Call Script & Response"]];
 
 const Field = ({ f, value, onChange }) => {
   const cls = "w-full h-9 px-2 text-sm border border-zinc-300 rounded bg-white text-zinc-900";
@@ -59,8 +65,9 @@ export default function ASEForm2() {
         setSchema(sc.data); setJob(j.data);
         const a1 = ase1.data?.ase_data || ase1.data || {};
         const v = { ...d.data };
-        // Auto-populate (same rules as ASE Form 1: only fill empty fields, never overwrite edits)
+        // Auto-populate (same rules as ASE Form 1: only fill empty fields, never overwrite edits). Handoff paste wins over job info.
         const fill = (k, val) => { if (!v[k] && val) v[k] = val; };
+        Object.entries(checklistFromHandoff(v)).forEach(([k, val]) => fill(k, val));
         fill("business_name", j.data.description); fill("business_name_2", j.data.description);
         fill("site_address", j.data.location); fill("site_address_2", j.data.location);
         fill("handoff_site_id", j.data.site_id); fill("handoff_address", j.data.location); fill("handoff_customer", j.data.description); fill("handoff_end_customer", j.data.description);
@@ -83,7 +90,21 @@ export default function ASEForm2() {
     catch { toast.error("Save failed"); }
     finally { setSaving(false); }
   }, [jobId]);
-  const set = (k, val) => { setData((p) => ({ ...p, [k]: val })); clearTimeout(timer.current); timer.current = setTimeout(persist, 1000); };
+  useEffect(() => () => { if (timer.current) { clearTimeout(timer.current); persist(); } }, [persist]); // flush pending autosave on leave
+  const schedule = () => { clearTimeout(timer.current); timer.current = setTimeout(() => { timer.current = null; persist(); }, 1000); };
+  const set = (k, val) => { setData((p) => ({ ...p, [k]: val })); schedule(); };
+  // Paste of the award-info block: re-derive every handoff_* field, then fill checklist fields that are empty or still hold the job-derived auto-fill
+  const onHandoffPaste = (raw) => {
+    setData((p) => {
+      const next = Object.fromEntries(Object.entries(p).filter(([k]) => !k.startsWith("handoff_")));
+      Object.assign(next, parseHandoff(raw, schema.handoff), { handoff_raw: raw });
+      const auto = new Set([job?.description, job?.location].filter(Boolean));
+      Object.entries(checklistFromHandoff(next)).forEach(([k, v]) => { if (!next[k] || auto.has(next[k])) next[k] = v; });
+      return next;
+    });
+    schedule();
+  };
+  const applyHandoff = () => { setData((p) => ({ ...p, ...checklistFromHandoff(p) })); schedule(); toast.success("Fielding Checklist updated from Handoff Site Details"); };
 
   const exportXlsm = async () => {
     setExporting(true);
@@ -109,35 +130,38 @@ export default function ASEForm2() {
     <div className="min-h-screen bg-zinc-100" data-testid="ase2-page">
       <header className="bg-white border-b border-zinc-300 sticky top-0 z-20 px-3 py-2 flex flex-wrap items-center gap-2">
         <Button variant="ghost" size="icon" onClick={goBack} className="text-zinc-600" data-testid="ase2-back-btn"><ArrowLeft className="w-5 h-5" /></Button>
-        <div className="flex-1 min-w-0">
+        <div className="basis-full sm:basis-0 sm:flex-1 min-w-0 order-last sm:order-none">
           <h1 className="font-heading text-base sm:text-lg font-black uppercase tracking-tight flex items-center gap-2"><ClipboardCheck className="w-5 h-5 text-blue-600" />ASE Form 2 — Site Visit</h1>
           <p className="text-[11px] text-zinc-500 font-mono truncate">{job?.name}{job?.site_id ? ` • ${job.site_id}` : ""} · {saving ? "Saving…" : "Saved"}</p>
         </div>
         <Button type="button" variant="outline" onClick={() => { clearTimeout(timer.current); persist(); }} className="h-9 text-xs" data-testid="ase2-save-btn"><Save className="w-4 h-4 mr-1" />Save</Button>
         <Button type="button" onClick={exportXlsm} disabled={exporting} className="h-9 text-xs bg-blue-600 hover:bg-blue-700 text-white" data-testid="ase2-export-btn">{exporting ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <FileDown className="w-4 h-4 mr-1" />}Export Excel (.xlsm)</Button>
       </header>
-      <main className="max-w-5xl mx-auto p-3 space-y-4">
-        <Section title="Handoff Site Details — Site Visit Award Info">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 px-3 py-2">
-            {schema.handoff.map((h) => (
-              <label key={h.key} className="flex items-center gap-2 py-1 text-sm"><span className="w-32 shrink-0 text-zinc-600">{h.label}:</span><Input value={data[`handoff_${h.key}`] || ""} onChange={(e) => set(`handoff_${h.key}`, e.target.value)} className="h-8 bg-white text-sm" data-testid={`ase2-handoff-${h.key}`} /></label>
+      <main className="max-w-5xl mx-auto p-3">
+        <Tabs defaultValue="checklist" data-testid="ase2-tabs">
+          <TabsList className="w-full justify-start overflow-x-auto bg-zinc-200 rounded-b-none h-auto p-1 gap-1">
+            {TABS.map(([v, l]) => <TabsTrigger key={v} value={v} className="text-xs sm:text-sm px-3 py-1.5 whitespace-nowrap data-[state=active]:bg-white data-[state=active]:text-blue-700 data-[state=active]:font-bold" data-testid={`ase2-tab-${v}`}>{l}</TabsTrigger>)}
+          </TabsList>
+          <TabsContent value="checklist" className="mt-0 space-y-4 bg-zinc-200/60 p-2 sm:p-3 rounded-b" data-testid="ase2-tabpanel-checklist">
+            {schema.sections.map((sec) => (
+              <Section key={sec.title} title={sec.title}>
+                {sec.fields.map((f) => <Row key={f.key} label={f.label} note={f.note}><Field f={f} value={data[f.key]} onChange={(v) => set(f.key, v)} /></Row>)}
+                {sec.title === "ADDITIONAL NOTES" && schema.req_groups.map((g) => (
+                  <div key={g.key} className="px-3 py-2 grid grid-cols-1 md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-2">
+                    <div><div className="text-sm font-semibold text-zinc-800">{g.label}</div><div className="text-[11px] text-zinc-500 italic">{g.note}</div></div>
+                    <div className="space-y-1.5">{schema.req_items.map((it) => <div key={it.key} className="flex items-center justify-between gap-3 text-sm"><span>{it.label} -</span>{yn(`${g.key}_${it.key}`)}</div>)}</div>
+                  </div>
+                ))}
+              </Section>
             ))}
-          </div>
-        </Section>
-        {schema.sections.map((sec) => (
-          <Section key={sec.title} title={sec.title}>
-            {sec.fields.map((f) => <Row key={f.key} label={f.label} note={f.note}><Field f={f} value={data[f.key]} onChange={(v) => set(f.key, v)} /></Row>)}
-            {sec.title === "ADDITIONAL NOTES" && schema.req_groups.map((g) => (
-              <div key={g.key} className="px-3 py-2 grid grid-cols-1 md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-2">
-                <div><div className="text-sm font-semibold text-zinc-800">{g.label}</div><div className="text-[11px] text-zinc-500 italic">{g.note}</div></div>
-                <div className="space-y-1.5">{schema.req_items.map((it) => <div key={it.key} className="flex items-center justify-between gap-3 text-sm"><span>{it.label} -</span>{yn(`${g.key}_${it.key}`)}</div>)}</div>
-              </div>
-            ))}
-          </Section>
-        ))}
-        <Section title="Customer Call Script & Response">
-          <Row label="Customer Response:" note="Type notes here from customer discussion"><Textarea value={data.customer_response || ""} onChange={(e) => set("customer_response", e.target.value)} rows={4} className="bg-white text-sm" data-testid="ase2-customer_response" /></Row>
-        </Section>
+          </TabsContent>
+          <TabsContent value="handoff" className="mt-0 bg-zinc-200/60 p-2 sm:p-3 rounded-b" data-testid="ase2-tabpanel-handoff">
+            <HandoffTab schema={schema} data={data} onPaste={onHandoffPaste} onApply={applyHandoff} />
+          </TabsContent>
+          <TabsContent value="script" className="mt-0 bg-zinc-200/60 p-2 sm:p-3 rounded-b" data-testid="ase2-tabpanel-script">
+            <CallScriptTab script={schema.call_script} value={data.customer_response} onChange={(v) => set("customer_response", v)} />
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );

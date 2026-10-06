@@ -1,5 +1,6 @@
 import base64
 import io
+import os
 from datetime import datetime, timezone
 from typing import Any, Dict
 
@@ -11,6 +12,7 @@ from services.auth import get_current_user
 
 router = APIRouter(tags=["spf"])
 _db = None
+LOGO = os.path.join(os.path.dirname(os.path.dirname(__file__)), "templates", "att_logo.jpeg")
 
 INTRO = [
     "A tenant in your building has ordered an AT&T service that requires a pathway be placed between the property line and the Minimum "
@@ -90,7 +92,9 @@ async def export_spf(job_id: str, current_user: dict = Depends(get_current_user)
     x0, width = 54, W - 108
     body = ParagraphStyle("b", fontName="Helvetica", fontSize=9.2, leading=12)
     bul = ParagraphStyle("bl", parent=body, leftIndent=14, bulletIndent=2)
-    y = H - 54
+    # AT&T emblem — same position/size as the uploaded form (x 272.6, 27pt from top, 66.7 x 31.8pt)
+    c.drawImage(LOGO, 272.6, H - 58.8, width=66.7, height=31.8, preserveAspectRatio=True, mask="auto")
+    y = H - 82
     c.setFont("Helvetica-Bold", 13)
     c.drawCentredString(W / 2, y, "SYSTEM PERMISSION FORM")
     y -= 22

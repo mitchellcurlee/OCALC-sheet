@@ -97,6 +97,16 @@ HANDOFF = [("site_id", "Site ID", 3), ("common_id", "Common ID", 4), ("asr_numbe
            ("nss_pm", "NSS PM", 26), ("bupm", "BUPM", 27), ("lcon", "LCON", 28), ("secondary_lcon", "Secondary LCON", 29)]
 
 
+# Customer Call Script & Response sheet — verbatim text of the template
+CALL_SCRIPT = {
+    "reach_title": "If you reach someone:",
+    "reach": "Hi, my name is Brooke Robinson and I am with Byers Engineering Company, a subcontractor of AT&T. I am calling in regards to a ASE fiber order I recieved for address ____________________ and you are listed as a contact for this order. Are you available to meet with an inspector, ____________________________? The inspector will need access to the MPOE (main point of entry) for the telecommunication equipment into the building and the place where the equipment is or will be placed.",
+    "voicemail_title": "When Leaving a Voicemail:",
+    "voicemail": "Hi, my name is Brooke Robinson and I am with Byers Engineering Company, a subcontractor of AT&T. I am calling in regards to a ASE fiber order I recieved for address ____________________ and would like to know if you are available to meet with an inspector on (give date). Again this is Brooke Robinson and I am calling in regards to a ASE fiber order I recieved for ________. I can be reached at 256-499-8223 or you can respond to the email sent previously. Thank you",
+    "typical_title": "Typical Responses to Questions",
+}
+
+
 def set_db(db):
     global _db
     _db = db
@@ -105,7 +115,7 @@ def set_db(db):
 @router.get("/ase2-schema")
 async def ase2_schema(current_user: dict = Depends(get_current_user)):
     return {"sections": SECTIONS, "req_items": [{"key": k, "label": l} for k, l in REQ_ITEMS], "req_groups": [{"key": k, "label": l, "note": n} for k, l, _, n in REQ_GROUPS],
-            "handoff": [{"key": k, "label": l} for k, l, _ in HANDOFF]}
+            "handoff": [{"key": k, "label": l} for k, l, _ in HANDOFF], "call_script": CALL_SCRIPT}
 
 
 @router.get("/jobs/{job_id}/ase2-data")
