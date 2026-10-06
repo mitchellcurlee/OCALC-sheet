@@ -2672,7 +2672,8 @@ const JobMap = () => {
   const captureMapScreenshot = useCallback(async (mode = "map") => {
     setScreenshotting(true);
     const prevSta = showStationNumbers;
-    const sta = shotStations;
+    // Map's Sta #'s toggle ON always wins; the Screenshot menu checkbox can add stations when the map toggle is off
+    const sta = showStationNumbers || shotStations;
     try {
       if (sta !== prevSta) { setShowStationNumbers(sta); await new Promise((r) => setTimeout(r, 700)); }
       const pageContainer = document.querySelector('[data-testid="job-map-page"]');
@@ -2730,7 +2731,14 @@ const JobMap = () => {
             clone.style.left = "-20000px";
             clone.style.top = "0";
             clone.style.width = `${listEl.offsetWidth}px`;
-            clone.querySelectorAll("button").forEach((b) => b.remove());
+            clone.querySelectorAll("button").forEach((b) => {
+              if ((b.getAttribute("data-testid") || "").startsWith("span-num-")) {
+                const s = document.createElement("span");
+                s.className = "font-bold text-orange-700";
+                s.textContent = b.textContent;
+                b.replaceWith(s);
+              } else b.remove();
+            });
             clone.querySelectorAll("ol > li").forEach((li, i) => { if (i < pg * LIST_PAGE_LINES || i >= (pg + 1) * LIST_PAGE_LINES) li.remove(); });
             const h2 = clone.querySelector("h2");
             if (h2) {
@@ -2854,8 +2862,8 @@ const JobMap = () => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="bg-white border-zinc-200 w-60 z-[1100]">
-                <DropdownMenuCheckboxItem checked={shotStations} onCheckedChange={(v) => setShotStations(!!v)} onSelect={(e) => e.preventDefault()} className="cursor-pointer" data-testid="screenshot-station-toggle">
-                  <div><div className="font-medium">Station #s</div><div className="text-[11px] text-zinc-500">{shotStations ? "Included in the screenshot" : "Left out of the screenshot"}</div></div>
+                <DropdownMenuCheckboxItem checked={shotStations || showStationNumbers} disabled={showStationNumbers} onCheckedChange={(v) => setShotStations(!!v)} onSelect={(e) => e.preventDefault()} className="cursor-pointer" data-testid="screenshot-station-toggle">
+                  <div><div className="font-medium">Station #s</div><div className="text-[11px] text-zinc-500">{showStationNumbers ? "On — follows the map's Sta #'s toggle" : shotStations ? "Included in the screenshot" : "Left out of the screenshot"}</div></div>
                 </DropdownMenuCheckboxItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => captureMapScreenshot("map")} className="cursor-pointer" data-testid="screenshot-map-only">
@@ -4230,7 +4238,7 @@ const JobMap = () => {
                       />
                     ) : (
                       <button type="button" onClick={() => { spanEditLock.current = false; setEditingSpan({ segIndex: e.segIndex, value: String(e.num) }); }} className="font-bold text-orange-700 hover:bg-orange-100 rounded px-0.5 -mx-0.5 border-b border-dashed border-orange-400" title="Tap to type a new span number" data-testid={`span-num-${e.num}`}>{e.num}.</button>
-                    )} {segItemName(e.seg.from)}{showStationNumbers && (stationNumbers[`${e.seg.from.id}:out`] || stationNumbers[e.seg.from.id]) ? <span className="text-indigo-700"> {stationNumbers[`${e.seg.from.id}:out`] || stationNumbers[e.seg.from.id]}</span> : null} to {segItemName(e.seg.to)}{showStationNumbers && stationNumbers[e.seg.to.id] ? <span className="text-indigo-700"> {stationNumbers[e.seg.to.id]}</span> : null} = {fmtFeet(segListDistance(e.seg))}
+                    )} {segItemName(e.seg.from)}{showStationNumbers && (stationNumbers[`${e.seg.from.id}:out`] || stationNumbers[e.seg.from.id]) ? <span className="text-blue-700 font-semibold" data-testid={`span-sta-from-${e.num}`}> {stationNumbers[`${e.seg.from.id}:out`] || stationNumbers[e.seg.from.id]}</span> : null} to {segItemName(e.seg.to)}{showStationNumbers && stationNumbers[e.seg.to.id] ? <span className="text-blue-700 font-semibold" data-testid={`span-sta-to-${e.num}`}> {stationNumbers[e.seg.to.id]}</span> : null} = {fmtFeet(segListDistance(e.seg))}
                     {!e.seg.isAerial && <span className="text-emerald-700 text-xs ml-1">(UG)</span>}
                     {tieInSuffix(e.seg.from, e.seg.to, underground) && <span className="text-sky-800 text-xs ml-1" data-testid={`span-tie-in-${e.num}`}>{tieInSuffix(e.seg.from, e.seg.to, underground)}</span>}</span>
                     {orderedSegments.length > 1 && (
