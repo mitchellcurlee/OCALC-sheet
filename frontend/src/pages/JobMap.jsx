@@ -9,7 +9,7 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import domtoimage from "dom-to-image-more";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ChevronDown, ChevronUp, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera, Hash, Link2, Move, Palette, Plus, Map as MapIcon, MapPin, GripVertical, Upload, Trash2, RotateCcw, Home, Route as RouteIcon, ListOrdered, LandPlot } from "lucide-react";
+import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ChevronDown, ChevronUp, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera, Hash, Link2, Move, Palette, Plus, Map as MapIcon, MapPin, GripVertical, Upload, Trash2, RotateCcw, Home, Route as RouteIcon, ListOrdered, LandPlot, Maximize2, Minimize2 } from "lucide-react";
 import SpanReorderList from "@/components/SpanReorderList";
 import { layoutLabels } from "@/lib/labelLayout";
 import { computeRoute, fmtFeet, feetToStation, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, downloadMapPdfPages, ugWithGps, undergroundAbbr, computeUgConnectors, computeConnectionPairs, computeStationSegFeet, UNDERGROUND_TYPES, isAerialAttr, resolvePairAerial, spanKey, routeWaypoints, routeArg, placeSpanNotes, LIST_PAGE_LINES, riserAnchor, tieInSuffix, pathRowText, pairIsManual, routePayloadFromOrder } from "@/lib/poleMapImage";
@@ -778,6 +778,31 @@ const JobMap = () => {
   const [confirmDeleteConn, setConfirmDeleteConn] = useState(null);
   const [confirmResetLines, setConfirmResetLines] = useState(false);
   const [positionEditMode, setPositionEditMode] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  // Fullscreen: CSS takeover (works on iPhone where the Fullscreen API is unavailable) + real browser fullscreen when supported
+  const toggleFullscreen = useCallback(() => {
+    const next = !isFullscreen;
+    setIsFullscreen(next);
+    try {
+      if (next && document.documentElement.requestFullscreen && !document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
+      else if (!next && document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    } catch { /* unsupported */ }
+  }, [isFullscreen]);
+  useEffect(() => {
+    const onChange = () => { if (!document.fullscreenElement) setIsFullscreen(false); };
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === "Escape" && isFullscreen) setIsFullscreen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isFullscreen]);
+  useEffect(() => {
+    document.body.style.overflow = isFullscreen ? "hidden" : "";
+    const t = setTimeout(() => mapRef.current?.invalidateSize(), 60);
+    return () => { clearTimeout(t); document.body.style.overflow = ""; };
+  }, [isFullscreen]);
   const [zoomTick, setZoomTick] = useState(0); // bumps on zoom so pixel-space label layout re-runs
   const [connections, setConnections] = useState([]);
   const [addingType, setAddingType] = useState(null); // "note" or "measurement"
@@ -2653,7 +2678,7 @@ const JobMap = () => {
 
   return (
     <div className="min-h-screen bg-industrial-bg" data-testid="job-map-page">
-      <header className="border-b border-zinc-200 bg-white sticky top-0 z-[1000]">
+      <header className={`border-b border-zinc-200 bg-white sticky top-0 z-[1000] ${isFullscreen ? "hidden" : ""}`}>
         <div className="max-w-7xl mx-auto px-3 sm:px-6 py-3 sm:py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex items-center gap-2 sm:gap-3">
             <Button variant="ghost" size="icon" className="text-zinc-600 hover:text-zinc-900 h-9 w-9" onClick={goBack} data-testid="map-back-btn">
@@ -3177,7 +3202,17 @@ const JobMap = () => {
             No poles or underground items with GPS coordinates yet. Add coordinates to see them on the map.
           </div>
         ) : (
-          <div className="h-[calc(70vh+192px)] max-h-[92vh] border border-zinc-300 overflow-hidden rounded relative" data-testid="map-frame">
+          <div className={isFullscreen ? "fixed inset-0 z-40 h-[100dvh] w-screen bg-black overflow-hidden" : "h-[calc(70vh+192px)] max-h-[92vh] border border-zinc-300 overflow-hidden rounded relative"} data-testid="map-frame" data-fullscreen={isFullscreen ? "true" : "false"}>
+            <button
+              type="button"
+              onClick={toggleFullscreen}
+              className="absolute top-2 right-2 z-[1000] h-9 w-9 flex items-center justify-center rounded bg-white/95 border border-zinc-300 shadow text-zinc-700 hover:bg-zinc-100"
+              title={isFullscreen ? "Exit full screen (Esc)" : "Full screen map"}
+              aria-label={isFullscreen ? "Exit full screen" : "Full screen map"}
+              data-testid="map-fullscreen-btn"
+            >
+              {isFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
+            </button>
             {/* Universal edit mode indicator */}
             {(editMode || positionEditMode || connectionEditMode) && !selectedSegment && (
               <div className="absolute top-2 left-2 z-[1000] bg-blue-600 text-white px-3 py-1.5 rounded text-sm font-medium shadow-lg max-w-md">
