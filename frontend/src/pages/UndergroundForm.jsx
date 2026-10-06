@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate, useParams, useSearchParams, Link } from "react-router-dom";
+import { useGoBack } from "@/lib/useGoBack";
 import { takePendingAttributePhotos } from "@/components/MapPhotoCapture";
 import axios from "axios";
 import { toast } from "sonner";
@@ -53,6 +54,7 @@ const UndergroundForm = () => {
   const backUrl = searchParams.get("from") === "map"
     ? `/jobs/${jobId}/map${isEdit ? `?focus=${id}` : ""}`
     : `/jobs/${jobId}`;
+  const goBack = useGoBack(backUrl);
 
   const [types, setTypes] = useState([]);
   const [jobItems, setJobItems] = useState([]);
@@ -376,11 +378,9 @@ const UndergroundForm = () => {
       <header className="border-b border-zinc-200 bg-white sticky top-0 z-[1000]">
         <div className="max-w-3xl mx-auto px-3 sm:px-6 py-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <Link to={backUrl}>
-              <Button variant="ghost" size="icon" className="text-zinc-600 hover:text-zinc-900 h-9 w-9">
-                <ArrowLeft className="w-5 h-5" />
-              </Button>
-            </Link>
+            <Button variant="ghost" size="icon" className="text-zinc-600 hover:text-zinc-900 h-9 w-9" onClick={goBack} data-testid="back-btn">
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
             <h1 className="font-heading text-sm sm:text-lg font-bold tracking-tight uppercase text-zinc-900">
               {isEdit ? "Edit" : "Add"} Underground
             </h1>

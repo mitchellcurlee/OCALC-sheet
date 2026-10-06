@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useParams, useSearchParams, Link, useNavigate } from "react-router-dom";
+import { useGoBack } from "@/lib/useGoBack";
 import axios from "axios";
 import JSZip from "jszip";
 import { toast } from "sonner";
@@ -46,6 +47,7 @@ import MapAnnotations from "@/components/MapAnnotations";
 import HomeAddressLayer from "@/components/HomeAddressLayer";
 import ParcelLinesLayer from "@/components/ParcelLinesLayer";
 import MapPhotoCapture, { photoPinIcon } from "@/components/MapPhotoCapture";
+import { JobExportMenu } from "@/components/JobExportMenu";
 import MapAreas from "@/components/MapAreas";
 import { CurrentLocationLayer } from "@/components/CurrentLocationLayer";
 
@@ -668,6 +670,7 @@ const JobMap = () => {
     try { localStorage.setItem('mapLayer', mapLayer); } catch (e) { /* ignore */ }
   }, [mapLayer]);
   const navigate = useNavigate();
+  const goBack = useGoBack(`/jobs/${jobId}`);
   const [connectionEditMode, setConnectionEditMode] = useState(false);
   const [selectedConn, setSelectedConn] = useState(null);
   const [reconnectSide, setReconnectSide] = useState(null);
@@ -2463,11 +2466,9 @@ const JobMap = () => {
       <header className="border-b border-zinc-200 bg-white sticky top-0 z-[1000]">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 py-3 sm:py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex items-center gap-2 sm:gap-3">
-            <Link to={`/jobs/${jobId}`}>
-              <Button variant="ghost" size="icon" className="text-zinc-600 hover:text-zinc-900 h-9 w-9" data-testid="map-back-btn">
-                <ArrowLeft className="w-5 h-5" />
-              </Button>
-            </Link>
+            <Button variant="ghost" size="icon" className="text-zinc-600 hover:text-zinc-900 h-9 w-9" onClick={goBack} data-testid="map-back-btn">
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
             <div className="w-9 h-9 bg-red-600 flex items-center justify-center flex-shrink-0">
               <Zap className="w-5 h-5 text-white" />
             </div>
@@ -2482,6 +2483,9 @@ const JobMap = () => {
             </div>
           </div>
           <div className="flex flex-wrap items-center justify-end gap-2">
+            {!drawRouteMode && !positionEditMode && !editMode && !connectionEditMode && (
+              <JobExportMenu jobId={jobId} onAction={(key) => navigate(`/jobs/${jobId}?action=${key}`)} />
+            )}
             <Button onClick={recenter} disabled={allPoints.length === 0} variant="outline" className="bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900" data-testid="recenter-btn">
               <Crosshair className="w-4 h-4 mr-2" />
               Fit all

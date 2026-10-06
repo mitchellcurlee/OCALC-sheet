@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useGoBack } from "@/lib/useGoBack";
 import axios from "axios";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,7 @@ const daysAgo = (n) => { const d = new Date(); d.setDate(d.getDate() - n); retur
 /** Admin: every fielder's Daily Field Report rows for a date range, with totals + Excel export. */
 export default function TeamReports() {
   const navigate = useNavigate();
+  const goBack = useGoBack("/");
   const [from, setFrom] = useState(daysAgo(6));
   const [to, setTo] = useState(todayISO());
   const [fielder, setFielder] = useState("");
@@ -47,9 +49,9 @@ export default function TeamReports() {
   return (
     <div className="min-h-screen bg-zinc-100" data-testid="team-reports-page">
       <header className="bg-zinc-900 text-white px-3 py-2 flex flex-wrap items-center gap-2">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/")} className="text-zinc-300 hover:text-white hover:bg-zinc-800" data-testid="team-reports-back"><ArrowLeft className="w-5 h-5" /></Button>
+        <Button variant="ghost" size="icon" onClick={goBack} className="text-zinc-300 hover:text-white hover:bg-zinc-800" data-testid="team-reports-back"><ArrowLeft className="w-5 h-5" /></Button>
         <h1 className="font-heading text-base sm:text-lg font-black uppercase tracking-tight flex items-center gap-2"><Users className="w-5 h-5 text-orange-400" />Team Daily Field Reports</h1>
-        <span className="text-[11px] text-zinc-400 font-mono">admin · all fielders</span>
+        <span className="text-[11px] text-zinc-400 font-mono">admins &amp; supervisors · all fielders</span>
       </header>
       <main className="max-w-[1500px] mx-auto p-3 space-y-3">
         <div className="bg-white border border-zinc-300 rounded p-3 flex flex-wrap items-end gap-3" data-testid="team-reports-filters">

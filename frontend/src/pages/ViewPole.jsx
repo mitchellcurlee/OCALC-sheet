@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
+import { useGoBack } from "@/lib/useGoBack";
 import axios from "axios";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -89,6 +90,7 @@ const ViewPole = () => {
   const [syncing, setSyncing] = useState(false);
   
   const backUrl = jobId ? `/jobs/${jobId}` : "/";
+  const goBack = useGoBack(backUrl);
 
   // Fetch all poles in the job for navigation
   const fetchPoles = useCallback(async () => {
@@ -274,11 +276,9 @@ const ViewPole = () => {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Link to={backUrl}>
-                <Button variant="ghost" size="icon" className="text-zinc-600 hover:text-zinc-900" data-testid="back-btn">
-                  <ArrowLeft className="w-5 h-5" />
-                </Button>
-              </Link>
+              <Button variant="ghost" size="icon" className="text-zinc-600 hover:text-zinc-900" onClick={goBack} data-testid="back-btn">
+                <ArrowLeft className="w-5 h-5" />
+              </Button>
               <div className="flex items-center gap-3">
                 <div className={`w-10 h-10 flex items-center justify-center ${pole.pole_owner === "Foreign Owned" ? "bg-red-600" : "bg-orange-600"}`}>
                   <Zap className="w-6 h-6 text-white" />

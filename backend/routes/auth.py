@@ -216,12 +216,28 @@ async def admin_list_users(current_user: dict = Depends(get_current_user)):
             "email_verified": u.get("email_verified") is not False,
             "grandfathered": "email_verified" not in u,
             "is_admin": is_admin_user(u) or is_mastec_byers_admin(u),
+            "is_supervisor": bool(u.get("is_supervisor")),
             "created_at": u.get("created_at"), "verified_at": u.get("verified_at"),
             "verification_expires": u.get("verification_expires"),
             "job_count": counts.get(u["id"], 0),
         })
     out.sort(key=lambda x: (x["domain"], x["email"]))
     return {"domains": list(ALLOWED_DOMAINS), "users": out}
+
+
+class SupervisorBody(BaseModel):
+    is_supervisor: bool
+
+
+@router.put("/admin/users/{user_id}/supervisor")
+async def admin_set_supervisor(user_id: str, body: SupervisorBody, current_user: dict = Depends(get_current_user)):
+    """Supervisors can open Team Reports (all fielders' DFRs) without full admin rights."""
+    _require_admin(current_user)
+    user = await _db.users.find_one({"id": user_id}, {"_id": 0, "id": 1, "email": 1})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    await _db.users.update_one({"id": user_id}, {"$set": {"is_supervisor": body.is_supervisor}})
+    return {"id": user_id, "email": user.get("email"), "is_supervisor": body.is_supervisor}
 
 
 @router.post("/admin/users/{user_id}/resend-verification")
@@ -270,5 +286,6 @@ async def login(credentials: UserLogin):
 async def get_me(current_user: dict = Depends(get_current_user)):
     """Get current user info"""
     current_user["is_admin"] = is_admin_user(current_user) or is_mastec_byers_admin(current_user)
+    current_user["is_supervisor"] = bool(current_user.get("is_supervisor"))
     current_user.pop("verification_token", None)
     return current_user

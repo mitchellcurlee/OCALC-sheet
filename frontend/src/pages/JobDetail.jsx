@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useGoBack } from "@/lib/useGoBack";
 import axios from "axios";
 import { toast } from "sonner";
 import { routePayloadFromOrder } from "@/lib/poleMapImage";
@@ -98,6 +99,7 @@ import JobFilesShare from "@/components/JobFilesShare";
 import JobPhotoGallery, { galleryDropProps } from "@/components/JobPhotoGallery";
 import { JobTravelTracker } from "@/components/dfr/JobTravelTracker";
 import { KmlImportDialog } from "@/components/KmlImportDialog";
+import { JobExportMenu } from "@/components/JobExportMenu";
 import MapPhotoCapture from "@/components/MapPhotoCapture";
 import JobShareDialog from "@/components/JobShareDialog";
 
@@ -480,6 +482,22 @@ const JobDetail = () => {
   const [pendingExport, setPendingExport] = useState(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [kmlImportOpen, setKmlImportOpen] = useState(false);
+  const goBack = useGoBack("/");
+  const handleExportAction = (key) => {
+    if (key === "permission_stamp") openPermissionStamp();
+    else if (key === "import_kml") setKmlImportOpen(true);
+    else if (key === "share") setShareOpen(true);
+    else setPendingExport(key);
+  };
+  // Arriving from the interactive map's Export menu: /jobs/:id?action=kmz etc.
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    const a = searchParams.get("action");
+    if (!a || !job) return;
+    handleExportAction(a);
+    searchParams.delete("action");
+    setSearchParams(searchParams, { replace: true });
+  }, [searchParams, job]); // eslint-disable-line react-hooks/exhaustive-deps
   const [exportBusy, setExportBusy] = useState(false);
 
   const getExportBlob = async (type) => {
@@ -652,11 +670,9 @@ const JobDetail = () => {
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
             <div className="flex items-center gap-2 sm:gap-3">
-              <Link to="/">
-                <Button variant="ghost" size="icon" className="text-zinc-600 hover:text-zinc-900">
-                  <ArrowLeft className="w-5 h-5" />
-                </Button>
-              </Link>
+              <Button variant="ghost" size="icon" className="text-zinc-600 hover:text-zinc-900" onClick={goBack} data-testid="job-detail-back-btn">
+                <ArrowLeft className="w-5 h-5" />
+              </Button>
               <div className="w-9 h-9 sm:w-10 sm:h-10 bg-red-600 flex items-center justify-center flex-shrink-0">
                 <Folder className="w-5 h-5 sm:w-6 sm:h-6 text-zinc-900" />
               </div>
@@ -753,54 +769,8 @@ const JobDetail = () => {
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              {/* 2. Export Dropdown (OCALC Export + ASE Form) */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="flex-1 sm:flex-initial w-full sm:w-auto h-11 sm:h-10 bg-blue-50 border-blue-300 hover:bg-blue-100 text-blue-800 text-sm"
-                    data-testid="export-dropdown-btn"
-                  >
-                    <FileSpreadsheet className="w-4 h-4 mr-2" />
-                    Export
-                    <ChevronDown className="w-4 h-4 ml-1" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-white border-zinc-200 w-48">
-                  <DropdownMenuItem onClick={() => setPendingExport("job_excel")} data-testid="export-btn" className="cursor-pointer">
-                    <FileSpreadsheet className="w-4 h-4 mr-2 text-zinc-600" />
-                    OCALC/JOB Export
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate(`/jobs/${jobId}/field-report`)} data-testid="daily-field-report-btn" className="cursor-pointer font-semibold text-orange-700">
-                    <ClipboardList className="w-4 h-4 mr-2" />
-                    Daily Field Report
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate(`/jobs/${jobId}/ase`)} data-testid="ase-form-btn" className="cursor-pointer">
-                    <FileText className="w-4 h-4 mr-2 text-blue-600" />
-                    ASE Form
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setPendingExport("sow_docx")} data-testid="sow-word-export-btn" className="cursor-pointer">
-                    <FileDown className="w-4 h-4 mr-2 text-blue-600" />
-                    SOW Notes (Word)
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={openPermissionStamp} data-testid="permission-stamp-export-btn" className="cursor-pointer">
-                    <FileDown className="w-4 h-4 mr-2 text-green-600" />
-                    Permission Stamp (Word)
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setPendingExport("kmz")} data-testid="export-kmz-btn" className="cursor-pointer">
-                    <Globe className="w-4 h-4 mr-2 text-emerald-700" />
-                    Export KMZ (Google Earth)
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setKmlImportOpen(true)} data-testid="import-kml-btn" className="cursor-pointer">
-                    <FileUp className="w-4 h-4 mr-2 text-emerald-700" />
-                    Import KML / KMZ
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setShareOpen(true)} data-testid="share-job-menu-btn" className="cursor-pointer border-t border-zinc-200 mt-1 pt-2">
-                    <Share2 className="w-4 h-4 mr-2 text-emerald-600" />
-                    Share This Job / Team
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              {/* 2. Export Dropdown (shared with the interactive map) */}
+              <JobExportMenu jobId={jobId} onAction={handleExportAction} className="flex-1 sm:flex-initial w-full sm:w-auto h-11 sm:h-10" />
 
               {/* 3. Map Button */}
               <Link to={`/jobs/${jobId}/map`} className="flex-1 sm:flex-initial">

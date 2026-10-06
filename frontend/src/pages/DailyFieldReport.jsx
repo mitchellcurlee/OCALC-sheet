@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useGoBack } from "@/lib/useGoBack";
 import axios from "axios";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,7 @@ export default function DailyFieldReport() {
   const { jobId } = useParams();
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
+  const goBack = useGoBack(`/jobs/${jobId}`);
   const date = params.get("date") || todayISO();
   const [mapOpen, setMapOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -60,7 +62,7 @@ export default function DailyFieldReport() {
     <div className="min-h-screen bg-industrial-bg" data-testid="dfr-page">
       <header className="bg-zinc-900 text-white px-4 py-3">
         <div className="max-w-[1500px] mx-auto flex flex-wrap items-center gap-3">
-          <Button size="icon" variant="ghost" className="text-zinc-300 hover:text-white hover:bg-zinc-800" onClick={() => navigate(`/jobs/${jobId}`)} data-testid="dfr-back"><ArrowLeft className="w-5 h-5" /></Button>
+          <Button size="icon" variant="ghost" className="text-zinc-300 hover:text-white hover:bg-zinc-800" onClick={goBack} data-testid="dfr-back"><ArrowLeft className="w-5 h-5" /></Button>
           <div>
             <h1 className="font-heading text-lg font-bold uppercase tracking-tight flex items-center gap-2"><ClipboardList className="w-5 h-5" />Daily Field Report</h1>
             <p className="text-[11px] font-mono text-zinc-400">{report.rows.length} job row{report.rows.length !== 1 ? "s" : ""} · {saving ? "Saving…" : dirty ? "Unsaved changes" : "Saved"}</p>

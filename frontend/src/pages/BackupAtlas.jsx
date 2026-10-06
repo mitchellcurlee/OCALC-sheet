@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { useGoBack } from "@/lib/useGoBack";
 import axios from "axios";
 import { toast } from "sonner";
 import { Button } from "../components/ui/button";
@@ -11,6 +12,7 @@ import { useAuth } from "../context/AuthContext";
 
 export default function BackupAtlas() {
   const navigate = useNavigate();
+  const goBack = useGoBack("/");
   const { isAdmin } = useAuth();
   const [status, setStatus] = useState(null);
   const [uri, setUri] = useState("");
@@ -92,7 +94,7 @@ export default function BackupAtlas() {
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
       <div className="border-b border-zinc-800 bg-zinc-900">
         <div className="max-w-3xl mx-auto px-4 py-4 flex items-center gap-3">
-          <Button size="icon" variant="ghost" onClick={() => navigate("/")} className="text-zinc-400 hover:text-white" data-testid="backup-back-btn">
+          <Button size="icon" variant="ghost" onClick={goBack} className="text-zinc-400 hover:text-white" data-testid="backup-back-btn">
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div className="w-9 h-9 bg-emerald-600 flex items-center justify-center">

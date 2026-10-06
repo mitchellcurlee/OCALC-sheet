@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { useGoBack } from "@/lib/useGoBack";
 import axios from "axios";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,7 @@ const TYPE_META = {
 
 export default function Trash() {
   const navigate = useNavigate();
+  const goBack = useGoBack("/");
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState(null);
@@ -87,7 +89,7 @@ export default function Trash() {
       <header className="bg-zinc-900 border-b border-zinc-800 px-4 sm:px-6 py-4 sticky top-0 z-20">
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <Button size="icon" variant="ghost" className="text-zinc-400 hover:text-white hover:bg-zinc-800" onClick={() => navigate("/")} data-testid="trash-back-btn">
+            <Button size="icon" variant="ghost" className="text-zinc-400 hover:text-white hover:bg-zinc-800" onClick={goBack} data-testid="trash-back-btn">
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div>

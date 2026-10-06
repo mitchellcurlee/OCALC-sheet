@@ -112,8 +112,9 @@ async def geocode_address(q: str, current_user: dict = Depends(get_current_user)
 
 
 def _require_admin(user: dict):
-    if not (is_admin_user(user) or is_mastec_byers_admin(user)):
-        raise HTTPException(status_code=403, detail="Admin access required")
+    """Team Reports: admins, or users an admin has flagged as supervisor."""
+    if not (is_admin_user(user) or is_mastec_byers_admin(user) or user.get("is_supervisor")):
+        raise HTTPException(status_code=403, detail="Admin or supervisor access required")
 
 
 async def _team_rows(date_from: str, date_to: str):

@@ -215,6 +215,7 @@ export const AuthProvider = ({ children }) => {
     acceptSession,
     isAuthenticated: !!user,
     isAdmin: user?.is_admin || false,
+    isSupervisor: user?.is_supervisor || false,
   }), [user, token, loading, login, register, logout, acceptSession]);
 
   return (

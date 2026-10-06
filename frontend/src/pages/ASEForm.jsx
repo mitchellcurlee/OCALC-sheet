@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
+import { useGoBack } from "@/lib/useGoBack";
 import axios from "axios";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ import ASESOWNotesTab, { buildSowNotesText } from "@/components/ase/ASESOWNotesT
 const ASEForm = () => {
   const { jobId } = useParams();
   const navigate = useNavigate();
+  const goBack = useGoBack(`/jobs/${jobId}`);
   const [job, setJob] = useState(null);
   const [poles, setPoles] = useState([]);
   const [underground, setUnderground] = useState([]);
@@ -498,9 +500,9 @@ const ASEForm = () => {
       <header className="bg-white border-b border-zinc-200 sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link to={`/jobs/${jobId}`} className="p-2 hover:bg-zinc-100 rounded-lg">
+            <button type="button" onClick={goBack} className="p-2 hover:bg-zinc-100 rounded-lg" data-testid="ase-back-btn">
               <ArrowLeft className="w-5 h-5" />
-            </Link>
+            </button>
             <div>
               <h1 className="font-heading text-lg sm:text-xl font-bold">ASE SITE WALK SURVEY</h1>
               <p className="text-xs text-zinc-500 font-mono" data-testid="ase-header-job-type">{job?.job_type || "OCALC"}{job?.site_id ? ` • ${job.site_id}` : ""}</p>

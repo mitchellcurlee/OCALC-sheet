@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { useGoBack } from "@/lib/useGoBack";
 import { takePendingAttributePhotos } from "@/components/MapPhotoCapture";
 import axios from "axios";
 import { toast } from "sonner";
@@ -124,6 +125,7 @@ const HOA_TYPES = [
 ];
 
 export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, onSubmit, submitting = false, backUrl = "/" }) => {
+  const goBack = useGoBack(backUrl);
   const [searchParams] = useSearchParams();
   const isTerminalMode = searchParams.get("terminal") === "true";
   
@@ -684,11 +686,9 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
         <div className="max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex items-center gap-2 sm:gap-4">
-              <Link to={backUrl}>
-                <Button variant="ghost" size="icon" className="text-zinc-600 hover:text-zinc-900 h-10 w-10 sm:h-9 sm:w-9" data-testid="back-btn">
-                  <ArrowLeft className="w-5 h-5" />
-                </Button>
-              </Link>
+              <Button variant="ghost" size="icon" className="text-zinc-600 hover:text-zinc-900 h-10 w-10 sm:h-9 sm:w-9" onClick={goBack} data-testid="back-btn">
+                <ArrowLeft className="w-5 h-5" />
+              </Button>
               <div className="flex items-center gap-2 sm:gap-3">
                 <div className="w-8 h-8 sm:w-10 sm:h-10 bg-red-600 flex items-center justify-center flex-shrink-0">
                   <Zap className="w-5 h-5 sm:w-6 sm:h-6 text-white" />

@@ -127,7 +127,7 @@ const JobsLocationMap = ({ jobs, onOpenJob }) => {
 
 const JobsList = () => {
   const navigate = useNavigate();
-  const { user, logout, isAdmin } = useAuth();
+  const { user, logout, isAdmin, isSupervisor } = useAuth();
   const [jobs, setJobs] = useState([]);
   const [offlineSavedJobs, setOfflineSavedJobs] = useState(() => getOfflineSavedJobs());
   useEffect(() => {
@@ -556,8 +556,7 @@ const JobsList = () => {
               >
                 {backfilling ? <Loader2 className="w-4 h-4 animate-spin" /> : <Home className="w-4 h-4" />}
               </Button>
-              {isAdmin && (
-                <>
+              {(isAdmin || isSupervisor) && (
                 <Button
                   onClick={() => navigate("/admin/team-reports")}
                   size="icon"
@@ -568,6 +567,9 @@ const JobsList = () => {
                 >
                   <ClipboardList className="w-4 h-4" />
                 </Button>
+              )}
+              {isAdmin && (
+                <>
                 <Button
                   onClick={() => navigate("/admin/users")}
                   size="icon"
