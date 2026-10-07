@@ -545,6 +545,17 @@ const numberBadgeIcon = (num, color = "#ea580c", anchor = [13, 13], picked = fal
     iconAnchor: anchor[0] === 13 && anchor[1] === 13 ? [width / 2, h / 2] : anchor,
   });
 };
+// Station tag shown next to each pin when Sta #'s is on: "P1/0+00", "HH/3+08"
+const stationTagIcon = (text, color = "#4f46e5") => {
+  const h = 22;
+  const width = 10 + text.length * 7.2;
+  return L.divIcon({
+    className: "station-tag",
+    html: `<div style="background:${color};color:#fff;border:2px solid #fff;border-radius:6px;height:${h}px;display:inline-flex;align-items:center;justify-content:center;font:700 11px/1 ui-monospace,monospace;white-space:nowrap;padding:0 5px;box-shadow:0 1px 4px rgba(0,0,0,.5);">${text}</div>`,
+    iconSize: [width, h],
+    iconAnchor: [-6, h + 6],
+  });
+};
 const SPAN_BADGE_MODES = ["normal", "small", "off"];
 const LABEL_SIZE_MODES = ["normal", "small", "off"]; // per-item smart label / attribute marker size
 const SPAN_BADGE_SCALE = { normal: 1, small: 0.7 };
@@ -2376,7 +2387,13 @@ const JobMap = () => {
     items.sort((a, b) => a.sortOrder - b.sortOrder);
     return items.map((it, idx) => ({ ...it, num: idx + 1, station: stationNumbers[it.id] }));
   }, [route, ug, stationNumbers]);
-  const stationNumById = useMemo(() => Object.fromEntries(stationEntries.map((e) => [e.id, e.num])), [stationEntries]);
+  const stationTagText = useCallback((item, isPole) => {
+    const sta = stationNumbers[item.id];
+    if (!sta) return null;
+    const n = String(item.pole_number || "");
+    const name = isPole ? (/^\d/.test(n) ? `P${n}` : (n || "Pole")) : undergroundAbbr(item.type);
+    return `${name}/${sta}`;
+  }, [stationNumbers]);
 
   // Total aerial footage from ordered segments (includes Loop spans + waypoint routes)
   const aerialFeetTotal = useMemo(
@@ -3842,9 +3859,9 @@ const JobMap = () => {
                         </div>
                       </Popup>
                     </DraggableMarker>
-                    {/* Station badge — "n | 0+00" matches the span list */}
+                    {/* Station tag — "P1/0+00" */}
                     {stationLabel && (
-                      <Marker position={p.pos} icon={numberBadgeIcon(stationNumById[p.id], "#4f46e5", [-6, 32], false, stationLabel)} interactive={false} zIndexOffset={850} />
+                      <Marker position={p.pos} icon={stationTagIcon(stationTagText(p, true))} interactive={false} zIndexOffset={850} />
                     )}
                     {/* Move Items mode: the smart tag itself is draggable */}
                     {handlePos && (
@@ -3860,7 +3877,7 @@ const JobMap = () => {
                 );
               })}
               {/* Direction arrows (only in non-edit mode) */}
-              {!editMode && segLabels.map((s, i) => (
+              {!editMode && !showStationNumbers && segLabels.map((s, i) => (
                 <Marker key={`arr-${i}`} position={s.mid} icon={arrowIcon(s.deg)} interactive={false} />
               ))}
               {ug.map((u, ugIdx) => {
@@ -3931,9 +3948,9 @@ const JobMap = () => {
                       </div>
                     </Popup>
                   </DraggableMarker>
-                  {/* Station badge — "n | 0+00" matches the span list */}
+                  {/* Station tag — "HH/3+08" */}
                   {stationLabel && (
-                    <Marker position={u.pos} icon={numberBadgeIcon(stationNumById[u.id], isRed ? "#dc2626" : "#4f46e5", [-6, 32], false, stationLabel)} interactive={false} zIndexOffset={850} />
+                    <Marker position={u.pos} icon={stationTagIcon(stationTagText(u, false), isRed ? "#dc2626" : "#4f46e5")} interactive={false} zIndexOffset={850} />
                   )}
                 </React.Fragment>
               )})}
