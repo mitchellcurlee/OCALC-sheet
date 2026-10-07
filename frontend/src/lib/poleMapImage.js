@@ -449,6 +449,38 @@ export const computeStationSegFeet = (route, ug, connections, routes = {}) => {
   });
   return map;
 };
+
+// Station chainage follows the measurement list order: the first item is 0+00 and every
+// footage row (span, new riser, path measurement) advances the running total by its feet.
+// rows: [{ key, kind: "span"|"riser"|"path"|..., fromId, toId, ft, itemId }]
+// Returns { byItem: { itemId: "3+08" }, rowSta: { rowKey: { from: "0+90", to: "1+08" } } }
+export const computeListStations = (rows) => {
+  const feet = {};
+  const rowSta = {};
+  let run = 0;
+  let prevTo = null;
+  let started = false;
+  rows.forEach((r) => {
+    if (r.kind === "span" && r.fromId && r.toId) {
+      const continues = !started || prevTo === r.fromId || feet[r.fromId] === undefined;
+      const depart = continues ? run : feet[r.fromId];
+      if (feet[r.fromId] === undefined) feet[r.fromId] = started ? depart : 0;
+      started = true;
+      const arrive = depart + (Number(r.ft) || 0);
+      if (feet[r.toId] === undefined) feet[r.toId] = arrive;
+      rowSta[r.key] = { from: feetToStation(depart), to: feetToStation(arrive) };
+      run = arrive;
+      prevTo = r.toId;
+    } else if ((r.kind === "riser" || r.kind === "path") && Number(r.ft) > 0) {
+      const start = run;
+      run += Number(r.ft);
+      rowSta[r.key] = { from: feetToStation(start), to: feetToStation(run) };
+    }
+  });
+  const byItem = {};
+  Object.keys(feet).forEach((id) => { byItem[id] = feetToStation(feet[id]); });
+  return { byItem, rowSta };
+};
 const pathMid = (path) => {
   const m = Math.floor(path.length / 2);
   return path.length % 2 === 0
@@ -509,34 +541,9 @@ export const buildSpanMeasurementTexts = ({ poles, underground = [], connections
   // "Pedestal PED-2 12345 Jones Rd" — building number + street of the lot the item sits on
   const itemName = (it) => `${baseName(it)}${it.address ? ` ${it.address}` : ""}`;
 
-  // Cumulative station numbers per item (matches the map's Sta #'s toggle).
-  // New-riser footage advances the chainage after its pole.
-  const stations = {};
-  const riserStations = {};
-  if (includeStations) {
-    const all = [
-      ...ug.filter((u) => u.standalone !== true).map((u) => ({ id: u.id, pos: u.pos, so: u.sort_order ?? Infinity, extraFeet: (u.path_measurements || []).reduce((s, m) => s + (parseFloat(m.feet) || 0), 0) })),
-      ...route.filter((p) => p.standalone !== true).map((p) => ({ id: p.id, pos: p.pos, so: p.sort_order ?? Infinity, extraFeet: (parseInt(p.risers) || 0) * (parseFloat(p.riser_height) || 0) })),
-    ].sort((a, b) => a.so - b.so);
-    const segFt = computeStationSegFeet(route, ug, connections, routes);
-    let run = 0, prev = null;
-    all.forEach((it) => {
-      if (prev) {
-        const k = `${prev.id}->${it.id}`;
-        run += segFt[k] !== undefined ? segFt[k] : distanceFeet(prev.pos, it.pos);
-      }
-      stations[it.id] = feetToStation(run);
-      if (it.extraFeet > 0) {
-        run += it.extraFeet;
-        riserStations[it.id] = feetToStation(run);
-      }
-      prev = it;
-    });
-  }
-  const nameWithSta = (it, departure = false) => {
-    const sta = departure ? (riserStations[it.id] || stations[it.id]) : stations[it.id];
-    return `${itemName(it)}${includeStations && sta ? ` ${sta}` : ""}`;
-  };
+  // Stations are computed from the final row order (see computeListStations); row.text may be a
+  // function of that row's { from, to } station pair.
+  const withSta = (it, sta) => `${itemName(it)}${includeStations && sta ? ` ${sta}` : ""}`;
 
   const rows = [];
   const riserDone = new Set();
@@ -544,10 +551,10 @@ export const buildSpanMeasurementTexts = ({ poles, underground = [], connections
   const anchoredRiserRows = [];
   const orderKeysUsable = route.some((p) => Number.isFinite(p.sort_order)) || (underground || []).some((u) => Number.isFinite(u.sort_order));
   const pathDone = new Set();
-  const pathTextOf = (u) => {
-    const t = (u.path_measurements || []).reduce((s, m) => s + (parseFloat(m.feet) || 0), 0);
-    const base = `${u.pole_number !== undefined ? (/^\d/.test(String(u.pole_number || "")) ? `P${u.pole_number}` : (u.pole_number || "Pole")) : `${undergroundAbbr(u.type)}${u.label && u.label !== u.type ? ` ${u.label}` : ""}`}: ${u.path_measurements.map((m) => pathRowText(m)).join(", ")} = ${fmtFeet(t)}`;
-    return stationsOnly && riserStations[u.id] ? `${base} (${stations[u.id]} to ${riserStations[u.id]})` : base;
+  const pathFeetOf = (u) => (u.path_measurements || []).reduce((s, m) => s + (parseFloat(m.feet) || 0), 0);
+  const pathTextOf = (u) => (s) => {
+    const base = `${u.pole_number !== undefined ? (/^\d/.test(String(u.pole_number || "")) ? `P${u.pole_number}` : (u.pole_number || "Pole")) : `${undergroundAbbr(u.type)}${u.label && u.label !== u.type ? ` ${u.label}` : ""}`}: ${u.path_measurements.map((m) => pathRowText(m)).join(", ")} = ${fmtFeet(pathFeetOf(u))}`;
+    return stationsOnly && s ? `${base} (${s.from} to ${s.to})` : base;
   };
   const pushRiser = (it) => {
     if (it.type !== "pole" || riserDone.has(it.id)) return;
@@ -557,10 +564,13 @@ export const buildSpanMeasurementTexts = ({ poles, underground = [], connections
       riserDone.add(it.id);
       const row = {
         key: `riser:${it.id}`,
+        kind: "riser",
+        itemId: it.id,
+        ft: c * h,
         so: p?.riser_sort_order ?? it.sort_order ?? Infinity,
-        text: stationsOnly
-          ? `${itemName(it)} New Riser${c > 1 ? ` x${c}` : ""} ${riserStations[it.id] || stations[it.id] || ""}`.trim()
-          : `${itemName(it)} New Riser${c > 1 ? ` x${c}` : ""} = ${fmtFeet(c * h)}`,
+        text: (s) => (stationsOnly
+          ? `${itemName(it)} New Riser${c > 1 ? ` x${c}` : ""} ${s ? s.to : ""}`.trim()
+          : `${itemName(it)} New Riser${c > 1 ? ` x${c}` : ""} = ${fmtFeet(c * h)}`),
       };
       if (riserAnchor(p) !== undefined) anchoredRiserRows.push({ after: riserAnchor(p), _row: row });
       else if (p?.riser_sort_order != null && orderKeysUsable) riserLaterRows.push(row);
@@ -572,19 +582,24 @@ export const buildSpanMeasurementTexts = ({ poles, underground = [], connections
     const u = it.type === "pole" ? poles.find((x) => x.id === it.id) : underground.find((x) => x.id === it.id);
     if (!u || !(u.path_measurements || []).length) return;
     pathDone.add(it.id);
-    rows.push({ key: `path:${it.id}`, so: it.sort_order ?? Infinity, text: pathTextOf(u) });
+    rows.push({ key: `path:${it.id}`, kind: "path", itemId: it.id, ft: pathFeetOf(u), so: it.sort_order ?? Infinity, text: pathTextOf(u) });
   };
   pairs.forEach((pr) => {
     pushRiser(pr.from);
     pushPath(pr.from);
     if (!pairIsManual(pr)) {
+      const ft = pathFeet(segPath(pr, routes));
       rows.push({
         key: `span:${spanKey(pr.from.id, pr.to.id)}`,
+        kind: "span",
+        fromId: pr.from.id,
+        toId: pr.to.id,
+        ft,
         so: pr.from.sort_order ?? Infinity,
         toSo: pr.to.sort_order ?? Infinity,
-        text: stationsOnly
-          ? `${nameWithSta(pr.from, true)} to ${nameWithSta(pr.to)}${pairIsAerial(pr) ? "" : " (UG)"}`
-          : `${nameWithSta(pr.from, true)} to ${nameWithSta(pr.to)} = ${fmtFeet(pathFeet(segPath(pr, routes)))}${pairIsAerial(pr) ? "" : " (UG)"}${tieInSuffix(pr.from, pr.to, underground)}`,
+        text: (s) => (stationsOnly
+          ? `${withSta(pr.from, s?.from)} to ${withSta(pr.to, s?.to)}${pairIsAerial(pr) ? "" : " (UG)"}`
+          : `${withSta(pr.from, s?.from)} to ${withSta(pr.to, s?.to)} = ${fmtFeet(ft)}${pairIsAerial(pr) ? "" : " (UG)"}${tieInSuffix(pr.from, pr.to, underground)}`),
       });
     }
   });
@@ -599,7 +614,7 @@ export const buildSpanMeasurementTexts = ({ poles, underground = [], connections
     .forEach((u) => {
       pathDone.add(u.id);
       const so = u.sort_order ?? Infinity;
-      const row = { key: `path:${u.id}`, so, text: pathTextOf(u) };
+      const row = { key: `path:${u.id}`, kind: "path", itemId: u.id, ft: pathFeetOf(u), so, text: pathTextOf(u) };
       const idx = rows.findIndex((r) => (r.so ?? Infinity) > so);
       if (idx === -1) rows.push(row);
       else rows.splice(idx, 0, row);
@@ -612,7 +627,8 @@ export const buildSpanMeasurementTexts = ({ poles, underground = [], connections
   // Items on the map not covered by any span/path/riser get their own line (matches interactive map list)
   insertNoSpanRows(rows, poles, underground, pairs, riserDone, pathDone);
   placeSpanNotes(rows, [...anchoredRiserRows, ...(spanNotes || [])], (n) => (n._row ? n._row : { key: `note:${n.id}`, so: n.so ?? Infinity, text: `Note: ${n.text}` }));
-  return rows.map((r) => r.text);
+  const { rowSta } = computeListStations(rows);
+  return rows.map((r) => (typeof r.text === "function" ? r.text(rowSta[r.key]) : r.text));
 };
 
 // Anchor of a riser row: undefined = legacy numeric placement, null = top of list, else key of the row above

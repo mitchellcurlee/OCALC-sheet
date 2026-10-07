@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ChevronDown, ChevronUp, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera, Hash, Link2, Move, Palette, Plus, Map as MapIcon, MapPin, GripVertical, Upload, Trash2, RotateCcw, Home, Route as RouteIcon, ListOrdered, LandPlot, Maximize2, Minimize2 } from "lucide-react";
 import SpanReorderList from "@/components/SpanReorderList";
 import { layoutLabels, badgeBox } from "@/lib/labelLayout";
-import { ugTagText, ugTagColor, isAddressAttr, computeRoute, fmtFeet, feetToStation, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, downloadMapPdfPages, ugWithGps, undergroundAbbr, computeUgConnectors, computeConnectionPairs, computeStationSegFeet, UNDERGROUND_TYPES, isAerialAttr, resolvePairAerial, spanKey, routeWaypoints, routeArg, placeSpanNotes, LIST_PAGE_LINES, riserAnchor, tieInSuffix, pathRowText, pairIsManual, routePayloadFromOrder } from "@/lib/poleMapImage";
+import { ugTagText, ugTagColor, isAddressAttr, computeRoute, fmtFeet, feetToStation, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, downloadMapPdfPages, ugWithGps, undergroundAbbr, computeUgConnectors, computeConnectionPairs, computeListStations, UNDERGROUND_TYPES, isAerialAttr, resolvePairAerial, spanKey, routeWaypoints, routeArg, placeSpanNotes, LIST_PAGE_LINES, riserAnchor, tieInSuffix, pathRowText, pairIsManual, routePayloadFromOrder } from "@/lib/poleMapImage";
 import { ExportDestinationDialog } from "@/components/ExportDestinationDialog";
 import { CLOUD_EXPORT_LABELS, uploadExportToCloud } from "@/lib/cloudExports";
 import { streetOnly } from "@/lib/addressName";
@@ -1140,79 +1140,6 @@ const JobMap = () => {
   );
 
   // Calculate station numbers (cumulative distances) for all map items
-  const stationNumbers = useMemo(() => {
-    // Helper function to convert feet to station format
-    const toStation = (feet) => {
-      const total = Math.round(feet);
-      const stations = Math.floor(total / 100);
-      const remainder = total % 100;
-      return `${stations}+${remainder.toString().padStart(2, '0')}`;
-    };
-    
-    // Helper function to calculate distance in feet between two GPS coordinates
-    const distanceFeet = (p1, p2) => {
-      const R = 6371000;
-      const lat1 = (p1[0] * Math.PI) / 180;
-      const lat2 = (p2[0] * Math.PI) / 180;
-      const dLat = lat2 - lat1;
-      const dLng = ((p2[1] - p1[1]) * Math.PI) / 180;
-      const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
-      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) * 3.28084;
-    };
-    
-    // Build ordered list of all items by sort_order
-    const allItems = [];
-    
-    // Add underground items (path measurements advance the chainage; standalone items are off the path)
-    ug.forEach(item => {
-      if (item.standalone === true) return;
-      allItems.push({
-        id: item.id,
-        type: 'underground',
-        pos: item.pos,
-        sortOrder: item.sort_order ?? Infinity,
-        riserFeet: (item.path_measurements || []).reduce((s, m) => s + (parseFloat(m.feet) || 0), 0)
-      });
-    });
-    
-    // Add poles
-    route.forEach(pole => {
-      if (pole.standalone === true) return;
-      allItems.push({
-        id: pole.id,
-        type: 'pole',
-        pos: pole.pos,
-        sortOrder: pole.sort_order ?? Infinity,
-        riserFeet: (parseInt(pole.risers) || 0) * (parseFloat(pole.riser_height) || 0)
-      });
-    });
-    
-    // Sort by sort_order (NaN-safe: items without one stay at the end in their incoming order)
-    allItems.sort((a, b) => (a.sortOrder < b.sortOrder ? -1 : a.sortOrder > b.sortOrder ? 1 : 0));
-    
-    // Calculate cumulative station numbers (chainage uses actual span footage,
-    // so stations match linear feet from the start of the path)
-    const segFt = computeStationSegFeet(route, ug, connections, customRoutes);
-    const stations = {};
-    let runningDistance = 0;
-    let prevItem = null;
-    
-    allItems.forEach(item => {
-      if (prevItem) {
-        const k = `${prevItem.id}->${item.id}`;
-        const dist = segFt[k] !== undefined ? segFt[k] : distanceFeet(prevItem.pos, item.pos);
-        runningDistance += dist;
-      }
-      stations[item.id] = toStation(runningDistance);
-      if (item.riserFeet > 0) {
-        runningDistance += item.riserFeet;
-        stations[`${item.id}:out`] = toStation(runningDistance);
-      }
-      prevItem = item;
-    });
-    
-    return stations;
-  }, [route, ug, connections, customRoutes]);
 
   // Detect clustered poles and compute label offsets
   // A pole is "clustered" if another pole is within 100ft
@@ -1935,15 +1862,6 @@ const JobMap = () => {
     [underground]
   );
 
-  // Numbered station entries (badges + list) when Sta #'s toggle is on
-  const stationEntries = useMemo(() => {
-    const items = [];
-    ug.forEach((u) => { if (u.standalone === true) return; items.push({ id: u.id, pos: u.pos, sortOrder: u.sort_order ?? Infinity, name: `${undergroundAbbr(u.type)}${u.label ? `-${u.label}` : ""}` }); });
-    route.forEach((p) => { if (p.standalone === true) return; items.push({ id: p.id, pos: p.pos, sortOrder: p.sort_order ?? Infinity, name: /^\d/.test(String(p.pole_number || "")) ? `P${p.pole_number}` : (p.pole_number || "Pole") }); });
-    items.sort((a, b) => a.sortOrder - b.sortOrder);
-    return items.map((it, idx) => ({ ...it, num: idx + 1, station: stationNumbers[it.id] }));
-  }, [route, ug, stationNumbers]);
-  const stationNumById = useMemo(() => Object.fromEntries(stationEntries.map((e) => [e.id, e.num])), [stationEntries]);
 
   // Display name for a segment endpoint (e.g. "P1", "HH HH-1")
   // "Pedestal PED-2 12345 Jones Rd" — type, label (if any) and the lot address side by side
@@ -2277,7 +2195,7 @@ const JobMap = () => {
     }
   };
 
-  const { measurementEntries, spanNums } = useMemo(() => {
+  const { measurementEntries, spanNums, listStations } = useMemo(() => {
     const entries = [];
     const nums = {};
     const added = new Set();
@@ -2299,7 +2217,7 @@ const JobMap = () => {
       if (r && !added.has(item.id)) {
         added.add(item.id);
         const p = route.find((x) => x.id === item.id);
-        const entry = { kind: "riser", key: `riser:${item.id}`, so: p?.riser_sort_order ?? item.sort_order ?? Infinity, pos, itemId: item.id, text: `${poleName(item.label)} New Riser${r.c > 1 ? ` ×${r.c}` : ""} = ${fmtFeet(r.c * r.h)}` };
+        const entry = { kind: "riser", key: `riser:${item.id}`, ft: r.c * r.h, so: p?.riser_sort_order ?? item.sort_order ?? Infinity, pos, itemId: item.id, text: `${poleName(item.label)} New Riser${r.c > 1 ? ` ×${r.c}` : ""} = ${fmtFeet(r.c * r.h)}` };
         if (riserAnchor(p) !== undefined) anchoredRisers.push({ after: riserAnchor(p), _row: entry });
         else if (p?.riser_sort_order != null && orderKeysUsable) riserLater.push(entry);
         else entries.push(entry);
@@ -2307,21 +2225,19 @@ const JobMap = () => {
     };
     // Path measurements live on underground items and poles alike
     const pathLabel = (src) => (src.pole_number !== undefined ? poleName(src.pole_number) : `${undergroundAbbr(src.type)}${src.label ? ` ${src.label}` : ""}`);
-    const pathText = (src) => {
-      const t = src.path_measurements.reduce((s, m) => s + (parseFloat(m.feet) || 0), 0);
-      return `${pathLabel(src)}: ${src.path_measurements.map((m) => pathRowText(m)).join(", ")} = ${fmtFeet(t)}`;
-    };
+    const pathTotal = (src) => src.path_measurements.reduce((s, m) => s + (parseFloat(m.feet) || 0), 0);
+    const pathText = (src) => `${pathLabel(src)}: ${src.path_measurements.map((m) => pathRowText(m)).join(", ")} = ${fmtFeet(pathTotal(src))}`;
     const pushPath = (item, pos) => {
       if (pathAdded.has(item.id)) return;
       const src = item.type === "pole" ? poles.find((x) => x.id === item.id) : underground.find((x) => x.id === item.id);
       if (!src || !(src.path_measurements || []).length) return;
       pathAdded.add(item.id);
-      entries.push({ kind: "path", key: `path:${item.id}`, so: item.sort_order ?? Infinity, pos, itemId: item.id, text: pathText(src) });
+      entries.push({ kind: "path", key: `path:${item.id}`, ft: pathTotal(src), so: item.sort_order ?? Infinity, pos, itemId: item.id, text: pathText(src) });
     };
     orderedSegments.forEach((seg, i) => {
       pushRiser(seg.from, seg.fromPos);
       pushPath(seg.from, seg.fromPos);
-      if (!seg.manualMeasured) entries.push({ kind: "span", key: `span:${spanKey(seg.from.id, seg.to.id)}`, so: seg.from.sort_order ?? Infinity, toSo: seg.to.sort_order ?? Infinity, segIndex: i, seg });
+      if (!seg.manualMeasured) entries.push({ kind: "span", key: `span:${spanKey(seg.from.id, seg.to.id)}`, fromId: seg.from.id, toId: seg.to.id, ft: segListDistance(seg), so: seg.from.sort_order ?? Infinity, toSo: seg.to.sort_order ?? Infinity, segIndex: i, seg });
     });
     if (orderedSegments.length > 0) {
       const last = orderedSegments[orderedSegments.length - 1];
@@ -2338,7 +2254,7 @@ const JobMap = () => {
         if (!r) return;
         added.add(p.id);
         const so = p.riser_sort_order ?? p.sort_order ?? Infinity;
-        const entry = { kind: "riser", key: `riser:${p.id}`, so, pos: p.pos, itemId: p.id, text: `${poleName(p.pole_number)} New Riser${r.c > 1 ? ` ×${r.c}` : ""} = ${fmtFeet(r.c * r.h)}` };
+        const entry = { kind: "riser", key: `riser:${p.id}`, ft: r.c * r.h, so, pos: p.pos, itemId: p.id, text: `${poleName(p.pole_number)} New Riser${r.c > 1 ? ` ×${r.c}` : ""} = ${fmtFeet(r.c * r.h)}` };
         if (riserAnchor(p) !== undefined) { anchoredRisers.push({ after: riserAnchor(p), _row: entry }); return; }
         let at = -1;
         entries.forEach((e, i) => { if (((e.toSo ?? e.so) ?? Infinity) <= so) at = i; });
@@ -2352,7 +2268,7 @@ const JobMap = () => {
       .forEach((u) => {
         pathAdded.add(u.id);
         const so = u.sort_order ?? Infinity;
-        const entry = { kind: "path", key: `path:${u.id}`, so, pos: null, itemId: u.id, text: pathText(u) };
+        const entry = { kind: "path", key: `path:${u.id}`, ft: pathTotal(u), so, pos: null, itemId: u.id, text: pathText(u) };
         const idx = entries.findIndex((e) => (e.so ?? Infinity) > so);
         if (idx === -1) entries.push(entry);
         else entries.splice(idx, 0, entry);
@@ -2385,8 +2301,22 @@ const JobMap = () => {
       e.num = idx + 1;
       if (e.kind === "span") nums[e.segIndex] = e.num;
     });
-    return { measurementEntries: entries, spanNums: nums };
-  }, [orderedSegments, route, poles, underground, job]);
+    const listStations = computeListStations(entries);
+    return { measurementEntries: entries, spanNums: nums, listStations };
+  }, [orderedSegments, route, poles, underground, job, segListDistance]);
+  // Stations: 0+00 at the first item, each list row's footage advances the chainage (see computeListStations)
+  const stationNumbers = listStations.byItem;
+  const rowStations = listStations.rowSta;
+
+  // Numbered station entries (badges + list) when Sta #'s toggle is on
+  const stationEntries = useMemo(() => {
+    const items = [];
+    ug.forEach((u) => { if (u.standalone === true) return; items.push({ id: u.id, pos: u.pos, sortOrder: u.sort_order ?? Infinity, name: `${undergroundAbbr(u.type)}${u.label ? `-${u.label}` : ""}` }); });
+    route.forEach((p) => { if (p.standalone === true) return; items.push({ id: p.id, pos: p.pos, sortOrder: p.sort_order ?? Infinity, name: /^\d/.test(String(p.pole_number || "")) ? `P${p.pole_number}` : (p.pole_number || "Pole") }); });
+    items.sort((a, b) => a.sortOrder - b.sortOrder);
+    return items.map((it, idx) => ({ ...it, num: idx + 1, station: stationNumbers[it.id] }));
+  }, [route, ug, stationNumbers]);
+  const stationNumById = useMemo(() => Object.fromEntries(stationEntries.map((e) => [e.id, e.num])), [stationEntries]);
 
   // Total aerial footage from ordered segments (includes Loop spans + waypoint routes)
   const aerialFeetTotal = useMemo(
@@ -4238,7 +4168,7 @@ const JobMap = () => {
                       />
                     ) : (
                       <button type="button" onClick={() => { spanEditLock.current = false; setEditingSpan({ segIndex: e.segIndex, value: String(e.num) }); }} className="font-bold text-orange-700 hover:bg-orange-100 rounded px-0.5 -mx-0.5 border-b border-dashed border-orange-400" title="Tap to type a new span number" data-testid={`span-num-${e.num}`}>{e.num}.</button>
-                    )} {segItemName(e.seg.from)}{showStationNumbers && (stationNumbers[`${e.seg.from.id}:out`] || stationNumbers[e.seg.from.id]) ? <span className="text-blue-700 font-semibold" data-testid={`span-sta-from-${e.num}`}> {stationNumbers[`${e.seg.from.id}:out`] || stationNumbers[e.seg.from.id]}</span> : null} to {segItemName(e.seg.to)}{showStationNumbers && stationNumbers[e.seg.to.id] ? <span className="text-blue-700 font-semibold" data-testid={`span-sta-to-${e.num}`}> {stationNumbers[e.seg.to.id]}</span> : null} = {fmtFeet(segListDistance(e.seg))}
+                    )} {segItemName(e.seg.from)}{showStationNumbers && rowStations[e.key] ? <span className="text-blue-700 font-semibold" data-testid={`span-sta-from-${e.num}`}> {rowStations[e.key].from}</span> : null} to {segItemName(e.seg.to)}{showStationNumbers && rowStations[e.key] ? <span className="text-blue-700 font-semibold" data-testid={`span-sta-to-${e.num}`}> {rowStations[e.key].to}</span> : null} = {fmtFeet(segListDistance(e.seg))}
                     {!e.seg.isAerial && <span className="text-emerald-700 text-xs ml-1">(UG)</span>}
                     {tieInSuffix(e.seg.from, e.seg.to, underground) && <span className="text-sky-800 text-xs ml-1" data-testid={`span-tie-in-${e.num}`}>{tieInSuffix(e.seg.from, e.seg.to, underground)}</span>}</span>
                     {orderedSegments.length > 1 && (
@@ -4284,7 +4214,7 @@ const JobMap = () => {
                   </li>
                 ) : e.kind === "riser" ? (
                   <li key={`entry-${e.num}`} data-testid={`riser-measurement-${e.num}`} className="flex items-center gap-1">
-                    <span><span className="font-bold text-violet-700">{e.num}.</span> {e.text}{showStationNumbers && e.itemId && stationNumbers[`${e.itemId}:out`] ? <span className="text-indigo-700"> ({stationNumbers[e.itemId]} to {stationNumbers[`${e.itemId}:out`]})</span> : null}</span>
+                    <span><span className="font-bold text-violet-700">{e.num}.</span> {e.text}{showStationNumbers && rowStations[e.key] ? <span className="text-blue-700 font-semibold"> ({rowStations[e.key].from} to {rowStations[e.key].to})</span> : null}</span>
                     <span className="inline-flex items-center gap-0.5 ml-1">
                       <button type="button" onClick={() => moveRiserEntry(e.num - 1, -1)} className="p-0.5 rounded border border-zinc-300 bg-white text-zinc-600 hover:bg-zinc-100" title="Move up" data-testid={`riser-move-up-${e.num}`}>
                         <ChevronUp className="w-3.5 h-3.5" />
@@ -4297,7 +4227,7 @@ const JobMap = () => {
                   </li>
                 ) : (
                   <li key={`entry-${e.num}`} data-testid={`${e.kind === "item" ? "item" : "path"}-measurement-${e.num}`} className="flex items-center gap-1">
-                    <span><span className="font-bold text-emerald-700">{e.num}.</span> {e.text}{showStationNumbers && e.itemId && stationNumbers[`${e.itemId}:out`] ? <span className="text-indigo-700"> ({stationNumbers[e.itemId]} to {stationNumbers[`${e.itemId}:out`]})</span> : null}</span>
+                    <span><span className="font-bold text-emerald-700">{e.num}.</span> {e.text}{showStationNumbers && rowStations[e.key] ? <span className="text-blue-700 font-semibold"> ({rowStations[e.key].from} to {rowStations[e.key].to})</span> : null}</span>
                     {noteBelowBtn(e)}
                   </li>
                 )
