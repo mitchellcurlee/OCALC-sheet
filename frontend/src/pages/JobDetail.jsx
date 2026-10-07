@@ -515,7 +515,7 @@ const JobDetail = () => {
         const [connRes, routesRes] = await Promise.all([axios.get(`/jobs/${jobId}/connections`), axios.get(`/jobs/${jobId}/routes`).catch(() => ({ data: [] }))]);
         const routes = {};
         (routesRes.data || []).forEach((r) => { routes[`${r.from_pole_id}-${r.to_pole_id}`] = r.waypoints || []; });
-        stations = computeItemStations({ poles, underground: undergroundItems, connections: connRes.data || [], routes, spanNotes: job?.span_notes || [], spanOrder: job?.span_order || null, drawnOnly: routeArg(job) });
+        stations = computeItemStations({ poles, underground: undergroundItems, connections: connRes.data || [], routes, spanNotes: job?.span_notes || [], spanOrder: job?.span_order || null, drawnOnly: routeArg(job), stationStartId: job?.station_start_id || null });
       } catch (e) { /* stations are a best-effort column */ }
       const response = await axios.post(`/jobs/${jobId}/export/excel`, { base_url: window.location.origin, stations }, { responseType: "blob" });
       const filename = (response.headers["content-disposition"]?.split("filename=")[1] || formExportFilename(job, "Job Data", "xlsx")).replace(/"/g, "");

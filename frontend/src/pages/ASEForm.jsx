@@ -50,6 +50,7 @@ const ASEForm = () => {
       connections: mapConnections,
       routes: mapRoutes,
       spanOrder: job?.span_order || null,
+      stationStartId: job?.station_start_id || null,
       drawnOnly: routeArg(job),
       spanNotes: job?.span_notes || [],
       includeStations: format === "stations",
@@ -304,7 +305,7 @@ const ASEForm = () => {
         // (station numbers included only when the map's Sta #'s toggle is on)
         if (!updated.path_of_approach) {
           const includeStations = localStorage.getItem(`staToggle:${jobId}`) === '1';
-          const texts = buildSpanMeasurementTexts({ poles: polesData, underground: ugData, connections: connectionsData, includeStations, routes: routesLookup, spanNotes: jobRes.data?.span_notes || [], spanOrder: jobRes.data?.span_order || null, drawnOnly: routeArg(jobRes.data) });
+          const texts = buildSpanMeasurementTexts({ poles: polesData, underground: ugData, connections: connectionsData, includeStations, routes: routesLookup, spanNotes: jobRes.data?.span_notes || [], spanOrder: jobRes.data?.span_order || null, drawnOnly: routeArg(jobRes.data), stationStartId: jobRes.data?.station_start_id || null });
           if (texts.length > 0) {
             updated.path_of_approach = texts.join(', ');
           }

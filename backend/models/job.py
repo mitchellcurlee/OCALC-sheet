@@ -30,6 +30,7 @@ class JobUpdate(BaseModel):
     span_notes: Optional[List[Dict[str, Any]]] = None
     span_badge_offsets: Optional[Dict[str, Any]] = None  # { spanKey: [dLat, dLng] } moved measurement badges
     span_order: Optional[List[str]] = None  # user-swapped span numbering (direction-free pair keys)
+    station_start_id: Optional[str] = None  # attribute that reads 0+00 ("" = default first item)
     route_sequence: Optional[List[str]] = None  # Draw Route: item ids in tapped order (overall job sequence)
     draw_routes: Optional[List[List[str]]] = None  # Draw Route: each separately drawn route
     route_mode: Optional[bool] = None  # Draw Route has been used: only drawn spans count, no auto chaining
@@ -55,6 +56,7 @@ class Job(BaseModel):
     span_notes: Optional[List[Dict[str, Any]]] = []
     span_badge_offsets: Optional[Dict[str, Any]] = {}
     span_order: Optional[List[str]] = []
+    station_start_id: Optional[str] = None
     route_sequence: Optional[List[str]] = []
     draw_routes: Optional[List[List[str]]] = []
     route_mode: Optional[bool] = False

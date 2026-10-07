@@ -153,9 +153,9 @@ const UgPopupEditor = ({ item, defaultColor, onSaved, onDeleted, onConverted }) 
   const save = async () => {
     setSaving(true);
     try {
-      const res = await axios.put(`/underground/${item.id}`, { label, fid });
+      const res = await axios.put(`/underground/${item.id}`, isAddr ? { label: label.trim().slice(0, 60), address: label.trim(), fid } : { label, fid });
       onSaved(res.data);
-      toast.success("Attribute updated");
+      toast.success(isAddr ? "Address updated" : "Attribute updated");
       setEditing(false);
     } catch (e) {
       toast.error("Failed to update attribute");
@@ -205,6 +205,7 @@ const UgPopupEditor = ({ item, defaultColor, onSaved, onDeleted, onConverted }) 
       toast.error("Failed to update type");
     }
   };
+  const isAddr = item.type === "Address" || item.type === "Suite";
   const isNeutral = item.aerial_override === "neutral";
   const effAerial = !isNeutral && isAerialAttr(item);
   const neutralAllowed = ["Point of Intersection", "FBT", "NTE", "Pullbox", "Aerial PI", "Aerial FBT", "Aerial NTE"].includes(item.type);
@@ -216,8 +217,8 @@ const UgPopupEditor = ({ item, defaultColor, onSaved, onDeleted, onConverted }) 
       <PopupPhotoAdder endpoint={`/underground/${item.id}`} item={item} onSaved={onSaved} />
       <div className={editing ? "space-y-1.5" : "hidden"} data-testid={`ug-quickedit-form-${item.id}`}>
         <div>
-          <label className="text-[10px] text-zinc-400 uppercase">Label / ID</label>
-          <input className={inputCls} value={label} onChange={(e) => setLabel(e.target.value)} data-testid="ug-label-input" />
+          <label className="text-[10px] text-zinc-400 uppercase">{isAddr ? "Address" : "Label / ID"}</label>
+          <input className={inputCls} value={label} onChange={(e) => setLabel(e.target.value)} placeholder={isAddr ? "123 Main St" : ""} data-testid="ug-label-input" />
         </div>
         <div>
           <label className="text-[10px] text-zinc-400 uppercase">FID</label>
@@ -228,7 +229,7 @@ const UgPopupEditor = ({ item, defaultColor, onSaved, onDeleted, onConverted }) 
           <Button size="sm" variant="outline" className="h-7 text-xs bg-zinc-100 border-zinc-300 text-zinc-900" onClick={() => setEditing(false)} data-testid="ug-quickedit-cancel">Cancel</Button>
         </div>
       </div>
-      <Button size="sm" variant="outline" className={`w-full h-7 text-xs bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900 ${editing ? "hidden" : ""}`} onClick={() => setEditing(true)} data-testid={`ug-quickedit-btn-${item.id}`}>Quick Edit Label/FID</Button>
+      <Button size="sm" variant="outline" className={`w-full h-7 text-xs bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900 ${editing ? "hidden" : ""}`} onClick={() => setEditing(true)} data-testid={`ug-quickedit-btn-${item.id}`}>{isAddr ? "Edit address" : "Quick Edit Label/FID"}</Button>
       <div>
         <div className="text-[10px] text-zinc-400 uppercase mb-1">Attribute Type</div>
         <div className="flex gap-1.5" data-testid={`ug-class-row-${item.id}`}>
@@ -2360,7 +2361,7 @@ const JobMap = () => {
       e.num = idx + 1;
       if (e.kind === "span") nums[e.segIndex] = e.num;
     });
-    const listStations = computeListStations(entries);
+    const listStations = computeListStations(entries, job?.station_start_id || null);
     return { measurementEntries: entries, spanNums: nums, listStations };
   }, [orderedSegments, route, poles, underground, job, segListDistance]);
   // Stations: 0+00 at the first item, each list row's footage advances the chainage (see computeListStations)
@@ -2581,6 +2582,15 @@ const JobMap = () => {
   // ======== END CONNECTION MANAGEMENT ========
 
   // ======== MULTI-SELECT DELETE ========
+  const saveStationStart = async (id) => {
+    try {
+      await axios.put(`/jobs/${jobId}`, { station_start_id: id || "" });
+      setJob((prev) => ({ ...prev, station_start_id: id || null }));
+      toast.success(id ? "0+00 moved to the selected attribute" : "0+00 back at the first attribute");
+    } catch (e) {
+      toast.error("Could not save the station start");
+    }
+  };
   const toggleSelected = (id) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -3891,11 +3901,12 @@ const JobMap = () => {
                   >
                     <Popup>
                       <div className="min-w-[170px] font-mono" data-testid={`ug-popup-${u.id}`}>
-                        <div className="text-sm font-bold" style={{ color: isRed ? '#dc2626' : itemColor }}>{undergroundAbbr(u.type)} · {u.type}</div>
+                        <div className="text-sm font-bold" style={{ color: isRed ? '#dc2626' : itemColor }}>{u.type === "Address" ? u.label || "Address" : `${undergroundAbbr(u.type)} · ${u.type}`}</div>
+                        {u.type === "Address" && <div className="text-[10px] uppercase text-blue-700 font-bold">Address</div>}
                         {stationLabel && <div className="text-xs text-indigo-600 font-bold">Station: {stationLabel}</div>}
                         {u.owner && <div className="text-xs text-amber-700 font-bold" data-testid={`ug-popup-owner-${u.id}`}>Owner: {u.owner}</div>}
                         {u.material_type && <div className="text-xs text-zinc-600" data-testid={`ug-popup-material-${u.id}`}>{u.material_type}</div>}
-                        {u.label && <div className="text-xs text-zinc-600 mt-1">{u.label}</div>}
+                        {u.label && u.type !== "Address" && <div className="text-xs text-zinc-600 mt-1">{u.label}</div>}
                         {u.notes && <div className="text-xs text-zinc-500 mt-1">{u.notes}</div>}
                         {!positionEditMode && (
                           <>
@@ -4178,6 +4189,19 @@ const JobMap = () => {
               <div className="w-1 h-5 bg-indigo-600"></div>
               STATION NUMBERS
             </h2>
+            <div className="flex flex-wrap items-center gap-2 mb-3 text-xs" data-testid="station-start-row">
+              <span className="font-semibold text-zinc-700">0+00 at:</span>
+              <select
+                value={job?.station_start_id && stationEntries.some((e) => e.id === job.station_start_id) ? job.station_start_id : ""}
+                onChange={(e) => saveStationStart(e.target.value || null)}
+                className="h-8 text-xs border border-zinc-300 rounded px-2 bg-white text-zinc-900 max-w-[260px]"
+                data-testid="station-start-select"
+              >
+                <option value="">First attribute in the span list (default)</option>
+                {stationEntries.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+              </select>
+              {job?.station_start_id && <span className="text-zinc-500">Items before it read as negative stations (e.g. -0+90)</span>}
+            </div>
             <ol className="space-y-1 font-mono text-sm text-zinc-800">
               {stationEntries.map((e) => (
                 <li key={e.id} data-testid={`station-entry-${e.num}`}>

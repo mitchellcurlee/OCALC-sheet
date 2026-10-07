@@ -45,12 +45,12 @@ export const fmtFeet = (ft) => {
   }
 };
 
-// Convert feet to station format (0+00)
+// Convert feet to station format (0+00); negative chainage (before the chosen 0+00) reads "-0+90"
 export const feetToStation = (feet) => {
-  const total = Math.round(feet);
+  const total = Math.round(Math.abs(feet));
   const stations = Math.floor(total / 100);
   const remainder = total % 100;
-  return `${stations}+${remainder.toString().padStart(2, '0')}`;
+  return `${feet < 0 && total > 0 ? "-" : ""}${stations}+${remainder.toString().padStart(2, '0')}`;
 };
 
 // Underground attribute abbreviations for map labels
@@ -453,10 +453,11 @@ export const computeStationSegFeet = (route, ug, connections, routes = {}) => {
 // Station chainage follows the measurement list order: the first item is 0+00 and every
 // footage row (span, new riser, path measurement) advances the running total by its feet.
 // rows: [{ key, kind: "span"|"riser"|"path"|..., fromId, toId, ft, itemId }]
+// startId: optional item that should read 0+00 (everything is re-based on it; earlier items go negative)
 // Returns { byItem: { itemId: "3+08" }, rowSta: { rowKey: { from: "0+90", to: "1+08" } } }
-export const computeListStations = (rows) => {
+export const computeListStations = (rows, startId = null) => {
   const feet = {};
-  const rowSta = {};
+  const rowFeet = {};
   let run = 0;
   let prevTo = null;
   let started = false;
@@ -468,17 +469,20 @@ export const computeListStations = (rows) => {
       started = true;
       const arrive = depart + (Number(r.ft) || 0);
       if (feet[r.toId] === undefined) feet[r.toId] = arrive;
-      rowSta[r.key] = { from: feetToStation(depart), to: feetToStation(arrive) };
+      rowFeet[r.key] = { from: depart, to: arrive };
       run = arrive;
       prevTo = r.toId;
     } else if ((r.kind === "riser" || r.kind === "path") && Number(r.ft) > 0) {
       const start = run;
       run += Number(r.ft);
-      rowSta[r.key] = { from: feetToStation(start), to: feetToStation(run) };
+      rowFeet[r.key] = { from: start, to: run };
     }
   });
+  const offset = startId && feet[startId] !== undefined ? feet[startId] : 0;
   const byItem = {};
-  Object.keys(feet).forEach((id) => { byItem[id] = feetToStation(feet[id]); });
+  Object.keys(feet).forEach((id) => { byItem[id] = feetToStation(feet[id] - offset); });
+  const rowSta = {};
+  Object.keys(rowFeet).forEach((k) => { rowSta[k] = { from: feetToStation(rowFeet[k].from - offset), to: feetToStation(rowFeet[k].to - offset) }; });
   return { byItem, rowSta };
 };
 const pathMid = (path) => {
@@ -530,7 +534,7 @@ const pathDoneSet = (items) => new Set((items || []).filter((u) => u.standalone 
 
 // Build the exact text lines shown in the interactive map's Span Measurements list.
 // Used by the ASE checklist "path of approach" so both always match.
-export const buildSpanMeasurementTexts = ({ poles, underground = [], connections = [], includeStations = false, stationsOnly = false, routes = {}, spanNotes = [], spanOrder = null, drawnOnly = false, _collect = null }) => {
+export const buildSpanMeasurementTexts = ({ poles, underground = [], connections = [], includeStations = false, stationsOnly = false, routes = {}, spanNotes = [], spanOrder = null, drawnOnly = false, stationStartId = null, _collect = null }) => {
   if (stationsOnly) includeStations = true;
   const { route } = computeRoute(poles);
   const ug = ugWithGps(underground);
@@ -627,17 +631,17 @@ export const buildSpanMeasurementTexts = ({ poles, underground = [], connections
   // Items on the map not covered by any span/path/riser get their own line (matches interactive map list)
   insertNoSpanRows(rows, poles, underground, pairs, riserDone, pathDone);
   placeSpanNotes(rows, [...anchoredRiserRows, ...(spanNotes || [])], (n) => (n._row ? n._row : { key: `note:${n.id}`, so: n.so ?? Infinity, text: `Note: ${n.text}` }));
-  const { rowSta } = computeListStations(rows);
+  const { rowSta } = computeListStations(rows, stationStartId);
   if (_collect) _collect.push(...rows);
   return rows.map((r) => (typeof r.text === "function" ? r.text(rowSta[r.key]) : r.text));
 };
 
 // Station (0+00) per pole/attribute id — same list-order chainage the map's Sta #'s toggle shows
-export const computeItemStations = ({ poles, underground = [], connections = [], routes = {}, spanNotes = [], spanOrder = null, drawnOnly = false }) => {
+export const computeItemStations = ({ poles, underground = [], connections = [], routes = {}, spanNotes = [], spanOrder = null, drawnOnly = false, stationStartId = null }) => {
   const rows = [];
   const probe = { ...{ poles, underground, connections, routes, spanNotes, spanOrder, drawnOnly }, includeStations: true, _collect: rows };
   buildSpanMeasurementTexts(probe);
-  return computeListStations(rows).byItem;
+  return computeListStations(rows, stationStartId).byItem;
 };
 
 // Anchor of a riser row: undefined = legacy numeric placement, null = top of list, else key of the row above
