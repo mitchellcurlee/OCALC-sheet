@@ -11,7 +11,7 @@ import domtoimage from "dom-to-image-more";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ChevronDown, ChevronUp, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera, Hash, Link2, Move, Palette, Plus, Map as MapIcon, MapPin, GripVertical, Upload, Trash2, RotateCcw, Home, Route as RouteIcon, ListOrdered, LandPlot, Maximize2, Minimize2, BoxSelect } from "lucide-react";
 import SpanReorderList from "@/components/SpanReorderList";
-import { layoutLabels, badgeBox } from "@/lib/labelLayout";
+import { layoutLabels, badgeBox, leaderEnd } from "@/lib/labelLayout";
 import { ugTagText, ugTagColor, isAddressAttr, computeRoute, fmtFeet, feetToStation, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, downloadMapPdfPages, ugWithGps, undergroundAbbr, computeUgConnectors, computeConnectionPairs, computeListStations, UNDERGROUND_TYPES, isAerialAttr, resolvePairAerial, spanKey, routeWaypoints, routeArg, placeSpanNotes, LIST_PAGE_LINES, riserAnchor, tieInSuffix, pathRowText, pairIsManual, routePayloadFromOrder } from "@/lib/poleMapImage";
 import { ExportDestinationDialog } from "@/components/ExportDestinationDialog";
 import { CLOUD_EXPORT_LABELS, uploadExportToCloud } from "@/lib/cloudExports";
@@ -457,7 +457,7 @@ const poleIcon = (label, place = "right", color = "#dc2626", size = "normal") =>
   let leader = "";
   if (place && typeof place === "object") {
     labelCss = `left:${c + place.dx}px;top:${c + place.dy}px;`;
-    const lx = place.dx + place.w / 2, ly = place.dy + place.h / 2;
+    const [lx, ly] = leaderEnd(place.dx, place.dy, place.w, place.h);
     // Leader line only when the tag sits away from its dot (nearest edge > 16px)
     const nx = Math.max(place.dx, 0, -(place.dx + place.w)), ny = Math.max(place.dy, 0, -(place.dy + place.h));
     if (Math.hypot(nx, ny) > 16) {
@@ -606,7 +606,7 @@ const ugIconOffset = (abbr, isRed, color, size, place) => {
   const h = size === "small" ? 13 : 18;
   const font = size === "small" ? "600 7px/1" : "600 9px/1";
   const d = 10, c = d / 2;
-  const lx = place.dx + place.w / 2, ly = place.dy + place.h / 2;
+  const [lx, ly] = leaderEnd(place.dx, place.dy, place.w, place.h);
   return L.divIcon({
     className: "ug-marker",
     html: `<div style="position:relative;">

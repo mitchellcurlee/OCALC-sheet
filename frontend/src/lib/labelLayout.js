@@ -45,7 +45,7 @@ export const layoutLabels = (items, obstacles = []) => {
     const box = boxOf(it);
     let best = null;
     const cands = [];
-    if (it.center) cands.push({ dx: -box.w / 2, dy: -box.h / 2 });
+    // Attribute badges always sit beside their point (with a leader) — never on top of it
     RINGS.forEach((gap) => DIRS.forEach((_, d) => cands.push(candidate(DIRS[(d + i) % DIRS.length], gap, box))));
     for (const { dx, dy } of cands) {
       const rect = { x: it.x + dx, y: it.y + dy, w: box.w, h: box.h };
@@ -63,6 +63,17 @@ export const badgeBox = (abbr, size = "normal") => {
   if (size === "off") return { w: 10, h: 10 };
   const h = size === "small" ? 13 : 18;
   return { w: Math.max(h, Math.ceil(measure(abbr, size === "small" ? "600 7px ui-monospace, monospace" : "600 9px ui-monospace, monospace") + (size === "small" ? 4 : 6))), h };
+};
+
+// Where a leader from the point (0,0) meets the tag rectangle { dx, dy, w, h }: the nearest edge on the
+// straight line to the tag's centre (so the line attaches to the side of the tag, not its middle)
+export const leaderEnd = (dx, dy, w, h) => {
+  const cx = dx + w / 2, cy = dy + h / 2;
+  if (!cx && !cy) return [0, 0];
+  const tx = cx ? (w / 2) / Math.abs(cx) : Infinity;
+  const ty = cy ? (h / 2) / Math.abs(cy) : Infinity;
+  const t = Math.min(tx, ty, 1);
+  return [cx - cx * t, cy - cy * t];
 };
 
 /**
@@ -93,8 +104,9 @@ export const drawSmartTags = (ctx, { poles = [], ugs = [], k = 2, obstacles = []
     const nx = Math.max(L.dx, 0, -(L.dx + L.w)), ny = Math.max(L.dy, 0, -(L.dy + L.h));
     // Leader line when a tag is pushed away from its dot, or whenever a badge leaves its point
     if (Math.hypot(nx, ny) > 16 || (it._ug && !L.centered)) {
+      const [ex, ey] = leaderEnd(L.dx, L.dy, L.w, L.h);
       ctx.strokeStyle = src.color; ctx.lineWidth = 1.5 * (k / 2.2); ctx.setLineDash([3 * k, 2 * k]);
-      ctx.beginPath(); ctx.moveTo(src.x, src.y); ctx.lineTo(rx + rw / 2, ry + rh / 2); ctx.stroke(); ctx.setLineDash([]);
+      ctx.beginPath(); ctx.moveTo(src.x, src.y); ctx.lineTo(src.x + ex * k, src.y + ey * k); ctx.stroke(); ctx.setLineDash([]);
     }
     ctx.fillStyle = src.color; ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 1.5 * (k / 2.2); ctx.beginPath();
     if (it._ug) ctx.rect(rx, ry, rw, rh); else ctx.roundRect(rx, ry, rw, rh, 5 * k);
