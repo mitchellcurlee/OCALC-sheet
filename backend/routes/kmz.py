@@ -146,6 +146,8 @@ async def _export_job_kmz(job_id: str, current_user: dict, stations: Dict[str, s
         by_id[p["id"]] = (lat, lon, f"Pole {p.get('pole_number') or ''}".strip(), "pole")
         is_addr = (p.get("marker_color") or "").lower() == "#2563eb"
         pname = (p.get("pole_number") or "Address").strip() if is_addr else f"Pole {p.get('pole_number') or ''}".strip()
+        if stations.get(p.get("id")):
+            pname = f"{pname} · {stations[p['id']]}"
         if is_addr and (p.get("pole_number") or "").strip():
             p = {**p, "address": p.get("pole_number")}  # the assigned address text is the address
         off = _label_offset(p)
@@ -162,10 +164,13 @@ async def _export_job_kmz(job_id: str, current_user: dict, stations: Dict[str, s
             name = label  # Address placemark is titled with the address itself
         else:
             name = f"{u.get('type') or 'Item'}" + (f" · {u['label']}" if u.get("label") and u.get("label") != u.get("type") else "")
+        plain_name = name
+        if stations.get(u.get("id")):
+            name = f"{name} · {stations[u['id']]}"
         if is_addr_type and label:
             u = {**u, "address": label}  # the assigned address text is the address
         is_aerial = (u.get("aerial_override") == "aerial") or (u.get("aerial_override") != "underground" and u.get("type") in {"Aerial Splice", "Loop", "Power", "X-Messenger", "Eyebolt", "Pullbox", "Weather Head", "Aerial NTE", "Aerial PI", "Aerial FBT"})
-        by_id[u["id"]] = (lat, lon, name, "aerial" if is_aerial else "ug")
+        by_id[u["id"]] = (lat, lon, plain_name, "aerial" if is_aerial else "ug")
         off = _label_offset(u)
         sid = "aerial" if is_aerial else "ug"
         bucket = aerial_pm if is_aerial else ug_pm
