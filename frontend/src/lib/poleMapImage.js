@@ -530,7 +530,7 @@ const pathDoneSet = (items) => new Set((items || []).filter((u) => u.standalone 
 
 // Build the exact text lines shown in the interactive map's Span Measurements list.
 // Used by the ASE checklist "path of approach" so both always match.
-export const buildSpanMeasurementTexts = ({ poles, underground = [], connections = [], includeStations = false, stationsOnly = false, routes = {}, spanNotes = [], spanOrder = null, drawnOnly = false }) => {
+export const buildSpanMeasurementTexts = ({ poles, underground = [], connections = [], includeStations = false, stationsOnly = false, routes = {}, spanNotes = [], spanOrder = null, drawnOnly = false, _collect = null }) => {
   if (stationsOnly) includeStations = true;
   const { route } = computeRoute(poles);
   const ug = ugWithGps(underground);
@@ -628,7 +628,16 @@ export const buildSpanMeasurementTexts = ({ poles, underground = [], connections
   insertNoSpanRows(rows, poles, underground, pairs, riserDone, pathDone);
   placeSpanNotes(rows, [...anchoredRiserRows, ...(spanNotes || [])], (n) => (n._row ? n._row : { key: `note:${n.id}`, so: n.so ?? Infinity, text: `Note: ${n.text}` }));
   const { rowSta } = computeListStations(rows);
+  if (_collect) _collect.push(...rows);
   return rows.map((r) => (typeof r.text === "function" ? r.text(rowSta[r.key]) : r.text));
+};
+
+// Station (0+00) per pole/attribute id — same list-order chainage the map's Sta #'s toggle shows
+export const computeItemStations = ({ poles, underground = [], connections = [], routes = {}, spanNotes = [], spanOrder = null, drawnOnly = false }) => {
+  const rows = [];
+  const probe = { ...{ poles, underground, connections, routes, spanNotes, spanOrder, drawnOnly }, includeStations: true, _collect: rows };
+  buildSpanMeasurementTexts(probe);
+  return computeListStations(rows).byItem;
 };
 
 // Anchor of a riser row: undefined = legacy numeric placement, null = top of list, else key of the row above

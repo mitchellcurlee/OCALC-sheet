@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends, Request, Query
 from fastapi.responses import StreamingResponse, HTMLResponse
-from typing import List, Optional
+from typing import Dict, List, Optional
+from pydantic import BaseModel
 from datetime import datetime, timezone, timedelta
 import io
 import re
@@ -423,8 +424,22 @@ async def reorder_job_items(job_id: str, items: List[dict], current_user: dict =
     }
 
 
+class ExcelExportBody(BaseModel):
+    base_url: Optional[str] = None
+    stations: Optional[Dict[str, str]] = None  # item id -> "0+00" (computed by the map's list-order chainage)
+
+
+@router.post("/jobs/{job_id}/export/excel")
+async def export_job_excel_post(job_id: str, request: Request, body: ExcelExportBody, current_user: dict = Depends(get_current_user)):
+    return await _export_job_excel(job_id, request, body.base_url, current_user, body.stations or {})
+
+
 @router.get("/jobs/{job_id}/export/excel")
 async def export_job_excel(job_id: str, request: Request, base_url: Optional[str] = None, current_user: dict = Depends(get_current_user)):
+    return await _export_job_excel(job_id, request, base_url, current_user, {})
+
+
+async def _export_job_excel(job_id: str, request: Request, base_url: Optional[str], current_user: dict, stations: Dict[str, str]):
     """Export all poles from a job to Excel"""
     if is_admin_user(current_user):
         job = await _db.jobs.find_one({"id": job_id}, {"_id": 0})
@@ -551,6 +566,10 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
         ws.cell(row=current_row, column=3).font = header_font
         inspection_date = pole.get("inspection_date", "")
         ws.cell(row=current_row, column=4, value=str(inspection_date)[:10] if inspection_date else "")
+        ws.cell(row=current_row, column=5, value="STATION").fill = header_fill
+        ws.cell(row=current_row, column=5).font = header_font
+        sta_cell = ws.cell(row=current_row, column=6, value=stations.get(pole.get("id"), "") or "")
+        sta_cell.font = Font(color="1D4ED8", bold=True)
         current_row += 1
 
         section("BASIC INFORMATION")
@@ -707,7 +726,7 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
         ws.cell(row=current_row, column=1, value="UNDERGROUND").fill = header_fill
         ws.cell(row=current_row, column=1).font = header_font
         current_row += 1
-        for h_i, h in enumerate(["Abbr", "Type", "Subtype", "Class", "Label", "FID", "Latitude", "Longitude", "Path Measurements", "Tie-In", "Notes", "Map", "Photos", "Owner", "Address"], 1):
+        for h_i, h in enumerate(["Abbr", "Type", "Subtype", "Class", "Label", "FID", "Latitude", "Longitude", "Path Measurements", "Tie-In", "Notes", "Map", "Photos", "Owner", "Address", "Station"], 1):
             ws.cell(row=current_row, column=h_i, value=h).font = Font(bold=True, size=9)
         current_row += 1
         for u in underground:
@@ -731,6 +750,8 @@ async def export_job_excel(job_id: str, request: Request, base_url: Optional[str
             ws.cell(row=current_row, column=3, value=u.get("material_type", "") or "")
             ws.cell(row=current_row, column=14, value=u.get("owner", "") or "")
             ws.cell(row=current_row, column=15, value=u.get("address", "") or "")
+            ug_sta = ws.cell(row=current_row, column=16, value=stations.get(u.get("id"), "") or "")
+            ug_sta.font = Font(color="1D4ED8", bold=True, size=9)
             class_cell = ws.cell(row=current_row, column=4, value=class_val)
             class_cell.font = Font(color=class_color, bold=True, size=9)
             ws.cell(row=current_row, column=5, value=u.get("label", ""))

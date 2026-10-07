@@ -5,7 +5,7 @@ import { useGoBack } from "@/lib/useGoBack";
 import axios from "axios";
 import { toast } from "sonner";
 import { routePayloadFromOrder } from "@/lib/poleMapImage";
-import { UNDERGROUND_TYPES, undergroundAbbr } from "@/lib/poleMapImage";
+import { UNDERGROUND_TYPES, undergroundAbbr, computeItemStations, routeArg } from "@/lib/poleMapImage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -510,7 +510,14 @@ const JobDetail = () => {
 
   const getExportBlob = async (type) => {
     if (type === "job_excel") {
-      const response = await axios.get(`/jobs/${jobId}/export/excel`, { params: { base_url: window.location.origin }, responseType: "blob" });
+      let stations = {};
+      try {
+        const [connRes, routesRes] = await Promise.all([axios.get(`/jobs/${jobId}/connections`), axios.get(`/jobs/${jobId}/routes`).catch(() => ({ data: [] }))]);
+        const routes = {};
+        (routesRes.data || []).forEach((r) => { routes[`${r.from_pole_id}-${r.to_pole_id}`] = r.waypoints || []; });
+        stations = computeItemStations({ poles, underground: undergroundItems, connections: connRes.data || [], routes, spanNotes: job?.span_notes || [], spanOrder: job?.span_order || null, drawnOnly: routeArg(job) });
+      } catch (e) { /* stations are a best-effort column */ }
+      const response = await axios.post(`/jobs/${jobId}/export/excel`, { base_url: window.location.origin, stations }, { responseType: "blob" });
       const filename = (response.headers["content-disposition"]?.split("filename=")[1] || formExportFilename(job, "Job Data", "xlsx")).replace(/"/g, "");
       return { blob: new Blob([response.data]), filename };
     }

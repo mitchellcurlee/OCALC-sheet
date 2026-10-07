@@ -9,7 +9,7 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import domtoimage from "dom-to-image-more";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ChevronDown, ChevronUp, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera, Hash, Link2, Move, Palette, Plus, Map as MapIcon, MapPin, GripVertical, Upload, Trash2, RotateCcw, Home, Route as RouteIcon, ListOrdered, LandPlot, Maximize2, Minimize2 } from "lucide-react";
+import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ChevronDown, ChevronUp, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera, Hash, Link2, Move, Palette, Plus, Map as MapIcon, MapPin, GripVertical, Upload, Trash2, RotateCcw, Home, Route as RouteIcon, ListOrdered, LandPlot, Maximize2, Minimize2, BoxSelect } from "lucide-react";
 import SpanReorderList from "@/components/SpanReorderList";
 import { layoutLabels, badgeBox } from "@/lib/labelLayout";
 import { ugTagText, ugTagColor, isAddressAttr, computeRoute, fmtFeet, feetToStation, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, downloadMapPdfPages, ugWithGps, undergroundAbbr, computeUgConnectors, computeConnectionPairs, computeListStations, UNDERGROUND_TYPES, isAerialAttr, resolvePairAerial, spanKey, routeWaypoints, routeArg, placeSpanNotes, LIST_PAGE_LINES, riserAnchor, tieInSuffix, pathRowText, pairIsManual, routePayloadFromOrder } from "@/lib/poleMapImage";
@@ -646,6 +646,64 @@ const MapRefSetter = ({ mapRef, onZoom }) => {
 };
 
 // Draggable marker component for position edit mode
+// Drag-a-box selection: while active, map panning is paused and dragging draws a rectangle;
+// every item whose position falls inside is handed to onSelect (ids).
+const LassoSelect = ({ active, items, onSelect }) => {
+  const map = useMap();
+  useEffect(() => {
+    if (!active) return undefined;
+    const container = map.getContainer();
+    map.dragging.disable();
+    if (map.tap) map.tap.disable();
+    container.style.cursor = "crosshair";
+    let start = null;
+    let rect = null;
+    const pointOf = (e) => {
+      const t = e.touches ? e.touches[0] || e.changedTouches[0] : e;
+      return map.mouseEventToLatLng(t);
+    };
+    const onDown = (e) => {
+      if (e.button !== undefined && e.button !== 0) return;
+      start = pointOf(e);
+      rect = L.rectangle(L.latLngBounds(start, start), { color: "#dc2626", weight: 2, dashArray: "6 4", fillColor: "#dc2626", fillOpacity: 0.12, interactive: false }).addTo(map);
+      e.preventDefault();
+    };
+    const onMove = (e) => {
+      if (!start || !rect) return;
+      rect.setBounds(L.latLngBounds(start, pointOf(e)));
+      e.preventDefault();
+    };
+    const onUp = (e) => {
+      if (!start || !rect) return;
+      const bounds = L.latLngBounds(start, pointOf(e));
+      const ids = items.filter((it) => it.pos && bounds.contains(L.latLng(it.pos[0], it.pos[1]))).map((it) => it.id);
+      map.removeLayer(rect);
+      rect = null;
+      start = null;
+      onSelect(ids);
+    };
+    container.addEventListener("mousedown", onDown);
+    container.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    container.addEventListener("touchstart", onDown, { passive: false });
+    container.addEventListener("touchmove", onMove, { passive: false });
+    container.addEventListener("touchend", onUp);
+    return () => {
+      container.removeEventListener("mousedown", onDown);
+      container.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      container.removeEventListener("touchstart", onDown);
+      container.removeEventListener("touchmove", onMove);
+      container.removeEventListener("touchend", onUp);
+      if (rect) map.removeLayer(rect);
+      container.style.cursor = "";
+      map.dragging.enable();
+      if (map.tap) map.tap.enable();
+    };
+  }, [active, items, map, onSelect]);
+  return null;
+};
+
 const selectOverlayIcon = (selected) =>
   L.divIcon({
     className: "",
@@ -827,6 +885,7 @@ const JobMap = () => {
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [bulkConfirm, setBulkConfirm] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [lassoActive, setLassoActive] = useState(false);
   const [confirmResetLines, setConfirmResetLines] = useState(false);
   const [positionEditMode, setPositionEditMode] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -2529,7 +2588,13 @@ const JobMap = () => {
       return next;
     });
   };
-  const exitSelectMode = () => { setSelectMode(false); setSelectedIds(new Set()); };
+  const exitSelectMode = () => { setSelectMode(false); setSelectedIds(new Set()); setLassoActive(false); };
+  const selectableItems = useMemo(() => [...poleDisplayInfo.map((p) => ({ id: p.id, pos: p.pos })), ...ug.map((u) => ({ id: u.id, pos: u.pos }))], [poleDisplayInfo, ug]);
+  const handleLasso = useCallback((ids) => {
+    if (!ids.length) return;
+    setSelectedIds((prev) => { const next = new Set(prev); ids.forEach((id) => next.add(id)); return next; });
+    toast.success(`${ids.length} item(s) added to the selection`);
+  }, []);
   const handleBulkDelete = async () => {
     const poleIds = poles.filter((p) => selectedIds.has(p.id)).map((p) => p.id);
     const ugIds = underground.filter((u) => selectedIds.has(u.id)).map((u) => u.id);
@@ -2875,6 +2940,10 @@ const JobMap = () => {
             {selectMode ? (
               <div className="flex flex-wrap items-center gap-2" data-testid="map-select-toolbar">
                 <span className="px-3 py-1 bg-red-100 text-red-800 rounded text-sm font-semibold whitespace-nowrap" data-testid="map-select-count">{selectedIds.size} selected</span>
+                <Button variant={lassoActive ? "default" : "outline"} onClick={() => setLassoActive((v) => !v)} aria-pressed={lassoActive} className={lassoActive ? "bg-red-600 hover:bg-red-700 text-white" : "bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900"} title="Drag a box on the map to select every pin inside it" data-testid="map-lasso-btn">
+                  <BoxSelect className="w-4 h-4 mr-2" />
+                  {lassoActive ? "Lasso on — drag a box" : "Lasso"}
+                </Button>
                 <Button variant="outline" onClick={() => setSelectedIds(new Set([...poleDisplayInfo.map((p) => p.id), ...ug.map((u) => u.id)]))} className="bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900" data-testid="map-select-all-btn">Select all</Button>
                 <Button variant="outline" onClick={() => setSelectedIds(new Set())} disabled={selectedIds.size === 0} className="bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900" data-testid="map-select-clear-btn">Clear</Button>
                 <Button onClick={() => setBulkConfirm(true)} disabled={selectedIds.size === 0} className="bg-red-600 hover:bg-red-700 text-white" data-testid="map-bulk-delete-btn">
@@ -3303,9 +3372,9 @@ const JobMap = () => {
             </button>
             {/* Universal edit mode indicator */}
             {selectMode && (
-              <div className="absolute top-2 left-2 z-[1000] bg-red-600 text-white px-3 py-1.5 rounded text-sm font-medium shadow-lg max-w-md" data-testid="map-select-banner">
+              <div className="absolute top-2 left-2 z-[1000] pointer-events-none bg-red-600 text-white px-3 py-1.5 rounded text-sm font-medium shadow-lg max-w-md" data-testid="map-select-banner">
                 <div className="font-semibold">Select Mode Active · {selectedIds.size} selected</div>
-                <div className="text-xs opacity-90 mt-0.5">• Tap a pin to select / unselect it • Tap "Delete selected" when ready • Remaining items keep their numbers</div>
+                <div className="text-xs opacity-90 mt-0.5">• Tap a pin to select / unselect it {lassoActive ? "• Drag a box on the map to select everything inside it " : "• Turn on Lasso to drag-select many pins "}• Tap "Delete selected" when ready</div>
               </div>
             )}
             {(editMode || positionEditMode || connectionEditMode) && !selectedSegment && (
@@ -3858,12 +3927,14 @@ const JobMap = () => {
                 </React.Fragment>
               )})}
               {/* Select mode: tap-to-select overlays sit on top of every pin */}
+              {selectMode && <LassoSelect active={lassoActive} items={selectableItems} onSelect={handleLasso} />}
               {selectMode && [...poleDisplayInfo.map((p) => ({ id: p.id, pos: p.pos })), ...ug.map((u) => ({ id: u.id, pos: u.pos }))].map((it) => (
                 <Marker
                   key={`sel-${it.id}`}
                   position={it.pos}
                   icon={selectOverlayIcon(selectedIds.has(it.id))}
                   zIndexOffset={2500}
+                  interactive={!lassoActive}
                   eventHandlers={{ click: (e) => { L.DomEvent.stopPropagation(e); toggleSelected(it.id); } }}
                 />
               ))}
