@@ -2,9 +2,11 @@ import io
 import math
 import zipfile
 from xml.sax.saxutils import escape
+from typing import Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
 
 from services.auth import get_current_user
 from services.helpers import format_height, haversine_feet
@@ -77,11 +79,11 @@ def _moved_label(name, lat, lon, off, badge=False):
             f"<LineString><tessellate>1</tessellate><coordinates>{lon:.7f},{lat:.7f},0 {lon2:.7f},{lat2:.7f},0</coordinates></LineString></Placemark>")
 
 
-def _pole_rows(p):
+def _pole_rows(p, station=None):
     hoa = "; ".join(f"{a.get('owner') or ''} {a.get('hoa_type') or ''} @ {format_height(a.get('height'))}".strip() for a in (p.get("attachments") or []) if a)
     dg = "; ".join(f"{format_height(d.get('height'))} {d.get('lead') or ''}".strip() for d in (p.get("down_guys") or []) if d)
     return [
-        ("Type", "Pole" + (f" · Terminal: {p['pole_terminal']}" if p.get("pole_terminal") else "")), ("Pole #", p.get("pole_number")), ("Latitude", p.get("latitude")), ("Longitude", p.get("longitude")),
+        ("Type", "Pole" + (f" · Terminal: {p['pole_terminal']}" if p.get("pole_terminal") else "")), ("Pole #", p.get("pole_number")), ("Station", station), ("Latitude", p.get("latitude")), ("Longitude", p.get("longitude")),
         ("Address", p.get("address")), ("Height", format_height(p.get("height")) if p.get("height") else None), ("Class", p.get("pole_class")),
         ("Condition", p.get("condition")), ("Owner", p.get("pole_owner")),
         ("Span 1", f"{p['span1_distance']} ft" if _f(p.get("span1_distance")) else None), ("Span 2", f"{p['span2_distance']} ft" if _f(p.get("span2_distance")) else None),
@@ -99,18 +101,31 @@ def _path_text(u):
     return ", ".join(parts) + f" = {sum(float(m['feet']) for m in pms):g} ft"
 
 
-def _ug_rows(u):
+def _ug_rows(u, station=None):
     return [
-        ("Type", u.get("type")), ("Subtype", u.get("material_type")), ("Label", u.get("label")), ("Latitude", u.get("latitude")), ("Longitude", u.get("longitude")),
+        ("Type", u.get("type")), ("Subtype", u.get("material_type")), ("Label", u.get("label")), ("Station", station), ("Latitude", u.get("latitude")), ("Longitude", u.get("longitude")),
         ("Address", u.get("address")), ("Class", (u.get("aerial_override") or "").capitalize() or None), ("FID", (u.get("fid") or "") + (" (Primary)" if u.get("primary_fid") else "") or None),
         ("Path measurements", _path_text(u)), ("Tie-in measurements", u.get("tie_in_measurements")), ("SOC Start", "Yes" if u.get("soc_start") else None), ("SOC End", "Yes" if u.get("soc_end") else None),
         ("End Path", "Yes" if u.get("end_path") else None), ("Standalone", "Yes" if u.get("standalone") else None), ("Notes", u.get("notes")),
     ]
 
 
+class KmzExportBody(BaseModel):
+    stations: Optional[Dict[str, str]] = None  # item id -> "0+00" (map's list-order chainage)
+
+
+@router.post("/jobs/{job_id}/export/kmz")
+async def export_job_kmz_post(job_id: str, body: KmzExportBody, current_user: dict = Depends(get_current_user)):
+    return await _export_job_kmz(job_id, current_user, body.stations or {})
+
+
 @router.get("/jobs/{job_id}/export/kmz")
 async def export_job_kmz(job_id: str, current_user: dict = Depends(get_current_user)):
-    """Google Earth KMZ: GPS, labels, attribute types, measurements and notes for every pole / underground item, plus map lines and areas. No photos."""
+    return await _export_job_kmz(job_id, current_user, {})
+
+
+async def _export_job_kmz(job_id: str, current_user: dict, stations: Dict[str, str]):
+    """Google Earth KMZ: GPS, labels, attribute types, stations, measurements and notes for every pole / underground item, plus map lines and areas. No photos."""
     from routes.jobs import can_view_job
     from routes.poles import _compute_map_pairs, _route_waypoints_lookup
     job = await can_view_job(job_id, current_user)
@@ -134,7 +149,7 @@ async def export_job_kmz(job_id: str, current_user: dict = Depends(get_current_u
         if is_addr and (p.get("pole_number") or "").strip():
             p = {**p, "address": p.get("pole_number")}  # the assigned address text is the address
         off = _label_offset(p)
-        pole_pm.append(_placemark(pname, _pole_rows(p), lat, lon, "poleNoLabel" if off else "pole"))
+        pole_pm.append(_placemark(pname, _pole_rows(p, stations.get(p.get("id"))), lat, lon, "poleNoLabel" if off else "pole"))
         if off:
             pole_pm.append(_moved_label(str(p.get("pole_number") or pname), lat, lon, off))
     for u in ugs:
@@ -154,7 +169,7 @@ async def export_job_kmz(job_id: str, current_user: dict = Depends(get_current_u
         off = _label_offset(u)
         sid = "aerial" if is_aerial else "ug"
         bucket = aerial_pm if is_aerial else ug_pm
-        bucket.append(_placemark(name, _ug_rows(u), lat, lon, f"{sid}NoLabel" if off else sid))
+        bucket.append(_placemark(name, _ug_rows(u, stations.get(u.get("id"))), lat, lon, f"{sid}NoLabel" if off else sid))
         if off:
             bucket.append(_moved_label(name, lat, lon, off, badge=True))
 
