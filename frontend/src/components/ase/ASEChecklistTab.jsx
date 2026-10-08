@@ -335,7 +335,7 @@ const ASEChecklistTab = ({ formData, handleChange, poles = [], underground = [],
             <DropdownSelect value={formData.equipment_power_config} onChange={(v) => handleChange("equipment_power_config", v)} options={ASE_OPTIONS.powerConfiguration} filled={isFilled(formData.equipment_power_config)} />
           </FieldRow>
           <FieldRow label="Distance From FBT to NTE">
-            <StyledInput value={formData.distance_fbt_to_nte} onChange={(e) => handleChange("distance_fbt_to_nte", e.target.value)} filled={isFilled(formData.distance_fbt_to_nte)} />
+            <StyledInput value={formData.distance_fbt_to_nte} onChange={(e) => handleChange("distance_fbt_to_nte", e.target.value)} filled={isFilled(formData.distance_fbt_to_nte)} data-testid="distance-fbt-to-nte-input" />
           </FieldRow>
           <FieldRow label="Distance from NTE to Customer IT space">
             <StyledInput value={formData.distance_nte_to_it} onChange={(e) => handleChange("distance_nte_to_it", e.target.value)} filled={isFilled(formData.distance_nte_to_it)} />

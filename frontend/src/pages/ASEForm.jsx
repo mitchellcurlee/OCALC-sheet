@@ -327,20 +327,26 @@ const ASEForm = () => {
           const idx = ASE_OPTIONS.efNeeded.indexOf(updated.ef_needed);
           if (idx >= 0) updated.site_readiness_evaluation = ASE_OPTIONS.siteReadiness[idx];
         }
-        // Estimated Fiber Drop Length = measured chainage between the fiber (FBT) attribute and the NTE attribute
-        if (!updated.est_fiber_drop_length) {
+        // Distance from FBT to NTE (Checklist) and Estimated Fiber Drop Length (SVCL Output) share one value:
+        // the measured chainage between the fiber (FBT) attribute and the NTE attribute
+        if (!updated.est_fiber_drop_length || !updated.distance_fbt_to_nte) {
           const pedestalAsFbt = String(updated.pedestal_fiber_as_fbt || "").toUpperCase() === "YES";
           const fiberItem = pedestalAsFbt
             ? ugData.find((u) => u.type === "Pedestal" && String(u.material_type || "").toLowerCase().includes("fiber"))
             : ugData.find((u) => u.type === "FBT" || u.type === "FBT/NTE");
           const nteItem = ugData.find((u) => u.type === "NTE" || u.type === "FBT/NTE");
+          let fbtToNte = "";
           if (fiberItem && nteItem && fiberItem.id !== nteItem.id) {
             const feet = computeItemFeet({ poles: polesData, underground: ugData, connections: connectionsData, routes: routesLookup, spanNotes: jobRes.data?.span_notes || [], spanOrder: jobRes.data?.span_order || null, drawnOnly: routeArg(jobRes.data) });
             if (Number.isFinite(feet[fiberItem.id]) && Number.isFinite(feet[nteItem.id])) {
-              updated.est_fiber_drop_length = `${Math.round(Math.abs(feet[nteItem.id] - feet[fiberItem.id]))} ft`;
+              fbtToNte = `${Math.round(Math.abs(feet[nteItem.id] - feet[fiberItem.id]))} ft`;
             } else if (fiberItem.latitude && nteItem.latitude) {
-              updated.est_fiber_drop_length = `${Math.round(distanceFeet([parseFloat(fiberItem.latitude), parseFloat(fiberItem.longitude)], [parseFloat(nteItem.latitude), parseFloat(nteItem.longitude)]))} ft`;
+              fbtToNte = `${Math.round(distanceFeet([parseFloat(fiberItem.latitude), parseFloat(fiberItem.longitude)], [parseFloat(nteItem.latitude), parseFloat(nteItem.longitude)]))} ft`;
             }
+          }
+          if (fbtToNte) {
+            if (!updated.distance_fbt_to_nte) updated.distance_fbt_to_nte = fbtToNte;
+            if (!updated.est_fiber_drop_length) updated.est_fiber_drop_length = fbtToNte;
           }
         }
         // Multi-tenant based on business units

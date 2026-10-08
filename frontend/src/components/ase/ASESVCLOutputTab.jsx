@@ -119,7 +119,7 @@ const ASESVCLOutputTab = ({ formData, handleChange }) => {
             <StyledInput value={formData.customer_handoff_panel_location} onChange={(e) => handleChange("customer_handoff_panel_location", e.target.value)} filled={isFilled(formData.customer_handoff_panel_location)} placeholder={isFilled(formData.nte_at_terminal) ? (formData.nte_at_terminal === "Terminal" ? "COMMON AREA/MPOE" : "SUITE") : ""} />
           </FieldRow>
           <FieldRow label="Est. Fiber Drop Length" note="MIN 10'">
-            <StyledInput value={formData.est_fiber_drop_length} onChange={(e) => handleChange("est_fiber_drop_length", e.target.value)} filled={isFilled(formData.est_fiber_drop_length)} placeholder={formData.distance_fbt_to_nte || ""} />
+            <StyledInput value={formData.est_fiber_drop_length} onChange={(e) => handleChange("est_fiber_drop_length", e.target.value)} filled={isFilled(formData.est_fiber_drop_length)} placeholder={formData.distance_fbt_to_nte || ""} data-testid="est-fiber-drop-length-input" />
           </FieldRow>
           <FieldRow label="Router on Same Floor">
             <YesNoSelect value={formData.router_on_same_floor || ""} onChange={(v) => handleChange("router_on_same_floor", v)} filled={isFilled(formData.router_on_same_floor)} data-testid="mtei-router-floor-select" />

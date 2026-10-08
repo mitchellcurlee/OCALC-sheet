@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Download, Loader2, Zap, AlertTriangle, Crosshair, ChevronDown, ChevronUp, FileImage, Files, Edit3, Save, X, StickyNote, Ruler, Camera, Hash, Link2, Move, Palette, Plus, Map as MapIcon, MapPin, GripVertical, Upload, Trash2, RotateCcw, Home, Route as RouteIcon, ListOrdered, LandPlot, Maximize2, Minimize2, BoxSelect } from "lucide-react";
 import SpanReorderList from "@/components/SpanReorderList";
 import { layoutLabels, badgeBox, leaderEnd } from "@/lib/labelLayout";
-import { ugTagText, ugTagColor, isAddressAttr, computeRoute, fmtFeet, feetToStation, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, downloadMapPdfPages, ugWithGps, undergroundAbbr, computeUgConnectors, computeConnectionPairs, computeListStations, UNDERGROUND_TYPES, isAerialAttr, resolvePairAerial, spanKey, routeWaypoints, routeArg, placeSpanNotes, LIST_PAGE_LINES, riserAnchor, tieInSuffix, pathRowText, pairIsManual, routePayloadFromOrder } from "@/lib/poleMapImage";
+import { ugTagText, ugTagColor, isAddressAttr, computeRoute, fmtFeet, feetToStation, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, downloadMapPdfPages, ugWithGps, undergroundAbbr, computeUgConnectors, computeConnectionPairs, computeListStations, UNDERGROUND_TYPES, isAerialAttr, resolvePairAerial, spanKey, routeWaypoints, routeArg, placeSpanNotes, LIST_PAGE_LINES, riserAnchor, tieInSuffix, pathRowText, pairIsManual, routePayloadFromOrder, pathTargetOf } from "@/lib/poleMapImage";
 import { ExportDestinationDialog } from "@/components/ExportDestinationDialog";
 import { CLOUD_EXPORT_LABELS, uploadExportToCloud } from "@/lib/cloudExports";
 import { streetOnly } from "@/lib/addressName";
@@ -2298,12 +2298,20 @@ const JobMap = () => {
     const pathLabel = (src) => (src.pole_number !== undefined ? poleName(src.pole_number) : `${undergroundAbbr(src.type)}${src.label ? ` ${src.label}` : ""}`);
     const pathTotal = (src) => src.path_measurements.reduce((s, m) => s + (parseFloat(m.feet) || 0), 0);
     const pathText = (src) => `${pathLabel(src)}: ${src.path_measurements.map((m) => pathRowText(m)).join(", ")} = ${fmtFeet(pathTotal(src))}`;
+    // Resolve the path's "to <name>" target (named like the form dropdown) to the actual item id
+    const targetName = (x) => (x.pole_number !== undefined ? poleName(x.pole_number) : `${undergroundAbbr(x.type)}${x.label && x.label !== x.type ? ` ${x.label}` : ""}`);
+    const pathTargetId = (src) => {
+      const t = pathTargetOf(src.path_measurements);
+      if (!t) return null;
+      const hit = [...poles, ...underground].find((x) => x.id !== src.id && targetName(x) === t);
+      return hit ? hit.id : null;
+    };
     const pushPath = (item, pos) => {
       if (pathAdded.has(item.id)) return;
       const src = item.type === "pole" ? poles.find((x) => x.id === item.id) : underground.find((x) => x.id === item.id);
       if (!src || !(src.path_measurements || []).length) return;
       pathAdded.add(item.id);
-      entries.push({ kind: "path", key: `path:${item.id}`, ft: pathTotal(src), segFeet: src.path_measurements.map((m) => parseFloat(m.feet) || 0), segs: src.path_measurements.map((m) => pathRowText(m)), who: pathLabel(src), so: item.sort_order ?? Infinity, pos, itemId: item.id, text: pathText(src) });
+      entries.push({ kind: "path", key: `path:${item.id}`, ft: pathTotal(src), segFeet: src.path_measurements.map((m) => parseFloat(m.feet) || 0), segs: src.path_measurements.map((m) => pathRowText(m)), who: pathLabel(src), so: item.sort_order ?? Infinity, pos, itemId: item.id, targetId: pathTargetId(src), text: pathText(src) });
     };
     orderedSegments.forEach((seg, i) => {
       pushRiser(seg.from, seg.fromPos);
@@ -2339,7 +2347,7 @@ const JobMap = () => {
       .forEach((u) => {
         pathAdded.add(u.id);
         const so = u.sort_order ?? Infinity;
-        const entry = { kind: "path", key: `path:${u.id}`, ft: pathTotal(u), segFeet: u.path_measurements.map((m) => parseFloat(m.feet) || 0), segs: u.path_measurements.map((m) => pathRowText(m)), who: pathLabel(u), so, pos: null, itemId: u.id, text: pathText(u) };
+        const entry = { kind: "path", key: `path:${u.id}`, ft: pathTotal(u), segFeet: u.path_measurements.map((m) => parseFloat(m.feet) || 0), segs: u.path_measurements.map((m) => pathRowText(m)), who: pathLabel(u), so, pos: null, itemId: u.id, targetId: pathTargetId(u), text: pathText(u) };
         const idx = entries.findIndex((e) => (e.so ?? Infinity) > so);
         if (idx === -1) entries.push(entry);
         else entries.splice(idx, 0, entry);

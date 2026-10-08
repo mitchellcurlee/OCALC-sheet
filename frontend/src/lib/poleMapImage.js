@@ -479,6 +479,8 @@ export const computeListStations = (rows, startId = null) => {
       // per-segment cumulative stations for path measurements (In 20' → 0+20, Over 30' → 0+50 …)
       const segs = Array.isArray(r.segFeet) ? r.segFeet.reduce((acc, f) => { acc.push((acc.length ? acc[acc.length - 1] : start) + (Number(f) || 0)); return acc; }, []) : null;
       run += Number(r.ft);
+      // the item the path runs to (e.g. FBT) sits at the end of the path
+      if (r.targetId && feet[r.targetId] === undefined) feet[r.targetId] = run;
       rowFeet[r.key] = { from: start, to: run, segs };
     }
   });
@@ -564,6 +566,13 @@ export const buildSpanMeasurementTexts = ({ poles, underground = [], connections
   const pathDone = new Set();
   const pathFeetOf = (u) => (u.path_measurements || []).reduce((s, m) => s + (parseFloat(m.feet) || 0), 0);
   const pathSegFeet = (u) => (u.path_measurements || []).map((m) => parseFloat(m.feet) || 0);
+  const targetName = (x) => (x.pole_number !== undefined ? (/^\d/.test(String(x.pole_number || "")) ? `P${x.pole_number}` : (x.pole_number || "Pole")) : `${undergroundAbbr(x.type)}${x.label && x.label !== x.type ? ` ${x.label}` : ""}`);
+  const pathTargetId = (u) => {
+    const t = pathTargetOf(u.path_measurements);
+    if (!t) return null;
+    const hit = [...(poles || []), ...(underground || [])].find((x) => x.id !== u.id && targetName(x) === t);
+    return hit ? hit.id : null;
+  };
   const pathTextOf = (u) => (s) => {
     const who = u.pole_number !== undefined ? (/^\d/.test(String(u.pole_number || "")) ? `P${u.pole_number}` : (u.pole_number || "Pole")) : `${undergroundAbbr(u.type)}${u.label && u.label !== u.type ? ` ${u.label}` : ""}`;
     const withSegSta = includeStations && s && s.segs;
@@ -597,7 +606,7 @@ export const buildSpanMeasurementTexts = ({ poles, underground = [], connections
     const u = it.type === "pole" ? poles.find((x) => x.id === it.id) : underground.find((x) => x.id === it.id);
     if (!u || !(u.path_measurements || []).length) return;
     pathDone.add(it.id);
-    rows.push({ key: `path:${it.id}`, kind: "path", itemId: it.id, ft: pathFeetOf(u), segFeet: pathSegFeet(u), so: it.sort_order ?? Infinity, text: pathTextOf(u) });
+    rows.push({ key: `path:${it.id}`, kind: "path", itemId: it.id, targetId: pathTargetId(u), ft: pathFeetOf(u), segFeet: pathSegFeet(u), so: it.sort_order ?? Infinity, text: pathTextOf(u) });
   };
   pairs.forEach((pr) => {
     pushRiser(pr.from);
@@ -629,7 +638,7 @@ export const buildSpanMeasurementTexts = ({ poles, underground = [], connections
     .forEach((u) => {
       pathDone.add(u.id);
       const so = u.sort_order ?? Infinity;
-      const row = { key: `path:${u.id}`, kind: "path", itemId: u.id, ft: pathFeetOf(u), segFeet: pathSegFeet(u), so, text: pathTextOf(u) };
+      const row = { key: `path:${u.id}`, kind: "path", itemId: u.id, targetId: pathTargetId(u), ft: pathFeetOf(u), segFeet: pathSegFeet(u), so, text: pathTextOf(u) };
       const idx = rows.findIndex((r) => (r.so ?? Infinity) > so);
       if (idx === -1) rows.push(row);
       else rows.splice(idx, 0, row);
@@ -678,7 +687,10 @@ export const computeItemFeet = ({ poles, underground = [], connections = [], rou
       const arrive = depart + (Number(r.ft) || 0);
       if (feet[r.toId] === undefined) feet[r.toId] = arrive;
       run = arrive; prevTo = r.toId;
-    } else if ((r.kind === "riser" || r.kind === "path") && Number(r.ft) > 0) run += Number(r.ft);
+    } else if ((r.kind === "riser" || r.kind === "path") && Number(r.ft) > 0) {
+      run += Number(r.ft);
+      if (r.targetId && feet[r.targetId] === undefined) feet[r.targetId] = run;
+    }
   });
   return feet;
 };
