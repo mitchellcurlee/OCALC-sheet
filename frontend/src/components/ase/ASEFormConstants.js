@@ -18,7 +18,7 @@ export const ASE_OPTIONS = {
   // Occupancy Types (from SOURCE sheet Column C)
   occupancyTypes: [
     "RETAIL", "INDUSTRIAL", "OFFICE", "SPORTS", "GOVERNMENT", 
-    "LAND", "MULTI-FAMILY", "HEALTHCARE", "STRIP MALL", "SPECIALTY"
+    "LAND", "MULTI-FAMILY", "HEALTHCARE", "STRIP MALL", "SPECIALTY", "RESIDENTIAL"
   ],
   
   // Owner/Tenant (from data sheet Column C)
@@ -31,7 +31,7 @@ export const ASE_OPTIONS = {
   powerType: ["AC", "DC", "DUEL POWER SUPPLY"],
   
   // Construction Type / EF Disqualification Reason (from SOURCE sheet Column F)  
-  efDisqualificationReason: ["CONSTRUCTION", "SPECIAL CONSTRUCTION", "REMODEL", "CWOTS", "CONSTRUCTION TRAILER", "CELL SITE", "OVER 1000FT", "N/A"],
+  efDisqualificationReason: ["CONSTRUCTION", "SPECIAL CONSTRUCTION", "REMODEL", "CWOTS", "CONSTRUCTION TRAILER", "CELL SITE", "OVER 1000FT", "RESIDENTIAL", "N/A"],
   
   // Terminal Location (from data sheet Column F)
   terminalLocation: ["NEW", "EXISTING"],
