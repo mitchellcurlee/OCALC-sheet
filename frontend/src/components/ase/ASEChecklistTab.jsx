@@ -346,6 +346,11 @@ const ASEChecklistTab = ({ formData, handleChange, poles = [], underground = [],
           <FieldRow label="Ceiling Height">
             <StyledInput value={formData.ceiling_height} onChange={(e) => handleChange("ceiling_height", e.target.value)} filled={isFilled(formData.ceiling_height)} placeholder="e.g., 10'" />
           </FieldRow>
+          <FieldRow label="Lift Needed">
+            <div data-testid="lift-needed-toggle">
+              <YesNoSelect value={formData.lift_needed} onChange={(v) => handleChange("lift_needed", v)} filled={isFilled(formData.lift_needed)} />
+            </div>
+          </FieldRow>
         </div>
       </CollapsibleSection>
 

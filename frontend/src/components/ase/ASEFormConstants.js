@@ -165,6 +165,7 @@ export const INITIAL_FORM_DATA = {
   distance_nte_to_it: "",
   it_same_floor_as_nte: "",
   ceiling_height: "",
+  lift_needed: "",
   
   // EF OFFER
   ef_needed: "",

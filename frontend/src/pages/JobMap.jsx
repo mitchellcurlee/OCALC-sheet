@@ -545,15 +545,15 @@ const numberBadgeIcon = (num, color = "#ea580c", anchor = [13, 13], picked = fal
     iconAnchor: anchor[0] === 13 && anchor[1] === 13 ? [width / 2, h / 2] : anchor,
   });
 };
-// Station tag shown next to each pin when Sta #'s is on: "P1/0+00", "HH/3+08"
+// Station tag shown next to each pin when Sta #'s is on: "P1/0+00", "HH/3+08" (centre-anchored, draggable)
+const stationTagSize = (text) => [10 + text.length * 7.2, 22];
 const stationTagIcon = (text, color = "#4f46e5") => {
-  const h = 22;
-  const width = 10 + text.length * 7.2;
+  const [width, h] = stationTagSize(text);
   return L.divIcon({
     className: "station-tag",
-    html: `<div style="background:${color};color:#fff;border:2px solid #fff;border-radius:6px;height:${h}px;display:inline-flex;align-items:center;justify-content:center;font:700 11px/1 ui-monospace,monospace;white-space:nowrap;padding:0 5px;box-shadow:0 1px 4px rgba(0,0,0,.5);">${text}</div>`,
+    html: `<div style="background:${color};color:#fff;border:2px solid #fff;border-radius:6px;height:${h}px;width:${width}px;display:inline-flex;align-items:center;justify-content:center;font:700 11px/1 ui-monospace,monospace;white-space:nowrap;box-sizing:border-box;box-shadow:0 1px 4px rgba(0,0,0,.5);cursor:grab;">${text}</div>`,
     iconSize: [width, h],
-    iconAnchor: [-6, h + 6],
+    iconAnchor: [width / 2, h / 2],
   });
 };
 const SPAN_BADGE_MODES = ["normal", "small", "off"];
@@ -2559,8 +2559,8 @@ const JobMap = () => {
   const resetLabelOffsets = async () => {
     const pinnedP = poles.filter((p) => Array.isArray(p.label_offset));
     const pinnedU = underground.filter((u) => Array.isArray(u.label_offset));
-    const badgeCount = Object.keys(job?.span_badge_offsets || {}).length;
-    if (badgeCount) { setJob((prev) => ({ ...(prev || {}), span_badge_offsets: {} })); axios.put(`/jobs/${jobId}`, { span_badge_offsets: {} }).catch(() => {}); }
+    const badgeCount = Object.keys(job?.span_badge_offsets || {}).length + Object.keys(job?.station_tag_offsets || {}).length;
+    if (badgeCount) { setJob((prev) => ({ ...(prev || {}), span_badge_offsets: {}, station_tag_offsets: {} })); axios.put(`/jobs/${jobId}`, { span_badge_offsets: {}, station_tag_offsets: {} }).catch(() => {}); }
     if (!pinnedP.length && !pinnedU.length) { toast.info(badgeCount ? `${badgeCount} span badge(s) back in place` : "No moved labels to reset"); return; }
     setPoles((prev) => prev.map((p) => ({ ...p, label_offset: null })));
     setUnderground((prev) => prev.map((u) => ({ ...u, label_offset: null })));
@@ -2579,6 +2579,36 @@ const JobMap = () => {
     try { await axios.put(`/jobs/${jobId}`, { span_badge_offsets: next }); }
     catch { toast.error("Could not save badge position"); fetchData(); }
   };
+  // Station tag: sits up-right of its pin by default, draggable anywhere (offset stored on the job), leader back to the pin
+  const stationTagOffsets = job?.station_tag_offsets || {};
+  const saveStationTagOffset = async (itemId, off) => {
+    const next = { ...(job?.station_tag_offsets || {}) };
+    if (off) next[itemId] = off; else delete next[itemId];
+    setJob((prev) => ({ ...(prev || {}), station_tag_offsets: next }));
+    try { await axios.put(`/jobs/${jobId}`, { station_tag_offsets: next }); }
+    catch { toast.error("Could not save station tag position"); fetchData(); }
+  };
+  const renderStationTag = (item, text, color) => {
+    if (!text) return null;
+    const map = mapRef.current;
+    const off = stationTagOffsets[item.id];
+    let pos;
+    if (Array.isArray(off) && off.length === 2) pos = [item.pos[0] + off[0], item.pos[1] + off[1]];
+    else if (map) {
+      const [w, h] = stationTagSize(text);
+      const z = map.getZoom();
+      const pt = map.project(L.latLng(item.pos[0], item.pos[1]), z);
+      const ll = map.unproject(L.point(pt.x + w / 2 + 14, pt.y - (h / 2 + 14)), z);
+      pos = [ll.lat, ll.lng];
+    } else pos = item.pos;
+    return (
+      <>
+        <Polyline positions={[item.pos, pos]} pathOptions={{ color, weight: 1.5, dashArray: "3,2", opacity: 0.95 }} interactive={false} />
+        <DraggableMarker position={pos} icon={stationTagIcon(text, color)} draggable zIndexOffset={1500} onDragEnd={(lat, lng) => saveStationTagOffset(item.id, [lat - item.pos[0], lng - item.pos[1]])} />
+      </>
+    );
+  };
+
   const renderSpanBadge = (i, segmentKey, midPos, seg) => {
     const off = spanBadgeOffsets[segmentKey];
     const pos = Array.isArray(off) && off.length === 2 ? [midPos[0] + off[0], midPos[1] + off[1]] : midPos;
@@ -3859,10 +3889,8 @@ const JobMap = () => {
                         </div>
                       </Popup>
                     </DraggableMarker>
-                    {/* Station tag — "P1/0+00" */}
-                    {stationLabel && (
-                      <Marker position={p.pos} icon={stationTagIcon(stationTagText(p, true))} interactive={false} zIndexOffset={850} />
-                    )}
+                    {/* Station tag — "P1/0+00" (draggable, leader to the pin) */}
+                    {stationLabel && renderStationTag(p, stationTagText(p, true), "#4f46e5")}
                     {/* Move Items mode: the smart tag itself is draggable */}
                     {handlePos && (
                       <DraggableMarker
@@ -3948,10 +3976,8 @@ const JobMap = () => {
                       </div>
                     </Popup>
                   </DraggableMarker>
-                  {/* Station tag — "HH/3+08" */}
-                  {stationLabel && (
-                    <Marker position={u.pos} icon={stationTagIcon(stationTagText(u, false), isRed ? "#dc2626" : "#4f46e5")} interactive={false} zIndexOffset={850} />
-                  )}
+                  {/* Station tag — "HH/3+08" (draggable, leader to the pin) */}
+                  {stationLabel && renderStationTag(u, stationTagText(u, false), isRed ? "#dc2626" : "#4f46e5")}
                 </React.Fragment>
               )})}
               {/* Select mode: tap-to-select overlays sit on top of every pin */}

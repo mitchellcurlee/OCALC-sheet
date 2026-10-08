@@ -645,6 +645,26 @@ export const computeItemStations = ({ poles, underground = [], connections = [],
 };
 
 // Anchor of a riser row: undefined = legacy numeric placement, null = top of list, else key of the row above
+// Numeric chainage (feet) per item id — same walk as computeListStations, used for FBT→NTE drop length
+export const computeItemFeet = ({ poles, underground = [], connections = [], routes = {}, spanNotes = [], spanOrder = null, drawnOnly = false }) => {
+  const rows = [];
+  buildSpanMeasurementTexts({ poles, underground, connections, routes, spanNotes, spanOrder, drawnOnly, includeStations: true, _collect: rows });
+  const feet = {};
+  let run = 0, prevTo = null, started = false;
+  rows.forEach((r) => {
+    if (r.kind === "span" && r.fromId && r.toId) {
+      const continues = !started || prevTo === r.fromId || feet[r.fromId] === undefined;
+      const depart = continues ? run : feet[r.fromId];
+      if (feet[r.fromId] === undefined) feet[r.fromId] = started ? depart : 0;
+      started = true;
+      const arrive = depart + (Number(r.ft) || 0);
+      if (feet[r.toId] === undefined) feet[r.toId] = arrive;
+      run = arrive; prevTo = r.toId;
+    } else if ((r.kind === "riser" || r.kind === "path") && Number(r.ft) > 0) run += Number(r.ft);
+  });
+  return feet;
+};
+
 export const riserAnchor = (pole) => (pole?.riser_after ? (pole.riser_after === "__top__" ? null : pole.riser_after) : undefined);
 
 // Span notes: legacy notes carry a numeric `so`; notes moved with the arrows carry `after`

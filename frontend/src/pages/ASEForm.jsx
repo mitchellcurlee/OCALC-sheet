@@ -16,7 +16,9 @@ import { ArrowLeft, Save, FileSpreadsheet, Loader2, ClipboardList, Users, FileOu
 import { INITIAL_FORM_DATA } from "@/components/ase";
 import { ExportDestinationDialog } from "@/components/ExportDestinationDialog";
 import { CLOUD_EXPORT_LABELS, uploadExportToCloud, saveBlobToDevice, formExportFilename } from "@/lib/cloudExports";
-import { buildSpanMeasurementTexts, routeArg } from "@/lib/poleMapImage";
+import { buildSpanMeasurementTexts, routeArg, computeItemFeet, distanceFeet } from "@/lib/poleMapImage";
+import { ASE_OPTIONS } from "@/components/ase/ASEFormConstants";
+import { ASEMapReference } from "@/components/ase/ASEMapReference";
 import ASEChecklistTab from "@/components/ase/ASEChecklistTab";
 import ASECoordinatorTab from "@/components/ase/ASECoordinatorTab";
 import ASESVCLOutputTab from "@/components/ase/ASESVCLOutputTab";
@@ -40,7 +42,15 @@ const ASEForm = () => {
   const [formData, setFormData] = useState(INITIAL_FORM_DATA);
 
   const handleChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => {
+      const next = { ...prev, [field]: value };
+      // EF Needed (checklist) drives Site Readiness Evaluation (SVCL Output) — same position in both option lists
+      if (field === "ef_needed") {
+        const idx = ASE_OPTIONS.efNeeded.indexOf(value);
+        if (idx >= 0) next.site_readiness_evaluation = ASE_OPTIONS.siteReadiness[idx];
+      }
+      return next;
+    });
   };
 
   const regeneratePathOfApproach = (format) => {
@@ -312,6 +322,27 @@ const ASEForm = () => {
         }
         
         // Auto-calculate SVCL Output fields
+        // Site Readiness Evaluation mirrors EF Needed
+        if (updated.ef_needed && !updated.site_readiness_evaluation) {
+          const idx = ASE_OPTIONS.efNeeded.indexOf(updated.ef_needed);
+          if (idx >= 0) updated.site_readiness_evaluation = ASE_OPTIONS.siteReadiness[idx];
+        }
+        // Estimated Fiber Drop Length = measured chainage between the fiber (FBT) attribute and the NTE attribute
+        if (!updated.est_fiber_drop_length) {
+          const pedestalAsFbt = String(updated.pedestal_fiber_as_fbt || "").toUpperCase() === "YES";
+          const fiberItem = pedestalAsFbt
+            ? ugData.find((u) => u.type === "Pedestal" && String(u.material_type || "").toLowerCase().includes("fiber"))
+            : ugData.find((u) => u.type === "FBT" || u.type === "FBT/NTE");
+          const nteItem = ugData.find((u) => u.type === "NTE" || u.type === "FBT/NTE");
+          if (fiberItem && nteItem && fiberItem.id !== nteItem.id) {
+            const feet = computeItemFeet({ poles: polesData, underground: ugData, connections: connectionsData, routes: routesLookup, spanNotes: jobRes.data?.span_notes || [], spanOrder: jobRes.data?.span_order || null, drawnOnly: routeArg(jobRes.data) });
+            if (Number.isFinite(feet[fiberItem.id]) && Number.isFinite(feet[nteItem.id])) {
+              updated.est_fiber_drop_length = `${Math.round(Math.abs(feet[nteItem.id] - feet[fiberItem.id]))} ft`;
+            } else if (fiberItem.latitude && nteItem.latitude) {
+              updated.est_fiber_drop_length = `${Math.round(distanceFeet([parseFloat(fiberItem.latitude), parseFloat(fiberItem.longitude)], [parseFloat(nteItem.latitude), parseFloat(nteItem.longitude)]))} ft`;
+            }
+          }
+        }
         // Multi-tenant based on business units
         if (updated.number_of_business_units) {
           const units = parseInt(updated.number_of_business_units) || 0;
@@ -547,6 +578,9 @@ const ASEForm = () => {
           </span>
         </div>
         
+        {/* On-screen reference: job map + span list (never exported) */}
+        <ASEMapReference job={job} poles={poles} underground={underground} connections={mapConnections} routes={mapRoutes} />
+
         {/* 3-Tab Structure - EXACT match to Excel */}
         <Tabs defaultValue="ase-cklist" className="w-full">
           <TabsList className="grid w-full grid-cols-4 mb-6 bg-zinc-100 p-1 rounded-lg h-auto">

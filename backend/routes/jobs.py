@@ -1803,7 +1803,7 @@ ASE_YES_NO_KEYS = {
     "pipelines_path", "pipelines_vicinity", "proposed_nte_common_space", "railroads_path", "railroads_vicinity",
     "multi_tenant_eligibility", "router_on_same_floor", "buried_pvc", "buried_innerduct", "need_emt",
     "need_plenum", "need_core_drill", "need_eyebolt", "need_pullbox", "need_hoffman_box", "need_backboard",
-    "need_outlet", "need_groundbar",
+    "need_outlet", "need_groundbar", "lift_needed",
 }
 
 
@@ -2079,13 +2079,16 @@ async def export_ase_excel(job_id: str, request: Request, current_user: dict = D
         if lines > 1:
             ws.row_dimensions[row].height = min(14 * lines + 4, 240)
 
+    def _has(v):
+        return v is not None and str(v).strip() != ""
+
     def add_row(ws, row, label, value):
         label_cell = ws.cell(row=row, column=1, value=label)
         label_cell.font = label_font
         label_cell.alignment = wrap_align
-        value_cell = ws.cell(row=row, column=2, value=value or "")
+        value_cell = ws.cell(row=row, column=2, value=value if _has(value) else "NA")
         value_cell.font = value_font
-        value_cell.fill = filled_fill if value else empty_fill
+        value_cell.fill = filled_fill if _has(value) else empty_fill
         value_cell.alignment = wrap_align
         _fit_height(ws, row, max(_calc_lines(label, 43), _calc_lines(value, 33)))
         return row + 1
@@ -2094,16 +2097,16 @@ async def export_ase_excel(job_id: str, request: Request, current_user: dict = D
         l1_cell = ws.cell(row=row, column=1, value=label1)
         l1_cell.font = label_font
         l1_cell.alignment = wrap_align
-        v1_cell = ws.cell(row=row, column=2, value=value1 or "")
+        v1_cell = ws.cell(row=row, column=2, value=value1 if _has(value1) else "NA")
         v1_cell.font = value_font
-        v1_cell.fill = filled_fill if value1 else empty_fill
+        v1_cell.fill = filled_fill if _has(value1) else empty_fill
         v1_cell.alignment = wrap_align
         l2_cell = ws.cell(row=row, column=3, value=label2)
         l2_cell.font = label_font
         l2_cell.alignment = wrap_align
-        v2_cell = ws.cell(row=row, column=4, value=value2 or "")
+        v2_cell = ws.cell(row=row, column=4, value=value2 if _has(value2) else "NA")
         v2_cell.font = value_font
-        v2_cell.fill = filled_fill if value2 else empty_fill
+        v2_cell.fill = filled_fill if _has(value2) else empty_fill
         v2_cell.alignment = wrap_align
         _fit_height(ws, row, max(_calc_lines(label1, 43), _calc_lines(value1, 33), _calc_lines(label2, 18), _calc_lines(value2, 28)))
         return row + 1
@@ -2113,9 +2116,9 @@ async def export_ase_excel(job_id: str, request: Request, current_user: dict = D
         label_cell = ws.cell(row=row, column=1, value=label)
         label_cell.font = label_font
         label_cell.alignment = wrap_align
-        value_cell = ws.cell(row=row, column=2, value=value or "")
+        value_cell = ws.cell(row=row, column=2, value=value if _has(value) else "NA")
         value_cell.font = value_font
-        value_cell.fill = filled_fill if value else empty_fill
+        value_cell.fill = filled_fill if _has(value) else empty_fill
         value_cell.alignment = wrap_align
         ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=4)
         lines = max(_calc_lines(label, 43), _calc_lines(value, 83))
@@ -2221,7 +2224,7 @@ async def export_ase_excel(job_id: str, request: Request, current_user: dict = D
     row = add_row(ws1, row, "Distance From FBT to NTE:", ase.get("distance_fbt_to_nte", ""))
     row = add_row(ws1, row, "Distance from NTE to Customer IT space:", ase.get("distance_nte_to_it", ""))
     row = add_row(ws1, row, "Is Customer IT space on same floor as NTE?:", ase.get("it_same_floor_as_nte", ""))
-    row = add_row(ws1, row, "Ceiling Height:", ase.get("ceiling_height", ""))
+    row = add_row_pair(ws1, row, "Ceiling Height:", ase.get("ceiling_height", ""), "Lift Needed:", ase.get("lift_needed", ""))
     row += 1
     
     # EF Offer
@@ -2361,7 +2364,7 @@ async def export_ase_excel(job_id: str, request: Request, current_user: dict = D
     row = add_row(ws3, row, "Est. Fiber Drop Length (MIN 10'):", ase.get("est_fiber_drop_length", "") or ase.get("distance_fbt_to_nte", ""))
     row = add_row(ws3, row, "Router on Same Floor:", ase.get("router_on_same_floor", ""))
     row = add_row(ws3, row, "Router Within 300 (ft):", ase.get("router_within_300ft", ""))
-    row = add_row(ws3, row, "Ceiling Height:", ase.get("ceiling_height", ""))
+    row = add_row_pair(ws3, row, "Ceiling Height:", ase.get("ceiling_height", ""), "Lift Needed:", ase.get("lift_needed", ""))
     row += 1
     
     # Site Requirements

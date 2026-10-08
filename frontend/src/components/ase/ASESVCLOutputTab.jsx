@@ -130,6 +130,9 @@ const ASESVCLOutputTab = ({ formData, handleChange }) => {
           <FieldRow label="Ceiling Height">
             <StyledInput value={formData.ceiling_height || ""} onChange={(e) => handleChange("ceiling_height", e.target.value)} filled={isFilled(formData.ceiling_height)} />
           </FieldRow>
+          <FieldRow label="Lift Needed">
+            <YesNoSelect value={formData.lift_needed} onChange={(v) => handleChange("lift_needed", v)} filled={isFilled(formData.lift_needed)} data-testid="svcl-lift-needed-toggle" />
+          </FieldRow>
         </div>
       </Section>
 

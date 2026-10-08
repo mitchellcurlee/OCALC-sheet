@@ -29,6 +29,7 @@ class JobUpdate(BaseModel):
     folder_month: Optional[str] = None
     span_notes: Optional[List[Dict[str, Any]]] = None
     span_badge_offsets: Optional[Dict[str, Any]] = None  # { spanKey: [dLat, dLng] } moved measurement badges
+    station_tag_offsets: Optional[Dict[str, Any]] = None  # { itemId: [dLat, dLng] } moved station tags
     span_order: Optional[List[str]] = None  # user-swapped span numbering (direction-free pair keys)
     station_start_id: Optional[str] = None  # attribute that reads 0+00 ("" = default first item)
     route_sequence: Optional[List[str]] = None  # Draw Route: item ids in tapped order (overall job sequence)
@@ -55,6 +56,7 @@ class Job(BaseModel):
     folder_month: Optional[str] = None
     span_notes: Optional[List[Dict[str, Any]]] = []
     span_badge_offsets: Optional[Dict[str, Any]] = {}
+    station_tag_offsets: Optional[Dict[str, Any]] = {}
     span_order: Optional[List[str]] = []
     station_start_id: Optional[str] = None
     route_sequence: Optional[List[str]] = []
