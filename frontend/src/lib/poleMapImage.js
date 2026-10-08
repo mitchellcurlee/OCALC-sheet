@@ -474,15 +474,22 @@ export const computeListStations = (rows, startId = null) => {
       prevTo = r.toId;
     } else if ((r.kind === "riser" || r.kind === "path") && Number(r.ft) > 0) {
       const start = run;
+      // the item carrying the footage gets a station too (a path alone starts the chainage at 0+00)
+      if (r.itemId && feet[r.itemId] === undefined) feet[r.itemId] = start;
+      // per-segment cumulative stations for path measurements (In 20' → 0+20, Over 30' → 0+50 …)
+      const segs = Array.isArray(r.segFeet) ? r.segFeet.reduce((acc, f) => { acc.push((acc.length ? acc[acc.length - 1] : start) + (Number(f) || 0)); return acc; }, []) : null;
       run += Number(r.ft);
-      rowFeet[r.key] = { from: start, to: run };
+      rowFeet[r.key] = { from: start, to: run, segs };
     }
   });
   const offset = startId && feet[startId] !== undefined ? feet[startId] : 0;
   const byItem = {};
   Object.keys(feet).forEach((id) => { byItem[id] = feetToStation(feet[id] - offset); });
   const rowSta = {};
-  Object.keys(rowFeet).forEach((k) => { rowSta[k] = { from: feetToStation(rowFeet[k].from - offset), to: feetToStation(rowFeet[k].to - offset) }; });
+  Object.keys(rowFeet).forEach((k) => {
+    const rf = rowFeet[k];
+    rowSta[k] = { from: feetToStation(rf.from - offset), to: feetToStation(rf.to - offset), segs: rf.segs ? rf.segs.map((f) => feetToStation(f - offset)) : null };
+  });
   return { byItem, rowSta };
 };
 const pathMid = (path) => {
@@ -534,8 +541,8 @@ const pathDoneSet = (items) => new Set((items || []).filter((u) => u.standalone 
 
 // Build the exact text lines shown in the interactive map's Span Measurements list.
 // Used by the ASE checklist "path of approach" so both always match.
-export const buildSpanMeasurementTexts = ({ poles, underground = [], connections = [], includeStations = false, stationsOnly = false, routes = {}, spanNotes = [], spanOrder = null, drawnOnly = false, stationStartId = null, _collect = null }) => {
-  if (stationsOnly) includeStations = true;
+export const buildSpanMeasurementTexts = ({ poles, underground = [], connections = [], includeStations: includeStationsArg = false, stationsOnly = false, routes = {}, spanNotes = [], spanOrder = null, drawnOnly = false, stationStartId = null, _collect = null }) => {
+  const includeStations = includeStationsArg || stationsOnly;
   const { route } = computeRoute(poles);
   const ug = ugWithGps(underground);
   const pairs = computeConnectionPairs(route, ug, connections, spanOrder, drawnOnly);
@@ -556,9 +563,13 @@ export const buildSpanMeasurementTexts = ({ poles, underground = [], connections
   const orderKeysUsable = route.some((p) => Number.isFinite(p.sort_order)) || (underground || []).some((u) => Number.isFinite(u.sort_order));
   const pathDone = new Set();
   const pathFeetOf = (u) => (u.path_measurements || []).reduce((s, m) => s + (parseFloat(m.feet) || 0), 0);
+  const pathSegFeet = (u) => (u.path_measurements || []).map((m) => parseFloat(m.feet) || 0);
   const pathTextOf = (u) => (s) => {
-    const base = `${u.pole_number !== undefined ? (/^\d/.test(String(u.pole_number || "")) ? `P${u.pole_number}` : (u.pole_number || "Pole")) : `${undergroundAbbr(u.type)}${u.label && u.label !== u.type ? ` ${u.label}` : ""}`}: ${u.path_measurements.map((m) => pathRowText(m)).join(", ")} = ${fmtFeet(pathFeetOf(u))}`;
-    return stationsOnly && s ? `${base} (${s.from} to ${s.to})` : base;
+    const who = u.pole_number !== undefined ? (/^\d/.test(String(u.pole_number || "")) ? `P${u.pole_number}` : (u.pole_number || "Pole")) : `${undergroundAbbr(u.type)}${u.label && u.label !== u.type ? ` ${u.label}` : ""}`;
+    const withSegSta = includeStations && s && s.segs;
+    const parts = u.path_measurements.map((m, i) => `${pathRowText(m)}${withSegSta ? ` ${s.segs[i]}` : ""}`);
+    const base = `${who}${withSegSta ? ` ${s.from}` : ""}: ${parts.join(", ")}${stationsOnly ? "" : ` = ${fmtFeet(pathFeetOf(u))}`}`;
+    return base;
   };
   const pushRiser = (it) => {
     if (it.type !== "pole" || riserDone.has(it.id)) return;
@@ -586,7 +597,7 @@ export const buildSpanMeasurementTexts = ({ poles, underground = [], connections
     const u = it.type === "pole" ? poles.find((x) => x.id === it.id) : underground.find((x) => x.id === it.id);
     if (!u || !(u.path_measurements || []).length) return;
     pathDone.add(it.id);
-    rows.push({ key: `path:${it.id}`, kind: "path", itemId: it.id, ft: pathFeetOf(u), so: it.sort_order ?? Infinity, text: pathTextOf(u) });
+    rows.push({ key: `path:${it.id}`, kind: "path", itemId: it.id, ft: pathFeetOf(u), segFeet: pathSegFeet(u), so: it.sort_order ?? Infinity, text: pathTextOf(u) });
   };
   pairs.forEach((pr) => {
     pushRiser(pr.from);
@@ -618,7 +629,7 @@ export const buildSpanMeasurementTexts = ({ poles, underground = [], connections
     .forEach((u) => {
       pathDone.add(u.id);
       const so = u.sort_order ?? Infinity;
-      const row = { key: `path:${u.id}`, kind: "path", itemId: u.id, ft: pathFeetOf(u), so, text: pathTextOf(u) };
+      const row = { key: `path:${u.id}`, kind: "path", itemId: u.id, ft: pathFeetOf(u), segFeet: pathSegFeet(u), so, text: pathTextOf(u) };
       const idx = rows.findIndex((r) => (r.so ?? Infinity) > so);
       if (idx === -1) rows.push(row);
       else rows.splice(idx, 0, row);
@@ -645,6 +656,13 @@ export const computeItemStations = ({ poles, underground = [], connections = [],
 };
 
 // Anchor of a riser row: undefined = legacy numeric placement, null = top of list, else key of the row above
+// Total job footage = every footage row in the span measurements list (spans + new risers + path measurements)
+export const computeJobFootage = ({ poles, underground = [], connections = [], routes = {}, spanNotes = [], spanOrder = null, drawnOnly = false }) => {
+  const rows = [];
+  buildSpanMeasurementTexts({ poles, underground, connections, routes, spanNotes, spanOrder, drawnOnly, _collect: rows });
+  return Math.round(rows.reduce((t, r) => t + (["span", "riser", "path"].includes(r.kind) ? Number(r.ft) || 0 : 0), 0));
+};
+
 // Numeric chainage (feet) per item id — same walk as computeListStations, used for FBT→NTE drop length
 export const computeItemFeet = ({ poles, underground = [], connections = [], routes = {}, spanNotes = [], spanOrder = null, drawnOnly = false }) => {
   const rows = [];

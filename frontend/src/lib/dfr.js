@@ -1,3 +1,5 @@
+import axios from "axios";
+import { computeJobFootage, routeArg } from "@/lib/poleMapImage";
 // Daily Field Report helpers
 export const MARKETS = ["FTH", "FTD", "FOH"];
 export const HOUR_OPTIONS = Array.from({ length: 16 * 4 + 1 }, (_, i) => (i * 0.25).toFixed(2).replace(/\.?0+$/, "") || "0");
@@ -51,4 +53,21 @@ export const summarizeRowTrack = (track, row) => {
     return_hrs: hrs(g.leaving, g.stop),
     miles: Math.min(500, Math.round(trackMiles(by("travel")) + trackMiles(by("work")) + trackMiles(by("return")))),
   };
+};
+
+// Total footage of a job's span measurements (spans + risers + path measurements), or null when it can't be read
+export const fetchJobFootage = async (job) => {
+  try {
+    const [polesRes, ugRes, connRes, routesRes] = await Promise.all([
+      axios.get(`/jobs/${job.id}/poles`),
+      axios.get(`/jobs/${job.id}/underground`),
+      axios.get(`/jobs/${job.id}/connections`).catch(() => ({ data: [] })),
+      axios.get(`/jobs/${job.id}/routes`).catch(() => ({ data: [] })),
+    ]);
+    const routes = {};
+    (routesRes.data || []).forEach((r) => { routes[`${r.from_pole_id}-${r.to_pole_id}`] = r.waypoints || []; });
+    return computeJobFootage({ poles: polesRes.data || [], underground: ugRes.data || [], connections: connRes.data || [], routes, spanNotes: job.span_notes || [], spanOrder: job.span_order || null, drawnOnly: routeArg(job) });
+  } catch {
+    return null;
+  }
 };

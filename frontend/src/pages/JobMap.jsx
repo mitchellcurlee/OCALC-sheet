@@ -2303,7 +2303,7 @@ const JobMap = () => {
       const src = item.type === "pole" ? poles.find((x) => x.id === item.id) : underground.find((x) => x.id === item.id);
       if (!src || !(src.path_measurements || []).length) return;
       pathAdded.add(item.id);
-      entries.push({ kind: "path", key: `path:${item.id}`, ft: pathTotal(src), so: item.sort_order ?? Infinity, pos, itemId: item.id, text: pathText(src) });
+      entries.push({ kind: "path", key: `path:${item.id}`, ft: pathTotal(src), segFeet: src.path_measurements.map((m) => parseFloat(m.feet) || 0), segs: src.path_measurements.map((m) => pathRowText(m)), who: pathLabel(src), so: item.sort_order ?? Infinity, pos, itemId: item.id, text: pathText(src) });
     };
     orderedSegments.forEach((seg, i) => {
       pushRiser(seg.from, seg.fromPos);
@@ -2339,7 +2339,7 @@ const JobMap = () => {
       .forEach((u) => {
         pathAdded.add(u.id);
         const so = u.sort_order ?? Infinity;
-        const entry = { kind: "path", key: `path:${u.id}`, ft: pathTotal(u), so, pos: null, itemId: u.id, text: pathText(u) };
+        const entry = { kind: "path", key: `path:${u.id}`, ft: pathTotal(u), segFeet: u.path_measurements.map((m) => parseFloat(m.feet) || 0), segs: u.path_measurements.map((m) => pathRowText(m)), who: pathLabel(u), so, pos: null, itemId: u.id, text: pathText(u) };
         const idx = entries.findIndex((e) => (e.so ?? Infinity) > so);
         if (idx === -1) entries.push(entry);
         else entries.splice(idx, 0, entry);
@@ -4365,7 +4365,13 @@ const JobMap = () => {
                   </li>
                 ) : (
                   <li key={`entry-${e.num}`} data-testid={`${e.kind === "item" ? "item" : "path"}-measurement-${e.num}`} className="flex items-center gap-1">
-                    <span><span className="font-bold text-emerald-700">{e.num}.</span> {e.text}{showStationNumbers && rowStations[e.key] ? <span className="text-blue-700 font-semibold"> ({rowStations[e.key].from} to {rowStations[e.key].to})</span> : null}</span>
+                    <span><span className="font-bold text-emerald-700">{e.num}.</span> {e.kind === "path" && showStationNumbers && rowStations[e.key]?.segs ? (
+                      <span data-testid={`path-stations-${e.num}`}>{e.who}<span className="text-blue-700 font-semibold"> {rowStations[e.key].from}</span>: {e.segs.map((t, i) => (
+                        <span key={i}>{i > 0 ? ", " : ""}{t}<span className="text-blue-700 font-semibold"> {rowStations[e.key].segs[i]}</span></span>
+                      ))} = {fmtFeet(e.ft)}</span>
+                    ) : (
+                      <>{e.text}{showStationNumbers && rowStations[e.key] ? <span className="text-blue-700 font-semibold"> ({rowStations[e.key].from} to {rowStations[e.key].to})</span> : null}</>
+                    )}</span>
                     {noteBelowBtn(e)}
                   </li>
                 )

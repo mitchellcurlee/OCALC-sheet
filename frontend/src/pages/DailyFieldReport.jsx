@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useGoBack } from "@/lib/useGoBack";
 import axios from "axios";
@@ -13,7 +13,7 @@ import { MyReportsDialog } from "@/components/dfr/MyReportsDialog";
 import { HomeAddress } from "@/components/dfr/HomeAddress";
 import { useDailyReport } from "@/components/dfr/useDailyReport";
 import { EMPLOYEE_NAMES } from "@/components/ase/ASEFormConstants";
-import { newRow, todayISO, jobLabel } from "@/lib/dfr";
+import { newRow, todayISO, jobLabel, fetchJobFootage } from "@/lib/dfr";
 import { HomeButton } from "@/components/HomeButton";
 
 export default function DailyFieldReport() {
@@ -29,6 +29,19 @@ export default function DailyFieldReport() {
 
   useEffect(() => { axios.get("/field-reports/home").then((r) => setHome(r.data)).catch(() => setHome({ address: "", lat: null, lng: null })); }, []);
 
+  // Job footage auto-fill: rows loaded with a job but an empty footage box get the job's span-measurement total
+  const footageFilled = useRef(new Set());
+  useEffect(() => {
+    if (!report || !jobs.length) return;
+    report.rows.forEach(async (row) => {
+      if (!row.job_id || String(row.footage || "").trim() || footageFilled.current.has(row.id)) return;
+      footageFilled.current.add(row.id);
+      const job = jobs.find((j) => j.id === row.job_id);
+      const ft = job ? await fetchJobFootage(job) : null;
+      if (ft !== null) update((r) => ({ ...r, rows: r.rows.map((x) => (x.id === row.id && !String(x.footage || "").trim() ? { ...x, footage: String(ft) } : x)) }));
+    });
+  }, [report?.id, report?.rows?.length, jobs.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const removeRow = (id) => { if (!window.confirm("Remove this row?")) return; update((r) => ({ ...r, rows: r.rows.filter((x) => x.id !== id), track: r.track.filter((p) => p.row_id !== id) })); };
   const moveRow = (id, dir) => update((r) => {
     const i = r.rows.findIndex((x) => x.id === id), j = i + dir;
@@ -42,7 +55,13 @@ export default function DailyFieldReport() {
     const rows = [...r.rows]; const [m] = rows.splice(from, 1); rows.splice(to, 0, m);
     return { ...r, rows };
   });
-  const pickJob = (rowId, jid) => { const job = jobs.find((j) => j.id === jid); changeRow({ ...report.rows.find((x) => x.id === rowId), job_id: jid, job: jobLabel(job), sow: job?.job_type || "", job_type: job?.job_type || "", job_address: job?.location || "" }); };
+  const pickJob = async (rowId, jid) => {
+    const job = jobs.find((j) => j.id === jid);
+    changeRow({ ...report.rows.find((x) => x.id === rowId), job_id: jid, job: jobLabel(job), sow: job?.job_type || "", job_type: job?.job_type || "", job_address: job?.location || "" });
+    if (!job) return;
+    const ft = await fetchJobFootage(job);
+    if (ft !== null) update((r) => ({ ...r, rows: r.rows.map((x) => (x.id === rowId && x.job_id === jid ? { ...x, footage: String(ft) } : x)) }));
+  };
   const addRow = () => { const row = { ...newRow(null), date: report.date, fielder: report.fielder || "" }; update((r) => ({ ...r, rows: [...r.rows, row] })); setActiveRowId(row.id); };
   const setFielder = (v) => update((r) => ({ ...r, fielder: v, rows: r.rows.map((x) => (x.fielder ? x : { ...x, fielder: v })) }));
   const changeDate = (d) => { if (!d) return; persist().then(() => setParams({ date: d })); };
