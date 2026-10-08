@@ -162,6 +162,7 @@ export const INITIAL_FORM_DATA = {
   nte_rack_shelf: "",
   equipment_power_config: "",
   distance_fbt_to_nte: "",
+  fbt_to_nte_auto: "",
   distance_nte_to_it: "",
   it_same_floor_as_nte: "",
   ceiling_height: "",

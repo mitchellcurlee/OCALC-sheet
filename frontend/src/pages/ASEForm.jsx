@@ -16,7 +16,8 @@ import { ArrowLeft, Save, FileSpreadsheet, Loader2, ClipboardList, Users, FileOu
 import { INITIAL_FORM_DATA } from "@/components/ase";
 import { ExportDestinationDialog } from "@/components/ExportDestinationDialog";
 import { CLOUD_EXPORT_LABELS, uploadExportToCloud, saveBlobToDevice, formExportFilename } from "@/lib/cloudExports";
-import { buildSpanMeasurementTexts, routeArg, computeItemFeet, distanceFeet } from "@/lib/poleMapImage";
+import { buildSpanMeasurementTexts, routeArg } from "@/lib/poleMapImage";
+import { fbtToNteDistance } from "@/components/ase/aseDistance";
 import { ASE_OPTIONS } from "@/components/ase/ASEFormConstants";
 import { ASEMapReference } from "@/components/ase/ASEMapReference";
 import ASEChecklistTab from "@/components/ase/ASEChecklistTab";
@@ -327,28 +328,7 @@ const ASEForm = () => {
           const idx = ASE_OPTIONS.efNeeded.indexOf(updated.ef_needed);
           if (idx >= 0) updated.site_readiness_evaluation = ASE_OPTIONS.siteReadiness[idx];
         }
-        // Distance from FBT to NTE (Checklist) and Estimated Fiber Drop Length (SVCL Output) share one value:
-        // the measured chainage between the fiber (FBT) attribute and the NTE attribute
-        if (!updated.est_fiber_drop_length || !updated.distance_fbt_to_nte) {
-          const pedestalAsFbt = String(updated.pedestal_fiber_as_fbt || "").toUpperCase() === "YES";
-          const fiberItem = pedestalAsFbt
-            ? ugData.find((u) => u.type === "Pedestal" && String(u.material_type || "").toLowerCase().includes("fiber"))
-            : ugData.find((u) => u.type === "FBT" || u.type === "FBT/NTE");
-          const nteItem = ugData.find((u) => u.type === "NTE" || u.type === "FBT/NTE");
-          let fbtToNte = "";
-          if (fiberItem && nteItem && fiberItem.id !== nteItem.id) {
-            const feet = computeItemFeet({ poles: polesData, underground: ugData, connections: connectionsData, routes: routesLookup, spanNotes: jobRes.data?.span_notes || [], spanOrder: jobRes.data?.span_order || null, drawnOnly: routeArg(jobRes.data) });
-            if (Number.isFinite(feet[fiberItem.id]) && Number.isFinite(feet[nteItem.id])) {
-              fbtToNte = `${Math.round(Math.abs(feet[nteItem.id] - feet[fiberItem.id]))} ft`;
-            } else if (fiberItem.latitude && nteItem.latitude) {
-              fbtToNte = `${Math.round(distanceFeet([parseFloat(fiberItem.latitude), parseFloat(fiberItem.longitude)], [parseFloat(nteItem.latitude), parseFloat(nteItem.longitude)]))} ft`;
-            }
-          }
-          if (fbtToNte) {
-            if (!updated.distance_fbt_to_nte) updated.distance_fbt_to_nte = fbtToNte;
-            if (!updated.est_fiber_drop_length) updated.est_fiber_drop_length = fbtToNte;
-          }
-        }
+        // Distance from FBT to NTE / Est. Fiber Drop Length: filled live by the fbtToNteDistance effect below
         // Multi-tenant based on business units
         if (updated.number_of_business_units) {
           const units = parseInt(updated.number_of_business_units) || 0;
@@ -427,6 +407,51 @@ const ASEForm = () => {
   useEffect(() => {
     fetchJobAndASE();
   }, [fetchJobAndASE]);
+
+  // Live map data: re-read poles/attributes/lines every few seconds and whenever this tab regains focus,
+  // so edits made on the Job Map while the ASE form is open flow into the auto-filled fields
+  const refreshMapData = useCallback(async () => {
+    try {
+      const [jobRes, polesRes, ugRes, connRes, routesRes] = await Promise.all([
+        axios.get(`/jobs/${jobId}`),
+        axios.get(`/jobs/${jobId}/poles`),
+        axios.get(`/jobs/${jobId}/underground`),
+        axios.get(`/jobs/${jobId}/connections`),
+        axios.get(`/jobs/${jobId}/routes`).catch(() => ({ data: [] })),
+      ]);
+      const routesLookup = {};
+      (routesRes.data || []).forEach((r) => { routesLookup[`${r.from_pole_id}-${r.to_pole_id}`] = r.waypoints || []; });
+      const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+      setJob((prev) => (same(prev, jobRes.data) ? prev : jobRes.data));
+      setPoles((prev) => (same(prev, polesRes.data || []) ? prev : polesRes.data || []));
+      setUnderground((prev) => (same(prev, ugRes.data || []) ? prev : ugRes.data || []));
+      setMapConnections((prev) => (same(prev, connRes.data || []) ? prev : connRes.data || []));
+      setMapRoutes((prev) => (same(prev, routesLookup) ? prev : routesLookup));
+    } catch (e) { /* keep last good data */ }
+  }, [jobId]);
+
+  useEffect(() => {
+    if (loading) return undefined;
+    const id = setInterval(refreshMapData, 8000);
+    const onFocus = () => { if (document.visibilityState === "visible") refreshMapData(); };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onFocus);
+    return () => { clearInterval(id); window.removeEventListener("focus", onFocus); document.removeEventListener("visibilitychange", onFocus); };
+  }, [loading, refreshMapData]);
+
+  // Live: Distance From FBT to NTE (Checklist) and Est. Fiber Drop Length (SVCL) share one measured value.
+  // A box is updated only while it is empty or still holds the previous auto value — manual edits are kept.
+  const fbtToNte = fbtToNteDistance({ formData, job, poles, underground, connections: mapConnections, routes: mapRoutes });
+  useEffect(() => {
+    if (loading || !fbtToNte) return;
+    setFormData((prev) => {
+      const auto = prev.fbt_to_nte_auto || "";
+      const next = { ...prev, fbt_to_nte_auto: fbtToNte };
+      if (!prev.distance_fbt_to_nte || prev.distance_fbt_to_nte === auto) next.distance_fbt_to_nte = fbtToNte;
+      if (!prev.est_fiber_drop_length || prev.est_fiber_drop_length === auto) next.est_fiber_drop_length = fbtToNte;
+      return next.distance_fbt_to_nte === prev.distance_fbt_to_nte && next.est_fiber_drop_length === prev.est_fiber_drop_length && auto === fbtToNte ? prev : next;
+    });
+  }, [loading, fbtToNte, formData.distance_fbt_to_nte, formData.est_fiber_drop_length, formData.fbt_to_nte_auto]);
 
   const handleSave = async () => {
     setSaving(true);

@@ -4,32 +4,14 @@ import { Section, CollapsibleSection, StyledInput, StyledTextarea, DropdownSelec
 import { Switch } from "@/components/ui/switch";
 import { ASE_OPTIONS } from "./ASEFormConstants";
 import { EF_REQ_ITEMS, buildSiteRequirementsText } from "./efRequirements";
+import { aseAttributeOptions } from "./aseDistance";
 import { PhotoMarkupEditor } from "@/components/PhotoMarkupEditor";
 import { ASEPhotoField } from "@/components/ASEPhotoField";
 import MarkupTab from "@/components/MarkupTab";
 
 const ASEChecklistTab = ({ formData, handleChange, poles = [], underground = [], onRegeneratePath }) => {
   // All job attributes (poles + underground) with GPS, in job-page order
-  const attributeOptions = useMemo(() => {
-    const items = [];
-    underground.forEach((u) => {
-      if (u.latitude && u.longitude) {
-        items.push({ label: `${u.type}${u.label ? ` ${u.label}` : ""}`, coords: `${u.latitude}, ${u.longitude}`, sort: u.sort_order ?? 9999 });
-      }
-    });
-    poles.forEach((p) => {
-      if (p.latitude && p.longitude) {
-        items.push({ label: `Pole ${p.pole_number || "?"}`, coords: `${p.latitude}, ${p.longitude}`, sort: p.sort_order ?? 9999 });
-      }
-    });
-    items.sort((a, b) => a.sort - b.sort);
-    const seen = {};
-    items.forEach((it) => {
-      seen[it.label] = (seen[it.label] || 0) + 1;
-      if (seen[it.label] > 1) it.label = `${it.label} (${seen[it.label]})`;
-    });
-    return items;
-  }, [poles, underground]);
+  const attributeOptions = useMemo(() => aseAttributeOptions(poles, underground), [poles, underground]);
 
   // Auto-populate Nearest fiber Lat/Long with the FIRST item on the attributes list
   useEffect(() => {
