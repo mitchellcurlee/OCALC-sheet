@@ -10,7 +10,7 @@ const statusOf = (j) => (j.completed ? { label: "Complete", cls: "bg-emerald-600
 export const JobTile = ({ job, onOpen, cta = "Open map" }) => {
   const st = statusOf(job);
   return (
-    <button type="button" onClick={() => onOpen(job)} className="group text-left bg-white border border-zinc-300 rounded-lg p-4 shadow-sm hover:shadow-lg hover:border-red-500 hover:-translate-y-0.5 transition-[transform,box-shadow,border-color] duration-150 flex flex-col gap-2" data-testid={`job-tile-${job.id}`}>
+    <button type="button" onClick={() => onOpen(job)} className={`group text-left border rounded-lg p-4 shadow-sm hover:shadow-lg hover:-translate-y-0.5 ${job.completed ? "bg-green-50 border-green-500/70 hover:border-green-600" : job.started ? "bg-yellow-50 border-yellow-500/70 hover:border-yellow-600" : "bg-white border-zinc-300 hover:border-red-500"} transition-[transform,box-shadow,border-color] duration-150 flex flex-col gap-2`} data-testid={`job-tile-${job.id}`}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase">Job ID</div>

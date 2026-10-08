@@ -291,7 +291,7 @@ const JobsList = ({ mode = "folders" }) => {
     <div
       key={job.id}
       onClick={() => navigate(`/jobs/${job.id}`)}
-      className={`industrial-card p-5 cursor-pointer transition-colors group ${job.completed ? "border-green-500/50 hover:border-green-600" : job.started ? "bg-yellow-50 border-yellow-500/70 hover:border-yellow-600" : "hover:border-red-500/50"}`}
+      className={`industrial-card p-5 cursor-pointer transition-colors group ${job.completed ? "bg-green-50 border-green-500/70 hover:border-green-600" : job.started ? "bg-yellow-50 border-yellow-500/70 hover:border-yellow-600" : "hover:border-red-500/50"}`}
       data-testid={`job-card-${job.id}`}
       data-state={tileState(job)}
     >
