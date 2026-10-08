@@ -16,7 +16,7 @@ from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
 from models.job import Job, JobCreate, JobUpdate
 from models.pole import Pole
 from services.auth import get_current_user, is_admin_user, is_mastec_byers_admin, is_company_email, company_email_regex
-from services.helpers import pole_sort_key, format_height, pole_photo_items, underground_photo_items
+from services.helpers import pole_sort_key, format_height, pole_photo_items, underground_photo_items, haversine_feet
 from services.geocode import ensure_job_geo
 from services.address_name import street_only
 
@@ -629,6 +629,13 @@ async def _export_job_excel(job_id: str, request: Request, base_url: Optional[st
             ("New Risers", pole.get("risers", "")),
             ("Riser Height", format_height(pole.get("riser_height"))),
         ])
+        flags = [lbl for key, lbl in (("pole_line_start", "Pole Line Start"), ("pole_line_end", "Pole Line End"), ("start_path", "Start Path"), ("end_path", "End Path"), ("standalone", "Standalone")) if pole.get(key)]
+        manual_spans = [f"Span {i}: {pole.get(f'span{i}_distance')} ft {pole.get(f'span{i}_direction') or ''} {pole.get(f'span{i}_owner') or ''}".strip() for i in range(1, 5) if pole.get(f"span{i}_distance") not in (None, "")]
+        if flags or manual_spans or pole.get("use_manual_spans"):
+            label_value_row([
+                ("Map Flags", ", ".join(flags) or "None"),
+                ("Manual Spans", "; ".join(manual_spans) or ("Enabled" if pole.get("use_manual_spans") else "")),
+            ])
 
         down_guys = pole.get("down_guys", [])
         if down_guys:
@@ -726,7 +733,7 @@ async def _export_job_excel(job_id: str, request: Request, base_url: Optional[st
         ws.cell(row=current_row, column=1, value="UNDERGROUND").fill = header_fill
         ws.cell(row=current_row, column=1).font = header_font
         current_row += 1
-        for h_i, h in enumerate(["Abbr", "Type", "Subtype", "Class", "Label", "FID", "Latitude", "Longitude", "Path Measurements", "Tie-In", "Notes", "Map", "Photos", "Owner", "Address", "Station"], 1):
+        for h_i, h in enumerate(["Abbr", "Type", "Subtype", "Class", "Label", "FID", "Latitude", "Longitude", "Path Measurements", "Tie-In", "Notes", "Map", "Photos", "Owner", "Address", "Station", "Flags"], 1):
             ws.cell(row=current_row, column=h_i, value=h).font = Font(bold=True, size=9)
         current_row += 1
         for u in underground:
@@ -752,6 +759,8 @@ async def _export_job_excel(job_id: str, request: Request, base_url: Optional[st
             ws.cell(row=current_row, column=15, value=u.get("address", "") or "")
             ug_sta = ws.cell(row=current_row, column=16, value=stations.get(u.get("id"), "") or "")
             ug_sta.font = Font(color="1D4ED8", bold=True, size=9)
+            ug_flags = [lbl for key, lbl in (("soc_start", "SOC Start"), ("soc_end", "SOC End"), ("start_path", "Start Path"), ("end_path", "End Path"), ("standalone", "Standalone")) if u.get(key)]
+            ws.cell(row=current_row, column=17, value=", ".join(ug_flags))
             class_cell = ws.cell(row=current_row, column=4, value=class_val)
             class_cell.font = Font(color=class_color, bold=True, size=9)
             ws.cell(row=current_row, column=5, value=u.get("label", ""))
@@ -777,6 +786,53 @@ async def _export_job_excel(job_id: str, request: Request, base_url: Optional[st
             else:
                 ws.cell(row=current_row, column=13, value="No photos")
             
+            current_row += 1
+
+    # SPAN MEASUREMENTS — same pairs/waypoints as the map & KMZ, with the chainage stations and inline span notes
+    try:
+        from routes.poles import _compute_map_pairs, _route_waypoints_lookup
+        pairs = await _compute_map_pairs(job_id)
+        wps = await _route_waypoints_lookup(job_id)
+    except Exception:
+        pairs, wps = [], {}
+    span_notes = [n for n in (job.get("span_notes") or []) if (n or {}).get("text")]
+    if pairs or span_notes:
+        by_id = {}
+        for p in poles:
+            by_id[p["id"]] = (p.get("latitude"), p.get("longitude"), f"Pole {p.get('pole_number') or ''}".strip())
+        for u in underground:
+            by_id[u["id"]] = (u.get("latitude"), u.get("longitude"), f"{u.get('type') or 'Item'}" + (f" {u['label']}" if u.get("label") and u.get("label") != u.get("type") else ""))
+        current_row += 1
+        ws.cell(row=current_row, column=1, value="SPAN MEASUREMENTS").fill = header_fill
+        ws.cell(row=current_row, column=1).font = header_font
+        current_row += 1
+        for h_i, h in enumerate(["#", "From", "Station", "To", "Station", "Distance (ft)", "Class"], 1):
+            ws.cell(row=current_row, column=h_i, value=h).font = Font(bold=True, size=9)
+        current_row += 1
+        total_ft = 0.0
+        for i, pr in enumerate(pairs, 1):
+            a, b = by_id.get(pr["from"]["id"]), by_id.get(pr["to"]["id"])
+            if not a or not b or a[0] is None or b[0] is None:
+                continue
+            pts = [(a[0], a[1])] + [(w[0], w[1]) for w in (wps.get((pr["from"]["id"], pr["to"]["id"])) or wps.get((pr["to"]["id"], pr["from"]["id"]), [])[::-1])] + [(b[0], b[1])]
+            feet = sum(haversine_feet(pts[k][0], pts[k][1], pts[k + 1][0], pts[k + 1][1]) for k in range(len(pts) - 1))
+            total_ft += feet
+            aerial = pr["from"].get("type") == "pole" and pr["to"].get("type") == "pole"
+            ws.cell(row=current_row, column=1, value=i)
+            ws.cell(row=current_row, column=2, value=a[2])
+            ws.cell(row=current_row, column=3, value=stations.get(pr["from"]["id"], "") or "").font = Font(color="1D4ED8", bold=True, size=9)
+            ws.cell(row=current_row, column=4, value=b[2])
+            ws.cell(row=current_row, column=5, value=stations.get(pr["to"]["id"], "") or "").font = Font(color="1D4ED8", bold=True, size=9)
+            ws.cell(row=current_row, column=6, value=round(feet))
+            ws.cell(row=current_row, column=7, value="Aerial" if aerial else "Underground")
+            current_row += 1
+        if pairs:
+            ws.cell(row=current_row, column=5, value="TOTAL").font = Font(bold=True)
+            ws.cell(row=current_row, column=6, value=round(total_ft)).font = Font(bold=True, color="DC2626")
+            current_row += 1
+        for n in span_notes:
+            ws.cell(row=current_row, column=1, value="Note")
+            ws.cell(row=current_row, column=2, value=n["text"]).font = Font(italic=True, color="B45309")
             current_row += 1
     
     for col in ws.columns:

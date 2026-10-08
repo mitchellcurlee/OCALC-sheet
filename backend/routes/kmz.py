@@ -89,22 +89,38 @@ def _pole_rows(p, station=None):
         ("Span 1", f"{p['span1_distance']} ft" if _f(p.get("span1_distance")) else None), ("Span 2", f"{p['span2_distance']} ft" if _f(p.get("span2_distance")) else None),
         ("New risers", f"{p.get('risers')} × {format_height(p.get('riser_height'))}" if p.get("risers") and _f(p.get("risers")) else None), ("Existing risers", p.get("existing_risers")),
         ("HOA attachments", hoa), ("Down guys", dg), ("Pole Line Start", "Yes" if p.get("pole_line_start") else None), ("Pole Line End", "Yes" if p.get("pole_line_end") else None),
+        ("Span 3", f"{p['span3_distance']} ft" if _f(p.get("span3_distance")) else None), ("Span 4", f"{p['span4_distance']} ft" if _f(p.get("span4_distance")) else None),
+        ("Path measurements", _path_text(p)), ("Access", p.get("access")), ("Size", f"{p.get('pole_size') or ''} {p.get('pole_size_type') or ''}".strip() or None), ("Pole type", p.get("pole_type")),
+        ("Anchors", f"{len(p.get('knuckles') or [])} anchor(s)" if p.get("knuckles") else None), ("Tree trimming", "Yes" if p.get("tree_trimming_needed") else None),
+        ("MGNV", (f"Yes · {p.get('mgnv_condition')}" if p.get("mgnv_condition") else "Yes") if p.get("mgnv") else None), ("Birthmark", "Yes" if p.get("has_birthmark") else None),
+        ("Photos", f"{_photo_count(p)} photo(s)" if _photo_count(p) else None),
         ("End Path", "Yes" if p.get("end_path") else None), ("Standalone", "Yes" if p.get("standalone") else None), ("Notes", p.get("notes")),
     ]
+
+
+def _photo_count(item):
+    n = 0
+    for k, v in item.items():
+        if k.endswith("photos") and isinstance(v, list):
+            n += len(v)
+        elif k.endswith("photo") and isinstance(v, str) and v:
+            n += 1
+    return n
 
 
 def _path_text(u):
     pms = [m for m in (u.get("path_measurements") or []) if _f(m.get("feet"))]
     if not pms:
         return None
-    parts = [f"{m.get('direction') or ''} {float(m['feet']):g}ft" + (f" to {m['to']}" if m.get("to") else "") for m in pms]
+    parts = [f"{m.get('direction') or ''} {float(m['feet']):g}ft" + (f" {'from' if m.get('rel') == 'from' else 'to'} {m['to']}" if m.get("to") else "") for m in pms]
     return ", ".join(parts) + f" = {sum(float(m['feet']) for m in pms):g} ft"
 
 
 def _ug_rows(u, station=None):
     return [
         ("Type", u.get("type")), ("Subtype", u.get("material_type")), ("Label", u.get("label")), ("Station", station), ("Latitude", u.get("latitude")), ("Longitude", u.get("longitude")),
-        ("Address", u.get("address")), ("Class", (u.get("aerial_override") or "").capitalize() or None), ("FID", (u.get("fid") or "") + (" (Primary)" if u.get("primary_fid") else "") or None),
+        ("Address", u.get("address")), ("Owner", u.get("owner")), ("Class", (u.get("aerial_override") or "").capitalize() or None), ("FID", (u.get("fid") or "") + (" (Primary)" if u.get("primary_fid") else "") or None),
+        ("Photos", f"{len(u.get('photos') or [])} photo(s)" if u.get("photos") else None),
         ("Path measurements", _path_text(u)), ("Tie-in measurements", u.get("tie_in_measurements")), ("SOC Start", "Yes" if u.get("soc_start") else None), ("SOC End", "Yes" if u.get("soc_end") else None),
         ("End Path", "Yes" if u.get("end_path") else None), ("Standalone", "Yes" if u.get("standalone") else None), ("Notes", u.get("notes")),
     ]
@@ -230,13 +246,17 @@ async def _export_job_kmz(job_id: str, current_user: dict, stations: Dict[str, s
               + "<Style id='movedTag'><IconStyle><scale>0</scale><Icon><href>http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png</href></Icon></IconStyle><LabelStyle><scale>0.9</scale></LabelStyle></Style>"
               + line_style("tagLeader", "#ffffff", "1")
               + line_style("aerialLine", "#2563eb") + line_style("ugLine", "#16a34a") + line_style("measLine", "#f59e0b", "2") + area_style("polyArea", "#2563eb") + area_style("daArea", "#dc2626"))
+    # Span-list notes (inline notes between spans) — geometry-less placemarks listed in their own folder
+    span_notes = []
+    for i, n in enumerate([x for x in (job.get("span_notes") or []) if (x or {}).get("text")], 1):
+        span_notes.append(f"<Placemark><name>{escape(f'Span note {i}: ' + n['text'][:60])}</name><description>{_table([('Note', n['text'])])}</description></Placemark>")
     name = job.get("name") or job.get("site_id") or "Job"
     desc = _table([("Job", job.get("name")), ("Site ID", job.get("site_id")), ("Job type", job.get("job_type")), ("Address", job.get("location")), ("Description", job.get("description")),
-                   ("Poles", len(pole_pm)), ("Aerial attributes", len(aerial_pm)), ("Underground attributes", len(ug_pm)), ("Map lines", len(lines)), ("Measurements", len(meas)), ("Notes", len(notes))])
+                   ("Poles", len(pole_pm)), ("Aerial attributes", len(aerial_pm)), ("Underground attributes", len(ug_pm)), ("Map lines", len(lines)), ("Measurements", len(meas)), ("Notes", len(notes)), ("Span notes", len(span_notes))])
     kml = ("<?xml version='1.0' encoding='UTF-8'?><kml xmlns='http://www.opengis.net/kml/2.2'><Document>"
            f"<name>{escape(name)}</name><description>{desc}</description>{styles}"
            + folder("Poles", pole_pm) + folder("Aerial attributes", aerial_pm) + folder("Underground attributes", ug_pm)
-           + folder("Map lines (spans)", lines) + folder("Measurements", meas) + folder("Notes", notes) + folder("Areas (Polygon / DA)", areas)
+           + folder("Map lines (spans)", lines) + folder("Span notes", span_notes) + folder("Measurements", meas) + folder("Notes", notes) + folder("Areas (Polygon / DA)", areas)
            + "</Document></kml>")
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
