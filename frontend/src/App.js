@@ -23,6 +23,7 @@ import VerifyEmail from "@/pages/VerifyEmail";
 import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
 import AdminUsers from "@/pages/AdminUsers";
+import AdminCostRates from "@/pages/AdminCostRates";
 import TeamReports from "@/pages/TeamReports";
 import JobTiles from "@/pages/JobTiles";
 import Home from "@/pages/Home";
@@ -66,6 +67,7 @@ function App() {
             <Route path="/tiles" element={<ProtectedRoute><JobTiles /></ProtectedRoute>} />
             <Route path="/backup" element={<ProtectedRoute><BackupAtlas /></ProtectedRoute>} />
             <Route path="/admin/users" element={<ProtectedRoute><AdminUsers /></ProtectedRoute>} />
+            <Route path="/admin/cost-rates" element={<ProtectedRoute><AdminCostRates /></ProtectedRoute>} />
             <Route path="/admin/team-reports" element={<ProtectedRoute><TeamReports /></ProtectedRoute>} />
             <Route path="/jobs/:jobId/ase2" element={<ProtectedRoute><ASEForm2 /></ProtectedRoute>} />
             <Route path="/jobs/:jobId/spf" element={<ProtectedRoute><SPFForm /></ProtectedRoute>} />

@@ -126,7 +126,7 @@ export const CostReportDialog = ({ open, onOpenChange, currentDate }) => {
                       <th className="p-2 text-right">Poles</th>
                       <th className="p-2 text-right">Miles</th>
                       <th className="p-2 text-right">Footage</th>
-                      <th className="p-2 text-center">$75 Job fee</th>
+                      <th className="p-2 text-center">${rates?.job_fee ?? 75} Job fee</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -180,7 +180,7 @@ export const CostReportDialog = ({ open, onOpenChange, currentDate }) => {
                     <th className="p-2 text-right">Miles</th>
                     <th className="p-2 text-right">Mileage pay</th>
                     <th className="p-2 text-right">Footage</th>
-                    <th className="p-2 text-right">Ft over 1000</th>
+                    <th className="p-2 text-right">Ft over {(result.rates?.free_feet ?? 1000).toLocaleString()}</th>
                     <th className="p-2 text-right">Footage pay</th>
                     <th className="p-2 text-right">Line total</th>
                   </tr>

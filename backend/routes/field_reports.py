@@ -310,7 +310,40 @@ async def export_field_report_xlsx(report_id: str, current_user: dict = Depends(
 
 
 # ---------------- Cost report (fielder pay) ----------------
-COST_RATES = {"job_fee": 75.0, "per_pole": 6.50, "per_mile": 0.76, "per_foot": 0.06, "free_feet": 1000}
+DEFAULT_COST_RATES = {"job_fee": 75.0, "per_pole": 6.50, "per_mile": 0.76, "per_foot": 0.06, "free_feet": 1000}
+
+
+async def get_cost_rates() -> Dict[str, float]:
+    """Admin-editable pay rates (settings doc), falling back to the defaults."""
+    doc = await _db.settings.find_one({"id": "cost_rates"}, {"_id": 0}) or {}
+    rates = dict(DEFAULT_COST_RATES)
+    for k in rates:
+        if isinstance(doc.get(k), (int, float)):
+            rates[k] = float(doc[k])
+    return rates
+
+
+class CostRatesIn(BaseModel):
+    job_fee: float = Field(ge=0)
+    per_pole: float = Field(ge=0)
+    per_mile: float = Field(ge=0)
+    per_foot: float = Field(ge=0)
+    free_feet: float = Field(ge=0)
+
+
+@router.get("/settings/cost-rates")
+async def read_cost_rates(current_user: dict = Depends(get_current_user)):
+    return {"rates": await get_cost_rates(), "defaults": DEFAULT_COST_RATES}
+
+
+@router.put("/settings/cost-rates")
+async def write_cost_rates(body: CostRatesIn, current_user: dict = Depends(get_current_user)):
+    if not _is_admin(current_user):
+        raise HTTPException(status_code=403, detail="Admin access required")
+    rates = {k: float(v) for k, v in body.model_dump().items()}
+    await _db.settings.update_one({"id": "cost_rates"}, {"$set": {**rates, "id": "cost_rates", "updated_by": current_user.get("email"),
+                                                                   "updated_at": datetime.now(timezone.utc).isoformat()}}, upsert=True)
+    return {"rates": rates, "defaults": DEFAULT_COST_RATES}
 
 
 def _num(v) -> float:
@@ -324,14 +357,14 @@ def _row_filled(r: dict) -> bool:
     return any(str(r.get(k) or "").strip() for k in ("job", "job_id", "job_address", "miles", "footage", "poles"))
 
 
-def cost_line(line: dict) -> dict:
-    """Pay for one job row: $75 job fee (if toggled on) + $6.50/pole + $0.76/mile + $0.06/ft over 1000 ft."""
+def cost_line(line: dict, rates: Dict[str, float]) -> dict:
+    """Pay for one job row: job fee (if toggled on) + per-pole + per-mile + per-foot over the free footage."""
     poles, miles, feet = _num(line.get("poles")), _num(line.get("miles")), _num(line.get("footage"))
-    excess = max(0.0, feet - COST_RATES["free_feet"])
-    job_fee = COST_RATES["job_fee"] if line.get("job_fee", True) else 0.0
-    pole_pay = round(poles * COST_RATES["per_pole"], 2)
-    mile_pay = round(miles * COST_RATES["per_mile"], 2)
-    foot_pay = round(excess * COST_RATES["per_foot"], 2)
+    excess = max(0.0, feet - rates["free_feet"])
+    job_fee = rates["job_fee"] if line.get("job_fee", True) else 0.0
+    pole_pay = round(poles * rates["per_pole"], 2)
+    mile_pay = round(miles * rates["per_mile"], 2)
+    foot_pay = round(excess * rates["per_foot"], 2)
     return {**line, "poles": poles, "miles": miles, "footage": feet, "excess_feet": excess, "job_fee_amount": job_fee,
             "pole_pay": pole_pay, "mile_pay": mile_pay, "foot_pay": foot_pay, "total": round(job_fee + pole_pay + mile_pay + foot_pay, 2)}
 
@@ -351,7 +384,7 @@ async def cost_report_rows(date_from: str, date_to: str, current_user: dict = De
             out.append({"key": f"{d['id']}:{r.get('id') or i}", "date": r.get("date") or d.get("date"), "job": r.get("job") or "",
                         "job_id": r.get("job_id") or "", "job_address": r.get("job_address") or "", "poles": _num(r.get("poles")),
                         "miles": _num(r.get("miles")), "footage": _num(r.get("footage")), "fielder": d.get("fielder") or ""})
-    return {"rows": out, "rates": COST_RATES}
+    return {"rows": out, "rates": await get_cost_rates()}
 
 
 class CostReportIn(BaseModel):
@@ -360,7 +393,7 @@ class CostReportIn(BaseModel):
     lines: List[Dict[str, Any]] = Field(default_factory=list)  # selected rows, each with job_fee: bool
 
 
-def build_cost_workbook(date_from: str, date_to: str, lines: List[dict], fielder: str) -> Workbook:
+def build_cost_workbook(date_from: str, date_to: str, lines: List[dict], fielder: str, rates: Dict[str, float]) -> Workbook:
     wb = Workbook()
     ws = wb.active
     ws.title = "Cost Report"
@@ -372,12 +405,12 @@ def build_cost_workbook(date_from: str, date_to: str, lines: List[dict], fielder
     ws["A1"] = f"Cost Report  {date_from} to {date_to}"
     ws["A1"].font = Font(bold=True, size=14)
     ws["A2"] = f"Fielder: {fielder}" if fielder else ""
-    r = COST_RATES
-    ws["A3"] = f"Rates: ${r['job_fee']:.2f} per job · ${r['per_pole']:.2f} per pole · ${r['per_mile']:.2f} per mile · ${r['per_foot']:.2f} per ft over {r['free_feet']:,} ft"
+    r = rates
+    ws["A3"] = f"Rates: ${r['job_fee']:.2f} per job · ${r['per_pole']:.2f} per pole · ${r['per_mile']:.2f} per mile · ${r['per_foot']:.2f} per ft over {int(r['free_feet']):,} ft"
     ws["A3"].font = Font(italic=True, color="52525B")
     cols = [("date", "Date", 11), ("job", "Job", 14), ("job_address", "Job Address", 32), ("job_fee_amount", "Job Fee", 10),
             ("poles", "# Poles", 8), ("pole_pay", "Pole Pay", 10), ("miles", "Miles", 8), ("mile_pay", "Mileage Pay", 11),
-            ("footage", "Footage (ft)", 11), ("excess_feet", "Ft over 1000", 11), ("foot_pay", "Footage Pay", 11), ("total", "Line Total", 12)]
+            ("footage", "Footage (ft)", 11), ("excess_feet", f"Ft over {int(rates['free_feet']):,}", 11), ("foot_pay", "Footage Pay", 11), ("total", "Line Total", 12)]
     head = 5
     for c, (_, title, width) in enumerate(cols, start=1):
         cell = ws.cell(row=head, column=c, value=title)
@@ -408,12 +441,13 @@ def build_cost_workbook(date_from: str, date_to: str, lines: List[dict], fielder
 @router.post("/field-reports/cost-report")
 async def cost_report(body: CostReportIn, format: str = "json", current_user: dict = Depends(get_current_user)):
     """Line-item pay breakdown for the selected job rows; ?format=xlsx downloads it."""
-    lines = [cost_line(l) for l in body.lines]
+    rates = await get_cost_rates()
+    lines = [cost_line(l, rates) for l in body.lines]
     lines.sort(key=lambda l: (str(l.get("date") or ""), str(l.get("job") or "")))
     total = round(sum(l["total"] for l in lines), 2)
     if format == "xlsx":
         fielder = next((l.get("fielder") for l in lines if l.get("fielder")), current_user.get("name") or "")
-        wb = build_cost_workbook(body.date_from, body.date_to, lines, fielder)
+        wb = build_cost_workbook(body.date_from, body.date_to, lines, fielder, rates)
         return _xlsx_response(wb, f"Cost_Report_{body.date_from}_to_{body.date_to}.xlsx")
-    return {"lines": lines, "total": total, "rates": COST_RATES,
+    return {"lines": lines, "total": total, "rates": rates,
             "subtotals": {k: round(sum(l[k] for l in lines), 2) for k in ("job_fee_amount", "pole_pay", "mile_pay", "foot_pay")}}

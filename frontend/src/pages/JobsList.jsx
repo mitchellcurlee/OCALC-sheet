@@ -45,6 +45,7 @@ import {
   Calendar,
   Trash2,
   DatabaseBackup,
+  DollarSign,
   Users,
   Pencil,
   ArrowRightLeft,
@@ -553,6 +554,10 @@ const JobsList = ({ mode = "folders" }) => {
                       <DropdownMenuItem onClick={() => navigate("/admin/users")} className="cursor-pointer" data-testid="admin-users-btn">
                         <Users className="w-4 h-4 mr-2" />
                         Users by company
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate("/admin/cost-rates")} className="cursor-pointer" data-testid="admin-cost-rates-btn">
+                        <DollarSign className="w-4 h-4 mr-2" />
+                        Cost report rates
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => navigate("/backup")} className="cursor-pointer" data-testid="backup-atlas-btn">
                         <DatabaseBackup className="w-4 h-4 mr-2" />
