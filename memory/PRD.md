@@ -669,3 +669,7 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 - Home header (`JobsList` mode="home") has a **Daily Reports** button (`daily-reports-btn`) between Month Folders and Team Reports → `/field-report` (new job-less route for `DailyFieldReport`; loads/creates today's report, no auto job row, "Add job row" + job picker works, Back goes to `/`).
 - Verified: Home → Daily Reports → `/field-report` (today's date, add row OK) → Back → `/`; button visible on mobile (icon-only).
 - Pre-existing dev-only console warning in DFR table (`<tbody>` containing `<div>` from DnD) — not introduced here.
+
+## Update — June 2026 (crosshair cursor in attribute placement mode; agent-tested, not user-confirmed)
+- `PlaceAttributeHandler` (JobMap.jsx) adds `placing-attribute` class + inline `cursor: crosshair` on the Leaflet container while `placingType` is set; `index.css` forces crosshair over pins/labels too. Verified grab→crosshair→grab (markers pointer→crosshair→pointer) on add Pole / Cancel.
+- Test note: /pw-browsers chromium gets wiped between runs — run `python3 -m playwright install chromium` right before local Playwright scripts.

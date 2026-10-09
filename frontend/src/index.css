@@ -259,6 +259,14 @@ body {
     isolation: isolate;
 }
 
+/* Attribute placement mode: crosshair everywhere on the map, even over existing pins/labels */
+.leaflet-container.placing-attribute,
+.leaflet-container.placing-attribute .leaflet-interactive,
+.leaflet-container.placing-attribute .leaflet-marker-icon,
+.leaflet-container.placing-attribute .leaflet-marker-icon * {
+    cursor: crosshair !important;
+}
+
 /* Pulsing connection target circles (tap-to-reconnect mode) */
 @keyframes connPulse {
     0% { transform: scale(1); opacity: 1; }

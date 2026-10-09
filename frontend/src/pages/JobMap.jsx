@@ -414,9 +414,16 @@ const PolePopupEditor = ({ pole, onSaved, onDeleted, onConverted }) => {
   );
 };
 
-// Captures a single map tap while placing a new attribute
+// Captures a single map tap while placing a new attribute; shows a crosshair cursor for precise placement
 const PlaceAttributeHandler = ({ onPlace }) => {
+  const map = useMap();
   useMapEvents({ click: (e) => onPlace(e.latlng) });
+  useEffect(() => {
+    const container = map.getContainer();
+    container.classList.add("placing-attribute");
+    container.style.cursor = "crosshair";
+    return () => { container.classList.remove("placing-attribute"); container.style.cursor = ""; };
+  }, [map]);
   return null;
 };
 
