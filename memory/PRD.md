@@ -684,3 +684,7 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 - Backend `GET/PUT /api/home/tile-order` (routes/jobs.py) stores `home_tile_order` (job id list) on the user's doc.
 - Frontend `components/SortableJobTiles.jsx` (dnd-kit rectSortingStrategy; grip handle `tile-drag-handle-<id>` on the right edge of each tile; Pointer distance 4 / Touch long-press 150ms). `JobsList` (home mode) loads the order, sorts each month group by it (unknown/new jobs after ordered ones), and `reorderMonthTiles` saves the full order across all months.
 - Verified: drag tile 1 → position 3, order changes, persists after reload, tile click still navigates to the job. Restore test order via `PUT /api/home/tile-order {"order":[]}`.
+
+## Update — June 2026 (Home tile sort: incomplete pinned above completed, newest created first; agent-tested, not user-confirmed)
+- `JobsList` monthGroups (home mode): sort key = (completed ? 1 : 0, manual rank if any, created_at desc). Unranked/new jobs sit above manually ranked ones; a manual drag order applies within the incomplete / completed groups only.
+- Verified on 3 month groups vs API data; marking the newest job completed drops it to the bottom of its month, others stay newest-first. Script: memory/scripts_home_tile_sort.py.

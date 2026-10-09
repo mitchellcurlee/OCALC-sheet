@@ -128,10 +128,19 @@ const JobsList = ({ mode = "folders" }) => {
       }
       groups[key].jobs.push(j);
     });
-    if (isHome && tileOrder.length) {
+    if (isHome) {
+      // Incomplete / in-progress jobs pinned above completed ones; newest created first within each group.
+      // A manual drag order (if any) applies within a group, with brand-new (unranked) jobs still at the top.
       const rank = new Map(tileOrder.map((id, i) => [id, i]));
+      const created = (j) => new Date(j.created_at).getTime() || 0;
       Object.values(groups).forEach((g) => {
-        g.jobs = g.jobs.map((j, i) => [j, rank.has(j.id) ? rank.get(j.id) : tileOrder.length + i]).sort((a, b) => a[1] - b[1]).map(([j]) => j);
+        g.jobs.sort((a, b) => {
+          if (!!a.completed !== !!b.completed) return a.completed ? 1 : -1;
+          const ra = rank.has(a.id) ? rank.get(a.id) : -1;
+          const rb = rank.has(b.id) ? rank.get(b.id) : -1;
+          if (ra !== rb) return ra - rb;
+          return created(b) - created(a);
+        });
       });
     }
     return Object.values(groups).sort((a, b) => b.key.localeCompare(a.key));
