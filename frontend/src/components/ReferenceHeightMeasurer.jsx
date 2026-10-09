@@ -89,6 +89,9 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
   const scrollBoxRef = useRef(null);
   const baseSizeRef = useRef(null);
   const pinchRef = useRef(null);
+  const fitRef = useRef(null);
+  const restoredFitRef = useRef(null);
+  const [fit, setFit] = useState(null);
   const [zoom, setZoom] = useState(1);
 
   const applyZoom = (next, clientX = null, clientY = null) => {
@@ -119,7 +122,40 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
     setZoom(1);
     baseSizeRef.current = null;
     pinchRef.current = null;
+    fitRef.current = restoredFitRef.current;
+    restoredFitRef.current = null;
+    setFit(null);
   }, [imagePreview]);
+
+  // Size the image to exactly fill the available box (no letterboxing, so layout px map 1:1 onto the photo);
+  // when the box changes (full-screen resize / rotation) markers and scales follow proportionally
+  const fitImage = useCallback(() => {
+    const box = scrollBoxRef.current;
+    const img = imageRef.current;
+    if (!box || !img || !img.naturalWidth || !img.naturalHeight) return;
+    const r = Math.min(box.clientWidth / img.naturalWidth, box.clientHeight / img.naturalHeight);
+    if (!(r > 0)) return;
+    const next = { w: Math.floor(img.naturalWidth * r), h: Math.floor(img.naturalHeight * r) };
+    const prev = fitRef.current;
+    if (prev && prev.w === next.w && prev.h === next.h) return;
+    if (prev && prev.w > 0) {
+      const k = next.w / prev.w;
+      const sc = (m) => (m ? { ...m, x: m.x * k, y: m.y * k } : m);
+      setMarkers((m) => ({ refBottom: sc(m.refBottom), refTop: sc(m.refTop), attachments: m.attachments.map(sc) }));
+      setPixelsPerFoot((v) => (v ? v * k : v));
+      setHorizontalPixelsPerFoot((v) => (v ? v * k : v));
+    }
+    fitRef.current = next;
+    setFit(next);
+  }, []);
+
+  useEffect(() => {
+    const box = scrollBoxRef.current;
+    if (!box || typeof ResizeObserver === "undefined") return undefined;
+    const ro = new ResizeObserver(() => { if (zoom === 1) fitImage(); });
+    ro.observe(box);
+    return () => ro.disconnect();
+  }, [step, imagePreview, zoom, fitImage]);
 
   // Wheel + pinch zoom on the image area
   useEffect(() => {
@@ -163,6 +199,7 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
       markers,
       pixelsPerFoot,
       horizontalPixelsPerFoot,
+      fit: fitRef.current,
       savedAt: Date.now()
     };
     
@@ -191,6 +228,7 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
             setMarkers(data.markers || { refBottom: null, refTop: null, attachments: [] });
             setPixelsPerFoot(data.pixelsPerFoot);
             setHorizontalPixelsPerFoot(data.horizontalPixelsPerFoot ?? null);
+            restoredFitRef.current = data.fit || null; // layout size the saved markers were placed at
             setHasRestoredData(true);
             toast.success("Previous session restored!", { duration: 2000 });
           }
@@ -386,7 +424,7 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
 
   useEffect(() => {
     drawCanvas();
-  }, [drawCanvas]);
+  }, [drawCanvas, fit]);
 
   // Click-drag pans the (zoomed) picture; a plain click places a marker
   const dragRef = useRef(null);
@@ -667,19 +705,20 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
           Measure Heights
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+      <DialogContent className="w-screen h-[100dvh] max-w-none max-h-none rounded-none sm:rounded-none border-0 p-3 sm:p-4 !flex flex-col gap-0 overflow-hidden z-[1100]" data-testid="height-measurer-dialog">
+        <DialogHeader className="shrink-0 pr-8">
+          <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
             <Ruler className="w-5 h-5 text-blue-600" />
             Reference Height Measurement
           </DialogTitle>
-          <DialogDescription className="text-sm text-zinc-500">
+          <DialogDescription className={`text-sm text-zinc-500 ${step === 1 ? "" : "hidden"}`}>
             Use a reference object to accurately measure attachment heights.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 mt-4">
-          {/* Instructions */}
+        <div className={`flex-1 min-h-0 flex flex-col gap-3 mt-3 ${step === 1 ? "overflow-y-auto" : "overflow-hidden"}`}>
+          {/* Instructions (upload step only — the status bar guides the marking steps) */}
+          {step === 1 && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
             <p className="font-medium mb-1">How to use:</p>
             <ol className="list-decimal list-inside space-y-1 text-blue-700">
@@ -689,6 +728,7 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
               <li>Tap each attachment to measure its height</li>
             </ol>
           </div>
+          )}
 
           {/* Step 1: Photo capture */}
           {step === 1 && (
@@ -788,9 +828,9 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
 
           {/* Steps 2 & 3: Marking on image */}
           {(step === 2 || step === 3) && imagePreview && (
-            <div className="space-y-4">
+            <div className="flex-1 min-h-0 flex flex-col gap-2" data-testid="measurer-marking-stage">
               {/* Status bar */}
-              <div className={`p-3 rounded-lg text-sm font-medium ${
+              <div className={`shrink-0 px-3 py-2 rounded-lg text-sm font-medium ${
                 step === 2 ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
               }`}>
                 {step === 2 && !markers.refBottom && (
@@ -809,7 +849,7 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
 
               {/* Down Guy mode: Height/Lead tabs + down guy selector */}
               {step === 3 && downGuyMode && (
-                <div className="space-y-2" data-testid="measurer-dg-controls">
+                <div className="shrink-0 space-y-2" data-testid="measurer-dg-controls">
                   <div className="flex rounded-lg overflow-hidden border border-zinc-300 w-fit">
                     <button
                       type="button"
@@ -860,26 +900,19 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
                 </div>
               )}
 
-              {/* Zoom controls */}
-              <div className="flex items-center justify-end gap-1">
-                <Button type="button" variant="outline" size="sm" className="h-7 px-2" onClick={() => applyZoom((p) => p / 1.5)} data-testid="measurer-zoom-out"><ZoomOut className="w-4 h-4" /></Button>
-                <span className="text-xs font-mono text-zinc-600 w-11 text-center" data-testid="measurer-zoom-level">{Math.round(zoom * 100)}%</span>
-                <Button type="button" variant="outline" size="sm" className="h-7 px-2" onClick={() => applyZoom((p) => p * 1.5)} data-testid="measurer-zoom-in"><ZoomIn className="w-4 h-4" /></Button>
-                {zoom > 1 && (
-                  <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-zinc-600" onClick={() => applyZoom(1)} data-testid="measurer-zoom-reset"><RotateCcw className="w-4 h-4" /></Button>
-                )}
-              </div>
-
-              {/* Image with canvas overlay (zoom via CSS transform; marker coords stay in layout px) */}
-              <div ref={scrollBoxRef} className="border border-zinc-300 rounded-lg overflow-auto bg-zinc-100 max-h-[75vh]">
-                <div style={zoom > 1 && baseSizeRef.current ? { width: baseSizeRef.current.w * zoom, height: baseSizeRef.current.h * zoom } : undefined}>
-                  <div className="relative" style={zoom > 1 && baseSizeRef.current ? { transform: `scale(${zoom})`, transformOrigin: "top left", width: baseSizeRef.current.w } : undefined}>
+              {/* Image with canvas overlay — fills all remaining height; image sized to fit the box exactly
+                  (zoom via CSS transform; marker coords stay in layout px) */}
+              <div ref={scrollBoxRef} className="flex-1 min-h-0 border border-zinc-300 rounded-lg overflow-auto bg-zinc-900/90 flex" data-testid="measurer-image-box">
+                <div className="m-auto" style={zoom > 1 && baseSizeRef.current ? { width: baseSizeRef.current.w * zoom, height: baseSizeRef.current.h * zoom } : undefined}>
+                  <div className="relative" style={zoom > 1 && baseSizeRef.current ? { transform: `scale(${zoom})`, transformOrigin: "top left", width: baseSizeRef.current.w } : (fit ? { width: fit.w, height: fit.h } : undefined)}>
                     <img
                       ref={imageRef}
                       src={imagePreview}
                       alt="Pole"
-                      className="w-full max-h-[70vh] object-contain"
-                      onLoad={drawCanvas}
+                      className="block select-none"
+                      style={fit ? { width: fit.w, height: fit.h } : { maxWidth: "100%", maxHeight: "100%" }}
+                      draggable={false}
+                      onLoad={() => { fitImage(); drawCanvas(); }}
                     />
                     <canvas
                       ref={canvasRef}
@@ -895,8 +928,8 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
                 </div>
               </div>
 
-              {/* Controls */}
-              <div className="flex gap-2 flex-wrap">
+              {/* Controls + zoom in one compact row */}
+              <div className="shrink-0 flex gap-2 flex-wrap items-center">
                 {markers.attachments.length > 0 && (
                   <Button
                     type="button"
@@ -929,11 +962,19 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
                   <Camera className="w-4 h-4 mr-1" />
                   New Photo
                 </Button>
+                <div className="flex items-center gap-1 ml-auto">
+                  <Button type="button" variant="outline" size="sm" className="h-7 px-2" onClick={() => applyZoom((p) => p / 1.5)} data-testid="measurer-zoom-out"><ZoomOut className="w-4 h-4" /></Button>
+                  <span className="text-xs font-mono text-zinc-600 w-11 text-center" data-testid="measurer-zoom-level">{Math.round(zoom * 100)}%</span>
+                  <Button type="button" variant="outline" size="sm" className="h-7 px-2" onClick={() => applyZoom((p) => p * 1.5)} data-testid="measurer-zoom-in"><ZoomIn className="w-4 h-4" /></Button>
+                  {zoom > 1 && (
+                    <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-zinc-600" onClick={() => applyZoom(1)} data-testid="measurer-zoom-reset"><RotateCcw className="w-4 h-4" /></Button>
+                  )}
+                </div>
               </div>
 
               {/* Measurements summary */}
               {markers.attachments.length > 0 && pixelsPerFoot && (
-                <div className="border border-zinc-200 rounded-lg divide-y">
+                <div className="shrink-0 border border-zinc-200 rounded-lg divide-y max-h-28 overflow-y-auto">
                   <div className="p-2 bg-zinc-50 font-medium text-sm text-zinc-700">
                     Measured Heights
                   </div>
