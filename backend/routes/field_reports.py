@@ -307,3 +307,113 @@ async def export_field_report_xlsx(report_id: str, current_user: dict = Depends(
     wb = build_dfr_workbook(report)
     fielder = (report.get("fielder") or "").replace(" ", "_") or "fielder"
     return _xlsx_response(wb, f"Daily_Field_Report_{report.get('date', '')}_{fielder}.xlsx")
+
+
+# ---------------- Cost report (fielder pay) ----------------
+COST_RATES = {"job_fee": 75.0, "per_pole": 6.50, "per_mile": 0.76, "per_foot": 0.06, "free_feet": 1000}
+
+
+def _num(v) -> float:
+    try:
+        return float(str(v).replace(",", "").strip() or 0)
+    except ValueError:
+        return 0.0
+
+
+def _row_filled(r: dict) -> bool:
+    return any(str(r.get(k) or "").strip() for k in ("job", "job_id", "job_address", "miles", "footage", "poles"))
+
+
+def cost_line(line: dict) -> dict:
+    """Pay for one job row: $75 job fee (if toggled on) + $6.50/pole + $0.76/mile + $0.06/ft over 1000 ft."""
+    poles, miles, feet = _num(line.get("poles")), _num(line.get("miles")), _num(line.get("footage"))
+    excess = max(0.0, feet - COST_RATES["free_feet"])
+    job_fee = COST_RATES["job_fee"] if line.get("job_fee", True) else 0.0
+    pole_pay = round(poles * COST_RATES["per_pole"], 2)
+    mile_pay = round(miles * COST_RATES["per_mile"], 2)
+    foot_pay = round(excess * COST_RATES["per_foot"], 2)
+    return {**line, "poles": poles, "miles": miles, "footage": feet, "excess_feet": excess, "job_fee_amount": job_fee,
+            "pole_pay": pole_pay, "mile_pay": mile_pay, "foot_pay": foot_pay, "total": round(job_fee + pole_pay + mile_pay + foot_pay, 2)}
+
+
+@router.get("/field-reports/cost-report/rows")
+async def cost_report_rows(date_from: str, date_to: str, current_user: dict = Depends(get_current_user)):
+    """Every filled job row on the caller's reports between two dates (inclusive) — the pick list for the cost report."""
+    if date_to < date_from:
+        date_from, date_to = date_to, date_from
+    docs = await _db.field_reports.find({"user_id": current_user["id"], "date": {"$gte": date_from, "$lte": date_to}},
+                                        {"_id": 0, "track": 0}).sort("date", 1).to_list(1000)
+    out: List[Dict[str, Any]] = []
+    for d in docs:
+        for i, r in enumerate(d.get("rows") or []):
+            if not _row_filled(r):
+                continue
+            out.append({"key": f"{d['id']}:{r.get('id') or i}", "date": r.get("date") or d.get("date"), "job": r.get("job") or "",
+                        "job_id": r.get("job_id") or "", "job_address": r.get("job_address") or "", "poles": _num(r.get("poles")),
+                        "miles": _num(r.get("miles")), "footage": _num(r.get("footage")), "fielder": d.get("fielder") or ""})
+    return {"rows": out, "rates": COST_RATES}
+
+
+class CostReportIn(BaseModel):
+    date_from: str
+    date_to: str
+    lines: List[Dict[str, Any]] = Field(default_factory=list)  # selected rows, each with job_fee: bool
+
+
+def build_cost_workbook(date_from: str, date_to: str, lines: List[dict], fielder: str) -> Workbook:
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Cost Report"
+    bold = Font(bold=True)
+    hdr_fill = PatternFill("solid", fgColor="1F2937")
+    thin = Side(style="thin", color="D4D4D8")
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
+    money = '"$"#,##0.00'
+    ws["A1"] = f"Cost Report  {date_from} to {date_to}"
+    ws["A1"].font = Font(bold=True, size=14)
+    ws["A2"] = f"Fielder: {fielder}" if fielder else ""
+    r = COST_RATES
+    ws["A3"] = f"Rates: ${r['job_fee']:.2f} per job · ${r['per_pole']:.2f} per pole · ${r['per_mile']:.2f} per mile · ${r['per_foot']:.2f} per ft over {r['free_feet']:,} ft"
+    ws["A3"].font = Font(italic=True, color="52525B")
+    cols = [("date", "Date", 11), ("job", "Job", 14), ("job_address", "Job Address", 32), ("job_fee_amount", "Job Fee", 10),
+            ("poles", "# Poles", 8), ("pole_pay", "Pole Pay", 10), ("miles", "Miles", 8), ("mile_pay", "Mileage Pay", 11),
+            ("footage", "Footage (ft)", 11), ("excess_feet", "Ft over 1000", 11), ("foot_pay", "Footage Pay", 11), ("total", "Line Total", 12)]
+    head = 5
+    for c, (_, title, width) in enumerate(cols, start=1):
+        cell = ws.cell(row=head, column=c, value=title)
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = hdr_fill
+        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        cell.border = border
+        ws.column_dimensions[get_column_letter(c)].width = width
+    money_keys = {"job_fee_amount", "pole_pay", "mile_pay", "foot_pay", "total"}
+    for i, line in enumerate(lines, start=head + 1):
+        for c, (key, _, _) in enumerate(cols, start=1):
+            cell = ws.cell(row=i, column=c, value=line.get(key, ""))
+            cell.border = border
+            if key in money_keys:
+                cell.number_format = money
+    tr = head + len(lines) + 1
+    ws.cell(row=tr, column=1, value="TOTAL").font = bold
+    for c, (key, _, _) in enumerate(cols, start=1):
+        if key in money_keys or key in ("poles", "miles", "footage", "excess_feet"):
+            cell = ws.cell(row=tr, column=c, value=round(sum(_num(l.get(key)) for l in lines), 2))
+            cell.font = bold
+            if key in money_keys:
+                cell.number_format = money
+    ws.freeze_panes = ws.cell(row=head + 1, column=1)
+    return wb
+
+
+@router.post("/field-reports/cost-report")
+async def cost_report(body: CostReportIn, format: str = "json", current_user: dict = Depends(get_current_user)):
+    """Line-item pay breakdown for the selected job rows; ?format=xlsx downloads it."""
+    lines = [cost_line(l) for l in body.lines]
+    lines.sort(key=lambda l: (str(l.get("date") or ""), str(l.get("job") or "")))
+    total = round(sum(l["total"] for l in lines), 2)
+    if format == "xlsx":
+        fielder = next((l.get("fielder") for l in lines if l.get("fielder")), current_user.get("name") or "")
+        wb = build_cost_workbook(body.date_from, body.date_to, lines, fielder)
+        return _xlsx_response(wb, f"Cost_Report_{body.date_from}_to_{body.date_to}.xlsx")
+    return {"lines": lines, "total": total, "rates": COST_RATES,
+            "subtotals": {k: round(sum(l[k] for l in lines), 2) for k in ("job_fee_amount", "pole_pay", "mile_pay", "foot_pay")}}

@@ -694,3 +694,8 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 - Backend rule (`routes/field_reports.py` `_rows_date`/`_effective_date`): on PUT, if every filled row carries one date different from the header, the report moves to that date (unless another report of that user owns it). Startup `migrate_report_dates` applies the same rule to old reports (logged as "Re-dated N Daily Field Report(s)").
 - Filename `Daily_Field_Report_<form date>.xlsx`, My Reports history and Team range exports all key off the saved report date.
 - Verified: rows-date rule, conflict keeps date, header change re-dates + no duplicate, filename, conflict prompt opens the other report. Script: memory/scripts_dfr_redate.py.
+
+## Update — June 2026 (DFR Cost Report; agent-tested API + browser, not user-confirmed)
+- Button **Generate Cost Report** (`dfr-cost-report-btn`) in the DFR header → `components/dfr/CostReportDialog.jsx`: date range (defaults last 7 days ending on the report date) → "Load jobs" → pick list of every filled job row on the user's reports in range (Include checkbox, per-row **$75 Job fee** switch; defaults ON for first occurrence of a job, OFF for repeats which get a "repeat" badge) → Generate → line-item table + TOTAL → Download Excel.
+- Backend `routes/field_reports.py`: `COST_RATES` (75 / 6.50 per pole / 0.76 per mile / 0.06 per ft over 1000), `GET /field-reports/cost-report/rows?date_from&date_to`, `POST /field-reports/cost-report[?format=xlsx]` (computes `cost_line` per row; xlsx via `build_cost_workbook`). Own reports only.
+- Verified: 4 poles/20.5 mi/1500 ft + fee → $146.58; UI flow + Excel rows/TOTAL. Script: memory/scripts_cost_report.py.

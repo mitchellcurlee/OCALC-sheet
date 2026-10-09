@@ -5,11 +5,12 @@ import axios from "axios";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, FileSpreadsheet, Loader2, Plus, Route, Save, ClipboardList, History } from "lucide-react";
+import { ArrowLeft, FileSpreadsheet, Loader2, Plus, Route, Save, ClipboardList, History, DollarSign } from "lucide-react";
 import { DFRTable } from "@/components/dfr/DFRTable";
 import { TravelTracker } from "@/components/dfr/TravelTracker";
 import { TravelMapDialog } from "@/components/dfr/TravelMapDialog";
 import { MyReportsDialog } from "@/components/dfr/MyReportsDialog";
+import { CostReportDialog } from "@/components/dfr/CostReportDialog";
 import { HomeAddress } from "@/components/dfr/HomeAddress";
 import { useDailyReport } from "@/components/dfr/useDailyReport";
 import { EMPLOYEE_NAMES } from "@/components/ase/ASEFormConstants";
@@ -24,6 +25,7 @@ export default function DailyFieldReport() {
   const date = params.get("date") || todayISO();
   const [mapOpen, setMapOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [costOpen, setCostOpen] = useState(false);
   const [home, setHome] = useState(null);
   // the report follows the date entered on the form — keep the URL on the saved report date
   const onDateChanged = useCallback((d) => setParams({ date: d }, { replace: true }), [setParams]);
@@ -109,6 +111,7 @@ export default function DailyFieldReport() {
               {EMPLOYEE_NAMES.map((n) => <option key={n} value={n}>{n}</option>)}
             </select>
             <Button onClick={() => setHistoryOpen(true)} variant="outline" className="h-9 text-xs bg-zinc-800 border-zinc-600 text-white hover:bg-zinc-700" data-testid="dfr-my-reports-btn"><History className="w-4 h-4 mr-1" />My Reports</Button>
+            <Button onClick={() => setCostOpen(true)} className="h-9 text-xs bg-emerald-700 hover:bg-emerald-800 text-white" data-testid="dfr-cost-report-btn"><DollarSign className="w-4 h-4 mr-1" />Generate Cost Report</Button>
             <Button onClick={() => setMapOpen(true)} className="h-9 text-xs bg-orange-600 hover:bg-orange-700 text-white" data-testid="dfr-travel-map-btn"><Route className="w-4 h-4 mr-1" />Travel Map</Button>
             <Button onClick={exportXlsx} className="h-9 text-xs bg-emerald-600 hover:bg-emerald-700 text-white" data-testid="dfr-export-xlsx-btn"><FileSpreadsheet className="w-4 h-4 mr-1" />Export to Excel</Button>
             <Button onClick={persist} variant="outline" className="h-9 text-xs bg-zinc-800 border-zinc-600 text-white hover:bg-zinc-700" data-testid="dfr-save-btn">{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}</Button>
@@ -121,6 +124,7 @@ export default function DailyFieldReport() {
         <DFRTable rows={report.rows} jobs={jobs} employees={EMPLOYEE_NAMES} onChangeRow={changeRow} onRemoveRow={removeRow} onPickJob={pickJob} onMoveRow={moveRow} onReorder={reorderRows} activeRowId={activeRowId} onActivate={setActiveRowId} />
         <Button onClick={addRow} variant="outline" className="h-10 text-xs bg-white border-zinc-300" data-testid="dfr-add-row-btn"><Plus className="w-4 h-4 mr-1" />Add job row</Button>
       </main>
+      <CostReportDialog open={costOpen} onOpenChange={setCostOpen} currentDate={report.date} />
       <MyReportsDialog open={historyOpen} onOpenChange={setHistoryOpen} currentDate={report.date} onPick={(d) => { setHistoryOpen(false); openDate(d); }} />
       <TravelMapDialog open={mapOpen} onOpenChange={setMapOpen} report={report} jobs={jobs} employees={EMPLOYEE_NAMES} onRowChange={changeRow} home={home} onHomeChange={setHome} />
     </div>
