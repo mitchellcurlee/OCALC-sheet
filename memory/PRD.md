@@ -688,3 +688,9 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 ## Update — June 2026 (Home tile sort: incomplete pinned above completed, newest created first; agent-tested, not user-confirmed)
 - `JobsList` monthGroups (home mode): sort key = (completed ? 1 : 0, manual rank if any, created_at desc). Unranked/new jobs sit above manually ranked ones; a manual drag order applies within the incomplete / completed groups only.
 - Verified on 3 month groups vs API data; marking the newest job completed drops it to the bottom of its month, others stay newest-first. Script: memory/scripts_home_tile_sort.py.
+
+## Update — June 2026 (DFR date = the date entered on the form; agent-tested API + browser, not user-confirmed)
+- Header date now **re-dates the current report** (`useDailyReport.redate`: report.date + rows still on the old date → saved immediately; URL follows via `onDateChanged`). If another report already owns that day → confirm "open it instead?" (Open = old navigate behaviour via `openDate`; Cancel = no change). "My Reports" picks still open that day's report.
+- Backend rule (`routes/field_reports.py` `_rows_date`/`_effective_date`): on PUT, if every filled row carries one date different from the header, the report moves to that date (unless another report of that user owns it). Startup `migrate_report_dates` applies the same rule to old reports (logged as "Re-dated N Daily Field Report(s)").
+- Filename `Daily_Field_Report_<form date>.xlsx`, My Reports history and Team range exports all key off the saved report date.
+- Verified: rows-date rule, conflict keeps date, header change re-dates + no duplicate, filename, conflict prompt opens the other report. Script: memory/scripts_dfr_redate.py.

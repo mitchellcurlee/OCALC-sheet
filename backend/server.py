@@ -199,6 +199,15 @@ async def startup_storage():
     except Exception as e:
         logger.error(f"Address pole migration failed: {e}")
 
+    # One-time data fix: Daily Field Reports belong to the date their rows show, not the day they were opened
+    try:
+        from routes.field_reports import migrate_report_dates
+        n = await migrate_report_dates(db)
+        if n:
+            logger.info(f"Re-dated {n} Daily Field Report(s) to the date on their rows")
+    except Exception as e:
+        logger.error(f"Field report date migration failed: {e}")
+
 
 @app.on_event("shutdown")
 async def shutdown_db_client():

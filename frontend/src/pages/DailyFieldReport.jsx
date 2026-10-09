@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useGoBack } from "@/lib/useGoBack";
 import axios from "axios";
@@ -25,7 +25,9 @@ export default function DailyFieldReport() {
   const [mapOpen, setMapOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [home, setHome] = useState(null);
-  const { jobs, report, saving, dirty, activeRowId, setActiveRowId, persist, update, changeRow, onTrack, startNextRow, activeRow, rowIndex } = useDailyReport({ jobId, date });
+  // the report follows the date entered on the form — keep the URL on the saved report date
+  const onDateChanged = useCallback((d) => setParams({ date: d }, { replace: true }), [setParams]);
+  const { jobs, report, saving, dirty, activeRowId, setActiveRowId, persist, update, changeRow, onTrack, startNextRow, activeRow, rowIndex, redate } = useDailyReport({ jobId, date, onDateChanged });
 
   useEffect(() => { axios.get("/field-reports/home").then((r) => setHome(r.data)).catch(() => setHome({ address: "", lat: null, lng: null })); }, []);
 
@@ -64,7 +66,17 @@ export default function DailyFieldReport() {
   };
   const addRow = () => { const row = { ...newRow(null), date: report.date, fielder: report.fielder || "" }; update((r) => ({ ...r, rows: [...r.rows, row] })); setActiveRowId(row.id); };
   const setFielder = (v) => update((r) => ({ ...r, fielder: v, rows: r.rows.map((x) => (x.fielder ? x : { ...x, fielder: v })) }));
-  const changeDate = (d) => { if (!d) return; persist().then(() => setParams({ date: d })); };
+  // Header date: re-dates this report. "My Reports" picks open that day's report instead.
+  const openDate = (d) => { if (!d) return; persist().then(() => setParams({ date: d })); };
+  const changeDate = async (d) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(d || "") || d < "2000-01-01" || d === report?.date) return;
+    const res = await redate(d);
+    if (res === "conflict") {
+      if (window.confirm(`A report for ${d} already exists — open it instead?`)) openDate(d);
+      return;
+    }
+    if (res === "ok") toast.success(`Report moved to ${d}`);
+  };
 
   const exportXlsx = async () => {
     try {
@@ -109,7 +121,7 @@ export default function DailyFieldReport() {
         <DFRTable rows={report.rows} jobs={jobs} employees={EMPLOYEE_NAMES} onChangeRow={changeRow} onRemoveRow={removeRow} onPickJob={pickJob} onMoveRow={moveRow} onReorder={reorderRows} activeRowId={activeRowId} onActivate={setActiveRowId} />
         <Button onClick={addRow} variant="outline" className="h-10 text-xs bg-white border-zinc-300" data-testid="dfr-add-row-btn"><Plus className="w-4 h-4 mr-1" />Add job row</Button>
       </main>
-      <MyReportsDialog open={historyOpen} onOpenChange={setHistoryOpen} currentDate={report.date} onPick={(d) => { setHistoryOpen(false); changeDate(d); }} />
+      <MyReportsDialog open={historyOpen} onOpenChange={setHistoryOpen} currentDate={report.date} onPick={(d) => { setHistoryOpen(false); openDate(d); }} />
       <TravelMapDialog open={mapOpen} onOpenChange={setMapOpen} report={report} jobs={jobs} employees={EMPLOYEE_NAMES} onRowChange={changeRow} home={home} onHomeChange={setHome} />
     </div>
   );

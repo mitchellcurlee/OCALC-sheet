@@ -53,6 +53,35 @@ async def _get_report(report_id: str, user: dict, write: bool = False) -> dict:
     return doc
 
 
+def _rows_date(rows: List[dict]) -> Optional[str]:
+    """The one date every filled-in row carries, or None when rows disagree / are blank."""
+    dates = {str(r.get("date") or "").strip() for r in (rows or []) if any(str(r.get(k) or "").strip() for k in ("job", "job_id", "job_address", "status", "comments", "miles", "footage", "poles"))}
+    dates.discard("")
+    return next(iter(dates)) if len(dates) == 1 else None
+
+
+async def _effective_date(user_id: str, report_id: Optional[str], date: str, rows: List[dict]) -> str:
+    """A report belongs to the date its rows show. Falls back to `date` when another report already owns that day."""
+    rd = _rows_date(rows)
+    if not rd or rd == date:
+        return date
+    q: Dict[str, Any] = {"user_id": user_id, "date": rd}
+    if report_id:
+        q["id"] = {"$ne": report_id}
+    return date if await _db.field_reports.find_one(q, {"_id": 0, "id": 1}) else rd
+
+
+async def migrate_report_dates(db) -> int:
+    """One-time fix: old reports whose rows all show a different date move to that date."""
+    n = 0
+    async for doc in db.field_reports.find({}, {"_id": 0, "id": 1, "user_id": 1, "date": 1, "rows": 1}):
+        eff = await _effective_date(doc.get("user_id"), doc["id"], doc.get("date"), doc.get("rows") or [])
+        if eff != doc.get("date"):
+            await db.field_reports.update_one({"id": doc["id"]}, {"$set": {"date": eff}})
+            n += 1
+    return n
+
+
 @router.get("/field-reports")
 async def list_field_reports(date: Optional[str] = None, all: bool = False, current_user: dict = Depends(get_current_user)):
     """Own reports by default; ?all=1 lists every company user's reports."""
@@ -160,8 +189,9 @@ async def get_field_report(report_id: str, current_user: dict = Depends(get_curr
 
 @router.put("/field-reports/{report_id}")
 async def update_field_report(report_id: str, body: FieldReportIn, current_user: dict = Depends(get_current_user)):
-    await _get_report(report_id, current_user, write=True)
-    upd = {"date": body.date, "fielder": body.fielder or "", "rows": body.rows, "track": body.track,
+    doc = await _get_report(report_id, current_user, write=True)
+    date = await _effective_date(doc.get("user_id"), report_id, body.date, body.rows)
+    upd = {"date": date, "fielder": body.fielder or "", "rows": body.rows, "track": body.track,
            "updated_at": datetime.now(timezone.utc).isoformat(), "updated_by": current_user.get("email", "")}
     await _db.field_reports.update_one({"id": report_id}, {"$set": upd})
     return await _db.field_reports.find_one({"id": report_id}, {"_id": 0})
