@@ -67,6 +67,7 @@ import { getOfflineSavedJobs } from "@/lib/offlineTiles";
 import { useAuth } from "@/context/AuthContext";
 import { OfflineIndicator } from "@/components/OfflineIndicator";
 import { JobsLocationMap } from "@/components/JobsLocationMap";
+import { SortableJobTiles } from "@/components/SortableJobTiles";
 
 
 const JobsList = ({ mode = "folders" }) => {
@@ -92,6 +93,16 @@ const JobsList = ({ mode = "folders" }) => {
   const [saving, setSaving] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
+  // Home tiles: per-user manual order (job ids), persisted on the server
+  const [tileOrder, setTileOrder] = useState([]);
+  useEffect(() => {
+    if (!isHome) return;
+    axios.get("/home/tile-order").then((r) => setTileOrder(r.data?.order || [])).catch(() => {});
+  }, [isHome]);
+  const saveTileOrder = async (order) => {
+    setTileOrder(order);
+    try { await axios.put("/home/tile-order", { order }); } catch { toast.error("Could not save tile order"); }
+  };
 
   const searchResults = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -117,8 +128,20 @@ const JobsList = ({ mode = "folders" }) => {
       }
       groups[key].jobs.push(j);
     });
+    if (isHome && tileOrder.length) {
+      const rank = new Map(tileOrder.map((id, i) => [id, i]));
+      Object.values(groups).forEach((g) => {
+        g.jobs = g.jobs.map((j, i) => [j, rank.has(j.id) ? rank.get(j.id) : tileOrder.length + i]).sort((a, b) => a[1] - b[1]).map(([j]) => j);
+      });
+    }
     return Object.values(groups).sort((a, b) => b.key.localeCompare(a.key));
-  }, [jobs]);
+  }, [jobs, isHome, tileOrder]);
+
+  // Reorder one month's tiles and persist the full Home order (all months, display order)
+  const reorderMonthTiles = (monthKey, orderedIds) => {
+    const order = monthGroups.flatMap((g) => (g.key === monthKey ? orderedIds : g.jobs.map((j) => j.id)));
+    saveTileOrder(order);
+  };
 
   const activeGroup = monthGroups.find((g) => g.key === selectedMonth) || null;
 
@@ -635,9 +658,12 @@ const JobsList = ({ mode = "folders" }) => {
                       <h2 className="font-heading text-base md:text-lg font-bold text-zinc-900 uppercase">{group.label}</h2>
                       <span className="text-xs text-zinc-500 font-mono">({group.jobs.length} job{group.jobs.length === 1 ? "" : "s"})</span>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {group.jobs.map((job) => renderJobCard(job))}
-                    </div>
+                    <SortableJobTiles
+                      jobs={group.jobs}
+                      renderJobCard={renderJobCard}
+                      onReorder={(ids) => reorderMonthTiles(group.key, ids)}
+                      className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+                    />
                   </section>
                 ))}
               </div>

@@ -159,6 +159,24 @@ async def create_job(job_data: JobCreate, current_user: dict = Depends(get_curre
     return job
 
 
+class TileOrderIn(BaseModel):
+    order: List[str] = []
+
+
+@router.get("/home/tile-order")
+async def get_tile_order(current_user: dict = Depends(get_current_user)):
+    """Per-user manual ordering of the Home job tiles (list of job ids)."""
+    doc = await _db.users.find_one({"id": current_user["id"]}, {"_id": 0, "home_tile_order": 1})
+    return {"order": (doc or {}).get("home_tile_order") or []}
+
+
+@router.put("/home/tile-order")
+async def set_tile_order(body: TileOrderIn, current_user: dict = Depends(get_current_user)):
+    order = [str(x) for x in body.order][:5000]
+    await _db.users.update_one({"id": current_user["id"]}, {"$set": {"home_tile_order": order}})
+    return {"order": order}
+
+
 @router.get("/jobs", response_model=List[Job])
 async def get_jobs(current_user: dict = Depends(get_current_user)):
     """Get all jobs - admin sees all jobs, mastec/byers admin sees all mastec/byers jobs, regular users see only their own"""

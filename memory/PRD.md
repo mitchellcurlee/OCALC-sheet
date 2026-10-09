@@ -679,3 +679,8 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 - Marking steps: instructions/description hidden, status bar + DG controls `shrink-0`, image box `flex-1 min-h-0`; zoom controls moved into the action-button row; summary capped `max-h-28`.
 - Image is sized to exactly fit the box (`fitImage` via ResizeObserver, explicit width/height, no object-contain letterbox → layout px map 1:1 onto photo for the annotated export). When the box resizes (summary appears, rotation), markers + px/ft scales rescale proportionally; the fit size is saved in localStorage so restored sessions rescale too.
 - Verified: dialog = viewport on 1920×800 and 390×844, img height == box height, aspect kept, canvas == img, 6 ft stick → attachment measured 16' 2" (expected 16.1 ft). Script: memory/scripts_measurer_fullscreen.py (test photo memory/test_pole_photo.jpg).
+
+## Update — June 2026 (Home tiles drag-to-reorder, persisted per user; agent-tested via local Playwright, not user-confirmed)
+- Backend `GET/PUT /api/home/tile-order` (routes/jobs.py) stores `home_tile_order` (job id list) on the user's doc.
+- Frontend `components/SortableJobTiles.jsx` (dnd-kit rectSortingStrategy; grip handle `tile-drag-handle-<id>` on the right edge of each tile; Pointer distance 4 / Touch long-press 150ms). `JobsList` (home mode) loads the order, sorts each month group by it (unknown/new jobs after ordered ones), and `reorderMonthTiles` saves the full order across all months.
+- Verified: drag tile 1 → position 3, order changes, persists after reload, tile click still navigates to the job. Restore test order via `PUT /api/home/tile-order {"order":[]}`.
