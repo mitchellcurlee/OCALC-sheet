@@ -70,6 +70,7 @@ function App() {
             <Route path="/jobs/:jobId/ase2" element={<ProtectedRoute><ASEForm2 /></ProtectedRoute>} />
             <Route path="/jobs/:jobId/spf" element={<ProtectedRoute><SPFForm /></ProtectedRoute>} />
             <Route path="/jobs/:jobId/field-report" element={<ProtectedRoute><DailyFieldReport /></ProtectedRoute>} />
+            <Route path="/field-report" element={<ProtectedRoute><DailyFieldReport /></ProtectedRoute>} />
             {/* Unknown paths land on the true Home page */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

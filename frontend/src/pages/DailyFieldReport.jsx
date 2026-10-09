@@ -20,7 +20,7 @@ export default function DailyFieldReport() {
   const { jobId } = useParams();
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
-  const goBack = useGoBack(`/jobs/${jobId}`);
+  const goBack = useGoBack(jobId ? `/jobs/${jobId}` : "/");
   const date = params.get("date") || todayISO();
   const [mapOpen, setMapOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);

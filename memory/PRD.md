@@ -664,3 +664,8 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 - Verified: initial 109 ft/109 ft → NTE moved via API → 219 ft/219 ft within 10s → manual "999 ft" kept while Est. updated back to 109 ft.
 - Exports: `computeItemStations` already builds rows via `buildSpanMeasurementTexts` (now with `targetId`), so KMZ title `FBT · 1+14` and Excel Station `1+14` confirmed for a path-target FBT (script: memory/scripts_ase_export_check.mjs).
 - Test note: preview host 403s python-urllib UA — use http://localhost:8001 for scripted API calls, http://localhost:3000 for local Playwright.
+
+## Update — June 2026 (Daily Reports tab on Home header; agent-tested via local Playwright, not user-confirmed)
+- Home header (`JobsList` mode="home") has a **Daily Reports** button (`daily-reports-btn`) between Month Folders and Team Reports → `/field-report` (new job-less route for `DailyFieldReport`; loads/creates today's report, no auto job row, "Add job row" + job picker works, Back goes to `/`).
+- Verified: Home → Daily Reports → `/field-report` (today's date, add row OK) → Back → `/`; button visible on mobile (icon-only).
+- Pre-existing dev-only console warning in DFR table (`<tbody>` containing `<div>` from DnD) — not introduced here.

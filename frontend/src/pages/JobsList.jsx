@@ -467,6 +467,12 @@ const JobsList = ({ mode = "folders" }) => {
                 {isHome ? <Folder className="w-4 h-4" /> : <Home className="w-4 h-4" />}
                 <span className="hidden md:inline">{isHome ? "Month Folders" : "Home"}</span>
               </Button>
+              {isHome && (
+                <Button onClick={() => navigate("/field-report")} variant="outline" size="sm" className="bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900 gap-1.5" title="Daily Field Report" data-testid="daily-reports-btn">
+                  <ClipboardList className="w-4 h-4" />
+                  <span className="hidden md:inline">Daily Reports</span>
+                </Button>
+              )}
               {(isAdmin || isSupervisor) && (
                 <Button onClick={() => navigate("/admin/team-reports")} variant="outline" size="sm" className="bg-zinc-100 border-zinc-300 hover:bg-zinc-200 text-zinc-900 gap-1.5" title="Team Daily Field Reports" data-testid="team-reports-btn">
                   <ClipboardList className="w-4 h-4" />
