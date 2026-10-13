@@ -22,6 +22,7 @@ export const CostReportDialog = ({ open, onOpenChange, currentDate }) => {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [hourlyRate, setHourlyRate] = useState(() => localStorage.getItem("dfr_cost_hourly_rate") || "");
 
   useEffect(() => {
     if (!open) return;
@@ -60,7 +61,11 @@ export const CostReportDialog = ({ open, onOpenChange, currentDate }) => {
     return new Set(Object.keys(c).filter((k) => c[k] > 1));
   }, [rows]);
 
-  const payload = () => ({ date_from: from, date_to: to, lines: chosen.map((r) => ({ ...r, job_fee: !!sel[r.key]?.job_fee })) });
+  const rate = Math.max(0, parseFloat(hourlyRate) || 0);
+  const payload = () => {
+    localStorage.setItem("dfr_cost_hourly_rate", hourlyRate); // remembered as the starting value next time, still editable
+    return { date_from: from, date_to: to, hourly_rate: rate, lines: chosen.map((r) => ({ ...r, job_fee: !!sel[r.key]?.job_fee })) };
+  };
 
   const generate = async () => {
     if (!chosen.length) return toast.error("Select at least one job");
@@ -126,6 +131,7 @@ export const CostReportDialog = ({ open, onOpenChange, currentDate }) => {
                       <th className="p-2 text-right">Poles</th>
                       <th className="p-2 text-right">Miles</th>
                       <th className="p-2 text-right">Footage</th>
+                      <th className="p-2 text-right">Hours</th>
                       <th className="p-2 text-center">${rates?.job_fee ?? 75} Job fee</th>
                     </tr>
                   </thead>
@@ -142,6 +148,7 @@ export const CostReportDialog = ({ open, onOpenChange, currentDate }) => {
                           <td className="p-2 text-right">{num(r.poles)}</td>
                           <td className="p-2 text-right">{num(r.miles)}</td>
                           <td className="p-2 text-right">{num(r.footage)}</td>
+                          <td className="p-2 text-right">{num(r.hours)}</td>
                           <td className="p-2 text-center"><Switch checked={!!s.job_fee} disabled={!s.include} onCheckedChange={(v) => setSel((p) => ({ ...p, [r.key]: { ...p[r.key], job_fee: !!v } }))} data-testid={`cost-jobfee-${i}`} /></td>
                         </tr>
                       );
@@ -152,8 +159,16 @@ export const CostReportDialog = ({ open, onOpenChange, currentDate }) => {
             )}
 
             {rows && rows.length > 0 && (
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-zinc-500" data-testid="cost-selected-count">{chosen.length} of {rows.length} jobs selected</span>
+              <div className="flex flex-wrap items-end justify-between gap-3">
+                <div className="flex items-end gap-3">
+                  <label className="text-xs text-zinc-600">Hourly rate
+                    <div className="relative mt-1">
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-zinc-500">$</span>
+                      <Input type="number" min="0" step="0.01" inputMode="decimal" placeholder="0.00" value={hourlyRate} onChange={(e) => setHourlyRate(e.target.value)} className="h-9 w-32 pl-6" data-testid="cost-hourly-rate" />
+                    </div>
+                  </label>
+                  <span className="text-xs text-zinc-500 pb-2" data-testid="cost-selected-count">{chosen.length} of {rows.length} jobs selected · {num(chosen.reduce((a, r) => a + (Number(r.hours) || 0), 0))} hrs</span>
+                </div>
                 <Button onClick={generate} disabled={busy || !chosen.length} className="h-9 text-xs bg-emerald-600 hover:bg-emerald-700 text-white" data-testid="cost-generate-btn">
                   {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <><DollarSign className="w-4 h-4 mr-1" />Generate Cost Report</>}
                 </Button>
@@ -182,6 +197,8 @@ export const CostReportDialog = ({ open, onOpenChange, currentDate }) => {
                     <th className="p-2 text-right">Footage</th>
                     <th className="p-2 text-right">Ft over {(result.rates?.free_feet ?? 1000).toLocaleString()}</th>
                     <th className="p-2 text-right">Footage pay</th>
+                    <th className="p-2 text-right">Hours</th>
+                    <th className="p-2 text-right">Hours pay</th>
                     <th className="p-2 text-right">Line total</th>
                   </tr>
                 </thead>
@@ -198,6 +215,8 @@ export const CostReportDialog = ({ open, onOpenChange, currentDate }) => {
                       <td className="p-2 text-right">{num(l.footage)}</td>
                       <td className="p-2 text-right">{num(l.excess_feet)}</td>
                       <td className="p-2 text-right">{usd(l.foot_pay)}</td>
+                      <td className="p-2 text-right">{num(l.hours)}</td>
+                      <td className="p-2 text-right">{usd(l.hours_pay)}</td>
                       <td className="p-2 text-right font-semibold" data-testid={`cost-line-total-${i}`}>{usd(l.total)}</td>
                     </tr>
                   ))}
@@ -212,10 +231,23 @@ export const CostReportDialog = ({ open, onOpenChange, currentDate }) => {
                     <td className="p-2 text-right">{usd(result.subtotals.mile_pay)}</td>
                     <td className="p-2" colSpan={2} />
                     <td className="p-2 text-right">{usd(result.subtotals.foot_pay)}</td>
+                    <td className="p-2 text-right">{num(result.hours)}</td>
+                    <td className="p-2 text-right">{usd(result.subtotals.hours_pay)}</td>
                     <td className="p-2 text-right text-emerald-700 text-sm" data-testid="cost-grand-total">{usd(result.total)}</td>
                   </tr>
                 </tfoot>
               </table>
+            </div>
+            <div className="grid sm:grid-cols-[minmax(0,1fr)_280px] gap-3 items-start">
+              <div className="text-xs text-zinc-500 self-end">Hourly rate used: {usd(result.hourly_rate)} / hr — change it on the selection screen and generate again.</div>
+              <div className="border rounded-lg divide-y text-sm" data-testid="cost-summary">
+                {[["Job fees", result.subtotals.job_fee_amount, "cost-sum-jobs"], ["Pole pay", result.subtotals.pole_pay, "cost-sum-poles"],
+                  ["Footage pay", result.subtotals.foot_pay, "cost-sum-footage"], ["Mileage", result.subtotals.mile_pay, "cost-sum-mileage"],
+                  [`Hours (${num(result.hours)} hrs × ${usd(result.hourly_rate)})`, result.subtotals.hours_pay, "cost-sum-hours"]].map(([label, val, tid]) => (
+                  <div key={tid} className="flex justify-between px-3 py-1.5"><span className="text-zinc-600">{label}</span><span className="font-medium" data-testid={tid}>{usd(val)}</span></div>
+                ))}
+                <div className="flex justify-between px-3 py-2 bg-emerald-50 font-bold"><span>Overall total</span><span className="text-emerald-700" data-testid="cost-sum-total">{usd(result.total)}</span></div>
+              </div>
             </div>
             <div className="flex justify-end">
               <Button onClick={download} disabled={busy} className="h-9 text-xs bg-emerald-600 hover:bg-emerald-700 text-white" data-testid="cost-download-btn">

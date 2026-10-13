@@ -739,7 +739,7 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
                   <SelectTrigger className="h-10 bg-white border-zinc-300">
                     <SelectValue placeholder="Select height" />
                   </SelectTrigger>
-                  <SelectContent className="bg-zinc-50 border-zinc-300">
+                  <SelectContent className="bg-zinc-50 border-zinc-300 z-[1200]">
                     {REFERENCE_HEIGHT_OPTIONS.map((h) => (
                       <SelectItem key={h} value={h.toString()}>{h} ft</SelectItem>
                     ))}
