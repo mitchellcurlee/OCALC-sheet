@@ -299,6 +299,14 @@ export const routePayloadFromOrder = (job, orderedItems) => {
   return { route_sequence: seq, span_order: ordered };
 };
 
+// Drop one pass of a Draw Route (an item the route visits twice shows twice in the list) and keep span_order consistent
+export const removeRoutePass = (job, index) => {
+  const seq = (job?.route_sequence || []).filter((_, i) => i !== index);
+  const live = new Set();
+  for (let i = 0; i + 1 < seq.length; i++) live.add(spanKey(seq[i], seq[i + 1]));
+  return { route_sequence: seq, span_order: (job?.span_order || []).filter((k) => live.has(k)) };
+};
+
 export const computeConnectionPairs = (route, ug, connections = [], spanOrder = null, drawnOnly = false) => {
   const allItems = [];
   route.forEach((p) => allItems.push({ id: p.id, type: "pole", pos: p.pos, sort_order: p.sort_order ?? Infinity, label: p.pole_number || "Pole", address: p.address || "", start_path: p.start_path === true, end_path: p.end_path === true, standalone: p.standalone === true, hasPath: (p.path_measurements || []).length > 0, pathTarget: pathTargetOf(p.path_measurements), markerColor: p.marker_color || null, labelOffset: Array.isArray(p.label_offset) && p.label_offset.length === 2 ? p.label_offset : null, labelSize: p.label_size || null }));

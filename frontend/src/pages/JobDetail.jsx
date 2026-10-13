@@ -4,7 +4,7 @@ import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom"
 import { useGoBack } from "@/lib/useGoBack";
 import axios from "axios";
 import { toast } from "sonner";
-import { routePayloadFromOrder } from "@/lib/poleMapImage";
+import { routePayloadFromOrder, removeRoutePass } from "@/lib/poleMapImage";
 import { UNDERGROUND_TYPES, undergroundAbbr, computeItemStations, routeArg } from "@/lib/poleMapImage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -116,7 +116,7 @@ const SortableItem = ({ item, index, getConditionColor }) => {
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: item.id });
+  } = useSortable({ id: item._dupKey || item.id });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -237,7 +237,12 @@ const JobDetail = () => {
       const byId = {};
       all.forEach((it) => { if (it._type === "pole" || it._type === "underground") byId[it.id] = it; });
       const routed = [];
-      routeSeq.forEach((id, i) => { if (byId[id]) routed.push({ ...byId[id], _routePos: i + 1, _dupKey: `${id}#${i}` }); });
+      const passes = {};
+      routeSeq.forEach((id, i) => {
+        if (!byId[id]) return;
+        passes[id] = (passes[id] || 0) + 1;
+        routed.push({ ...byId[id], _routePos: i + 1, _dupKey: `${id}#${i}`, _routeRepeat: passes[id] > 1 ? passes[id] : 0 });
+      });
       const inRoute = new Set(routeSeq);
       const rest = all.filter((it) => !((it._type === "pole" || it._type === "underground") && inRoute.has(it.id)));
       return [...routed, ...rest];
@@ -286,15 +291,26 @@ const JobDetail = () => {
     setReorderMode(false);
   };
 
+  // Sortable ids must be unique: a Draw Route item that appears in two passes shares item.id, so key by _dupKey
+  const sortKey = (item) => item._dupKey || item.id;
   const handleDragEnd = (event) => {
     const { active, over } = event;
-    if (active.id !== over?.id) {
-      setReorderedItems((items) => {
-        const oldIndex = items.findIndex((item) => item.id === active.id);
-        const newIndex = items.findIndex((item) => item.id === over.id);
-        return arrayMove(items, oldIndex, newIndex);
-      });
-    }
+    if (!over || active.id === over.id) return;
+    setReorderedItems((items) => {
+      const oldIndex = items.findIndex((item) => sortKey(item) === active.id);
+      const newIndex = items.findIndex((item) => sortKey(item) === over.id);
+      if (oldIndex < 0 || newIndex < 0) return items;
+      return arrayMove(items, oldIndex, newIndex);
+    });
+  };
+
+  // Remove one pass of the drawn route (the "duplicate" list entry) without touching the attribute itself
+  const removeRoutePassAt = async (routePos) => {
+    try {
+      await axios.put(`/jobs/${jobId}`, removeRoutePass(job, routePos - 1));
+      toast.success("Removed this pass from the route");
+      fetchJobAndPoles();
+    } catch { toast.error("Could not update the route"); }
   };
 
   const saveReorder = async () => {
@@ -1162,12 +1178,12 @@ const JobDetail = () => {
               onDragEnd={handleDragEnd}
             >
               <SortableContext
-                items={reorderedItems.map((item) => item.id)}
+                items={reorderedItems.map(sortKey)}
                 strategy={verticalListSortingStrategy}
               >
                 {reorderedItems.map((item, index) => (
                   <SortableItem
-                    key={item.id}
+                    key={sortKey(item)}
                     item={item}
                     index={index}
                     getConditionColor={getConditionColor}
@@ -1250,6 +1266,7 @@ const JobDetail = () => {
                           <DropdownMenuItem onClick={() => navigate(`/jobs/${jobId}/view/${item.id}`)} data-testid={`pole-menu-view-${item.id}`} className="cursor-pointer"><Eye className="w-4 h-4 mr-2 text-zinc-600" />View</DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleDuplicate(item.id)} data-testid={`duplicate-pole-${item.id}`} className="cursor-pointer"><Copy className="w-4 h-4 mr-2 text-zinc-600" />Duplicate</DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleSyncPoleDist(item.id)} disabled={syncingPoleId === item.id || !item.latitude || !item.longitude} data-testid={`sync-pole-${item.id}`} className="cursor-pointer"><RefreshCw className="w-4 h-4 mr-2 text-blue-600" />Sync GPS distances</DropdownMenuItem>
+                          {item._routeRepeat && <DropdownMenuItem onClick={() => removeRoutePassAt(item._routePos)} data-testid={`remove-route-pass-${item.id}-${item._routePos}`} className="cursor-pointer text-amber-700 focus:text-amber-800"><X className="w-4 h-4 mr-2" />Remove this route pass</DropdownMenuItem>}
                           <DropdownMenuItem onClick={() => confirmDelete(item.id, "pole")} data-testid={`delete-pole-${item.id}`} className="cursor-pointer text-red-600 focus:text-red-700"><Trash2 className="w-4 h-4 mr-2" />Delete</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -1333,6 +1350,7 @@ const JobDetail = () => {
                         <DropdownMenuContent align="start" className="bg-white border-zinc-200 w-48" onClick={(e) => e.stopPropagation()}>
                           <DropdownMenuItem onClick={() => navigate(`/jobs/${jobId}/underground/edit/${item.id}`)} data-testid={`edit-ug-${item.id}`} className="cursor-pointer"><Pencil className="w-4 h-4 mr-2 text-zinc-600" />Edit</DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleDuplicateUg(item.id)} data-testid={`duplicate-ug-${item.id}`} className="cursor-pointer"><Copy className="w-4 h-4 mr-2 text-zinc-600" />Duplicate</DropdownMenuItem>
+                          {item._routeRepeat && <DropdownMenuItem onClick={() => removeRoutePassAt(item._routePos)} data-testid={`remove-route-pass-${item.id}-${item._routePos}`} className="cursor-pointer text-amber-700 focus:text-amber-800"><X className="w-4 h-4 mr-2" />Remove this route pass</DropdownMenuItem>}
                           <DropdownMenuSub>
                             <DropdownMenuSubTrigger data-testid={`change-type-${item.id}`} className="cursor-pointer"><Repeat className="w-4 h-4 mr-2 text-zinc-600" />Change type</DropdownMenuSubTrigger>
                             <DropdownMenuSubContent className="bg-white border-zinc-200 max-h-72 overflow-y-auto">

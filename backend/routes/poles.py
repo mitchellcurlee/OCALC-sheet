@@ -14,6 +14,7 @@ from models.options import POLE_CONDITIONS
 from services.helpers import pole_sort_key, format_height, pole_photo_items, haversine_feet, has_gps
 from services.auth import get_current_user, is_company_email
 from routes.addresses import nearest_address
+from services.idempotency import find_duplicate_create
 
 router = APIRouter(tags=["poles"])
 
@@ -296,8 +297,14 @@ async def sync_map_distances_to_poles(job_id: str):
 
 @router.post("/poles", response_model=Pole, status_code=201)
 async def create_pole(pole_data: PoleCreate):
-    """Create a new pole entry"""
-    pole = Pole(**pole_data.model_dump())
+    """Create a new pole entry (idempotent: a retry with the same client id, or an identical pole posted within seconds, returns the existing one)"""
+    data = pole_data.model_dump()
+    if not data.get("id"):
+        data.pop("id", None)
+    existing = await find_duplicate_create(_db.poles, data, {"pole_number": data.get("pole_number")})
+    if existing:
+        return Pole(**existing)
+    pole = Pole(**data)
     if not pole.address and pole.latitude is not None and pole.longitude is not None:
         pole.address = await nearest_address(pole.latitude, pole.longitude)
     if pole.sort_order is None and pole.job_id:

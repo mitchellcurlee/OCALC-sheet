@@ -102,7 +102,7 @@ class PoleBase(BaseModel):
 
 
 class PoleCreate(PoleBase):
-    pass
+    id: Optional[str] = None  # client-generated id so a retried request cannot create a second pole
 
 
 class PoleUpdate(BaseModel):

@@ -14,6 +14,7 @@ import SpanReorderList from "@/components/SpanReorderList";
 import { layoutLabels, badgeBox, leaderEnd } from "@/lib/labelLayout";
 import { ugTagText, ugTagColor, isAddressAttr, computeRoute, fmtFeet, feetToStation, markerLabel, downloadPoleMapImage, downloadSegmentedMapPages, downloadMapPdfPages, ugWithGps, undergroundAbbr, computeUgConnectors, computeConnectionPairs, computeListStations, UNDERGROUND_TYPES, isAerialAttr, resolvePairAerial, spanKey, routeWaypoints, routeArg, placeSpanNotes, LIST_PAGE_LINES, riserAnchor, tieInSuffix, pathRowText, pairIsManual, routePayloadFromOrder, pathTargetOf } from "@/lib/poleMapImage";
 import { ExportDestinationDialog } from "@/components/ExportDestinationDialog";
+import { PathMeasurementDialog } from "@/components/PathMeasurementDialog";
 import { CLOUD_EXPORT_LABELS, uploadExportToCloud } from "@/lib/cloudExports";
 import { streetOnly } from "@/lib/addressName";
 import { HomeButton } from "@/components/HomeButton";
@@ -845,6 +846,7 @@ const JobMap = () => {
     window.addEventListener('pointerup', up);
   }, []);
   const [placingType, setPlacingType] = useState(null); // "__pole__" | "__pole_terminal__" | underground type name
+  const [pathEditId, setPathEditId] = useState(null); // item whose path measurements are being edited from the map
   const [swapPick, setSwapPick] = useState(null); // segIndex of the span number tapped on the map (edit / swap-by-tap)
   const [badgeValue, setBadgeValue] = useState(""); // typed number for the tapped map badge
   const [riserPick, setRiserPick] = useState(null); // list index of a riser badge tapped on the map
@@ -2241,6 +2243,17 @@ const JobMap = () => {
     }
   };
   const promptNote = (afterKey) => { const t = window.prompt("Note text (e.g. Address 12345 Jones Rd):"); if (t) addSpanNote(t, afterKey); };
+  // Path measurement rows: pencil opens the editor for the item that carries the path
+  const pathEditBtn = (e) => (e.kind === "path" && e.itemId ? (
+    <button type="button" onClick={() => setPathEditId(e.itemId)} className="p-0.5 rounded border border-emerald-300 bg-white text-emerald-700 hover:bg-emerald-50 ml-1" title="Edit path measurements" data-testid={`path-edit-${e.num}`}>
+      <Edit3 className="w-3.5 h-3.5" />
+    </button>
+  ) : null);
+  const pathItemName = (x) => (x.pole_number !== undefined ? (/^\d/.test(String(x.pole_number || "")) ? `P${x.pole_number}` : (x.pole_number || "Pole")) : `${undergroundAbbr(x.type)}${x.label && x.label !== x.type ? ` ${x.label}` : ""}`);
+  const pathEditItem = pathEditId ? (poles.find((x) => x.id === pathEditId) || underground.find((x) => x.id === pathEditId) || null) : null;
+  const pathEditType = pathEditItem && poles.some((x) => x.id === pathEditItem.id) ? "pole" : "underground";
+  const pathTargetOptions = pathEditItem ? [...poles, ...underground].filter((x) => x.id !== pathEditItem.id).map(pathItemName) : [];
+
   const noteBelowBtn = (e) => (
     <button type="button" onClick={() => promptNote(e.key)} className="p-0.5 rounded border border-amber-200 bg-white text-amber-600 hover:bg-amber-50" title="Add a note directly below this row" data-testid={`note-add-below-${e.num}`}>
       <StickyNote className="w-3.5 h-3.5" />
@@ -3839,7 +3852,9 @@ const JobMap = () => {
               {/* Path measurement number badges at their item — click to see the measurement */}
               {!showStationNumbers && measurementEntries.filter((e) => e.kind === "path" && e.pos).map((e) => (
                 <Marker key={`path-num-${e.num}`} position={e.pos} icon={numberBadgeIcon(e.num, "#059669", [34, -8])} zIndexOffset={800}>
-                  <Popup><div className="text-sm font-mono" data-testid={`path-badge-popup-${e.num}`}>{e.text}</div></Popup>
+                  <Popup><div className="text-sm font-mono" data-testid={`path-badge-popup-${e.num}`}>{e.text}
+                    <button type="button" onClick={() => setPathEditId(e.itemId)} className="mt-2 flex items-center gap-1 text-xs font-sans text-emerald-700 border border-emerald-300 rounded px-2 py-1 bg-white hover:bg-emerald-50" data-testid={`path-badge-edit-${e.num}`}><Edit3 className="w-3 h-3" />Edit path</button>
+                  </div></Popup>
                 </Marker>
               ))}
               
@@ -4387,6 +4402,7 @@ const JobMap = () => {
                     ) : (
                       <>{e.text}{showStationNumbers && rowStations[e.key] ? <span className="text-blue-700 font-semibold"> ({rowStations[e.key].from} to {rowStations[e.key].to})</span> : null}</>
                     )}</span>
+                    {pathEditBtn(e)}
                     {noteBelowBtn(e)}
                   </li>
                 )
@@ -4400,6 +4416,7 @@ const JobMap = () => {
         )}
       </main>
 
+      <PathMeasurementDialog item={pathEditItem} itemType={pathEditType} itemName={pathEditItem ? pathItemName(pathEditItem) : ""} targetOptions={pathTargetOptions} onOpenChange={(o) => { if (!o) setPathEditId(null); }} onSaved={fetchData} />
       <ExportDestinationDialog
         open={!!pendingMapExport}
         onOpenChange={(v) => { if (!v) setPendingMapExport(null); }}

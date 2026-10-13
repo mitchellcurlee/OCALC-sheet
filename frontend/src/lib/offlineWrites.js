@@ -58,6 +58,16 @@ const offlineToast = () => {
   }
 };
 
+// Request interceptor: every create carries a client id, so a retried/replayed request (double tap,
+// response lost after the server saved) resolves to the SAME record instead of a duplicate
+axios.interceptors.request.use((config) => {
+  const parsed = parseWrite(config.method, config.url);
+  if (parsed?.action === 'create' && parsed.entity !== 'job' && config.data && typeof config.data === 'object' && !(config.data instanceof FormData) && !config.data.id) {
+    config.data = { ...config.data, id: uuidv4() };
+  }
+  return config;
+});
+
 // Response ERROR interceptor: queue failed writes when offline
 axios.interceptors.response.use(
   (response) => response,
@@ -83,7 +93,7 @@ axios.interceptors.response.use(
 
     try {
       if (parsed.action === 'create') {
-        const id = uuidv4();
+        const id = body.id || uuidv4(); // reuse the client id already sent to the server
         const now = new Date().toISOString();
         const item = { ...body, id, created_at: now, updated_at: now, _offline: true };
         await saveLocal(parsed.entity, item);

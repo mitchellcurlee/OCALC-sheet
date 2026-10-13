@@ -7,6 +7,7 @@ from models.underground import Underground, UndergroundCreate, UndergroundUpdate
 from services.auth import get_current_user
 from services.helpers import pole_sort_key
 from routes.addresses import nearest_address
+from services.idempotency import find_duplicate_create
 
 router = APIRouter(tags=["underground"])
 
@@ -91,7 +92,14 @@ async def _insert_into_route_order(item):
 
 @router.post("/underground", response_model=Underground, status_code=201)
 async def create_underground(data: UndergroundCreate):
-    item = Underground(**data.model_dump())
+    """Idempotent: a retry with the same client id, or an identical item posted within seconds, returns the existing one"""
+    payload = data.model_dump()
+    if not payload.get("id"):
+        payload.pop("id", None)
+    existing = await find_duplicate_create(_db.underground, payload, {"type": payload.get("type"), "label": payload.get("label")})
+    if existing:
+        return Underground(**existing)
+    item = Underground(**payload)
     if not item.address and item.latitude is not None and item.longitude is not None:
         item.address = await nearest_address(item.latitude, item.longitude)
     if item.sort_order is None:

@@ -34,6 +34,7 @@ class UndergroundBase(BaseModel):
 
 class UndergroundCreate(UndergroundBase):
     job_id: str
+    id: Optional[str] = None  # client-generated id so a retried request cannot create a second item
 
 
 class UndergroundUpdate(BaseModel):

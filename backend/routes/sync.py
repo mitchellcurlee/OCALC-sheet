@@ -137,6 +137,8 @@ async def _sync_pole(action: SyncAction, user: dict) -> SyncResult:
             return SyncResult(action_id=action.id, success=False, error="Access denied")
         
         pole = Pole(**data)
+        if await _db.poles.find_one({"id": pole.id}, {"_id": 0, "id": 1}):
+            return SyncResult(action_id=action.id, success=True, server_id=pole.id)  # already created by the original request
         await _db.poles.insert_one(pole.model_dump())
         return SyncResult(action_id=action.id, success=True, server_id=pole.id)
     
@@ -225,6 +227,8 @@ async def _sync_underground(action: SyncAction, user: dict) -> SyncResult:
         if job["user_id"] != user["id"] and not is_admin_user(user):
             return SyncResult(action_id=action.id, success=False, error="Access denied")
         item = Underground(**data)
+        if await _db.underground.find_one({"id": item.id}, {"_id": 0, "id": 1}):
+            return SyncResult(action_id=action.id, success=True, server_id=item.id)  # already created by the original request
         await _db.underground.insert_one(item.model_dump())
         return SyncResult(action_id=action.id, success=True, server_id=item.id)
     
