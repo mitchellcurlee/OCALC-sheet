@@ -716,3 +716,6 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 - **Duplicate attributes / idempotent create**: `PoleCreate`/`UndergroundCreate` accept optional client `id`; `services/idempotency.find_duplicate_create` returns the existing doc for the same id, or an identical (job + pole_number|type+label + GPS) doc created within 20 s. `routes/sync.py` create is a no-op when the id already exists. Frontend `offlineWrites.js` request interceptor stamps `id = uuid` on every create and the offline queue reuses it — so a POST whose response was lost no longer yields a second record on replay.
 - Note: job bfbdcd92 has 43 FBT groups duplicated at import time (2026-09-11, distinct ids) — removable with multi-delete; not auto-deleted.
 - Verified: same-id POST ×2 → one doc; identical no-id POST ×2 → one doc; different GPS → new doc; path dialog edit/revert on the map; reorder drag moves only the target; exactly one card offers "Remove this route pass". Script: memory/scripts_path_edit_reorder.py.
+
+## Update — June 2026 (Edit/Add path from marker popups; agent-tested, not user-confirmed)
+- Pole popup (`popup-path-edit-<id>`) and underground popup (`ug-path-edit-<id>`) now have an "Edit path" / "Add path" button (hidden in position-edit mode) opening `PathMeasurementDialog` for that attribute. Verified on HH-9 (dialog shows its 2 rows).
