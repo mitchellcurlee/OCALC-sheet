@@ -728,3 +728,6 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 ## Update — June 2026 (moveSpanToNumber counts spans only; agent-tested, not user-confirmed)
 - `JobMap.moveSpanToNumber`: typed N = "become the Nth span" (ordinal among span rows only; riser/note/path rows don't count). Rebuilds span order from the spans-only array and keeps non-listed (manual-measured) segments in place. Toast: "Span X is now Span Y" uses spans-only ordinals.
 - Verified on job 123456 (interleaved risers): 5th span (row 7) typed "1" → became span 1, others shifted, risers stayed anchored. Script: memory/scripts_span_move.py (restores order afterwards).
+
+## Update — June 2026 (Verizon owner option; agent-tested)
+- `UndergroundForm.ownerOptions`: "Verizon" added after ATT for both Handhole and Manhole owner lists. Verified selectable in both.

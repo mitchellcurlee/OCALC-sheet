@@ -104,8 +104,8 @@ const UndergroundForm = () => {
   // Owner options — Handhole vs Manhole
   const ownerOptions = useMemo(() => {
     const t = (formData.type || "").toLowerCase();
-    if (t.includes("manhole")) return ["ATT", "Storm", "Sewer", "Power", "City Owned", "Out of Franchise", "Unknown"];
-    if (t.includes("handhole")) return ["ATT", "MCI", "Crown Castle", "Frontier", "Ezee Fiber", "Comcast", "CMC Communications", "Phonoscope", "Zayo Group", "Fiberlight", "Power", "City Owned", "Out of Franchise", "Unknown"];
+    if (t.includes("manhole")) return ["ATT", "Verizon", "Storm", "Sewer", "Power", "City Owned", "Out of Franchise", "Unknown"];
+    if (t.includes("handhole")) return ["ATT", "Verizon", "MCI", "Crown Castle", "Frontier", "Ezee Fiber", "Comcast", "CMC Communications", "Phonoscope", "Zayo Group", "Fiberlight", "Power", "City Owned", "Out of Franchise", "Unknown"];
     return [];
   }, [formData.type]);
 
