@@ -2007,20 +2007,24 @@ const JobMap = () => {
     await persistSpanSegs(segs, `Span ${spanNums[a] ?? a + 1} ↔ ${spanNums[b] ?? b + 1} swapped`);
   };
   const swapSpan = (segIndex, dir) => swapSpanIndices(segIndex, segIndex + dir);
-  // Move a span to a number; every span after it shifts to stay in sequence
+  // Move a span so it becomes the Nth span (N counts spans only — riser, note and path rows between them
+  // don't count); every span after it shifts to stay in sequence
   const moveSpanToNumber = async (segIndex, rawValue) => {
-    const spanEntries = measurementEntries.filter((e) => e.kind === "span");
-    const cur = spanEntries.find((e) => e.segIndex === segIndex);
+    const spanEntries = measurementEntries.filter((e) => e.kind === "span"); // display order
+    const curPos = spanEntries.findIndex((e) => e.segIndex === segIndex);
     const n = Math.round(Number(rawValue));
-    if (!cur || !Number.isFinite(n) || n < 1) { toast.error("Enter a span number of 1 or more"); return; }
-    const target = Math.min(n, measurementEntries.length);
-    if (target === cur.num) return;
-    const others = spanEntries.filter((e) => e.segIndex !== segIndex);
-    const insertIdx = others.filter((e) => e.num < target || (target > cur.num && e.num === target)).length;
-    const segs = orderedSegments.slice();
-    const [moved] = segs.splice(segIndex, 1);
-    segs.splice(insertIdx, 0, moved);
-    await persistSpanSegs(segs, `Span ${cur.num} is now Span ${target} — following spans renumbered`);
+    if (curPos < 0 || !Number.isFinite(n) || n < 1) { toast.error("Enter a span number of 1 or more"); return; }
+    const target = Math.min(n, spanEntries.length);
+    if (target === curPos + 1) return;
+    const spanSegs = spanEntries.map((e) => orderedSegments[e.segIndex]);
+    const [moved] = spanSegs.splice(curPos, 1);
+    spanSegs.splice(target - 1, 0, moved);
+    // keep any segment not shown as a span row (manual-measured pairs) in its relative place
+    const shown = new Set(spanEntries.map((e) => e.segIndex));
+    const segs = [];
+    let k = 0;
+    orderedSegments.forEach((sg, i) => { segs.push(shown.has(i) ? spanSegs[k++] : sg); });
+    await persistSpanSegs(segs, `Span ${curPos + 1} is now Span ${target} — following spans renumbered`);
   };
   // List edit: typed number shifts the sequence
   const setSpanNumber = async (segIndex, rawValue) => {
