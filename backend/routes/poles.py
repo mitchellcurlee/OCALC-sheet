@@ -15,6 +15,7 @@ from services.helpers import pole_sort_key, format_height, pole_photo_items, hav
 from services.auth import get_current_user, is_company_email
 from routes.addresses import nearest_address
 from services.idempotency import find_duplicate_create
+from services.dedupe import dedupe_attachments
 
 router = APIRouter(tags=["poles"])
 
@@ -440,6 +441,8 @@ async def update_pole(pole_id: str, pole_data: PoleUpdate, current_user: dict = 
         raise HTTPException(status_code=404, detail="Pole not found")
     
     update_data = {k: v for k, v in pole_data.model_dump().items() if v is not None}
+    if isinstance(update_data.get("attachments"), list):
+        update_data["attachments"] = dedupe_attachments(update_data["attachments"])  # same row never saved twice
     if "label_offset" in pole_data.model_fields_set and pole_data.label_offset is None:
         update_data["label_offset"] = None  # explicit reset → back to automatic placement
     # GPS moved (or first set) without an explicit address -> refresh the nearest home address

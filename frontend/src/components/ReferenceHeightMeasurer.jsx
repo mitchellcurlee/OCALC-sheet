@@ -656,6 +656,17 @@ export const ReferenceHeightMeasurer = ({ onHeightsDetected, buttonVariant = "ou
         };
       });
 
+      // Two taps on the same spot (same rounded height, field and guy) count once
+      const seen = new Set();
+      const unique = heights.filter((h) => {
+        const k = `${h.field}|${h.guyIndex}|${h.height_ft}`;
+        if (seen.has(k)) return false;
+        seen.add(k);
+        return true;
+      });
+      heights.length = 0;
+      heights.push(...unique);
+
       // Create and upload annotated image
       toast.info("Creating measurement image...");
       const annotatedImage = await createAnnotatedImage();

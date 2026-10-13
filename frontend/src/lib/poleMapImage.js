@@ -283,11 +283,21 @@ export const routeArg = (job) => {
 // route_sequence (pole/underground ids in list order) and span_order (spans between consecutive items
 // first, in that order, then any other existing spans). Returns null when the job has no route.
 export const routePayloadFromOrder = (job, orderedItems) => {
-  if (!(job?.route_sequence || []).length) return null;
+  const oldSeq = job?.route_sequence || [];
+  if (!oldSeq.length) return null;
   const seq = [];
   orderedItems.forEach((it) => {
     if (it._type !== "pole" && it._type !== "underground") return;
-    if (seq[seq.length - 1] !== it.id) seq.push(it.id);
+    if (!seq.includes(it.id)) seq.push(it.id);
+  });
+  // The list shows each attribute once; keep the route's revisits (2nd+ passes) right after the item they followed
+  const firstSeen = new Set();
+  oldSeq.forEach((id, i) => {
+    if (!firstSeen.has(id)) { firstSeen.add(id); return; }
+    const prev = oldSeq[i - 1];
+    const at = seq.indexOf(prev);
+    if (at < 0 || seq[at] === id || seq[at + 1] === id) return;
+    seq.splice(at + 1, 0, id);
   });
   const known = new Set(job.span_order || []);
   const ordered = [];

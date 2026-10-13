@@ -1104,24 +1104,28 @@ export const PoleForm = ({ mode = "create", initialPole = null, jobId = null, on
                     ...(formData.staged_photos || []).map((u, i) => ({ label: `Gallery ${i + 1}`, url: u })),
                   ].filter(Boolean)}
                   onHeightsDetected={(heights) => {
-                    // Add measured heights as new attachment rows
-                    const newAttachments = heights.map(h => ({
-                      _key: rowKey(),
-                      height: h.height_ft?.toString() || "",
-                      owner: "",
-                      location: "",
-                      hoa_type: "",
-                      photo: h.photo || "", // Include annotated photo if provided
-                      notes: ""
-                    }));
-                    setAttachments(prev => [...prev.filter(a => a.height || a.owner || a.photo || a.notes), ...newAttachments]);
-                    
-                    // Also add the annotated photo to HOA gallery if available
+                    // Add measured heights as new attachment rows — never the same height twice
+                    // (re-running / reopening the measurer must not append rows that are already there)
+                    const heightKey = (h) => String(parseFloat(h) || "");
+                    setAttachments(prev => {
+                      const kept = prev.filter(a => a.height || a.owner || a.photo || a.notes);
+                      const have = new Set(kept.map(a => heightKey(a.height)));
+                      const fresh = [];
+                      heights.forEach(h => {
+                        const k = heightKey(h.height_ft);
+                        if (!k || have.has(k)) return;
+                        have.add(k);
+                        fresh.push({ _key: rowKey(), height: h.height_ft?.toString() || "", owner: "", location: "", hoa_type: "", photo: h.photo || "", notes: "" });
+                      });
+                      return [...kept, ...fresh];
+                    });
+
+                    // Also add the annotated photo to HOA gallery if available (once)
                     const photoUrl = heights[0]?.photo;
                     if (photoUrl) {
                       setFormData(prev => ({
                         ...prev,
-                        hoa_markup_photos: [...(prev.hoa_markup_photos || []), photoUrl]
+                        hoa_markup_photos: (prev.hoa_markup_photos || []).includes(photoUrl) ? (prev.hoa_markup_photos || []) : [...(prev.hoa_markup_photos || []), photoUrl]
                       }));
                     }
                   }}

@@ -4,7 +4,7 @@ import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom"
 import { useGoBack } from "@/lib/useGoBack";
 import axios from "axios";
 import { toast } from "sonner";
-import { routePayloadFromOrder, removeRoutePass } from "@/lib/poleMapImage";
+import { routePayloadFromOrder } from "@/lib/poleMapImage";
 import { UNDERGROUND_TYPES, undergroundAbbr, computeItemStations, routeArg } from "@/lib/poleMapImage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -230,22 +230,32 @@ const JobDetail = () => {
       if (orderA !== orderB) return orderA < orderB ? -1 : 1;
       return (a.created_at || "").localeCompare(b.created_at || "");
     });
-    // Draw Route jobs: list follows the drawn route(s) exactly (Span 1 → last); an item that sits in
-    // two routes appears twice; anything not routed stays at the bottom in the order it was added
+    // Draw Route jobs: list follows the drawn route (Span 1 → last). Each attribute is listed ONCE, at its
+    // first route position (a route may revisit an item — that is a span, not a second attribute); a pole's
+    // riser row stays anchored right after its pole (the "+0.5" slot); unrouted items follow in list order
     const routeSeq = job?.route_sequence || [];
     if (routeSeq.length > 0) {
       const byId = {};
       all.forEach((it) => { if (it._type === "pole" || it._type === "underground") byId[it.id] = it; });
       const routed = [];
-      const passes = {};
+      const placed = new Set();
       routeSeq.forEach((id, i) => {
-        if (!byId[id]) return;
-        passes[id] = (passes[id] || 0) + 1;
-        routed.push({ ...byId[id], _routePos: i + 1, _dupKey: `${id}#${i}`, _routeRepeat: passes[id] > 1 ? passes[id] : 0 });
+        if (!byId[id] || placed.has(id)) return;
+        placed.add(id);
+        routed.push({ ...byId[id], _routePos: i + 1 });
       });
-      const inRoute = new Set(routeSeq);
-      const rest = all.filter((it) => !((it._type === "pole" || it._type === "underground") && inRoute.has(it.id)));
-      return [...routed, ...rest];
+      const risers = all.filter((it) => it._type === "riser");
+      const anchored = new Set();
+      const withRisers = [];
+      routed.forEach((it) => {
+        withRisers.push(it);
+        if (it._type === "pole") {
+          const r = risers.find((x) => x.id === `riser:${it.id}`);
+          if (r) { withRisers.push(r); anchored.add(r.id); }
+        }
+      });
+      const rest = all.filter((it) => !(placed.has(it.id) && (it._type === "pole" || it._type === "underground")) && !anchored.has(it.id));
+      return [...withRisers, ...rest];
     }
     return all;
   }, [poles, undergroundItems, job]);
@@ -304,14 +314,7 @@ const JobDetail = () => {
     });
   };
 
-  // Remove one pass of the drawn route (the "duplicate" list entry) without touching the attribute itself
-  const removeRoutePassAt = async (routePos) => {
-    try {
-      await axios.put(`/jobs/${jobId}`, removeRoutePass(job, routePos - 1));
-      toast.success("Removed this pass from the route");
-      fetchJobAndPoles();
-    } catch { toast.error("Could not update the route"); }
-  };
+
 
   const saveReorder = async () => {
     try {
@@ -1266,7 +1269,6 @@ const JobDetail = () => {
                           <DropdownMenuItem onClick={() => navigate(`/jobs/${jobId}/view/${item.id}`)} data-testid={`pole-menu-view-${item.id}`} className="cursor-pointer"><Eye className="w-4 h-4 mr-2 text-zinc-600" />View</DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleDuplicate(item.id)} data-testid={`duplicate-pole-${item.id}`} className="cursor-pointer"><Copy className="w-4 h-4 mr-2 text-zinc-600" />Duplicate</DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleSyncPoleDist(item.id)} disabled={syncingPoleId === item.id || !item.latitude || !item.longitude} data-testid={`sync-pole-${item.id}`} className="cursor-pointer"><RefreshCw className="w-4 h-4 mr-2 text-blue-600" />Sync GPS distances</DropdownMenuItem>
-                          {item._routeRepeat && <DropdownMenuItem onClick={() => removeRoutePassAt(item._routePos)} data-testid={`remove-route-pass-${item.id}-${item._routePos}`} className="cursor-pointer text-amber-700 focus:text-amber-800"><X className="w-4 h-4 mr-2" />Remove this route pass</DropdownMenuItem>}
                           <DropdownMenuItem onClick={() => confirmDelete(item.id, "pole")} data-testid={`delete-pole-${item.id}`} className="cursor-pointer text-red-600 focus:text-red-700"><Trash2 className="w-4 h-4 mr-2" />Delete</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -1350,7 +1352,6 @@ const JobDetail = () => {
                         <DropdownMenuContent align="start" className="bg-white border-zinc-200 w-48" onClick={(e) => e.stopPropagation()}>
                           <DropdownMenuItem onClick={() => navigate(`/jobs/${jobId}/underground/edit/${item.id}`)} data-testid={`edit-ug-${item.id}`} className="cursor-pointer"><Pencil className="w-4 h-4 mr-2 text-zinc-600" />Edit</DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleDuplicateUg(item.id)} data-testid={`duplicate-ug-${item.id}`} className="cursor-pointer"><Copy className="w-4 h-4 mr-2 text-zinc-600" />Duplicate</DropdownMenuItem>
-                          {item._routeRepeat && <DropdownMenuItem onClick={() => removeRoutePassAt(item._routePos)} data-testid={`remove-route-pass-${item.id}-${item._routePos}`} className="cursor-pointer text-amber-700 focus:text-amber-800"><X className="w-4 h-4 mr-2" />Remove this route pass</DropdownMenuItem>}
                           <DropdownMenuSub>
                             <DropdownMenuSubTrigger data-testid={`change-type-${item.id}`} className="cursor-pointer"><Repeat className="w-4 h-4 mr-2 text-zinc-600" />Change type</DropdownMenuSubTrigger>
                             <DropdownMenuSubContent className="bg-white border-zinc-200 max-h-72 overflow-y-auto">

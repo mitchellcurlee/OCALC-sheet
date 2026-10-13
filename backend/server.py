@@ -208,6 +208,15 @@ async def startup_storage():
     except Exception as e:
         logger.error(f"Field report date migration failed: {e}")
 
+    # One-off data fix: remove attachment rows / photo urls that were saved twice on existing records
+    try:
+        from services.dedupe import migrate_duplicate_entries
+        c = await migrate_duplicate_entries(db)
+        if c["poles"] or c["underground"]:
+            logger.info(f"De-duplicated entries on {c['poles']} pole(s) and {c['underground']} underground item(s)")
+    except Exception as e:
+        logger.error(f"Duplicate entry migration failed: {e}")
+
 
 @app.on_event("shutdown")
 async def shutdown_db_client():

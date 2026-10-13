@@ -719,3 +719,8 @@ Full-stack React/FastAPI app for power pole field data collection: dynamic pole/
 
 ## Update — June 2026 (Edit/Add path from marker popups; agent-tested, not user-confirmed)
 - Pole popup (`popup-path-edit-<id>`) and underground popup (`ug-path-edit-<id>`) now have an "Edit path" / "Add path" button (hidden in position-edit mode) opening `PathMeasurementDialog` for that attribute. Verified on HH-9 (dialog shows its 2 rows).
+
+## Update — June 2026 (measurer de-dupe · single-listing on Draw-Route · duplicate-entry migration; agent-tested, not user-confirmed)
+- Measurer apply: identical taps (same field/guy/rounded height) collapse to one; PoleForm `onHeightsDetected` skips heights already present as attachment rows and adds the HOA markup photo once. `PUT /poles/{id}` runs `dedupe_attachments` (services/dedupe.py) on `attachments`.
+- JobDetail combined list (Draw-Route jobs): each attribute listed once at its first route position; riser rows anchored right after their pole (the +0.5 slot) instead of falling to the bottom; `routePayloadFromOrder` re-inserts the route's revisit passes after their old predecessor so a reorder save never drops a span. "Remove this route pass" menu removed (repeats no longer listed); `removeRoutePass` helper retained in poleMapImage.js.
+- Startup migration `migrate_duplicate_entries` (server.py): de-dupes pole `attachments` rows + `hoa_markup_photos`, underground `photos` (logged "De-duplicated entries on N pole(s)…"). Verified on a seeded pole: 2→1 attachment rows, photos a,a,b → a,b.
